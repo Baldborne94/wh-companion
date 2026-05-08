@@ -1,0 +1,26 @@
+{
+  "name": "Warhammer 40,000 Companion",
+  "short_name": "WH40K",
+  "description": "Your complete Warhammer 40,000 companion — library, lore, reading order, painting and AI oracle.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0905",
+  "theme_color": "#0a0905",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["books", "entertainment", "games"],
+  "lang": "en"
+}
