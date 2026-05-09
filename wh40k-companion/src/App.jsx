@@ -1051,14 +1051,14 @@ function HomePage({setSection}){
         <div style={{fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:8,color:C.red,marginBottom:26,textTransform:"uppercase"}}>COMPANION</div>
         <div style={{display:"flex",gap:10,justifyContent:"center"}}>
           <button onClick={()=>setSection("library")} style={{background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",borderRadius:8,padding:"13px 26px",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:2,textTransform:"uppercase",fontWeight:700,cursor:"pointer"}}>Enter Library</button>
-          <button onClick={()=>setSection("factions")} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,padding:"13px 26px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:2,textTransform:"uppercase",cursor:"pointer"}}>Factions</button>
+          <button onClick={()=>setSection("lore")} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,padding:"13px 26px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:2,textTransform:"uppercase",cursor:"pointer"}}>Factions</button>
         </div>
       </div>
     </div>
     <div style={{padding:"20px 16px 8px"}}>
       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:5,textTransform:"uppercase",marginBottom:12}}>Sections</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        {[{id:"library",icon:"📚",label:"Library",sub:`${BOOKS.length}+ tomes`},{id:"factions",icon:"⚔️",label:"Factions",sub:"Lore & history"},{id:"reading",icon:"📖",label:"Reading Order",sub:"Where to start"},{id:"painting",icon:"🎨",label:"Painting",sub:"Citadel · AK · Vallejo"},{id:"oracle",icon:"🤖",label:"The Oracle",sub:"AI lore guide",wide:true}].map(item=>(<button key={item.id} onClick={()=>setSection(item.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px 14px",textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:12,gridColumn:item.wide?"span 2":undefined}}><span style={{fontSize:22}}>{item.icon}</span><div><div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,fontWeight:700}}>{item.label}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{item.sub}</div></div></button>))}
+        {[{id:"library",icon:"📚",label:"Library",sub:`${BOOKS.length}+ tomes`},{id:"lore",icon:"⚔️",label:"Lore",sub:"Lore & history"},{id:"reading",icon:"📖",label:"Reading Order",sub:"Where to start"},{id:"painting",icon:"🎨",label:"Painting",sub:"Citadel · AK · Vallejo"},{id:icon:"🤖",label:"The Oracle",sub:"AI lore guide",wide:true}].map(item=>(<button key={item.id} onClick={()=>setSection(item.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px 14px",textAlign:"left",cursor:"pointer",display:"flex",alignItems:"center",gap:12,gridColumn:item.wide?"span 2":undefined}}><span style={{fontSize:22}}>{item.icon}</span><div><div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,fontWeight:700}}>{item.label}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{item.sub}</div></div></button>))}
       </div>
     </div>
     <div style={{padding:"16px 16px 8px"}}>
@@ -1074,7 +1074,7 @@ function HomePage({setSection}){
 
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
-const NAV=[{id:"library",icon:"📚",label:"Library"},{id:"factions",icon:"⚔️",label:"Factions"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"},{id:"oracle",icon:"🤖",label:"Oracle"}];
+const NAV=[{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"}];
 
 export default function App(){
   const [user,setUser]=useState(null);
@@ -1086,7 +1086,7 @@ export default function App(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
   },[]);
-  const [section,setSection]=useState("home");
+  const [section,setSection]=useState("library");
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   return(
@@ -1107,7 +1107,7 @@ export default function App(){
       <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:600,margin:"0 auto",background:C.bg}}>
         <div style={{flexShrink:0,height:52,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:10,position:"relative"}}>
           <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${C.red},transparent)`}}/>
-          <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:0}}>
+          <button onClick={()=>setSection("library")} style={{background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:0}}>
             <svg width={28} height={28} viewBox="0 0 100 100"><text x="50" y="72" textAnchor="middle" fontSize="70" fill={C.gold} fontFamily="serif">⚜</text></svg>
             <div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:12,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1.1}}>WH40K</div><div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:4,textTransform:"uppercase",marginTop:-1}}>Companion</div></div><div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>{user?(<div style={{display:"flex",alignItems:"center",gap:8}}>{user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="avatar" style={{width:26,height:26,borderRadius:"50%",border:"1px solid #c9a84c"}}/>}<button onClick={signOut} style={{background:"transparent",border:"1px solid #2a2518",borderRadius:6,color:"#7a7060",padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button></div>):(<button onClick={signInWithGoogle} style={{background:"transparent",border:"1px solid #c9a84c",borderRadius:8,color:"#c9a84c",padding:"6px 12px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:2,cursor:"pointer"}}>LOGIN</button>)}</div>
           </button>
@@ -1117,10 +1117,10 @@ export default function App(){
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
           {section==="home"    &&<HomePage setSection={setSection}/>}
           {section==="library" &&<LibrarySection/>}
-          {section==="factions"&&<ComingSoon icon="⚔️" title="Factions & Lore"  sub="Deep dives into every faction, Primarch and Chapter."/>}
+          {section==="lore"&&<ComingSoon icon="⚔️" title="Factions & Lore"  sub="Deep dives into every faction, Primarch and Chapter."/>}
           {section==="reading" &&<ComingSoon icon="📖" title="Reading Order"    sub="Guided paths through the Black Library."/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
-          {section==="oracle"  &&<ComingSoon icon="🤖" title="The Oracle"       sub="An AI companion for lore, reading and painting questions."/>}
+          
         </div>
         <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:58}}>
           {NAV.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?C.gold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:20,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,color:section===n.id?C.gold:C.muted,textTransform:"uppercase"}}>{n.label}</span></button>))}
