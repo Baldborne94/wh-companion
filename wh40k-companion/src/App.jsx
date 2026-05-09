@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase, signInWithGoogle, signOut } from "./lib/supabase";
 import PaintingTracker from "./components/PaintingTracker";
-import LoginGate from "./components/LoginGate";
 
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
 const SB_URL = "https://xrcaxmoviaidghjeqedf.supabase.co";
@@ -1087,7 +1086,6 @@ export default function App(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
   },[]);
-  if(!authLoading&&!user)return <LoginGate/>;
   const [section,setSection]=useState("home");
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
