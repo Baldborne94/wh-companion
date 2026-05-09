@@ -1,0 +1,56 @@
+// src/lib/supabase.js
+import { createClient } from '@supabase/supabase-js';
+
+const SB_URL = "https://xrcaxmoviaidghjeqedf.supabase.co";
+const SB_KEY = "sb_publishable_vH3pVq00MZbjGKuf7ZH2Hw_Xr8WbKGx";
+
+export const supabase = createClient(SB_URL, SB_KEY);
+
+export const signInWithGoogle = () =>
+  supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+
+export const signOut = () => supabase.auth.signOut();
+
+export const db = {
+  async get(table, query) {
+    let req = supabase.from(table).select('*');
+    if (query) {
+      const [col, val] = query.split('=eq.');
+      if (col && val) req = req.eq(col, val);
+    }
+    const { data } = await req;
+    return data ?? [];
+  },
+  async insert(table, data) {
+    const { data: result, error } = await supabase.from(table).insert(data).select();
+    if (error) throw error;
+    return result?.[0];
+  },
+  async update(table, id, data) {
+    const { data: result, error } = await supabase.from(table).update(data).eq('id', id).select();
+    if (error) throw error;
+    return result?.[0];
+  },
+  async delete(table, id) {
+    const { error } = await supabase.from(table).delete().eq('id', id);
+    if (error) throw error;
+  },
+  async upsert(table, data) {
+    const { data: result } = await supabase.from(table).upsert(data, { onConflict: 'id' }).select();
+    return result;
+  },
+};
+
+export const storage = {
+  async upload(bucket, path, file) {
+    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+    if (error) throw error;
+  },
+  url(bucket, path) {
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  },
+};
