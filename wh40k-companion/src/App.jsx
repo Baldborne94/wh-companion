@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase, signInWithGoogle, signOut } from "./lib/supabase";
 import PaintingTracker from "./components/PaintingTracker";
-import EbookReader from "./components/EbookReader";
 
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
-const SB_URL = "https://xrcaxmoviaidghjeqedf.supabase.co";
-const SB_KEY = "sb_publishable_vH3pVq00MZbjGKuf7ZH2Hw_Xr8WbKGx";
+const SB_URL = import.meta.env.VITE_SUPABASE_URL;
+const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SB_H   = { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, "Content-Type":"application/json" };
 const sb = {
   async get(t,q="")   { try{ const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_H}); return r.ok?r.json():[];} catch{return[];} },
@@ -293,13 +292,12 @@ function SettingsPanel({ settings, onChange, onClose }) {
 }
 
 // ─── EPUB READER ──────────────────────────────────────────────────────────────
-function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
+function EpubReader({ url, title, bookId, initProgress, initChapterIndex, onProgress, onClose }) {
   const [chapters,  setChapters]  = useState([]);
   const [chIdx,     setChIdx]     = useState(0);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(null);
 
-  // Reader settings
   const [settings, setSettings] = useState({
     theme:"dark", fontIndex:0, fontSize:18, lineHeight:1.8, margin:24, paginate:true,
   });
@@ -307,7 +305,6 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
   const T   = THEMES[settings.theme];
   const fnt = FONTS[settings.fontIndex];
 
-  // Pagination
   const outerRef    = useRef(null);
   const innerRef    = useRef(null);
   const [pageIndex, setPageIndex]   = useState(0);
@@ -315,32 +312,35 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
   const [pageWidth, setPageWidth]   = useState(0);
   const [pageHeight,setPageHeight]  = useState(0);
 
-  // UI
   const [showUI,       setShowUI]       = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showToc,      setShowToc]      = useState(false);
   const [loreKey,      setLoreKey]      = useState(null);
   const [dictWord,     setDictWord]     = useState(null);
-  const uiTimerRef = useRef(null);
-
-  // Touch
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showHint,     setShowHint]     = useState(()=>!localStorage.getItem("wh40k_lore_hint"));
+  const uiTimerRef  = useRef(null);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchMoved  = useRef(false);
 
-  // Load EPUB
+  // ── Load EPUB ─────────────────────────────────────────────────────────────
   useEffect(()=>{
     let cancelled=false;
     parseEpub(url).then(chs=>{
       if(cancelled) return;
       setChapters(chs);
-      setChIdx(Math.min(Math.floor((initProgress||0)*chs.length),Math.max(0,chs.length-1)));
+      // Prefer exact chapter_index from DB; fall back to percentage estimate
+      const startCh = initChapterIndex > 0
+        ? Math.min(initChapterIndex, chs.length-1)
+        : Math.min(Math.floor((initProgress||0)*chs.length), Math.max(0,chs.length-1));
+      setChIdx(startCh);
       setLoading(false);
     }).catch(e=>{ if(!cancelled){setError(e.message);setLoading(false);} });
     return()=>{cancelled=true;};
   },[url]);
 
-  // Load custom fonts
+  // ── Load custom fonts lazily ───────────────────────────────────────────────
   useEffect(()=>{
     if(!fnt.import) return;
     const id=`font-${settings.fontIndex}`;
@@ -352,7 +352,7 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
     }
   },[settings.fontIndex]);
 
-  // Measure pages after render
+  // ── Measure columns for paginated mode ────────────────────────────────────
   const measurePages = useCallback(()=>{
     if(!outerRef.current||!innerRef.current||!settings.paginate) return;
     const ow=outerRef.current.clientWidth;
@@ -360,70 +360,114 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
     setPageWidth(ow); setPageHeight(oh);
     setTimeout(()=>{
       if(innerRef.current){
-        const sw=innerRef.current.scrollWidth;
-        setTotalPages(Math.max(1,Math.round(sw/ow)));
+        setTotalPages(Math.max(1,Math.round(innerRef.current.scrollWidth/ow)));
         setPageIndex(0);
       }
     },150);
   },[settings.paginate]);
 
   useEffect(()=>{ measurePages(); },[chIdx,settings,chapters,measurePages]);
-
   useEffect(()=>{
     if(!outerRef.current) return;
     const ro=new ResizeObserver(measurePages); ro.observe(outerRef.current); return()=>ro.disconnect();
   },[measurePages]);
 
-  // Save progress
+  // ── Save progress (chapter + page) ────────────────────────────────────────
   useEffect(()=>{
-    if(chapters.length>0){
-      const pct=chIdx/chapters.length; onProgress(pct);
-      sb.upsert("reading_progress",{book_id:bookId,chapter_index:chIdx,progress_pct:pct,last_read:new Date().toISOString()});
-    }
-  },[chIdx,chapters.length]);
+    if(!chapters.length) return;
+    const pct=(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length;
+    onProgress(pct);
+    sb.upsert("reading_progress",{book_id:bookId,chapter_index:chIdx,page_index:pageIndex,progress_pct:pct,last_read:new Date().toISOString()});
+  },[chIdx,pageIndex,chapters.length,totalPages]);
 
-  // Reset page on chapter change
   useEffect(()=>{ setPageIndex(0); },[chIdx]);
 
-  // Auto-hide UI after 4 seconds
+  // ── Fullscreen ─────────────────────────────────────────────────────────────
+  const toggleFullscreen = useCallback(()=>{
+    if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.(); }
+    else { document.exitFullscreen?.(); }
+  },[]);
+  useEffect(()=>{
+    const h=()=>setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange",h);
+    return()=>document.removeEventListener("fullscreenchange",h);
+  },[]);
+
+  // ── Lore hint: show once, then persist to localStorage ───────────────────
+  useEffect(()=>{
+    if(!showHint) return;
+    const t=setTimeout(()=>{ setShowHint(false); localStorage.setItem("wh40k_lore_hint","1"); },5000);
+    return()=>clearTimeout(t);
+  },[showHint]);
+
+  // ── Auto-hide top/bottom bars ──────────────────────────────────────────────
   const resetUiTimer = useCallback(()=>{
     if(uiTimerRef.current) clearTimeout(uiTimerRef.current);
-    if(!showSettings&&!showToc&&!loreKey&&!dictWord){
+    if(!showSettings&&!showToc&&!loreKey&&!dictWord)
       uiTimerRef.current=setTimeout(()=>setShowUI(false),4000);
-    }
   },[showSettings,showToc,loreKey,dictWord]);
-
   useEffect(()=>{ if(showUI) resetUiTimer(); return()=>{ if(uiTimerRef.current) clearTimeout(uiTimerRef.current); }; },[showUI,resetUiTimer]);
 
-  // Navigation
-  const prevPage=()=>{ if(pageIndex>0){ setPageIndex(p=>p-1); setShowUI(true); } else if(chIdx>0){ setChIdx(c=>c-1); } };
-  const nextPage=()=>{ if(pageIndex<totalPages-1){ setPageIndex(p=>p+1); setShowUI(true); } else if(chIdx<chapters.length-1){ setChIdx(c=>c+1); } };
+  // ── Navigation ────────────────────────────────────────────────────────────
+  const prevPage=useCallback(()=>{
+    if(pageIndex>0){ setPageIndex(p=>p-1); setShowUI(true); }
+    else if(chIdx>0){ setChIdx(c=>c-1); }
+  },[pageIndex,chIdx]);
 
-  // Touch handlers
+  const nextPage=useCallback(()=>{
+    if(pageIndex<totalPages-1){ setPageIndex(p=>p+1); setShowUI(true); }
+    else if(chIdx<chapters.length-1){ setChIdx(c=>c+1); }
+  },[pageIndex,totalPages,chIdx,chapters.length]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  useEffect(()=>{
+    const handler=(e)=>{
+      if(showSettings||loreKey||dictWord) return;
+      if(e.key==="ArrowRight"||e.key==="ArrowDown"){ e.preventDefault(); nextPage(); setShowUI(true); return; }
+      if(e.key==="ArrowLeft"||e.key==="ArrowUp"){ e.preventDefault(); prevPage(); setShowUI(true); return; }
+      if(e.key===" "){ e.preventDefault(); nextPage(); setShowUI(true); return; }
+      if(e.key==="Escape"){ if(showToc){setShowToc(false);}else{onClose();} return; }
+      if(e.key==="f"||e.key==="F"){ toggleFullscreen(); return; }
+      if(e.key==="t"||e.key==="T"){ setShowToc(v=>!v); setShowUI(true); return; }
+    };
+    document.addEventListener("keydown",handler);
+    return()=>document.removeEventListener("keydown",handler);
+  },[showSettings,showToc,loreKey,dictWord,nextPage,prevPage,onClose,toggleFullscreen]);
+
+  // ── Scroll-mode progress tracking ────────────────────────────────────────
+  const handleScroll=useCallback(()=>{
+    if(!outerRef.current||settings.paginate||!chapters.length) return;
+    const {scrollTop,scrollHeight,clientHeight}=outerRef.current;
+    if(scrollHeight<=clientHeight) return;
+    const scrollPct=scrollTop/(scrollHeight-clientHeight);
+    const pct=(chIdx+scrollPct)/chapters.length;
+    onProgress(pct);
+  },[chIdx,chapters.length,settings.paginate,onProgress]);
+
+  // ── Touch ─────────────────────────────────────────────────────────────────
   const onTouchStart=e=>{ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; touchMoved.current=false; };
   const onTouchMove =e=>{ if(Math.abs(e.touches[0].clientX-touchStartX.current)>10) touchMoved.current=true; };
   const onTouchEnd  =e=>{
     const dx=touchStartX.current-e.changedTouches[0].clientX;
     const dy=Math.abs(touchStartY.current-e.changedTouches[0].clientY);
-    if(dy>40) return; // vertical scroll
+    if(dy>40) return;
     if(dx>50){ nextPage(); return; }
     if(dx<-50){ prevPage(); return; }
-    if(!touchMoved.current){ // tap
+    if(!touchMoved.current){
       const x=e.changedTouches[0].clientX;
       const W=window.innerWidth;
       if(x<W*0.25){ prevPage(); return; }
       if(x>W*0.75){ nextPage(); return; }
-      setShowUI(u=>!u); // center tap = toggle UI
+      setShowUI(u=>!u);
     }
   };
 
-  // Clicks on lore keywords or for dictionary
+  // ── Lore click / dictionary selection ─────────────────────────────────────
   const handleContentClick=useCallback(e=>{
     const kw=e.target.getAttribute?.("data-kw");
-    if(kw&&LORE_DB[kw]){ setLoreKey(kw); return; }
+    if(kw&&LORE_DB[kw]){ setLoreKey(kw); }
   },[]);
 
-  // Text selection → dictionary
   const handleMouseUp=useCallback(()=>{
     const sel=window.getSelection(); if(!sel||sel.isCollapsed) return;
     const word=sel.toString().trim().replace(/[^a-zA-Z'-]/g,"");
@@ -433,21 +477,23 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
     sel.removeAllRanges();
   },[]);
 
-  const pct       = chapters.length>1 ? Math.round((chIdx/(chapters.length-1))*100) : 100;
-  const globalPct = chapters.length>0  ? Math.round(((chIdx*100+(pageIndex/Math.max(1,totalPages-1))*100)/(chapters.length))|0) : 0;
+  // ── Reading time estimate for current chapter ─────────────────────────────
+  const readingMinutes=useMemo(()=>{
+    if(!chapters[chIdx]) return null;
+    const words=chapters[chIdx].html.replace(/<[^>]+>/g,"").trim().split(/\s+/).filter(Boolean).length;
+    const mins=Math.ceil(words/250);
+    return mins<1?null:mins;
+  },[chapters,chIdx]);
 
-  const readerStyle = {
-    fontFamily:    fnt.value,
-    fontSize:      settings.fontSize,
-    lineHeight:    settings.lineHeight,
-    color:         T.text,
-    padding:       `24px ${settings.margin}px 24px`,
-    wordBreak:     "break-word",
-    hyphens:       "auto",
-    textAlign:     "justify",
-    maxWidth:      "100%",
+  const globalPct=chapters.length>0?Math.round(((chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length)*100):0;
+
+  const readerStyle={
+    fontFamily:fnt.value,fontSize:settings.fontSize,lineHeight:settings.lineHeight,
+    color:T.text,padding:`24px ${settings.margin}px`,wordBreak:"break-word",
+    hyphens:"auto",textAlign:"justify",maxWidth:"100%",
   };
 
+  // ── Loading / Error screens ────────────────────────────────────────────────
   if(loading) return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:THEMES.dark.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20}}>
       <div style={{fontSize:52,animation:"spin 2s linear infinite"}}>⚙</div>
@@ -461,96 +507,104 @@ function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
       <div style={{fontSize:48}}>⚠</div>
       <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.red}}>Could not open EPUB</div>
       <div style={{color:C.muted,fontSize:12,maxWidth:300}}>{error}</div>
-      <div style={{color:C.dim,fontSize:11,maxWidth:300}}>DRM-protected files cannot be opened. Try a DRM-free copy.</div>
-      <button onClick={onClose} style={{marginTop:8,background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Back to Library</button>
+      <div style={{color:C.dim,fontSize:11,maxWidth:300,marginTop:4}}>DRM-protected files cannot be opened. Try a DRM-free copy.</div>
+      <button onClick={onClose} style={{marginTop:12,background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back to Library</button>
     </div>
   );
 
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:T.bg,display:"flex",flexDirection:"column",transition:"background 0.3s"}}>
 
-      {/* ── TOP BAR (auto-hides) ── */}
-      <div style={{flexShrink:0,height:52,background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:"0 12px",gap:8,transition:"opacity 0.3s, transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(-100%)",pointerEvents:showUI?"auto":"none",position:"relative",zIndex:2}}>
-        <button onClick={onClose} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"7px 14px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1,flexShrink:0}}>← Back</button>
-        <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
-        <button onClick={()=>{setShowToc(t=>!t);setShowUI(true);}} style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16}}>≡</button>
-        <button onClick={()=>{setShowSettings(true);setShowUI(true);}} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16}}>⚙</button>
+      {/* ── TOP BAR ── */}
+      <div style={{flexShrink:0,height:52,background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:"0 10px",gap:6,transition:"opacity 0.3s,transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(-100%)",pointerEvents:showUI?"auto":"none",zIndex:2}}>
+        <button onClick={onClose} title="Back (Esc)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"7px 12px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,flexShrink:0}}>← Back</button>
+        <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}}>{title}</div>
+        {readingMinutes&&(
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>
+        )}
+        <button onClick={()=>{setShowToc(t=>!t);setShowUI(true);}} title="Contents (T)" style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>≡</button>
+        <button onClick={toggleFullscreen} title="Fullscreen (F)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:isFullscreen?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:13,flexShrink:0}}>{isFullscreen?"⛶":"⛶"}</button>
+        <button onClick={()=>{setShowSettings(true);setShowUI(true);}} title="Settings" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>⚙</button>
       </div>
 
       {/* ── PROGRESS BAR ── */}
-      <div style={{height:2,background:T.border,flexShrink:0,position:"relative",zIndex:2}}>
+      <div style={{height:2,background:T.border,flexShrink:0,zIndex:2}}>
         <div style={{height:"100%",width:`${globalPct}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,transition:"width 0.5s"}}/>
       </div>
 
-      {/* ── MAIN READING AREA ── */}
+      {/* ── READING AREA ── */}
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         onClick={handleContentClick} onMouseUp={handleMouseUp}>
 
         {/* TOC sidebar */}
         {showToc&&(
-          <div style={{width:200,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:3}}>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"14px 16px 10px"}}>Contents</div>
+          <div style={{width:220,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:3,animation:"slideLeft 0.2s ease"}}>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>Contents</div>
             {chapters.map((ch,i)=>(
-              <button key={i} onClick={()=>{setChIdx(i);setShowToc(false);setShowUI(true);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`2px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.3}}>{ch.label}</button>
+              <button key={i} onClick={()=>{setChIdx(i);setPageIndex(0);setShowToc(false);setShowUI(true);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
             ))}
           </div>
         )}
 
+        {/* Extra CSS injected for column breaks */}
+        <style>{`
+          .epub-col img{break-inside:avoid;max-width:100%;height:auto;}
+          .epub-col h1,.epub-col h2,.epub-col h3{break-after:avoid;}
+          .epub-col p{orphans:3;widows:3;}
+        `}</style>
+
         {settings.paginate ? (
-          /* ── PAGINATED MODE ── */
           <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%"}}>
-            <div ref={innerRef} style={{
+            <div ref={innerRef} className="epub-col" style={{
               ...readerStyle,
-              columnWidth:`${pageWidth||300}px`,
-              columnFill:"auto",
-              columnGap:0,
+              columnWidth:`${pageWidth||300}px`,columnFill:"auto",columnGap:0,
               height:pageHeight?`${pageHeight}px`:"100%",
               transform:`translateX(-${pageIndex*pageWidth}px)`,
-              transition:"transform 0.3s ease",
+              transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
               willChange:"transform",
-              padding:`24px ${settings.margin}px`,
-            }}
-              dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}
-            />
-            {/* Tap zones */}
-            <div style={{position:"absolute",top:0,left:0,width:"25%",height:"100%",cursor:"w-resize"}}
-              onClick={e=>{e.stopPropagation();prevPage();setShowUI(true);}}/>
-            <div style={{position:"absolute",top:0,right:0,width:"25%",height:"100%",cursor:"e-resize"}}
-              onClick={e=>{e.stopPropagation();nextPage();setShowUI(true);}}/>
+            }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
+            <div style={{position:"absolute",top:0,left:0,width:"25%",height:"100%",cursor:"w-resize"}} onClick={e=>{e.stopPropagation();prevPage();setShowUI(true);}}/>
+            <div style={{position:"absolute",top:0,right:0,width:"25%",height:"100%",cursor:"e-resize"}} onClick={e=>{e.stopPropagation();nextPage();setShowUI(true);}}/>
           </div>
         ) : (
-          /* ── SCROLL MODE ── */
-          <div style={{flex:1,overflowY:"auto",position:"relative"}} ref={outerRef}>
+          <div style={{flex:1,overflowY:"auto",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
             <div ref={innerRef} style={readerStyle} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
           </div>
         )}
       </div>
 
-      {/* ── BOTTOM BAR (auto-hides) ── */}
-      <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",transition:"opacity 0.3s, transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(100%)",pointerEvents:showUI?"auto":"none"}}>
-        <button onClick={prevPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 18px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>← Prev</button>
+      {/* ── BOTTOM BAR ── */}
+      <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",transition:"opacity 0.3s,transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(100%)",pointerEvents:showUI?"auto":"none"}}>
+        <button onClick={prevPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>← Prev</button>
         <div style={{textAlign:"center"}}>
           {settings.paginate?(
             <>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>p. {pageIndex+1}/{totalPages}</div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>ch. {chIdx+1}/{chapters.length}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>p. {pageIndex+1} / {totalPages}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>ch. {chIdx+1}/{chapters.length} · {globalPct}%</div>
             </>
           ):(
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>{chIdx+1} / {chapters.length}</div>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>ch. {chIdx+1} / {chapters.length} · {globalPct}%</div>
           )}
         </div>
-        <button onClick={nextPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 18px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>Next →</button>
+        <button onClick={nextPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>Next →</button>
       </div>
 
-      {/* Keyword hint (first time) */}
-      {showUI&&(
-        <div style={{position:"absolute",bottom:64,left:"50%",transform:"translateX(-50%)",background:`${T.ui}ee`,border:`1px solid ${C.gold}33`,borderRadius:20,padding:"5px 14px",whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s",opacity:showUI?0.8:0}}>
-          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>✨ Tap gold words for lore • Select words for dictionary</span>
+      {/* ── LORE HINT (first open only) ── */}
+      {showHint&&(
+        <div style={{position:"absolute",bottom:64,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
+          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>✨ Tap gold words for lore · Select text for dictionary</span>
         </div>
       )}
 
-      {/* Overlays */}
+      {/* ── KEYBOARD HINT (desktop, fades after UI hides) ── */}
+      {showUI&&!showHint&&(
+        <div style={{position:"absolute",bottom:64,right:14,background:`${T.ui}cc`,border:`1px solid ${T.border}`,borderRadius:8,padding:"4px 10px",pointerEvents:"none",opacity:0.55,zIndex:4}}>
+          <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:T.muted,letterSpacing:1}}>← → · Space · F fullscreen · T contents · Esc back</span>
+        </div>
+      )}
+
+      {/* ── OVERLAYS ── */}
       {showSettings&&<SettingsPanel settings={settings} onChange={updateSetting} onClose={()=>setShowSettings(false)}/>}
       {loreKey&&<LorePanel kwKey={loreKey} onClose={()=>setLoreKey(null)} theme={settings.theme}/>}
       {dictWord&&<DictionaryPanel word={dictWord} onClose={()=>setDictWord(null)} theme={settings.theme}/>}
@@ -576,17 +630,24 @@ function PdfReader({ url, title, onClose }) {
 function BookDetail({ book, onBack, onOpenReader }) {
   const fc=FC[book.faction]||C.dim;
   const inp=useRef(null);
-  const [ebookMeta,setEbookMeta]=useState(null);
-  const [uploading,setUploading]=useState(false);
-  const [uploadMsg,setUploadMsg]=useState("");
-  const [isRead,   setIsRead]   =useState(false);
-  const [progress, setProgress] =useState(0);
+  const [ebookMeta,    setEbookMeta]    = useState(null);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadMsg,    setUploadMsg]    = useState("");
+  const [isRead,       setIsRead]       = useState(false);
+  const [progress,     setProgress]     = useState(0);
+  const [chapterIndex, setChapterIndex] = useState(0);
 
   useEffect(()=>{
     (async()=>{
-      const [files,progData]=await Promise.all([sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),sb.get("reading_progress",`book_id=eq.${book.id}&limit=1`)]);
+      const [files,progData]=await Promise.all([
+        sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),
+        sb.get("reading_progress",`book_id=eq.${book.id}&limit=1`),
+      ]);
       if(files?.length) setEbookMeta(files[0]);
-      if(progData?.length) setProgress(progData[0].progress_pct||0);
+      if(progData?.length){
+        setProgress(progData[0].progress_pct||0);
+        setChapterIndex(progData[0].chapter_index||0);
+      }
     })();
   },[book.id]);
 
@@ -605,7 +666,7 @@ function BookDetail({ book, onBack, onOpenReader }) {
 
   const handleOpenReader=()=>{
     if(!ebookMeta) return;
-    onOpenReader({book,url:sb.storage.url(ebookMeta.file_path),fileType:ebookMeta.file_type,progress});
+    onOpenReader({book,url:sb.storage.url(ebookMeta.file_path),fileType:ebookMeta.file_type,progress,chapterIndex});
   };
 
   return(
@@ -948,12 +1009,12 @@ function LibrarySection() {
     }
   },[tab]);
 
-  const handleOpenReader=({book,url,fileType,progress})=>setReader({book,url,fileType,progress});
+  const handleOpenReader=({book,url,fileType,progress,chapterIndex})=>setReader({book,url,fileType,progress,chapterIndex});
 
   if(reader){
-    const {book,url,fileType,progress}=reader;
+    const {book,url,fileType,progress,chapterIndex}=reader;
     if(fileType==="pdf") return <PdfReader url={url} title={book.title} onClose={()=>setReader(null)}/>;
-    return <EbookReader url={url} title={book.title} bookId={book.id} initProgress={progress} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
+    return <EpubReader url={url} title={book.title} bookId={book.id} initProgress={progress} initChapterIndex={chapterIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
   if(detail) return <BookDetail book={detail} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader}/>;
 
