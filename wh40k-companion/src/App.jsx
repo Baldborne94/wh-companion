@@ -83,6 +83,17 @@ function highlightKeywords(html) {
   }).join("");
 }
 
+// ─── PATH RESOLVER (handles ../relative EPUB paths) ──────────────────────────
+function resolveEpubPath(base, rel) {
+  if(!rel || rel.startsWith("data:") || /^https?:\/\//.test(rel)) return rel;
+  const parts = base.split("/"); parts.pop(); // strip filename, keep dir
+  for(const seg of rel.split("/")) {
+    if(seg==="..") { if(parts.length) parts.pop(); }
+    else if(seg && seg!==".") parts.push(seg);
+  }
+  return parts.join("/");
+}
+
 // ─── EPUB PARSER ──────────────────────────────────────────────────────────────
 async function parseEpub(url) {
   if(!window.JSZip){
@@ -98,11 +109,21 @@ async function parseEpub(url) {
   const manifest={}; opfDoc.querySelectorAll("manifest item").forEach(i=>{manifest[i.getAttribute("id")]=i.getAttribute("href");});
   const hrefs=[...opfDoc.querySelectorAll("spine itemref")].map(i=>manifest[i.getAttribute("idref")]).filter(Boolean);
   const chapters=await Promise.all(hrefs.map(async(href,idx)=>{
-    const file=zip.file(opfDir+href)||zip.file(href); if(!file) return null;
+    const chapterPath=opfDir+href;
+    const file=zip.file(chapterPath)||zip.file(href); if(!file) return null;
     let html=await file.async("text");
-    for(const m of [...html.matchAll(/src="([^"]+)"/g)]){
-      const imgFile=zip.file(opfDir+m[1]);
-      if(imgFile){const b64=await imgFile.async("base64"); const ext=m[1].split(".").pop().toLowerCase(); const mime=ext==="png"?"image/png":ext==="gif"?"image/gif":"image/jpeg"; html=html.replace(m[0],`src="data:${mime};base64,${b64}"`);}
+    // Fix images: handle both quote styles, ../relative paths, and path variations
+    for(const m of [...html.matchAll(/(?:src|href)=["']([^"'#][^"']*\.(jpe?g|png|gif|webp|svg))["']/gi)]){
+      const rawSrc=m[1];
+      if(rawSrc.startsWith("data:")) continue;
+      const resolved=resolveEpubPath(chapterPath,rawSrc);
+      const imgFile=zip.file(resolved)||zip.file(opfDir+rawSrc)||zip.file(rawSrc);
+      if(imgFile){
+        const b64=await imgFile.async("base64");
+        const ext=rawSrc.split(".").pop().toLowerCase().replace(/[?#].*/,"");
+        const mime=ext==="png"?"image/png":ext==="gif"?"image/gif":ext==="webp"?"image/webp":(ext==="svg"||ext==="svgz")?"image/svg+xml":"image/jpeg";
+        html=html.replace(m[0], m[0].replace(rawSrc, `data:${mime};base64,${b64}`));
+      }
     }
     const tMatch=html.match(/<title[^>]*>([^<]+)<\/title>/i)||html.match(/<h[123][^>]*>([^<]+)<\/h[123]>/i);
     return { html:highlightKeywords(html), label:tMatch?tMatch[1].trim():`Chapter ${idx+1}` };
@@ -555,12 +576,24 @@ function EpubReader({ url, title, bookId, initProgress, initChapterIndex, onProg
         `}</style>
 
         {settings.paginate ? (
-          <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%"}}>
+          // outerRef: provides vertical padding on EVERY page (top+bottom 24px)
+          // boxSizing:border-box ensures height:"100%" doesn't overflow parent
+          <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box"}}>
             <div ref={innerRef} className="epub-col" style={{
-              ...readerStyle,
-              columnWidth:`${pageWidth||300}px`,columnFill:"auto",columnGap:0,
-              height:pageHeight?`${pageHeight}px`:"100%",
-              transform:`translateX(-${pageIndex*pageWidth}px)`,
+              // Build style explicitly — don't spread readerStyle (its padding breaks columns)
+              fontFamily:fnt.value,fontSize:settings.fontSize,lineHeight:settings.lineHeight,
+              color:T.text,wordBreak:"break-word",hyphens:"auto",textAlign:"justify",
+              // Horizontal margins: padding-left + column-gap trick gives margin on BOTH sides of every page
+              // column-width = pageWidth - 2×margin  →  each column is exactly one page of readable text
+              // column-gap   = 2×margin              →  half-gap = right-margin on current page, half-gap = left-margin on next page
+              paddingLeft:`${settings.margin}px`,
+              paddingRight:`${settings.margin}px`,
+              columnWidth:`${Math.max(100,(pageWidth||300)-2*settings.margin)}px`,
+              columnFill:"auto",
+              columnGap:`${2*settings.margin}px`,
+              // Height minus the 48px of outerRef vertical padding
+              height:pageHeight?`${pageHeight-48}px`:"100%",
+              transform:`translateX(-${pageIndex*(pageWidth||300)}px)`,
               transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
               willChange:"transform",
             }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
