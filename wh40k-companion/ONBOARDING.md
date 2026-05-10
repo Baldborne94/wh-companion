@@ -71,6 +71,12 @@ The main feature. Key capabilities:
 3. Claude commits changes directly to GitHub via API using a PAT token
 4. Vercel auto-deploys on every push to `main`
 
+## Recent changes
+- **LoreSection component** added (replaces ComingSoon for the Lore tab). Contains 3 tabs: Factions (9 factions with full lore + key facts), Timeline (7 eras from Age of Terra to Dark Imperium), and Primarchs (18 entries split into Loyal / Traitor / Unknown, with fate cards). All data is statically defined in `FACTIONS_LORE`, `TIMELINE_LORE`, and `PRIMARCHS_LORE` arrays at module level in `App.jsx`.
+- **localStorage fallback for ebook metadata**: after uploading an ebook, metadata is saved to `localStorage` under key `wh40k_ebook_{userId}_{bookId}`. On load, if Supabase returns no rows (schema not set, RLS blocking, etc.), localStorage is checked as fallback.
+- **localStorage fallback for reading progress**: progress is saved to `localStorage` under key `wh40k_prog_{userId}_{bookId}` on every page turn in `EpubReader`. On load in `BookDetail`, if Supabase returns no progress rows, localStorage is checked as fallback.
+- **EPUB TOC labels from NCX/nav**: `parseEpub` now reads the NCX file (EPUB2) or nav document (EPUB3) to extract chapter labels. These are preferred over HTML `<title>` / `<h1>` tags, with filename-based fallback only as last resort.
+
 ## Decisions made
 - **No epub.js**: removed CDN — app uses custom JSZip parser already built in App.jsx
 - **Monolith App.jsx**: intentional for now — all components in one file for simplicity

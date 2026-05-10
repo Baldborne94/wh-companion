@@ -139,6 +139,35 @@ async function parseEpub(url) {
   const opfDoc=px.parseFromString(await zip.file(opfPath).async("text"),"application/xml");
   const manifest={}; opfDoc.querySelectorAll("manifest item").forEach(i=>{manifest[i.getAttribute("id")]=i.getAttribute("href");});
   const hrefs=[...opfDoc.querySelectorAll("spine itemref")].map(i=>manifest[i.getAttribute("idref")]).filter(Boolean);
+
+  // ── Read TOC labels from NCX (EPUB2) or nav (EPUB3) ──
+  const tocLabels={};
+  try{
+    const ncxItem=opfDoc.querySelector('item[media-type="application/x-dtbncx+xml"]');
+    const navItem=opfDoc.querySelector('item[properties~="nav"],item[properties="nav"]');
+    if(ncxItem){
+      const ncxText=await zip.file(opfDir+ncxItem.getAttribute("href"))?.async("text");
+      if(ncxText){
+        const ncxDoc=px.parseFromString(ncxText,"application/xml");
+        ncxDoc.querySelectorAll("navPoint").forEach(np=>{
+          const src=np.querySelector("content")?.getAttribute("src");
+          const label=np.querySelector("navLabel text")?.textContent?.trim();
+          if(src&&label){ tocLabels[src.split("#")[0]]=label; tocLabels[src.split("#")[0].split("/").pop()]=label; }
+        });
+      }
+    } else if(navItem){
+      const navText=await zip.file(opfDir+navItem.getAttribute("href"))?.async("text");
+      if(navText){
+        const navDoc=new DOMParser().parseFromString(navText,"text/html");
+        navDoc.querySelectorAll("nav a").forEach(a=>{
+          const href=a.getAttribute("href")?.split("#")[0];
+          const label=a.textContent?.trim();
+          if(href&&label){ tocLabels[href]=label; tocLabels[href.split("/").pop()]=label; }
+        });
+      }
+    }
+  }catch(e){}
+
   const chapters=await Promise.all(hrefs.map(async(href,idx)=>{
     const chapterPath=opfDir+href;
     const file=zip.file(chapterPath)||zip.file(href); if(!file) return null;
@@ -156,8 +185,13 @@ async function parseEpub(url) {
         html=html.replace(m[0], m[0].replace(rawSrc, `data:${mime};base64,${b64}`));
       }
     }
+    const hrefBase=href.split("/").pop();
+    const tocLabel=tocLabels[href]||tocLabels[hrefBase];
     const tMatch=html.match(/<title[^>]*>([^<]+)<\/title>/i)||html.match(/<h[123][^>]*>([^<]+)<\/h[123]>/i);
-    return { html:highlightKeywords(html), label:tMatch?tMatch[1].trim():`Chapter ${idx+1}` };
+    const rawLabel=tMatch?.[1]?.trim()||"";
+    // Prefer NCX/nav label; fall back to HTML; only use filename as last resort
+    const label=tocLabel||(rawLabel&&rawLabel.length<80&&!/\.x?html?$/i.test(rawLabel)?rawLabel:null)||`Chapter ${idx+1}`;
+    return { html:highlightKeywords(html), label };
   }));
   return chapters.filter(Boolean);
 }
@@ -430,6 +464,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     const pct=(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length;
     onProgress(pct);
     sb.upsert("reading_progress",{user_id:userId,book_id:bookId,chapter_index:chIdx,page_index:pageIndex,progress_pct:pct,last_read:new Date().toISOString()},"user_id,book_id");
+    if(userId) localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({progress_pct:pct,chapter_index:chIdx,page_index:pageIndex}));
   },[chIdx,pageIndex,chapters.length,totalPages]);
 
   useEffect(()=>{ setPageIndex(0); },[chIdx]);
@@ -708,10 +743,18 @@ function BookDetail({ book, user, onBack, onOpenReader }) {
         sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),
         sb.get("reading_progress",`book_id=eq.${book.id}&limit=1`),
       ]);
-      if(files?.length) setEbookMeta(files[0]);
+      if(files?.length){
+        setEbookMeta(files[0]);
+      } else {
+        const cached=localStorage.getItem(`wh40k_ebook_${user.id}_${book.id}`);
+        if(cached){ try{ setEbookMeta(JSON.parse(cached)); }catch{} }
+      }
       if(progData?.length){
         setProgress(progData[0].progress_pct||0);
         setChapterIndex(progData[0].chapter_index||0);
+      } else {
+        const cp=localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
+        if(cp){ try{ const p=JSON.parse(cp); setProgress(p.progress_pct||0); setChapterIndex(p.chapter_index||0); }catch{} }
       }
     })();
   },[book.id, user?.id]);
@@ -726,6 +769,8 @@ function BookDetail({ book, user, onBack, onOpenReader }) {
     if(ok){
       const meta={user_id:user.id,book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub"};
       await sb.upsert("ebook_files",meta,"user_id,book_id");
+      const lsKey = `wh40k_ebook_${user.id}_${book.id}`;
+      localStorage.setItem(lsKey, JSON.stringify(meta));
       setEbookMeta(meta); setUploadMsg("✅ Uploaded!");
     } else { setUploadMsg("❌ Upload failed — check Supabase storage policy."); }
     setUploading(false); setTimeout(()=>setUploadMsg(""),3000);
@@ -1212,6 +1257,259 @@ function HomePage({setSection}){
   </div>);
 }
 
+// ─── LORE DATA ─────────────────────────────────────────────────────────────
+const FACTIONS_LORE=[
+  {id:"space-marines",name:"Adeptus Astartes",sub:"Space Marines",color:"#1e3d6e",icon:"⬡",era:"All Eras",
+   short:"Genetically enhanced superhuman warriors. 1,000 Chapters, each a brotherhood of ~1,000 warriors bearing the Emperor's gene-seed.",
+   long:`The Adeptus Astartes are the finest warriors humanity has ever produced. Created from the Emperor's own genetic template, each Space Marine receives 19 gene-seed implants that transform baseline humans into towering warriors of supernatural ability — stronger, faster, and more resilient than any unaugmented soldier.\n\nOrganised into Chapters of roughly a thousand warriors, they are humanity's shock troops and champions. Each Chapter maintains its own culture, heraldry, homeworld, and interpretation of the Codex Astartes — the great tome of military doctrine written by the Primarch Roboute Guilliman after the Horus Heresy.\n\nFrom the stoic Ultramarines to the savage Space Wolves, from the death-seeking Dark Angels to the blood-hungry Blood Angels, each Chapter bears the strengths and flaws of its Primarch's lineage. They are simultaneously humanity's greatest protectors and its most dangerous servants.`,
+   keyFacts:["~1,000 active Chapters","Each Marine receives 19 implants","Gene-seed drawn from 18 Primarchs","Created from Emperor's DNA blueprint","The Codex Astartes governs most Chapters"]},
+  {id:"chaos",name:"Forces of Chaos",sub:"The Ruinous Powers",color:"#6e1a1a",icon:"⛧",era:"Horus Heresy onwards",
+   short:"The four Chaos Gods — Khorne, Tzeentch, Nurgle, Slaanesh — and their mortal servants. Born from mortal emotion and fed by war.",
+   long:`Chaos is the collective name for the malevolent entities of the Warp — a parallel dimension of pure psychic energy where mortal emotion becomes physical reality. Over billions of years, the strongest of these psychic echoes coalesced into four terrible gods: Khorne the Blood God who craves slaughter, Tzeentch the Architect of Fate who weaves endless schemes, Nurgle the Plague Father who offers rotten gifts of despair and resilience, and Slaanesh the Prince of Pleasure born from Eldar excess.\n\nChaos space marines are the Traitor Legions — nine of the original twenty Space Marine Legions who turned against the Emperor during the Horus Heresy. Some are still recognisable as Space Marines. Others have been transformed over millennia into something inhuman. The Word Bearers were the first to embrace Chaos. The Death Guard are now plague-ridden champions of Nurgle. The Thousand Sons are dust-filled automatons commanded by sorcerers.\n\nFrom within the Eye of Terror, a massive Warp rift near the galaxy's core, the Traitor Legions launch endless crusades against the Imperium they once served.`,
+   keyFacts:["Four Chaos Gods: Khorne, Tzeentch, Nurgle, Slaanesh","Nine Traitor Legions from the Horus Heresy","Operate primarily from the Eye of Terror","Daemon Engines blend machine and daemonic essence","The Black Legion is the largest unified warband"]},
+  {id:"necrons",name:"Necrons",sub:"The Undying Legions",color:"#1a5a3a",icon:"☽",era:"All Eras",
+   short:"Sixty million years ago the Necrontyr traded flesh for metal immortality. Now they awaken from their tomb-world slumber to reclaim a galaxy they once ruled.",
+   long:`The Necrontyr were a short-lived race tormented by radiation from their sun. Sixty million years ago, in desperation, they made a pact with godlike entities called the C'tan — the Star Gods who fed on stellar energy. The C'tan offered immortality: the Necrontyr would transfer their souls into bodies of living metal, becoming the Necrons.\n\nThe price was their very essence. During the biotransference, most Necrons lost their personalities, emotions, and individuality — becoming the cold, emotionless warriors known today. The C'tan themselves were later shattered by the Necrons into slivers of their former selves, imprisoned in tesseract labyrinths.\n\nFor sixty million years the Necrons have slept in tomb-worlds across the galaxy, waiting for the radiation of the War in Heaven to fade. Now they awaken. Dynasty by dynasty, Tomb World by Tomb World, the Necrons rise — sometimes confused, sometimes with full memory intact, but always unstoppable. Their living metal bodies self-repair from almost any damage, and their warriors dissolve when destroyed to reform later. To truly kill a Necron is no easy feat.`,
+   keyFacts:["Sixty million years old","Living metal bodies (necrodermis) self-repair","Former masters of the C'tan Star Gods","Tomb Worlds scattered across the galaxy","Silent King Szarekh leads unified dynasties in M42"]},
+  {id:"tyranids",name:"Tyranids",sub:"The Great Devourer",color:"#4a1a5a",icon:"✸",era:"41st Millennium onwards",
+   short:"An extragalactic swarm that has consumed countless galaxies. Each hive fleet is a single organism driven by the Hive Mind's endless hunger.",
+   long:`The Tyranids come from beyond the galaxy — from the cold void between galactic superclusters where they have spent aeons consuming everything in their path. They are not a civilisation but a single vast organism: the Hive Mind, a gestalt psychic consciousness that directs trillions of creatures across interstellar distances.\n\nEvery Tyranid creature is engineered for a purpose. Hormagaunts rush forward in tidal waves of chitinous death. Carnifexes are living siege engines. Hive Tyrants are the commanders. Genestealers infiltrate civilisations generations before the fleet arrives. The Shadow in the Warp — the psychic scream of the approaching fleet — blankets entire systems, cutting off psykers and devastating morale.\n\nWhat makes Tyranids truly terrifying is their adaptability. They consume all biomass from a world — every organism, every plant — and use it to create new, more perfectly-adapted organisms for the next campaign. They have no mercy, no compassion, no individual desire. There is only hunger. The Milky Way Galaxy is a feast they intend to consume entirely.`,
+   keyFacts:["Extragalactic origin","Hive Mind controls all creatures telepathically","Multiple Hive Fleets: Behemoth, Kraken, Leviathan etc","Consume all biomass of conquered worlds","Shadow in the Warp disrupts psykers and communication"]},
+  {id:"aeldari",name:"Aeldari",sub:"Children of the Stars",color:"#1a4a5a",icon:"◇",era:"All Eras",
+   short:"An ancient race whose Fall birthed the Chaos God Slaanesh. Once masters of the galaxy, now a dying species aboard Craftworld ships.",
+   long:`The Aeldari once ruled a galactic empire that made the Imperium of Man look provincial. For millions of years they were the dominant intelligent species in the galaxy — gifted with psychic power, supreme artistry, and technology beyond anything humanity could dream. Their civilisation touched every star system.\n\nBut success bred excess. Over millennia, the Aeldari descended into decadence. Their emotions became amplified by their psychic connection to the Warp, creating a growing darkness in that dimension. On the day of the Fall — the Fall of the Eldar — their collective debauchery and psychic emanation tore a hole in reality and birthed a new Chaos God: Slaanesh, who consumed most of the Aeldari in the moment of birth.\n\nSurvivors escaped on massive Craftworld ships, sealed off from the Warp behind psychic barriers of wraithbone. These Craftworld Aeldari follow strict Paths — structured lifestyles that prevent the dangerous obsessions of their species. Other Aeldari took different routes: the Exodites fled to maiden worlds, the Commorraghans retreated into a pocket dimension, and the Harlequins serve the Laughing God Cegorach.`,
+   keyFacts:["Their Fall birthed Slaanesh c.M29","Craftworld Aeldari live aboard continent-sized ships","Psychic abilities far exceed human potential","Wraithbone is the primary construction material","The Harlequins serve the Laughing God"]},
+  {id:"orks",name:"Orks",sub:"Da Biggest, da Strongest",color:"#3a4a1a",icon:"✌",era:"All Eras",
+   short:"Fungi-based warrior organisms that exist for one purpose: war. The WAAAGH! is a psychic gestalt phenomenon that makes Ork beliefs literally real.",
+   long:`Orks are the most numerous and widespread species in the galaxy. They are not born but grown from spores, and a dead Ork will seed an entire ecosystem of fungus, grots, squigs, and eventually new Orks wherever it falls. They are impossible to eradicate from any world they have occupied.\n\nOrkish technology should not work. Their guns are held together with string and wishful thinking. Their vehicles are cobbled from scrap. Yet through a remarkable psychic phenomenon called the WAAAGH field — a collective gestalt emanating from all Orks — their belief in something working is enough to make it work. An Ork's shoota fires because Orks believe it will fire. Their red vehicles go faster because Orks believe red things go faster.\n\nThe greatest Ork leaders are Warbosses, and the mightiest of all are Warlords who can unite thousands of Orks into a WAAAGH! — a tide of green violence that crashes across star systems. The biggest, most powerful Ork is always in charge. And Orks grow throughout their lives. The tales of ancient, mountain-sized Ork overlords are not myth.`,
+   keyFacts:["Reproduce via spores — immortal as a species","WAAAGH field makes belief literally real","Grow throughout life — ancient Orks are enormous","Deathskulls, Goffs, Blood Axes, Evil Sunz are major clans","Ghazghkull Thraka is the greatest modern Warlord"]},
+  {id:"tau",name:"T'au Empire",sub:"For the Greater Good",color:"#1a3a4a",icon:"◈",era:"41st Millennium onwards",
+   short:"A young, rapidly expanding empire guided by the philosophy of the Greater Good. Advanced technology and skilled diplomacy — they even accept human worlds into their empire.",
+   long:`The T'au are a young species by galactic standards — only six thousand years old — yet they have built one of the most sophisticated empires in the galaxy. Unlike most other factions, the T'au expand through diplomacy as much as conquest. Many human worlds have willingly joined the T'au Empire, attracted by their philosophy of the Greater Good — a collectivist ideal that emphasises cooperation over hierarchy and wisdom.\n\nT'au technology is genuinely impressive, particularly their battlesuit technology — the XV series of powered exo-armour ranging from XV8 Crisis Suits to the titan-class KX139 Ta'unar. Their railguns and ion weapons are among the most advanced ranged weapons in the galaxy.\n\nThe T'au are almost entirely without psychic ability, which has saved them from the worst depredations of Chaos but also limited their capabilities. They make up for this with six castes — Fire, Earth, Water, Air, and Ethereal — each bred for a specific role. The Ethereals are a mysterious caste whose calming presence commands absolute obedience from all other castes by an unknown mechanism.`,
+   keyFacts:["~6,000 years old — youngest major faction","Greater Good philosophy attracts willing converts","Battlesuit technology rivals anything in the galaxy","No psychic ability — nearly immune to Chaos corruption","Ethereals command absolute loyalty through unknown means"]},
+  {id:"astra-militarum",name:"Astra Militarum",sub:"The Imperial Guard",color:"#3a5228",icon:"✦",era:"All Eras",
+   short:"Trillions of ordinary humans, the backbone of the Imperium's defence. They win through weight of numbers, logistics, and the stubborn refusal to die.",
+   long:`If the Space Marines are the Emperor's right fist, the Astra Militarum is the Imperial boot that grinds enemies into the ground through sheer weight. Where Space Marines might be deployed in hundreds, the Astra Militarum fights in billions. Whole regiments of Cadian Shock Troops, Catachan Jungle Fighters, Valhallan Ice Warriors, and hundreds of other regimental traditions hold the line against enemies that would otherwise overwhelm any number of superhuman warriors.\n\nWhat makes the Astra Militarum formidable is not individual prowess but organisation, logistics, and industrial-scale firepower. A single Baneblade super-heavy tank carries enough firepower to level a city block. A massed artillery bombardment by the Astra Militarum will level the same city block ten thousand times over.\n\nCommissars walk alongside troops to maintain morale through inspiration — and if necessary, summary execution. Priests of the Ecclesiarchy preach faith that turns frightened soldiers into fanatics. Sanctioned psykers provide psychic support. Advisors from the Adeptus Mechanicus maintain the vehicles that are often decades or centuries old. It is an army of ordinary people doing extraordinary things.`,
+   keyFacts:["Trillions of soldiers across the Imperium","Regiments draw from hundreds of worlds with unique cultures","Commissars enforce discipline with lethal authority","Titan Legions provide apocalyptic support","Cadian Gate — gateway to the Eye of Terror — destroyed in M41"]},
+  {id:"adeptus-mechanicus",name:"Adeptus Mechanicus",sub:"The Machine Cult of Mars",color:"#7a2218",icon:"⚙",era:"All Eras",
+   short:"The techno-priests of Mars who worship the Omnissiah — the Machine God. They guard humanity's technological secrets and maintain the machines of war.",
+   long:`Long before the Imperium existed, Mars was already a separate technocratic civilisation — the Mechanicum. Their religion holds that all knowledge is sacred, that the universe follows mathematical laws set by the Omnissiah (whom they believe is either the Emperor or a separate divine intelligence), and that the fusion of flesh and machine is the path to enlightenment.\n\nThe Adeptus Mechanicus controls all major manufacturing facilities in the Imperium. Every Titan, every Astartes weapon, every warship — all require their blessing and participation. They jealously guard technological knowledge in the form of Standard Template Constructs (STCs) — templates from before the Age of Strife that contain the instructions to build everything humanity needs. To find an intact STC is the highest holy act a Tech-Priest can perform.\n\nSkitarii are their warrior legions — cyborg soldiers with extensive augmentations who serve as the military arm. Magos Biologis, Magos Explorator, Magos Dominus — each order of Tech-Priest serves a different function in the great quest to recover and preserve technological knowledge. And their Titan Legions — god-machines ranging from the Warhound scout to the Emperor-class Titan — are among the most powerful war engines in existence.`,
+   keyFacts:["Control all major manufacturing in the Imperium","Standard Template Constructs (STCs) are holy relics","Biological flesh is replaced with machine augments over time","Titan Legions are the ultimate expression of their craft","The Omnissiah is believed to be the Machine God incarnate"]},
+];
+
+const TIMELINE_LORE=[
+  {era:"M15–M24",name:"Age of Terra",color:"#4a3a18",icon:"🌍",
+   summary:"Humanity spreads across the stars without FTL travel. The early human empire is vast but slow. The Warp remains mostly stable. This is the time before the Emperor walks openly among mankind."},
+  {era:"M25–M30",name:"Age of Strife",color:"#6e1a1a",icon:"💀",
+   summary:"The Warp storms, the birth of Slaanesh, and the fall of Eldar civilisation scatter humanity. Human worlds are isolated for thousands of years. Abominable Intelligences — AIs — turn on their creators in the Cybernetic Revolt. Psykers emerge en masse. Civilisation collapses galaxy-wide."},
+  {era:"M30",name:"The Great Crusade",color:"#1e3d6e",icon:"⚔️",
+   summary:"The Emperor emerges, already ancient beyond reckoning. With the Thunder Warriors and then the Space Marine Legions, He begins the Great Crusade to reunite humanity. The Primarchs are found one by one. In two centuries, the Imperium spans the galaxy. It is mankind's greatest age — and its last."},
+  {era:"M31",name:"The Horus Heresy",color:"#8a2218",icon:"⛧",
+   summary:"Horus, favoured son and Warmaster, falls to Chaos. Nine Legions follow him. Civil war tears the Imperium apart. Brother fights brother across every theatre of war. At the Siege of Terra, Horus is slain by the Emperor, who is mortally wounded in turn. The Emperor is interred in the Golden Throne — alive, but barely. The Imperium survives, but the dream of the Great Crusade dies forever."},
+  {era:"M32–M40",name:"The Long Watch",color:"#3a3428",icon:"🏛️",
+   summary:"The Imperium heals, hardens, and grows increasingly rigid and dogmatic. The Age of Apostasy sees civil war and madness. The War of the Beast nearly destroys the Imperium when the largest Ork WAAAGH! in history strikes Terra. Space Marines are reorganised into Chapters. The Inquisition grows powerful. Bureaucracy calcifies. The Imperium becomes a fortress holding against a galaxy that hates it."},
+  {era:"M41",name:"The 41st Millennium",color:"#c9a84c",icon:"⚜",
+   summary:"The Era of the Imperium most commonly depicted in WH40K. Hive Fleet Behemoth and the Battle of Macragge. The 13th Black Crusade of Abaddon destroys Cadia and shatters the Cadian Gate. The Great Rift — the Cicatrix Maledictum — tears the galaxy in two, plunging half of it into perpetual darkness. Roboute Guilliman is resurrected and becomes Lord Commander of the Imperium."},
+  {era:"M42",name:"The Dark Imperium",color:"#b03030",icon:"🔥",
+   summary:"The current era. The Great Rift divides the Imperium into Imperium Sanctus (with Astronomican, relatively stable) and Imperium Nihilus (cut off, in darkness). Guilliman leads the Indomitus Crusade — new Primaris Space Marines created from enhanced Astartes gene-seed push back the darkness. But the threats multiply. This is the age of endings and desperate last stands."},
+];
+
+const PRIMARCHS_LORE=[
+  {num:"I",name:"Lion El'Jonson",legion:"Dark Angels",loyal:true,color:"#1a3a1a",icon:"🦁",status:"Returned",
+   short:"The Lion — warrior-monk, strategist without equal. Secretive and proud. Found on the death world Caliban, raised by knights, never fully trusted by his brothers.",
+   fate:"Mortally wounded by Luther (his closest companion turned traitor), placed in stasis within the Rock. Returned to fight in M42."},
+  {num:"III",name:"Fulgrim",legion:"Emperor's Children",loyal:false,color:"#8a2a8a",icon:"🐍",status:"Daemon Prince",
+   short:"The Phoenician — obsessive perfectionist, artist-warrior of supreme skill. His quest for perfection led him to Slaanesh.",
+   fate:"Corrupted by a daemon sword, became a Daemon Prince of Slaanesh. Last seen in M42 during the Shadow Crusade."},
+  {num:"IV",name:"Perturabo",legion:"Iron Warriors",loyal:false,color:"#4a4a4a",icon:"⚙",status:"Daemon Prince",
+   short:"The Lord of Iron — genius siege-master, cold and calculating. Bitter about being used as a siege weapon while other Primarchs won glory.",
+   fate:"Became Daemon Prince of Chaos Undivided after the Horus Heresy. Rules the Iron Fortress in the Eye of Terror."},
+  {num:"V",name:"Jaghatai Khan",legion:"White Scars",loyal:true,color:"#e8e8e8",icon:"⚡",status:"Missing",
+   short:"The Warhawk — lightning-fast cavalry master, supreme tactician of the mobile assault. Open and direct where many Primarchs were secretive.",
+   fate:"Pursued Dark Eldar raiders into the Webway in ~M31/M32. Has not returned. The White Scars still seek him."},
+  {num:"VI",name:"Leman Russ",legion:"Space Wolves",loyal:true,color:"#a0a8b8",icon:"🐺",status:"Missing",
+   short:"The Wolf King — berserker warrior, cunning tactician, judge of the Emperor's enemies. Consumed mead with the best and tore Primarchs apart with the worst.",
+   fate:"At the end of M41 Russ walked into the Eye of Terror to prepare for the Wolftime — the last battle. Has not returned."},
+  {num:"VII",name:"Rogal Dorn",legion:"Imperial Fists",loyal:true,color:"#c8a830",icon:"🏰",status:"Deceased / Remains Disputed",
+   short:"The Praetorian — supreme defender and fortress-builder. Stoic and unmovable. Designed Terra's defences for the Siege.",
+   fate:"Disappeared fighting aboard a Chaos fleet during the Chaos Space Marine War. Only his fist was recovered."},
+  {num:"VIII",name:"Konrad Curze",legion:"Night Lords",loyal:false,color:"#1a1a2a",icon:"🦇",status:"Deceased",
+   short:"The Night Haunter — cursed with visions of the future, prophet of doom. Ruled through absolute terror.",
+   fate:"Allowed himself to be assassinated by Callidus assassin M'Shen. Believed his death was foreseen and chosen."},
+  {num:"IX",name:"Sanguinius",legion:"Blood Angels",loyal:true,color:"#b03030",icon:"🩸",status:"Deceased",
+   short:"The Great Angel — most beloved of all Primarchs. Possessed of angelic wings and a compassion that stood against the darkness of the galaxy.",
+   fate:"Slain by Horus at the Siege of Terra. His death created the Sanguinary curse — the Black Rage that afflicts Blood Angels."},
+  {num:"X",name:"Ferrus Manus",legion:"Iron Hands",loyal:true,color:"#5a5a5a",icon:"🔩",status:"Deceased",
+   short:"The Gorgon — Primarch of the Iron Hands, his flesh replaced with living metal. Brilliant craftsman, terrible temper.",
+   fate:"Beheaded by Fulgrim at the Drop Site Massacre on Isstvan V. The Iron Hands still mourn him."},
+  {num:"XII",name:"Angron",legion:"World Eaters",loyal:false,color:"#8a0000",icon:"⚔️",status:"Daemon Prince",
+   short:"The Red Angel — enslaved and tortured on Nuceria, implanted with the Butcher's Nails neural devices. Incapable of experiencing anything but rage.",
+   fate:"Became Daemon Prince of Khorne during the Scouring. Banished by Grey Knights at Armageddon, returned in M42."},
+  {num:"XIII",name:"Roboute Guilliman",legion:"Ultramarines",loyal:true,color:"#1e5a9e",icon:"📜",status:"ALIVE — Lord Commander",
+   short:"The Avenging Son — statesman-general who codified Space Marine doctrine in the Codex Astartes. The greatest administrator in human history.",
+   fate:"Mortally wounded by Fulgrim and preserved in stasis for 10,000 years. Resurrected by Ynnari in M41. Now Lord Commander of the Imperium."},
+  {num:"XIV",name:"Mortarion",legion:"Death Guard",loyal:false,color:"#3a5a28",icon:"☣",status:"Daemon Prince",
+   short:"The Pale King — survivor and poisoner, grew up in an atmosphere that would kill normal men. Obsessed with purging weakness.",
+   fate:"Daemon Prince of Nurgle after his fleet was becalmed in the Warp during the Heresy. Rules the Plague Planet."},
+  {num:"XV",name:"Magnus the Red",legion:"Thousand Sons",loyal:false,color:"#8a3a18",icon:"🔮",status:"Daemon Prince",
+   short:"The Red Cyclops — greatest psyker ever born, scholar without equal. His forbidden sorcery brought doom on Prospero.",
+   fate:"Daemon Prince of Tzeentch after Prospero burned. Now wages the Rubric of Ahriman's aftermath from the Planet of Sorcerers."},
+  {num:"XVI",name:"Horus Lupercal",legion:"Luna Wolves / Sons of Horus",loyal:false,color:"#2a2a2a",icon:"👑",status:"Deceased",
+   short:"The Warmaster — most beloved son of the Emperor, greatest warrior and commander of the age. His fall broke the Imperium forever.",
+   fate:"Slain by the Emperor at the Siege of Terra. His soul destroyed completely — even Chaos could not resurrect him."},
+  {num:"XVII",name:"Lorgar Aurelian",legion:"Word Bearers",loyal:false,color:"#5a3818",icon:"📖",status:"Daemon Prince (Dormant)",
+   short:"The First Heretic — the most devout worshipper first of the Emperor, then of Chaos. He was the one who converted Horus.",
+   fate:"Daemon Prince of Chaos Undivided. Has entered a meditative coma within Colchis since the end of the Heresy."},
+  {num:"XVIII",name:"Vulkan",legion:"Salamanders",loyal:true,color:"#1a4a2a",icon:"🔥",status:"Alive (Whereabouts Unknown)",
+   short:"The Forge Father — master craftsman and compassionate warrior. The Salamanders' ethos of protecting civilians stems directly from him.",
+   fate:"One of the Perpetuals — truly immortal, dying and returning. Last seen giving up his immortality to forge a weapon against Chaos."},
+  {num:"XIX",name:"Corvus Corax",legion:"Raven Guard",loyal:true,color:"#1a1a1a",icon:"🦅",status:"Missing",
+   short:"The Ravenlord — master of shadow warfare, guerrilla tactics, and liberation. Freed slave worlds and led the forgotten.",
+   fate:"Flew into the Eye of Terror alone to wage a one-man war against Chaos after the Heresy. Has not returned."},
+  {num:"XX",name:"Alpharius Omegon",legion:"Alpha Legion",loyal:"Unknown",color:"#1a3a2a",icon:"🐍",status:"Uncertain",
+   short:"The Hydra — twin Primarchs sharing one identity. Masters of infiltration and subversion. Their true allegiance remains debated.",
+   fate:"Alpharius reportedly slain by Dorn. Omegon's status unknown. The Alpha Legion continues, serving an agenda no one understands."},
+];
+
+function LoreSection(){
+  const [tab,setTab]=useState("factions");
+  const [expanded,setExpanded]=useState(null);
+  const toggle=id=>setExpanded(e=>e===id?null:id);
+
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* Header */}
+      <div style={{padding:"20px 16px 0",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Warhammer 40,000</div>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:8}}>The Lore</h2>
+        <div style={{color:C.muted,fontSize:12,lineHeight:1.5,marginBottom:14}}>In the grim darkness of the far future, there is only war.</div>
+        <div style={{display:"flex",gap:0,marginBottom:0}}>
+          {[{id:"factions",label:"Factions"},{id:"timeline",label:"Timeline"},{id:"primarchs",label:"Primarchs"}].map(t=>(
+            <button key={t.id} onClick={()=>{setTab(t.id);setExpanded(null);}} style={{flex:1,padding:"10px",background:"transparent",border:"none",borderBottom:`2px solid ${tab===t.id?C.gold:"transparent"}`,color:tab===t.id?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* FACTIONS */}
+      {tab==="factions"&&(
+        <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Tap a faction to learn more</div>
+          {FACTIONS_LORE.map(f=>{
+            const isOpen=expanded===f.id;
+            return(
+              <div key={f.id} style={{background:`linear-gradient(135deg,${f.color}28,${C.card})`,border:`1px solid ${isOpen?f.color+"88":f.color+"44"}`,borderLeft:`3px solid ${isOpen?f.color:f.color+"88"}`,borderRadius:10,overflow:"hidden",transition:"border-color 0.2s"}}>
+                <button onClick={()=>toggle(f.id)} style={{width:"100%",background:"transparent",border:"none",padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+                  <span style={{fontSize:24,flexShrink:0}}>{f.icon}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700,color:C.text,marginBottom:2}}>{f.name}</div>
+                    <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>{f.sub}</div>
+                  </div>
+                  <span style={{color:C.goldDim,fontSize:18,flexShrink:0,transform:isOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+                </button>
+                {isOpen&&(
+                  <div style={{padding:"0 16px 16px"}}>
+                    <div style={{height:1,background:`linear-gradient(to right,${f.color}88,transparent)`,marginBottom:14}}/>
+                    <div style={{color:C.text,fontSize:13,lineHeight:1.8,marginBottom:14,whiteSpace:"pre-line"}}>{f.long}</div>
+                    <div style={{background:"#ffffff05",border:`1px solid ${f.color}44`,borderRadius:8,padding:"12px 14px"}}>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Key Facts</div>
+                      {f.keyFacts.map((fact,i)=>(
+                        <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",marginBottom:6}}>
+                          <span style={{color:f.color==="#3a4a1a"?C.gold:f.color,fontSize:10,marginTop:3,flexShrink:0}}>▪</span>
+                          <span style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{fact}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* TIMELINE */}
+      {tab==="timeline"&&(
+        <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:0}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:16}}>History of the 41st Millennium</div>
+          {TIMELINE_LORE.map((era,i)=>{
+            const isOpen=expanded===era.era;
+            return(
+              <div key={era.era} style={{display:"flex",gap:0}}>
+                {/* Timeline spine */}
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",width:32,flexShrink:0}}>
+                  <div style={{width:12,height:12,borderRadius:"50%",background:era.color,border:`2px solid ${era.color}`,flexShrink:0,marginTop:16,zIndex:1}}/>
+                  {i<TIMELINE_LORE.length-1&&<div style={{width:2,flex:1,background:`linear-gradient(to bottom,${era.color}88,${TIMELINE_LORE[i+1].color}44)`,minHeight:20}}/>}
+                </div>
+                {/* Content */}
+                <div style={{flex:1,marginBottom:8,paddingLeft:12}}>
+                  <button onClick={()=>toggle(era.era)} style={{width:"100%",background:isOpen?`${era.color}18`:"transparent",border:`1px solid ${isOpen?era.color+"66":"transparent"}`,borderRadius:8,padding:"12px 14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                      <span style={{fontSize:18}}>{era.icon}</span>
+                      <div>
+                        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:era.color,letterSpacing:2,textTransform:"uppercase"}}>{era.era}</div>
+                        <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,color:C.text}}>{era.name}</div>
+                      </div>
+                      <span style={{marginLeft:"auto",color:C.goldDim,fontSize:14,transform:isOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+                    </div>
+                    {!isOpen&&<div style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{era.summary.slice(0,100)}…</div>}
+                    {isOpen&&<div style={{color:C.text,fontSize:13,lineHeight:1.8,marginTop:8}}>{era.summary}</div>}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* PRIMARCHS */}
+      {tab==="primarchs"&&(
+        <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>The Emperor's Twenty Sons</div>
+          {/* Loyal / Traitor split */}
+          {[{label:"Loyal Primarchs",filter:p=>p.loyal===true},{label:"Traitor Primarchs",filter:p=>p.loyal===false},{label:"Unknown Allegiance",filter:p=>p.loyal==="Unknown"}].map(group=>{
+            const members=PRIMARCHS_LORE.filter(group.filter);
+            if(!members.length) return null;
+            return(
+              <div key={group.label} style={{marginBottom:8}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:group.label.includes("Traitor")?C.red:group.label.includes("Unknown")?C.goldDim:C.gold,letterSpacing:3,textTransform:"uppercase",marginBottom:8,padding:"6px 4px",borderBottom:`1px solid ${C.border}`}}>{group.label}</div>
+                {members.map(p=>{
+                  const isOpen=expanded===p.num;
+                  return(
+                    <div key={p.num} style={{background:`linear-gradient(135deg,${p.color}28,${C.card})`,border:`1px solid ${isOpen?p.color+"88":p.color+"33"}`,borderRadius:8,marginBottom:6,overflow:"hidden"}}>
+                      <button onClick={()=>toggle(p.num)} style={{width:"100%",background:"transparent",border:"none",padding:"12px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:10,textAlign:"left"}}>
+                        <div style={{width:36,height:36,borderRadius:"50%",background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{p.icon}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                            <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>Primarch {p.num}</span>
+                            <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:p.loyal===true?C.gold:p.loyal===false?C.red:C.muted,background:`${p.loyal===true?C.gold:p.loyal===false?C.red:C.muted}22`,borderRadius:3,padding:"1px 6px",border:`1px solid ${p.loyal===true?C.gold:p.loyal===false?C.red:C.muted}44`}}>{p.status}</span>
+                          </div>
+                          <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                          <div style={{fontSize:10,color:C.muted,fontStyle:"italic"}}>{p.legion}</div>
+                        </div>
+                        <span style={{color:C.goldDim,fontSize:14,flexShrink:0,transform:isOpen?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▾</span>
+                      </button>
+                      {isOpen&&(
+                        <div style={{padding:"0 14px 14px"}}>
+                          <div style={{height:1,background:`linear-gradient(to right,${p.color}88,transparent)`,marginBottom:12}}/>
+                          <p style={{color:C.text,fontSize:13,lineHeight:1.75,marginBottom:12}}>{p.short}</p>
+                          <div style={{background:"#ffffff05",border:`1px solid ${p.color}33`,borderRadius:8,padding:"10px 12px"}}>
+                            <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Fate</div>
+                            <p style={{color:C.muted,fontSize:12,lineHeight:1.6,fontStyle:"italic"}}>{p.fate}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
 const NAV=[{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"}];
@@ -1257,7 +1555,7 @@ export default function App(){
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
           {section==="home"    &&<HomePage setSection={setSection}/>}
           {section==="library" &&<LibrarySection user={user}/>}
-          {section==="lore"&&<ComingSoon icon="⚔️" title="Factions & Lore"  sub="Deep dives into every faction, Primarch and Chapter."/>}
+          {section==="lore"&&<LoreSection/>}
           {section==="reading" &&<ComingSoon icon="📖" title="Reading Order"    sub="Guided paths through the Black Library."/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
           
