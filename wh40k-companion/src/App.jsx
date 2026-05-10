@@ -74,6 +74,33 @@ const FC = {
   "Tyranids":"#4a1a5a","Orks":"#3a4a1a","T'au":"#1a3a4a","Various":"#3a3428",
 };
 
+// ─── READING STATUS SYSTEM ────────────────────────────────────────────────────
+const STATUS_CFG={
+  none:   {label:"—",           icon:"·",  color:"#3a3428",bg:"transparent"},
+  want:   {label:"Da Leggere",  icon:"📋", color:"#c9a84c",bg:"#c9a84c18"},
+  reading:{label:"In Lettura",  icon:"📖", color:"#4a8adc",bg:"#1a3a7022"},
+  read:   {label:"Letto ✓",     icon:"✅", color:"#4aaa6a",bg:"#1a6a2a22"},
+};
+function getBookStatus(uid,bid){
+  try{return JSON.parse(localStorage.getItem(`wh40k_status_${uid||'anon'}_${bid}`))||{status:'none'};}
+  catch{return{status:'none'};}
+}
+function setBookStatusLS(uid,bid,s){
+  const e=getBookStatus(uid,bid),now=new Date().toISOString(),d={...e,status:s,updatedAt:now};
+  if(s==='reading'&&!e.startedAt)d.startedAt=now;
+  if(s==='read'){d.completedAt=now;if(!d.startedAt)d.startedAt=now;}
+  localStorage.setItem(`wh40k_status_${uid||'anon'}_${bid}`,JSON.stringify(d));
+  return d;
+}
+function loadAllStatuses(uid){
+  const out={},prefix=`wh40k_status_${uid||'anon'}_`;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k?.startsWith(prefix)){const id=parseInt(k.slice(prefix.length));if(!isNaN(id))try{out[id]=JSON.parse(localStorage.getItem(k));}catch{}}
+  }
+  return out;
+}
+
 // ─── LORE DATABASE ────────────────────────────────────────────────────────────
 const LORE_DB = {
   "horus":{ name:"Horus Lupercal",type:"character",subtitle:"Warmaster • Primarch of the Luna Wolves",icon:"👑",safe:"The favoured son of the Emperor and supreme Warmaster of the Imperium. Horus led the Great Crusade and was revered above all other Primarchs — a warrior of unmatched skill, charisma and tactical genius.",spoiler:"Mortally wounded at the Serpent Lodge on Davin, Horus was healed through Chaos corruption. He turned against the Emperor and ignited the Horus Heresy. He died during the Siege of Terra, slain by the Emperor himself.",spoilerFrom:"False Gods (Horus Heresy #2)" },
@@ -726,15 +753,23 @@ function PdfReader({ url, title, onClose }) {
 }
 
 // ─── BOOK DETAIL ──────────────────────────────────────────────────────────────
-function BookDetail({ book, user, onBack, onOpenReader }) {
+function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
   const fc=FC[book.faction]||C.dim;
   const inp=useRef(null);
   const [ebookMeta,    setEbookMeta]    = useState(null);
   const [uploading,    setUploading]    = useState(false);
   const [uploadMsg,    setUploadMsg]    = useState("");
-  const [isRead,       setIsRead]       = useState(false);
+  const [curStatus,    setCurStatus]    = useState(status?.status||'none');
   const [progress,     setProgress]     = useState(0);
   const [chapterIndex, setChapterIndex] = useState(0);
+
+  useEffect(()=>{ setCurStatus(status?.status||'none'); },[status]);
+
+  const changeStatus=(s)=>{
+    setCurStatus(s);
+    setBookStatusLS(user?.id, book.id, s);
+    onStatusChange?.(book.id, s);
+  };
 
   useEffect(()=>{
     if(!user?.id) return; // RLS needs an authenticated user
@@ -782,6 +817,8 @@ function BookDetail({ book, user, onBack, onOpenReader }) {
     const url=await sb.storage.signedUrl(ebookMeta.file_path);
     if(!url){ setUploadMsg("❌ Could not open file — try re-uploading."); return; }
     setUploadMsg("");
+    // Auto-set status to "reading" when ebook is opened (unless already marked as read)
+    if(curStatus==='none'||curStatus==='want') changeStatus('reading');
     onOpenReader({book,url,fileType:ebookMeta.file_type,progress,chapterIndex});
   };
 
@@ -853,9 +890,22 @@ function BookDetail({ book, user, onBack, onOpenReader }) {
             <input ref={inp} type="file" accept=".epub,.pdf" style={{display:"none"}} onChange={handleFileSelect}/>
           </div>
         </div>
-        <button onClick={()=>setIsRead(r=>!r)} style={{width:"100%",padding:"14px",borderRadius:10,background:isRead?`${C.gold}22`:"transparent",border:`1px solid ${isRead?C.gold:C.dim}`,color:isRead?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:2,textTransform:"uppercase",cursor:"pointer"}}>
-          {isRead?"✓ Marked as Read — tap to undo":"Mark as Read"}
-        </button>
+        {/* Reading Status Selector */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Stato di Lettura</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {['want','reading','read'].map(s=>{
+              const cfg=STATUS_CFG[s];const active=curStatus===s;
+              return(
+                <button key={s} onClick={()=>changeStatus(s)} style={{padding:"12px 4px",borderRadius:8,border:`1px solid ${active?cfg.color:C.dim}`,background:active?cfg.bg:"transparent",color:active?cfg.color:C.muted,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,transition:"all 0.2s"}}>
+                  <span style={{fontSize:20}}>{cfg.icon}</span>
+                  {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+          {curStatus==='read'&&<div style={{marginTop:8,fontSize:11,color:STATUS_CFG.read.color,textAlign:"center",fontFamily:"'Cinzel',serif",letterSpacing:1}}>Questo libro è nella tua collezione dei completati!</div>}
+        </div>
       </div>
     </div>
   );
@@ -1120,6 +1170,15 @@ function LibrarySection({ user }) {
   const [reader,setReader]=useState(null);
   const [shelfBooks,setShelfBooks]=useState([]);
   const [shelfLoading,setShelfLoading]=useState(false);
+  const [statuses,setStatuses]=useState({});
+
+  const handleStatusChange=useCallback((bookId,newStatus)=>{
+    setBookStatusLS(user?.id,bookId,newStatus);
+    setStatuses(prev=>({...prev,[bookId]:getBookStatus(user?.id,bookId)}));
+  },[user?.id]);
+
+  // Carica statuses da localStorage al mount e quando cambia utente
+  useEffect(()=>{ setStatuses(loadAllStatuses(user?.id)); },[user?.id]);
 
   // Carica subito da localStorage al mount (per il contatore IN CLOUD)
   useEffect(()=>{
@@ -1181,7 +1240,7 @@ function LibrarySection({ user }) {
     if(fileType==="pdf") return <PdfReader url={url} title={book.title} onClose={()=>setReader(null)}/>;
     return <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
-  if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader}/>;
+  if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={handleStatusChange}/>;
 
   const filtered=BOOKS.filter(b=>{
     if(series!=="All"&&b.series!==series) return false;
@@ -1200,7 +1259,12 @@ function LibrarySection({ user }) {
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Black Library</div>
         <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:12}}>The Library</h2>
         <div style={{display:"flex",gap:20,marginBottom:14,flexWrap:"wrap"}}>
-          {[{l:"Tomes",v:BOOKS.length},{l:"In Cloud",v:shelfBooks.length,gold:true}].map(s=>(<div key={s.l}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.gold?C.gold:C.text}}>{s.v}</div></div>))}
+          {[
+            {l:"Tomes",v:BOOKS.length,color:C.text},
+            {l:"Letti",v:Object.values(statuses).filter(s=>s.status==='read').length,color:"#4aaa6a"},
+            {l:"In Lettura",v:Object.values(statuses).filter(s=>s.status==='reading').length,color:"#4a8adc"},
+            {l:"In Cloud",v:shelfBooks.length,color:C.gold},
+          ].map(s=>(<div key={s.l}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color}}>{s.v}</div></div>))}
         </div>
         <div style={{display:"flex",gap:0}}>
           {[{id:"catalogue",label:"Catalogue"},{id:"shelf",label:`My Shelf${shelfBooks.length>0?` (${shelfBooks.length})`:""}`}].map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"10px",background:"transparent",border:"none",borderBottom:`2px solid ${tab===t.id?C.gold:"transparent"}`,color:tab===t.id?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>{t.label}</button>))}
@@ -1248,18 +1312,149 @@ function LibrarySection({ user }) {
             {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>No tomes found, Inquisitor.</div>)
             :filtered.map(book=>{
               const fc2=FC[book.faction]||C.dim; const tc=book.type==="Codex"?C.red:C.gold;
-              return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${fc2}55`,borderLeft:`3px solid ${fc2}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
+              const bst=statuses[book.id]?.status||'none';
+              const bstCfg=STATUS_CFG[bst];
+              const borderColor=bst!=='none'?bstCfg.color:fc2;
+              return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"55"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
-                  <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:tc,letterSpacing:1,flexShrink:0}}>{book.type}</span>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
+                    <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:tc,letterSpacing:1,flexShrink:0}}>{book.type}</span>
+                  </div>
                 </div>
-                <div style={{fontSize:16,fontWeight:700,color:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif"}}>{book.title}</div>
+                <div style={{fontSize:16,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
                 <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
               </div>);
             })}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ─── READING CRUSADE ──────────────────────────────────────────────────────────
+function ReadingSection({user}){
+  const [statuses,setStatuses]=useState(()=>loadAllStatuses(user?.id));
+  const [expanded,setExpanded]=useState(null);
+
+  useEffect(()=>{ setStatuses(loadAllStatuses(user?.id)); },[user?.id]);
+
+  const readCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='read').length,[statuses]);
+  const readingCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='reading').length,[statuses]);
+  const wantCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='want').length,[statuses]);
+
+  const seriesList=useMemo(()=>{
+    const map={};
+    BOOKS.forEach(b=>{if(!map[b.series])map[b.series]=[];map[b.series].push(b);});
+    return Object.entries(map).map(([name,books])=>{
+      const sorted=[...books].sort((a,b)=>a.num-b.num);
+      const rc=sorted.filter(b=>statuses[b.id]?.status==='read').length;
+      const nc=sorted.filter(b=>statuses[b.id]?.status==='reading').length;
+      const next=sorted.find(b=>{const s=statuses[b.id]?.status;return !s||s==='none'||s==='want';});
+      return{name,books:sorted,total:sorted.length,readCount:rc,readingCount:nc,nextBook:next};
+    }).sort((a,b)=>{
+      if(a.readingCount>0&&!b.readingCount)return -1;
+      if(b.readingCount>0&&!a.readingCount)return 1;
+      if(b.readCount!==a.readCount)return b.readCount-a.readCount;
+      return b.total-a.total;
+    });
+  },[statuses]);
+
+  const activeSeries=seriesList.find(s=>s.readingCount>0);
+
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* Header */}
+      <div style={{padding:"20px 16px 0",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Black Library</div>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:12}}>Reading Crusade</h2>
+        <div style={{display:"flex",gap:20,marginBottom:12,flexWrap:"wrap"}}>
+          {[{l:"Letti",v:readCount,color:"#4aaa6a"},{l:"In Lettura",v:readingCount,color:"#4a8adc"},{l:"Da Leggere",v:wantCount,color:C.gold},{l:"Totale",v:BOOKS.length,color:C.muted}].map(s=>(
+            <div key={s.l}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color}}>{s.v}</div></div>
+          ))}
+        </div>
+        {/* Barra di avanzamento globale */}
+        <div style={{marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2}}>PROGRESSO GLOBALE</span>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold}}>{readCount}/{BOOKS.length} ({Math.round(readCount/BOOKS.length*100)}%)</span>
+          </div>
+          <div style={{height:6,background:C.dim,borderRadius:3}}>
+            <div style={{height:"100%",width:`${(readCount/BOOKS.length)*100}%`,background:"linear-gradient(to right,#4aaa6a,#4a8adc)",borderRadius:3,transition:"width 0.5s"}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Continua la lettura */}
+      {activeSeries?.nextBook&&(
+        <div style={{margin:"16px 16px 0",background:"linear-gradient(135deg,#1a3a7022,#16140f)",border:"1px solid #4a8adc55",borderLeft:"3px solid #4a8adc",borderRadius:10,padding:"14px 16px"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#4a8adc",letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>📖 Continua la Lettura</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,marginBottom:3}}>{activeSeries.nextBook.title}</div>
+          <div style={{fontSize:11,color:C.muted}}>{activeSeries.name}{activeSeries.nextBook.num>0?` · Book ${activeSeries.nextBook.num}`:""} · {activeSeries.nextBook.author}</div>
+        </div>
+      )}
+
+      {/* Messaggio onboarding se nessun libro tracciato */}
+      {readCount===0&&readingCount===0&&wantCount===0&&(
+        <div style={{margin:"24px 16px",background:`${C.gold}10`,border:`1px solid ${C.gold}33`,borderRadius:10,padding:"20px 16px",textAlign:"center"}}>
+          <div style={{fontSize:36,marginBottom:10}}>📚</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.gold,marginBottom:8}}>Inizia la tua Crociata</div>
+          <div style={{fontSize:12,color:C.muted,lineHeight:1.7}}>Vai nella <b style={{color:C.text}}>LIBRARY</b>, apri un libro e segna il tuo stato di lettura. Qui troverai il tuo percorso attraverso la Black Library.</div>
+        </div>
+      )}
+
+      {/* Lista saghe */}
+      <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:10}}>
+        {seriesList.map(s=>{
+          const pct=s.total>0?s.readCount/s.total:0;
+          const isExp=expanded===s.name;
+          const hasActivity=s.readCount>0||s.readingCount>0;
+          return(
+            <div key={s.name} style={{background:C.card,border:`1px solid ${hasActivity?C.gold+"55":C.border}`,borderRadius:10,overflow:"hidden"}}>
+              <div onClick={()=>setExpanded(isExp?null:s.name)} style={{padding:"14px 16px",cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:hasActivity?C.text:C.muted,marginBottom:2}}>{s.name}</div>
+                    <div style={{fontSize:11,color:C.muted}}>
+                      {s.readCount}/{s.total} letti
+                      {s.readingCount>0&&<span style={{color:"#4a8adc"}}> · {s.readingCount} in lettura</span>}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    {pct===1&&<span style={{fontSize:13}}>✅</span>}
+                    {s.readingCount>0&&<span style={{fontSize:13}}>📖</span>}
+                    <span style={{color:C.muted,fontSize:14}}>{isExp?"▲":"▼"}</span>
+                  </div>
+                </div>
+                <div style={{height:4,background:C.dim,borderRadius:2}}>
+                  <div style={{height:"100%",width:`${pct*100}%`,background:s.readingCount>0?"#4a8adc":"#4aaa6a",borderRadius:2,transition:"width 0.3s"}}/>
+                </div>
+                {s.nextBook&&s.readCount>0&&s.readCount<s.total&&(
+                  <div style={{marginTop:6,fontSize:11,color:C.goldDim}}>Prossimo: {s.nextBook.title}</div>
+                )}
+              </div>
+              {isExp&&(
+                <div style={{borderTop:`1px solid ${C.border}`,maxHeight:320,overflowY:"auto"}}>
+                  {s.books.map((b,i)=>{
+                    const bst=statuses[b.id]?.status||'none';
+                    const cfg=STATUS_CFG[bst];
+                    return(
+                      <div key={b.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 16px",borderBottom:i<s.books.length-1?`1px solid ${C.dim}`:"none",background:bst==='reading'?"#1a3a7011":"transparent"}}>
+                        <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.dim,minWidth:18,textAlign:"right"}}>{b.num>0?b.num:"·"}</span>
+                        <span style={{fontSize:15,flexShrink:0}}>{cfg.icon}</span>
+                        <span style={{flex:1,fontSize:12,color:bst==='read'?C.muted:C.text,opacity:bst==='read'?0.65:1}}>{b.title}</span>
+                        {bst!=='none'&&<span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:cfg.color,letterSpacing:1,flexShrink:0}}>{bst==='read'?'✓':'●'}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1598,7 +1793,7 @@ export default function App(){
           {section==="home"    &&<HomePage setSection={setSection}/>}
           {section==="library" &&<LibrarySection user={user}/>}
           {section==="lore"&&<LoreSection/>}
-          {section==="reading" &&<ComingSoon icon="📖" title="Reading Order"    sub="Guided paths through the Black Library."/>}
+          {section==="reading" &&<ReadingSection user={user}/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
           
         </div>

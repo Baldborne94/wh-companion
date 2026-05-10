@@ -899,8 +899,114 @@ function MiniModal({ mini, userId, onSave, onClose }) {
 // ─── MAIN COMPONENT: PaintingTracker ──────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ─── BATTLE LOG ───────────────────────────────────────────────────────────────
+const BATTLE_RESULTS=[
+  {id:"W",label:"Vittoria",icon:"⚔️",color:"#4aaa6a"},
+  {id:"L",label:"Sconfitta",icon:"💀",color:"#b03030"},
+  {id:"D",label:"Pareggio", icon:"⚖️",color:"#c9a84c"},
+];
+
+function BattleLog({userId}){
+  const lsKey=`wh40k_battles_${userId||'anon'}`;
+  const [battles,setBattles]=useState(()=>{try{return JSON.parse(localStorage.getItem(lsKey))||[];}catch{return[];}});
+  const [showAdd,setShowAdd]=useState(false);
+  const [form,setForm]=useState({date:new Date().toISOString().split("T")[0],myArmy:"",oppArmy:"",result:"W",points:"",notes:""});
+
+  const save=()=>{
+    if(!form.myArmy.trim()||!form.result)return;
+    const updated=[{...form,id:Date.now()},...battles];
+    setBattles(updated);
+    localStorage.setItem(lsKey,JSON.stringify(updated));
+    setShowAdd(false);
+    setForm({date:new Date().toISOString().split("T")[0],myArmy:"",oppArmy:"",result:"W",points:"",notes:""});
+  };
+  const remove=(id)=>{const updated=battles.filter(b=>b.id!==id);setBattles(updated);localStorage.setItem(lsKey,JSON.stringify(updated));};
+
+  const W=battles.filter(b=>b.result==="W").length;
+  const L=battles.filter(b=>b.result==="L").length;
+  const D=battles.filter(b=>b.result==="D").length;
+
+  const inp=(placeholder,field,type="text")=>(
+    <input type={type} value={form[field]} onChange={e=>setForm(f=>({...f,[field]:e.target.value}))} placeholder={placeholder}
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:13,width:"100%",boxSizing:"border-box"}}/>
+  );
+
+  return(
+    <div style={{padding:"16px"}}>
+      {/* Stats */}
+      {battles.length>0&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+          {[{l:"Vittorie",v:W,c:"#4aaa6a"},{l:"Sconfitte",v:L,c:"#b03030"},{l:"Pareggi",v:D,c:"#c9a84c"}].map(s=>(
+            <div key={s.l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px",textAlign:"center"}}>
+              <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:22,color:s.c}}>{s.v}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add battle */}
+      {!showAdd?(
+        <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"14px",borderRadius:10,background:`${C.gold}22`,border:`1px solid ${C.gold}`,color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",marginBottom:16}}>
+          + Registra Battaglia
+        </button>
+      ):(
+        <div style={{background:C.card,border:`1px solid ${C.gold}55`,borderRadius:12,padding:"16px",marginBottom:16,display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.gold,letterSpacing:2,marginBottom:4}}>NUOVA BATTAGLIA</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {inp("Il mio esercito","myArmy")}
+            {inp("Esercito avversario","oppArmy")}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
+            {inp("Data","date","date")}
+            {inp("Punti","points")}
+          </div>
+          {/* Risultato */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {BATTLE_RESULTS.map(r=>(
+              <button key={r.id} onClick={()=>setForm(f=>({...f,result:r.id}))}
+                style={{padding:"10px",borderRadius:8,border:`1px solid ${form.result===r.id?r.color:C.dim}`,background:form.result===r.id?`${r.color}22`:"transparent",color:form.result===r.id?r.color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <span style={{fontSize:18}}>{r.icon}</span>{r.label}
+              </button>
+            ))}
+          </div>
+          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Note (tattiche, punti chiave…)" rows={2}
+            style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:12,resize:"vertical"}}/>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={save} style={{flex:1,padding:"12px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer"}}>✓ Salva</button>
+            <button onClick={()=>setShowAdd(false)} style={{padding:"12px 16px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,cursor:"pointer"}}>✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* Battle history */}
+      {battles.length===0?(
+        <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1}}>
+          Nessuna battaglia registrata. Per l'Imperatore!
+        </div>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {battles.map(b=>{
+            const r=BATTLE_RESULTS.find(x=>x.id===b.result);
+            return(
+              <div key={b.id} style={{background:C.card,border:`1px solid ${r?.color||C.border}33`,borderLeft:`3px solid ${r?.color||C.border}`,borderRadius:8,padding:"12px 14px",display:"flex",gap:12,alignItems:"center"}}>
+                <span style={{fontSize:22,flexShrink:0}}>{r?.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Cinzel',serif",fontSize:12,color:C.text}}>{b.myArmy}{b.oppArmy?` vs ${b.oppArmy}`:""}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:2}}>{b.date}{b.points?` · ${b.points}pt`:""}{b.notes?` · ${b.notes}`:""}</div>
+                </div>
+                <button onClick={()=>remove(b.id)} style={{background:"transparent",border:"none",color:C.dim,cursor:"pointer",fontSize:16,padding:"2px 4px"}}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PaintingTracker({ user }) {
-  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
+  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection" | "battles"
   const [minis,    setMinis]    = useState([]);
   const [paints,   setPaintsMap]= useState({});       // miniatureId → paint[]
   const [loading,  setLoading]  = useState(true);
@@ -957,8 +1063,9 @@ export default function PaintingTracker({ user }) {
                     borderBottom:`1px solid ${C.border}`, padding:"0 16px" }}>
         <div style={{ display:"flex", gap:0 }}>
           {[
-            { id:"gallery",    label:"🏛 Community Gallery" },
-            { id:"collection", label:"⚙ My Collection" },
+            { id:"gallery",    label:"🏛 Gallery" },
+            { id:"collection", label:"⚙ Collezione" },
+            { id:"battles",    label:"⚔️ Battaglie" },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex:1, padding:"14px 8px", background:"transparent",
@@ -972,7 +1079,28 @@ export default function PaintingTracker({ user }) {
         </div>
       </div>
 
-      {/* ── FACTION FILTER ────────────────────────────────────────── */}
+      {/* ── BATTLE LOG TAB ────────────────────────────────────────── */}
+      {tab === "battles" && <BattleLog userId={user?.id}/>}
+
+      {/* ── COLLECTION STATS ──────────────────────────────────────── */}
+      {tab === "collection" && minis.length > 0 && (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, padding:"12px 16px 0" }}>
+          {STATUS.map(s=>{
+            const cnt=minis.filter(m=>m.status===s.id).length;
+            return(
+              <div key={s.id} style={{background:C.card,border:`1px solid ${cnt>0?s.color+"44":C.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+                <div style={{fontSize:16,marginBottom:2}}>{s.icon}</div>
+                <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:16,color:cnt>0?s.color:C.dim}}>{cnt}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,lineHeight:1.2}}>{s.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── FACTION FILTER + GRID (nascosto nel tab battaglie) ─────── */}
+      {tab !== "battles" && (
+      <>
       <div style={{ overflowX:"auto", padding:"12px 16px 0",
                     display:"flex", gap:8, scrollbarWidth:"none" }}>
         {factions.map((f) => (
@@ -1031,6 +1159,8 @@ export default function PaintingTracker({ user }) {
           </div>
         )}
       </div>
+
+      </>)}
 
       {/* ── FAB: Add mini (solo My Collection e se loggati) ───────── */}
       {tab === "collection" && user && (
