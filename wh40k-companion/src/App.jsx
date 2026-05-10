@@ -1121,16 +1121,58 @@ function LibrarySection({ user }) {
   const [shelfBooks,setShelfBooks]=useState([]);
   const [shelfLoading,setShelfLoading]=useState(false);
 
+  // Carica subito da localStorage al mount (per il contatore IN CLOUD)
+  useEffect(()=>{
+    if(!user?.id) return;
+    const lsBooks=[];
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key&&key.startsWith(`wh40k_ebook_${user.id}_`)){
+        try{
+          const meta=JSON.parse(localStorage.getItem(key));
+          if(meta?.book_id){
+            const book=BOOKS.find(b=>b.id===meta.book_id);
+            if(book) lsBooks.push({...book,_file:meta});
+          }
+        }catch{}
+      }
+    }
+    if(lsBooks.length>0) setShelfBooks(lsBooks);
+  },[user?.id]);
+
   useEffect(()=>{
     if(tab==="shelf"){
       setShelfLoading(true);
       sb.get("ebook_files","select=book_id,file_name,file_path,file_type").then(files=>{
-        if(files?.length){ const ids=new Set(files.map(f=>f.book_id)); setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)}))); }
-        else setShelfBooks([]);
-        setShelfLoading(false);
+        if(files?.length){
+          const ids=new Set(files.map(f=>f.book_id));
+          setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
+          setShelfLoading(false);
+        } else {
+          // Supabase vuoto (schema non configurato o RLS) → fallback localStorage
+          if(user?.id){
+            const lsBooks=[];
+            for(let i=0;i<localStorage.length;i++){
+              const key=localStorage.key(i);
+              if(key&&key.startsWith(`wh40k_ebook_${user.id}_`)){
+                try{
+                  const meta=JSON.parse(localStorage.getItem(key));
+                  if(meta?.book_id){
+                    const book=BOOKS.find(b=>b.id===meta.book_id);
+                    if(book) lsBooks.push({...book,_file:meta});
+                  }
+                }catch{}
+              }
+            }
+            setShelfBooks(lsBooks);
+          } else {
+            setShelfBooks([]);
+          }
+          setShelfLoading(false);
+        }
       });
     }
-  },[tab]);
+  },[tab, user?.id]);
 
   const handleOpenReader=({book,url,fileType,progress,chapterIndex})=>setReader({book,url,fileType,progress,chapterIndex});
 
