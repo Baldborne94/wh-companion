@@ -5,14 +5,45 @@ import PaintingTracker from "./components/PaintingTracker";
 // ─── SUPABASE ────────────────────────────────────────────────────────────────
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const SB_H   = { apikey:SB_KEY, Authorization:`Bearer ${SB_KEY}`, "Content-Type":"application/json" };
 const sb = {
-  async get(t,q="")   { try{ const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:SB_H}); return r.ok?r.json():[];} catch{return[];} },
-  async upsert(t,d)   { try{ const r=await fetch(`${SB_URL}/rest/v1/${t}`,{method:"POST",headers:{...SB_H,Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify(d)}); return r.ok?r.json():null;} catch{return null;} },
-  storage:{
-    async upload(path,file){ try{ const r=await fetch(`${SB_URL}/storage/v1/object/ebooks/${path}`,{method:"POST",headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,"x-upsert":"true"},body:file}); return r.ok;} catch{return false;} },
-    url(path){ return `${SB_URL}/storage/v1/object/public/ebooks/${path}`; },
+  // Always get the current session JWT; fallback to anon key if not signed in
+  async _h() {
+    const { data:{ session } } = await supabase.auth.getSession();
+    const tok = session?.access_token ?? SB_KEY;
+    return { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
   },
+  async get(t,q="") {
+    try{ const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:await this._h()}); return r.ok?r.json():[]; } catch{return[];}
+  },
+  // conflict: comma-separated columns for ON CONFLICT (PostgREST ?on_conflict param)
+  async upsert(t,d,conflict="user_id,book_id") {
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${t}?on_conflict=${conflict}`,{
+        method:"POST",
+        headers:{...await this._h(),Prefer:"resolution=merge-duplicates,return=representation"},
+        body:JSON.stringify(d)
+      });
+      return r.ok?r.json():null;
+    } catch{return null;}
+  },
+  storage:{
+    async upload(path,file){
+      try{
+        const { data:{ session } } = await supabase.auth.getSession();
+        const tok = session?.access_token ?? SB_KEY;
+        const r=await fetch(`${SB_URL}/storage/v1/object/ebooks/${path}`,{method:"POST",headers:{apikey:SB_KEY,Authorization:`Bearer ${tok}`,"x-upsert":"true"},body:file});
+        return r.ok;
+      } catch{return false;}
+    },
+    // Returns a 2-hour signed URL for private bucket access
+    async signedUrl(path){
+      try{
+        const {data}=await supabase.storage.from("ebooks").createSignedUrl(path,7200);
+        return data?.signedUrl??null;
+      } catch{return null;}
+    },
+    url(path){ return `${SB_URL}/storage/v1/object/public/ebooks/${path}`; }
+  }
 };
 
 // ─── READER THEMES ───────────────────────────────────────────────────────────
@@ -313,7 +344,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 }
 
 // ─── EPUB READER ──────────────────────────────────────────────────────────────
-function EpubReader({ url, title, bookId, initProgress, initChapterIndex, onProgress, onClose }) {
+function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex, onProgress, onClose }) {
   const [chapters,  setChapters]  = useState([]);
   const [chIdx,     setChIdx]     = useState(0);
   const [loading,   setLoading]   = useState(true);
@@ -395,10 +426,10 @@ function EpubReader({ url, title, bookId, initProgress, initChapterIndex, onProg
 
   // ── Save progress (chapter + page) ────────────────────────────────────────
   useEffect(()=>{
-    if(!chapters.length) return;
+    if(!chapters.length||!userId) return;
     const pct=(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length;
     onProgress(pct);
-    sb.upsert("reading_progress",{book_id:bookId,chapter_index:chIdx,page_index:pageIndex,progress_pct:pct,last_read:new Date().toISOString()});
+    sb.upsert("reading_progress",{user_id:userId,book_id:bookId,chapter_index:chIdx,page_index:pageIndex,progress_pct:pct,last_read:new Date().toISOString()},"user_id,book_id");
   },[chIdx,pageIndex,chapters.length,totalPages]);
 
   useEffect(()=>{ setPageIndex(0); },[chIdx]);
@@ -660,7 +691,7 @@ function PdfReader({ url, title, onClose }) {
 }
 
 // ─── BOOK DETAIL ──────────────────────────────────────────────────────────────
-function BookDetail({ book, onBack, onOpenReader }) {
+function BookDetail({ book, user, onBack, onOpenReader }) {
   const fc=FC[book.faction]||C.dim;
   const inp=useRef(null);
   const [ebookMeta,    setEbookMeta]    = useState(null);
@@ -671,6 +702,7 @@ function BookDetail({ book, onBack, onOpenReader }) {
   const [chapterIndex, setChapterIndex] = useState(0);
 
   useEffect(()=>{
+    if(!user?.id) return; // RLS needs an authenticated user
     (async()=>{
       const [files,progData]=await Promise.all([
         sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),
@@ -682,24 +714,30 @@ function BookDetail({ book, onBack, onOpenReader }) {
         setChapterIndex(progData[0].chapter_index||0);
       }
     })();
-  },[book.id]);
+  },[book.id, user?.id]);
 
   const handleFileSelect=async e=>{
     const file=e.target.files[0]; if(!file) return;
+    if(!user?.id){ setUploadMsg("❌ Sign in to upload ebooks."); return; }
     setUploading(true); setUploadMsg("Uploading to cloud…");
-    const path=`${book.id}/${file.name}`;
+    // Path includes user.id so storage RLS policy matches: (foldername)[1] = auth.uid()
+    const path=`${user.id}/${book.id}/${file.name}`;
     const ok=await sb.storage.upload(path,file);
     if(ok){
-      const meta={book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.endsWith(".pdf")?"pdf":"epub"};
-      await sb.upsert("ebook_files",meta);
+      const meta={user_id:user.id,book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub"};
+      await sb.upsert("ebook_files",meta,"user_id,book_id");
       setEbookMeta(meta); setUploadMsg("✅ Uploaded!");
     } else { setUploadMsg("❌ Upload failed — check Supabase storage policy."); }
     setUploading(false); setTimeout(()=>setUploadMsg(""),3000);
   };
 
-  const handleOpenReader=()=>{
+  const handleOpenReader=async()=>{
     if(!ebookMeta) return;
-    onOpenReader({book,url:sb.storage.url(ebookMeta.file_path),fileType:ebookMeta.file_type,progress,chapterIndex});
+    setUploadMsg("Opening…");
+    const url=await sb.storage.signedUrl(ebookMeta.file_path);
+    if(!url){ setUploadMsg("❌ Could not open file — try re-uploading."); return; }
+    setUploadMsg("");
+    onOpenReader({book,url,fileType:ebookMeta.file_type,progress,chapterIndex});
   };
 
   return(
@@ -731,7 +769,13 @@ function BookDetail({ book, onBack, onOpenReader }) {
             </div>
           </div>
           <div style={{padding:"16px"}}>
-            {ebookMeta?(
+            {!user?(
+              <div style={{textAlign:"center",padding:"24px 8px",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+                <div style={{fontSize:36}}>🔐</div>
+                <div style={{color:C.muted,fontSize:13,lineHeight:1.6,maxWidth:260}}>Sign in to upload and access your ebooks across any device.</div>
+                <button onClick={signInWithGoogle} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Sign in with Google</button>
+              </div>
+            ):ebookMeta?(
               <>
                 {progress>0&&(
                   <div style={{marginBottom:14}}>
@@ -742,6 +786,7 @@ function BookDetail({ book, onBack, onOpenReader }) {
                     <div style={{height:4,background:C.dim,borderRadius:2}}><div style={{height:"100%",width:`${progress*100}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,borderRadius:2}}/></div>
                   </div>
                 )}
+                {uploadMsg&&<div style={{color:uploadMsg.startsWith("❌")?C.red:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center",marginBottom:8}}>{uploadMsg}</div>}
                 <button onClick={handleOpenReader} style={{width:"100%",padding:"16px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:15,letterSpacing:3,textTransform:"uppercase",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
                   {progress>0?"📖 Continue Reading":"📖 Start Reading"}
                 </button>
@@ -1018,7 +1063,7 @@ const ALL_FACTIONS = ["All",...new Set(BOOKS.map(b=>b.faction))].sort((a,b)=>a==
 const ALL_TYPES    = ["All",...new Set(BOOKS.map(b=>b.type))];
 const ALL_ERAS     = ["All",...new Set(BOOKS.map(b=>b.era))];
 
-function LibrarySection() {
+function LibrarySection({ user }) {
   const [tab,setTab]=useState("catalogue");
   const [search,setSearch]=useState("");
   const [series,setSeries]=useState("All");
@@ -1047,9 +1092,9 @@ function LibrarySection() {
   if(reader){
     const {book,url,fileType,progress,chapterIndex}=reader;
     if(fileType==="pdf") return <PdfReader url={url} title={book.title} onClose={()=>setReader(null)}/>;
-    return <EpubReader url={url} title={book.title} bookId={book.id} initProgress={progress} initChapterIndex={chapterIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
+    return <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
-  if(detail) return <BookDetail book={detail} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader}/>;
+  if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader}/>;
 
   const filtered=BOOKS.filter(b=>{
     if(series!=="All"&&b.series!==series) return false;
@@ -1211,7 +1256,7 @@ export default function App(){
         </div>
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
           {section==="home"    &&<HomePage setSection={setSection}/>}
-          {section==="library" &&<LibrarySection/>}
+          {section==="library" &&<LibrarySection user={user}/>}
           {section==="lore"&&<ComingSoon icon="⚔️" title="Factions & Lore"  sub="Deep dives into every faction, Primarch and Chapter."/>}
           {section==="reading" &&<ComingSoon icon="📖" title="Reading Order"    sub="Guided paths through the Black Library."/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
