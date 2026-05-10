@@ -293,7 +293,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 }
 
 // ─── EPUB READER ──────────────────────────────────────────────────────────────
-function EbookReader({ url, title, bookId, initProgress, onProgress, onClose }) {
+function EpubReader({ url, title, bookId, initProgress, onProgress, onClose }) {
   const [chapters,  setChapters]  = useState([]);
   const [chIdx,     setChIdx]     = useState(0);
   const [loading,   setLoading]   = useState(true);
@@ -953,7 +953,7 @@ function LibrarySection() {
   if(reader){
     const {book,url,fileType,progress}=reader;
     if(fileType==="pdf") return <PdfReader url={url} title={book.title} onClose={()=>setReader(null)}/>;
-    return <EbookReader url={url} title={book.title} bookId={book.id} initProgress={progress} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
+    return <EpubReader url={url} title={book.title} bookId={book.id} initProgress={progress} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
   if(detail) return <BookDetail book={detail} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader}/>;
 
