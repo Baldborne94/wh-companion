@@ -1551,8 +1551,8 @@ function CoverImage({ book, width=60, height=90, radius=4, style={} }){
 
   const base = { width, height, borderRadius:radius, overflow:"hidden", flexShrink:0, ...style };
 
-  if(!url){
-    // Placeholder: faction-colored gradient with title
+  if(url === null){
+    // Not yet fetched — placeholder with IntersectionObserver ref
     return(
       <div ref={ref} style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}>
         <span style={{fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), color:"rgba(255,255,255,0.75)", lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden"}}>{book.title}</span>
@@ -1560,8 +1560,8 @@ function CoverImage({ book, width=60, height=90, radius=4, style={} }){
     );
   }
   if(url===""){
-    // Confirmed not found — static faction block
-    return <div style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`}}/>;
+    // Fetched but no cover found — static faction-coloured block
+    return <div style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}><span style={{fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), color:"rgba(255,255,255,0.6)", lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden"}}>{book.title}</span></div>;
   }
   return(
     <div ref={ref} style={base}>
@@ -1603,31 +1603,30 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
     if(lsBooks.length>0) setShelfBooks(lsBooks);
   },[user?.id]);
 
+  // Load shelf books from DB on mount AND whenever tab switches to shelf
   useEffect(()=>{
-    if(tab==="shelf"){
-      setShelfLoading(true);
-      if(!user?.id){ setShelfBooks([]); setShelfLoading(false); return; }
-      sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
-        if(files?.length&&!files._error){
-          const ids=new Set(files.map(f=>f.book_id));
-          setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
-        } else {
-          // Fallback to localStorage cache
-          const lsBooks=[];
-          for(let i=0;i<localStorage.length;i++){
-            const key=localStorage.key(i);
-            if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
-              try{
-                const meta=JSON.parse(localStorage.getItem(key));
-                if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
-              }catch{}
-            }
+    if(!user?.id){ setShelfBooks([]); setShelfLoading(false); return; }
+    if(tab==="shelf") setShelfLoading(true);
+    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
+      if(files?.length&&!files._error){
+        const ids=new Set(files.map(f=>f.book_id));
+        setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
+      } else if(tab==="shelf"){
+        // Fallback to localStorage cache only on shelf tab (so count shows something)
+        const lsBooks=[];
+        for(let i=0;i<localStorage.length;i++){
+          const key=localStorage.key(i);
+          if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
+            try{
+              const meta=JSON.parse(localStorage.getItem(key));
+              if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
+            }catch{}
           }
-          setShelfBooks(lsBooks);
         }
-        setShelfLoading(false);
-      });
-    }
+        setShelfBooks(lsBooks);
+      }
+      setShelfLoading(false);
+    });
   },[tab, user?.id]);
 
   const handleOpenReader=({book,url,fileType,progress,chapterIndex,pageIndex})=>setReader({book,url,fileType,progress,chapterIndex,pageIndex:pageIndex||0});
@@ -2312,15 +2311,10 @@ function HomePage({user,setSection,statuses={}}){
     if(!user?.id) return;
     sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id`).then(files=>{
       if(files?.length&&!files._error){
-        const ids=new Set(files.map(f=>f.book_id));
-        // Also merge localStorage cache
-        const prefix=`wh40k_ebook_${user.id}_`;
-        for(let i=0;i<localStorage.length;i++){
-          const k=localStorage.key(i);
-          if(k?.startsWith(prefix)){const id=parseInt(k.slice(prefix.length));if(!isNaN(id))ids.add(id);}
-        }
-        setUploadedIds(ids);
+        // DB is source of truth — use DB only, discard stale localStorage counts
+        setUploadedIds(new Set(files.map(f=>f.book_id)));
       }
+      // If DB returns empty/error we keep the localStorage-seeded initial state
     });
   },[user?.id]);
 
