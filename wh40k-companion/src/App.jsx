@@ -812,15 +812,18 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   // ── Layout helpers ────────────────────────────────────────────────────────
   const arrowBtn=(disabled)=>({
     position:"absolute",top:"50%",transform:"translateY(-50%)",
-    background:`${T.surface}cc`,border:`1px solid ${T.border}`,
+    background:isFullscreen?`${T.surface}ee`:`${T.surface}cc`,
+    border:`1px solid ${T.border}`,
     borderRadius:8,color:disabled?T.border:T.text,
-    width:36,height:64,cursor:disabled?"default":"pointer",
-    fontSize:22,display:"flex",alignItems:"center",justifyContent:"center",
-    zIndex:2,transition:"opacity 0.2s",opacity:disabled?0.25:0.75,
+    width:isFullscreen?44:36,height:isFullscreen?80:64,
+    cursor:disabled?"default":"pointer",
+    fontSize:isFullscreen?28:22,display:"flex",alignItems:"center",justifyContent:"center",
+    zIndex:2,transition:"opacity 0.2s",opacity:disabled?0.2:(isFullscreen?0.9:0.75),
     flexShrink:0,userSelect:"none",
   });
-  // In two-page mode arrows are hidden — navigation via bottom bar Prev/Next
-  const sideArrows = settings.paginate && !settings.twoPage;
+  // In two-page mode arrows are hidden normally (bottom bar handles it),
+  // but in fullscreen the bottom bar is gone so always show side arrows.
+  const sideArrows = settings.paginate && (!settings.twoPage || isFullscreen);
   // Horizontal indent: leave room for side arrows when shown
   const hPad = settings.twoPage ? settings.margin : settings.margin + 44;
   // Column width for paginated layout
