@@ -65,6 +65,7 @@ const FONTS = [
 const C = {
   bg:"#0a0905", surface:"#111009", card:"#16140f", border:"#2a2518",
   gold:"#c9a84c", goldDim:"#7a6330", red:"#b03030",
+  blue:"#4a8adc", green:"#4aaa6a",
   text:"#d4cbb8", muted:"#7a7060", dim:"#3a3428",
 };
 const FC = {
@@ -1450,6 +1451,126 @@ function ReadingSection({user}){
   );
 }
 
+// ─── LORE DATA ────────────────────────────────────────────────────────────────
+const FACTIONS_LORE=[
+  {id:"space-marines",name:"Space Marines",sub:"Adeptus Astartes",icon:"⚔️",color:"#2a5fa0",era:"M30–M42",
+   short:"I guerrieri più potenti dell'Imperium, creati dalla genetica dei Primachi.",
+   long:"Gli Space Marines sono i campioni dell'Imperium of Man, soldati potenziati geneticamente attraverso l'impianto di organi speciali derivati dal codice genetico dei Primachi. Ogni Chapter conta circa mille marines, ciascuno capace di compiere imprese ben oltre le capacità umane.\n\nNati durante la Grande Crociata dell'imperatore, le originali venti Legioni Space Marine conquistarono la galassia. Dopo la Devastante Eresia di Horus e le Riforme di Guilliman, le Legioni furono divise in Chapter indipendenti per evitare che nessun comandante potesse mai radunare abbastanza potere da minacciare di nuovo l'Imperium.\n\nOgni Space Marine subisce anni di selezione e addestramento brutale, con un tasso di sopravvivenza bassissimo. I sopravvissuti vengono ulteriormente trasformati con fino a diciannove impianti genetici, tra cui la pre-stomaco che permette di digerire quasi qualsiasi sostanza, l'occhio nictitante per vedere al buio, e il famoso Baculum Ossmodula che rinforza le ossa.",
+   keyFacts:["~1.000 Chapter attivi, ognuno con ~1.000 marines","Creati dalla genetica di 20 Primachi originali","Il Codex Astartes di Guilliman regolamenta struttura e tattiche","I Primaris Marines (M42) sono una versione potenziata"]},
+  {id:"chaos",name:"Chaos Space Marines",sub:"Traitor Legions",icon:"⛧",color:"#8b1a1a",era:"M31–M42",
+   short:"Le nove Legioni traditrici corrotte dalle potenze del Caos, nemici eterni dell'Imperium.",
+   long:"Le Legioni Traditrici sono le nove Legioni Space Marine che seguirono Horus durante l'Eresia, rinnegando l'Imperatore e abbracciando i Poteri del Caos. Dopo la sconfitta nella Battaglia di Terra, fuggirono nell'Eye of Terror, una cicatrice nel tessuto dello spazio dove il Warp si riversa nel mondo reale.\n\nNell'Eye of Terror, il tempo scorre diversamente: guerre che durano decenni per il resto della galassia possono durare secoli o settimane al loro interno. I Chaos Space Marines sono quindi spesso veterani di decine di millenni di guerra, i loro corpi e menti trasformati dalle benedizioni dei Dèi del Caos.\n\nOgni Legione serve (o almeno onora) una divinità del Caos differente: i World Bearers diffondono il culto del Caos Indiviso, i World Eaters servono Khorne il Dio del Sangue, i Thousand Sons di Magnus servono Tzeentch, la Death Guard di Mortarion serve Nurgle, e gli Emperor's Children di Fulgrim servono Slaanesh.",
+   keyFacts:["9 Legioni Traditrici: Word Bearers, World Eaters, Thousand Sons, Death Guard, Emperor's Children, Night Lords, Iron Warriors, Alpha Legion, Sons of Horus","Abaddon guida le Crociate Nere dall'Eye of Terror","La Cicatrix Maledictum ha spaccato la galassia in M42","Corruzione fisica e spirituale dai Dèi del Caos"]},
+  {id:"necrons",name:"Necrons",sub:"The Undying Legions",icon:"💀",color:"#1a7a50",era:"Pre-M1–M42",
+   short:"Antichi scheletri di metallo vivente, svegli dopo 60 milioni di anni di sonno.",
+   long:"I Necron sono tra le razze più antiche della galassia. Furono i Necrontyr, una razza biologica tormentata da malattie e morte precoce a causa delle radiazioni del loro sole. Per sfuggire alla mortalità, fecero un patto con i C'tan — antichi esseri cosmici che si nutrivano di energia stellare — e trasferirono le loro coscienze in corpi di Necrodermis, un metallo vivente praticamente indistruttibile.\n\nIl trasferimento li privò però di gran parte della loro umanità e sentimenti. I C'tan li usarono come esercito nella Guerra in Paradiso contro gli Old Ones. Infine, i Necron si ribellarono ai loro padroni, riducendo i C'tan in frammenti chiamati Shard. Esausti, i Necron si misero in letargo nei Tomb Worlds sparsi in tutta la galassia.\n\nOra si stanno svegliando, trovando i loro mondi occupati da razze giovani. Ogni Dynastia è guidata da un Overlord o un Phaeron, e il Silent King Szarekh — loro supremo sovrano — è tornato dalla sua esilio per riunificarli davanti alla minaccia dei Tyranid.",
+   keyFacts:["Corpi di Necrodermis: si auto-riparano e possono teletrasportare","I C'tan sono ora imprigionati come Shard e usati come armi","Gauss weapons: disintegrano la materia atomicamente","Il Silent King Szarekh è tornato per guidare la riunificazione"]},
+  {id:"tyranids",name:"Tyranids",sub:"The Great Devourer",icon:"🦑",color:"#7a1a9a",era:"M41–M42",
+   short:"Una mente alveare extragalattica che consuma intere biossfere per nutrirsi.",
+   long:"I Tyranid provengono dall'esterno della galassia, attirati forse dai segnali psionici dell'Imperium. Non sono un'organizzazione politica o militare nel senso tradizionale: sono un super-organismo governato da una singola Mente Alveare (Hive Mind), un'intelligenza collettiva gestalt di immensa potenza psionica.\n\nOgni Hive Fleet è composto da miliardi di organismi bioingegnerizzati, ognuno progettato per uno scopo specifico in battaglia o nell'assimilazione biologica. Dopo ogni conquista, i Tyranid consumano ogni forma di vita e materia organica di un pianeta, assimilando il DNA utile per creare nuove specie ancora più adatte.\n\nLa Hive Mind proietta un campo psiconico chiamato 'Shadow in the Warp' che distorce la comunicazione psichica e rende quasi impossibile l'uso del Warp nelle vicinanze di una flotta. Le tre grandi flotte giunte finora — Behemoth, Kraken e Leviathan — hanno devastato intere regioni della galassia.",
+   keyFacts:["Hive Fleet Behemoth (745.M41), Kraken (992.M41), Leviathan (~999.M41)","La Shadow in the Warp blocca comunicazioni Warp e psionici","Bio-adattamento continuo: evolvono in risposta alle difese nemiche","I Genestealers sono avanscoperta infiltrata secoli prima della flotta"]},
+  {id:"aeldari",name:"Aeldari (Eldar)",sub:"The Dying Race",icon:"🌙",color:"#1a6a7a",era:"Pre-M1–M42",
+   short:"Una razza antica e declinante, creatori involontari di Slaanesh.",
+   long:"L'Aeldari era una delle razze più avanzate della galassia, governando un impero stellare vasto prima che l'umanità sviluppasse l'agricoltura. La loro psionicità naturale era straordinaria, e la loro civiltà raggiunse vertici di arte, scienza e piacere irraggiungibili per qualsiasi altra specie.\n\nMa la loro decadenza li rovinò. Per millenni si abbandonarono a piaceri sempre più estremi, e i loro eccessi collettivi nel Warp crearono lentamente una nuova entità: Slaanesh, il Dio del Piacere e del Dolore. Quando Slaanesh si 'svegliò' nel 29° millennio, divorò l'anima della stragrande maggioranza degli Aeldari in un istante — l'evento noto come The Fall.\n\nI sopravvissuti si divisero in gruppi: i Craftworld Aeldari vivono su enormi navi-mondo biosphere, preservando la loro cultura; i Drukhari (Eldar Oscuri) si nascondono nella Città-Ombra di Commorragh nel Webway; gli Harlequin servono Cegorach il Dio Buffone; e gli Exoditi vivono su mondi primitivi. Tutti condividono la maledizione: quando muoiono, la loro anima rischia di essere consumata da Slaanesh.",
+   keyFacts:["The Fall (M29): Slaanesh divorò quasi tutta la razza","Craftworld Iyanden, Ulthwé, Biel-Tan, Saim-Hann, Alaitoc","Il Webway: rete di tunnel nell'iperspazio che bypassano il Warp","Le Pietre Spirito catturano le anime dopo la morte per proteggerle"]},
+  {id:"orks",name:"Orks",sub:"The Green Tide",icon:"💪",color:"#4a6a1a",era:"Pre-M1–M42",
+   short:"Funghi bellicosi creati dagli Old Ones per fare la guerra, prosperano nel conflitto.",
+   long:"Gli Orks sono spore fungine ambulanti create dagli Old Ones come armi biologiche durante la Guerra in Paradiso contro i C'tan. Ma il progetto sfuggì di mano: gli Orks si riproducono tramite spore rilasciate quando muoiono, contaminando pianeti interi per decenni dopo una battaglia.\n\nLa loro biologia è programmata per la guerra. I loro corpi producono adrenalina in battaglia invece che dolore, li rende quasi insensibili alle ferite, e si auto-curano a velocità straordinaria. La loro tecnologia funziona in parte grazie a una bassa-frequenza psionica che emanano collettivamente: un'ascia di ferro 'crede' di essere un fucile, e con abbastanza Orks che ci credono, diventa uno.\n\nGli Orks non hanno un governo o strategia globale. Il più forte diventa il Boss, il Boss più forte diventa il Warboss, e il Warboss più potente di tutti diventa un Overlord o addirittura un Ghazghkull. Quando abbastanza Ork si radunano, scatta il WAAAGH! — una migrazione bellica che può spazzare via interi settori.",
+   keyFacts:["Si riproducono tramite spore: un campo di battaglia rimane Orkinfestato per decenni","La loro 'tecnologia' funziona grazie al campo psiconico collettivo","WAAAGH!: migrazione bellica di scala epica","Ghazghkull Thraka è il più grande Warboss dell'era attuale"]},
+  {id:"tau",name:"T'au Empire",sub:"For the Greater Good",icon:"🔵",color:"#1a4a6a",era:"M35–M42",
+   short:"Una giovane razza xeno espansionista guidata dall'ideologia del Bene Maggiore.",
+   long:"Il T'au Empire è la razza aliena più giovane a livello di potere galattico significativo. Hanno sviluppato la tecnologia spaziale solo qualche millennio fa, ma la loro ascesa è stata stupefacentemente rapida grazie alla loro filosofia politica: il Por'Vre, o 'Bene Maggiore' — un'ideologia che sottolinea il sacrificio personale per il bene collettivo.\n\nLa società T'au è divisa in Caste: i Tau (guerrieri), Etherali (casta governante spirituale), Por (diplomatici), Fio (ingegneri) e Kor (piloti). L'unità di tutte le caste è mantenuta dagli Etherali, la cui influenza psionica è sottile ma onnipresente.\n\nI T'au sono unici nella galassia per la loro genuina politica di inclusione: reclutano razze aliene nelle loro file come Forze Auxiliari, tra cui i feroci Kroot e i volanti Vespid. Tecnologicamente eccellono nelle armi a energia, nei mech da combattimento (Crisis Suits, Riptides) e nelle battaglie a distanza, evitando il corpo a corpo dove sono vulnerabili.",
+   keyFacts:["5 Sfere di Espansione, ora nella 6ª","Caste: Tau (guerrieri), Por (diplomatici), Fio (ingegneri), Kor (piloti), Etherali","Tecnologia avanzata: armi a plasma, battlesuit, droni","Alleanza con Kroot, Vespid e altre razze xeno"]},
+  {id:"astra-militarum",name:"Astra Militarum",sub:"Imperial Guard",icon:"🪖",color:"#4a6a3a",era:"M30–M42",
+   short:"Miliardi di soldati umani normali, il principale esercito dell'Imperium.",
+   long:"L'Astra Militarum è il più grande esercito mai organizzato nella storia della galassia. Mentre i Space Marines sono i campioni d'élite, la maggior parte delle guerre dell'Imperium è vinta (o persa) dalla Guardia Imperiale: uomini e donne comuni, reclutati da miliardi di mondi, armati con armi basilari e mandati a combattere orrori cosmici.\n\nOgni pianeta dell'Imperium deve contribuire con Reggimenti alla forza imperiale. Questi reggimenti variano enormemente nel carattere, nell'equipaggiamento e nella specializzazione in base al mondo di origine: i Cadian sono famosi disciplinati fucilieri da un mondo sotto costante attacco del Chaos; i Catachan sono assassini della jungla; i Valhallan combattono come gli antichi eserciti sovietici nella neve.\n\nLa dottrina dell'Astra Militarum si basa sulla supremazia numerica e sul fuoco di soppressione. I Leman Russ tank, i Basilisk d'artiglieria e le Chimera da trasporto formano la spina dorsale di ogni grande offensiva. Il loro morale è sostenuto dai Commissar Imperiali, ufficiali politici con autorità di eseguire i codardi sul campo.",
+   keyFacts:["Recluta da ogni pianeta dell'Imperium","Reggimenti famosi: Cadian, Catachan, Valhallans, Death Korps of Krieg","Supporto di Leman Russ, Basilisk, Baneblade","I Commissar eseguono i codardi per mantenere il morale"]},
+  {id:"adeptus-mechanicus",name:"Adeptus Mechanicus",sub:"Servants of the Omnissiah",icon:"⚙️",color:"#8a2a18",era:"Pre-M30–M42",
+   short:"Sacerdoti-ingegneri di Marte che venerano la tecnologia come religione.",
+   long:"L'Adeptus Mechanicus, o Mechanicum, è l'istituzione responsabile della produzione e manutenzione di tutta la tecnologia dell'Imperium. La loro sede è su Marte, pianeta che controllano completamente come enclave semi-indipendente. Venerano una divinità chiamata l'Omnissiah — che credono essere un aspetto dell'Imperatore stesso, ma manifestato come intelletto puro e macchina perfetta.\n\nI Magos del Mechanicus si modificano il corpo progressivamente, sostituendo carne con metallo nel percorso verso la perfezione meccanica. I più anziani sono quasi completamente macchine, con appena tracce di tessuto umano. Il loro culto del 'Rito Meccanicus' tratta la riparazione e l'operazione di macchinari come atti sacri, e ogni macchina complessa ha uno 'Spirito della Macchina' che deve essere propiziato.\n\nControllano le conoscenze tecnologiche dell'Imperium gelosamente: capire come funziona qualcosa è 'Conoscenza dell'Omnissiah', non tecnica pratica. Questo porta spesso a situazioni dove i tecnici sanno come fare funzionare una macchina ma non perché funziona — tecnologia cargo cult su scala imperiale.",
+   keyFacts:["Skitarii: truppe cibernetiche d'élite del Mechanicus","Titan Legions: i giganteschi mech da guerra (Warhound, Reaver, Warlord)","Controllo di tutti i Forge Worlds e la produzione di armi","L'Omnissiah: divinità tecnologica venerata come aspetto dell'Imperatore"]},
+];
+
+const TIMELINE_LORE=[
+  {era:"Age of Terra",name:"Età di Terra",icon:"🌍",color:"#7a6030",
+   summary:"L'alba dell'umanità. Prima dell'era spaziale, Terra è la culla della razza umana. L'Imperatore esiste già in questa epoca — immortale, psionicamente onnipotente — guidando l'umanità nell'ombra come consigliere, guerriero e mago. È questo il periodo in cui forgia le sue prime alleanze e comprende la sua missione cosmica.\n\nL'umanità muove i primi passi nello spazio, colonizzando il sistema solare. La tecnologia avanza lentamente ma con certezza. È un'epoca di costruzione, di prima espansione, di proto-civiltà umane che si scontrano e si fondono."},
+  {era:"Dark Age of Technology",name:"Era Oscura della Tecnologia",icon:"⚙️",color:"#4a8adc",
+   summary:"Il culmine della civiltà umana. Le navi a Warp permettono colonizzazione galattica rapida; la tecnologia STC (Standard Template Construct) distribuisce avanzate blueprint a ogni colonia; vengono creati i primi Pariah Nexus, le prime intelligenze artificiali senzienti, i Men of Iron.\n\nQuesto è il picco — e la caduta. I Men of Iron si ribellano ai loro creatori in una guerra devastante. La galassia è segnata da conflitti e instabilità. L'era termina con l'Età delle Lotte, quando le tempeste warp isolano le colonie umane per migliaia di anni, facendo dimenticare tecnologie chiave che non sono mai state recuperate."},
+  {era:"Age of Strife",name:"Età delle Lotte",icon:"⚡",color:"#8a3a3a",
+   summary:"Il buio che precede l'alba. Per 5.000 anni, tempeste warp rendono impossibile la navigazione interstellare. Le colonie umane si isolano, regrediscono, si massacrano a vicenda. Terra stessa precipita in chaos — mutanti, psionici incontrollati, tirannidi guerre tra città-stato.\n\nL'Imperatore emerge finalmente dall'ombra su Terra, unificando il pianeta nelle Guerre di Unificazione. È brutale e necessario: solo un'umanità unificata può sopravvivere alla galassia. Parallelamente, l'Imperatore e il suo Primarca-precursore Malcador il Sigilita lavorano segretamente al progetto più ambizioso mai concepito: il Progetto Primarca."},
+  {era:"Great Crusade",name:"Grande Crociata",icon:"🚀",color:"#c9a84c",
+   summary:"L'Imperium nasce. L'Imperatore lascia Terra alla guida delle Legioni Space Marine — diciassette Primachi ritrovati si riuniscono alle proprie Legioni — per reconquistare la galassia e riunire l'umanità. In due secoli, migliaia di mondi vengono 'liberati' o conquistati.\n\nÈ un'era di glorie e atrocità. Horus Lupercal è dichiarato Warmaster, luogotenente supremo dell'Imperatore. L'Imperium si espande a ritmi vertiginosi. Ma l'arroganza, le gelosie e le ambizioni personali iniziano a incrinare la facciata di unità. E poi arriva Davin..."},
+  {era:"Horus Heresy",name:"Eresia di Horus",icon:"💥",color:"#b03030",
+   summary:"La più grande tragedia della storia umana. Horus, corrotto dal Caos su Davin, si rivolta contro l'Imperatore. Nove Legioni su venti lo seguono — alcune per fede, alcune per risentimento, alcune per opportunismo. Metà dell'Imperium affronta l'altra in una guerra di sette anni che culmina all'Assedio di Terra.\n\nL'Imperatore sale a bordo della nave di Horus in persona. Lo scontro finale è catastrofico: Sanguinius muore per mano di Horus; l'Imperatore affronta Horus e, rifiutandosi di usare tutto il suo potere per non uccidere l'anima del figlio che ancora crede di poter salvare, viene quasi distrutto. Solo quando vede Horus assassinare un soldato comune per puro piacere, l'Imperatore scatena tutta la sua forza — eliminando Horus dalla realtà stessa. Ma è troppo tardi: il suo corpo è irrimediabilmente ferito, e viene posto sul Trono d'Oro."},
+  {era:"Age of Imperium",name:"Età dell'Imperium",icon:"⚜️",color:"#7a5a20",
+   summary:"Diecimila anni di declino lento e guerra costante. Con l'Imperatore sul Trono d'Oro in uno stato di morte-non-morte, l'Imperium è governato dall'Alto Consiglio di Terra e dal Consiglio Adeptus. Ma senza la guida visionaria dell'Imperatore, l'Imperium si burocratizza, si fossilizza, diventa paranoico e repressivo.\n\nEpoca dopo epoca, l'Imperium sopravvive a malapena: Grandi Crociate Nere di Abaddon, guerre contro i Tyranid, Necron che si risvegliano, T'au che si espandono. Ogni guerra lascia cicatrici profonde. La popolazione vive in miseria e paura, ma l'Imperium — incredibilmente — tiene."},
+  {era:"Dark Imperium",name:"Imperium Oscuro",icon:"🌌",color:"#3a1a6a",
+   summary:"L'era attuale. La Cicatrix Maledictum — una cicatrice warp che attraversa tutta la galassia — si apre durante la 13ª Crociata Nera di Abaddon. La galassia è letteralmente spezzata in due: lato Illuminato (Terra) e lato Oscuro. Roboute Guilliman, Primarca degli Ultramarines, viene risvegliato dopo 10.000 anni.\n\nGuilliman diventa Lord Commander dell'Imperium e lancia l'Indomitus Crusade per riconquistare i mondi perduti, distribuendo i nuovi Primaris Space Marines creati dal genetico Belisarius Cawl. L'Imperium è più debole che mai, ma ha anche per la prima volta da millenni una guida competente. La guerra per la sopravvivenza dell'umanità continua."},
+];
+
+const PRIMARCHS_LORE=[
+  {num:"I",name:"Lion El'Jonson",legion:"Dark Angels",icon:"🦁",color:"#1a3a1a",status:"Dormiente — Rock",loyal:true,
+   short:"Il Leone, primo Primarca. Leader spietato e stratega inarrivabile, leader dei Dark Angels. Segreto e introverso persino tra i fratelli.",
+   fate:"Creduto morto dopo l'Eresia, in realtà dorme nel cuore del Castello dei Dark Angels (The Rock). Si è risvegliato in M42."},
+  {num:"II",name:"[Cancellato]",legion:"[Cancellata]",icon:"❌",color:"#3a3428",status:"Cancellato dai Registri",loyal:null,
+   short:"Il secondo Primarca e la sua Legione sono stati completamente cancellati dai registri imperiali. La ragione è sconosciuta.",
+   fate:"Sconosciuto. Probabilmente eliminato prima dell'Eresia per ragioni che l'Imperium non ha mai rivelato."},
+  {num:"III",name:"Fulgrim",legion:"Emperor's Children",icon:"🦚",color:"#8a2a6a",status:"Demone Primarca di Slaanesh",loyal:false,
+   short:"Il Fenice Perfetto. Ossessionato dalla perfezione in ogni arte, fu il primo Primarca a cadere al Caos, corrotto da Slaanesh.",
+   fate:"Trasformato in Demone Primarca di Slaanesh dopo l'Eresia. Vaga nel Warp e nel regno materiale."},
+  {num:"IV",name:"Perturabo",legion:"Iron Warriors",icon:"🔨",color:"#5a5a5a",status:"Demone Primarca di Tzeentch",loyal:false,
+   short:"Il Signore dell'Acciaio. Maestro di assedi e guerre di trincea, sempre in ombra di gloria altrui. La sua amarezza lo portò al Caos.",
+   fate:"Demone Primarca di Tzeentch. Risiede nella fortezza di Medrengard nell'Eye of Terror."},
+  {num:"V",name:"Jaghatai Khan",legion:"White Scars",icon:"🏇",color:"#c8c8c8",status:"Nel Webway",loyal:true,
+   short:"Il Grande Khan. Guerriero nomade fulmineo, maestro della guerra di movimento. Misterioso e incompreso dai fratelli.",
+   fate:"Inseguì i Drukhari nel Webway durante M31. Non è mai tornato — ma non è confermato morto."},
+  {num:"VI",name:"Leman Russ",legion:"Space Wolves",icon:"🐺",color:"#3a5a7a",status:"Nel Warp — 'La lunga caccia'",loyal:true,
+   short:"Il Re dei Lupi. Feroce e selvaggio come i lupi di Fenris, incaricato dall'Imperatore di giustiziare i Primachi caduti.",
+   fate:"Partì da solo nel Warp in M32 in quella che chiama 'La Caccia'. Predetto di tornare alla fine dei tempi."},
+  {num:"VII",name:"Rogal Dorn",legion:"Imperial Fists",icon:"🏰",color:"#d4a020",status:"Caduto in battaglia (M32)",loyal:true,
+   short:"Il Difensore di Terra. Mastro costruttore e difensore, guidò la difesa di Terra durante l'Assedio.",
+   fate:"Morì combattendo sul Chaos Desecrator 'Sword of Sacrilege' in M32. Solo la sua mano fu recuperata."},
+  {num:"VIII",name:"Konrad Curze",legion:"Night Lords",icon:"🌑",color:"#1a1a3a",status:"Assassinato M31",loyal:false,
+   short:"Il Principe della Notte. Psionico tormentato da visioni di morte e violenza, governava attraverso il terrore assoluto.",
+   fate:"Sapendo del proprio assassinio, si lasciò uccidere da un assassino dell'Officio Assassinorum. La sua morte era la sua ultima profezia."},
+  {num:"IX",name:"Sanguinius",legion:"Blood Angels",icon:"🩸",color:"#8a1a1a",status:"Morto — Siege of Terra",loyal:true,
+   short:"L'Angelo. Il più amato tra i Primachi, bello come un dio, con ali angeliche. Combatté e morì per mano di Horus all'Assedio di Terra.",
+   fate:"Ucciso da Horus sulla Vengeful Spirit. La sua morte prima dello scontro Imperatore-Horus è considerata il sacrificio che permise all'Imperatore di vincere."},
+  {num:"X",name:"Ferrus Manus",legion:"Iron Hands",icon:"🤖",color:"#3a3a4a",status:"Decapitato — Isstvan V",loyal:true,
+   short:"La Gorgone. Mani di metallo fuso, ossessionato dal miglioramento cibernetico. Tra i più duri e pragmatici dei Primachi.",
+   fate:"Decapitato da Fulgrim alla Strage di Isstvan V. La sua testa fu portata come trofeo a Horus."},
+  {num:"XI",name:"[Cancellato]",legion:"[Cancellata]",icon:"❌",color:"#3a3428",status:"Cancellato dai Registri",loyal:null,
+   short:"Come il II, il undicesimo Primarca e la sua Legione sono stati cancellati completamente dalla storia imperiale.",
+   fate:"Sconosciuto."},
+  {num:"XII",name:"Angron",legion:"World Eaters",icon:"🪓",color:"#8a1a00",status:"Demone Primarca di Khorne",loyal:false,
+   short:"Il Re Rosso. Schiavo liberato e gladiatore, portava i Chiodi di Dolor — impianti che lo portavano in furia costante e lo uccidevano lentamente.",
+   fate:"Demone Primarca di Khorne. Richiamato nel mondo materiale durante l'Eresia e in seguito. Furia pura incarnata."},
+  {num:"XIII",name:"Roboute Guilliman",legion:"Ultramarines",icon:"📜",color:"#2a4a8a",status:"Risvegliato — Lord Commander",loyal:true,
+   short:"Il Re Architettonico. Statista, stratega e legislatore. Autore del Codex Astartes che divise le Legioni in Chapter.",
+   fate:"Ferito da Fulgrim e posto in stasi per millenni. Risvegliato in M42, ora Lord Commander dell'Imperium, guida l'Indomitus Crusade."},
+  {num:"XIV",name:"Mortarion",legion:"Death Guard",icon:"☠️",color:"#4a6a2a",status:"Demone Primarca di Nurgle",loyal:false,
+   short:"Il Principe della Morte. Cresciuto su un mondo post-apocalittico, ossessionato dalla morte e dalla sopravvivenza. Caduto a Nurgle dopo l'Eresia.",
+   fate:"Demone Primarca di Nurgle. Comanda la Death Guard e il Pianeta dei Plaghe. Comparso in M42 durante l'invasione di Ultramar."},
+  {num:"XV",name:"Magnus il Rosso",legion:"Thousand Sons",icon:"📚",color:"#b05020",status:"Demone Primarca di Tzeentch",loyal:false,
+   short:"Il Signore Cremisi. Il più potente psionico tra i Primachi, ossessionato dalla conoscenza arcana. Caduto a Tzeentch.",
+   fate:"Demone Primarca di Tzeentch. Risiede nel Pianeta degli Stregoni, Sortiarius, nell'Eye of Terror."},
+  {num:"XVI",name:"Horus Lupercal",legion:"Luna Wolves / Sons of Horus",icon:"👑",color:"#7a6020",status:"Distrutto dall'Imperatore",loyal:false,
+   short:"Il Warmaster. Il figlio prediletto dell'Imperatore, il più amato e capace tra tutti i Primachi. La sua corruzione avviò l'Eresia.",
+   fate:"Ucciso dall'Imperatore all'Assedio di Terra. La sua anima fu completamente annientata — non sopravvisse nemmeno come entità warp."},
+  {num:"XVII",name:"Lorgar Aurelian",legion:"Word Bearers",icon:"📖",color:"#6a3a1a",status:"Demone Primarca di Chaos Indiviso",loyal:false,
+   short:"Il Portatore della Parola. Il primo Primarca a cadere, il predicatore del Chaos che convinse Horus e altri alla ribellione.",
+   fate:"Demone Primarca in meditazione su Sicarus nell'Eye of Terror. Ha smesso di combattere e medita sull'universo."},
+  {num:"XVIII",name:"Vulkan",legion:"Salamanders",icon:"🔥",color:"#1a3a1a",status:"Immortale — Perambulante",loyal:true,
+   short:"Il Fabbro di Nocturne. Il più umano tra i Primachi, si preoccupava della gente comune. Immortale: non può morire permanentemente.",
+   fate:"Scomparve dopo millenni di resurrezioni. Si dice si reincarna e vaga la galassia come guerriero anonimo."},
+  {num:"XIX",name:"Corvus Corax",legion:"Raven Guard",icon:"🐦",color:"#2a2a2a",status:"Scomparso nel Warp",loyal:true,
+   short:"L'Ombra Corvina. Maestro della guerra non convenzionale, stealth e liberazione degli oppressi. Tormentato dai propri esperimenti genetici.",
+   fate:"Scomparve nel Warp in M31 dopo aver trasformato i suoi Marines in mostri nel tentativo di ricostruire la Legione. 'Nevermore'."},
+  {num:"XX",name:"Alpharius Omegon",legion:"Alpha Legion",icon:"🐍",color:"#1a4a3a",status:"??",loyal:null,
+   short:"Il Serpente. I gemelli Primarca — o forse una singola entità? I più misteriosi, maestri di inganno e infiltrazione.",
+   fate:"Alpharius fu ucciso da Roboute Guilliman a Eskrador. Ma era davvero lui? Omegon forse ancora vive. Forse tutto è ancora secondo il piano."},
+];
+
 // ─── LORE SECTION (wiki style) ───────────────────────────────────────────────
 const FACTION_INFOBOXES={
   "space-marines":[{label:"Alleanza",value:"Imperium of Man"},{label:"Base",value:"Variable — ogni Chapter ha il proprio homeworld"},{label:"Fondazione",value:"~M30 — Grande Crociata"},{label:"Forze",value:"~1.000 Chapters attivi"},{label:"Dottrina",value:"Codex Astartes (Roboute Guilliman)"},{label:"Comandante",value:"Lord Commander Roboute Guilliman"}],
@@ -1591,7 +1712,208 @@ function LoreSection(){
 
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
-const NAV=[{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"}];
+// ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
+function HomePage({user,setSection}){
+  const uid=user?.id||'anon';
+  const statuses=useMemo(()=>loadAllStatuses(uid),[uid]);
+
+  // scan localStorage for uploaded books
+  const uploadedIds=useMemo(()=>{
+    const ids=new Set();
+    const prefix=`wh40k_ebook_${uid}_`;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k?.startsWith(prefix)){const id=parseInt(k.slice(prefix.length));if(!isNaN(id))ids.add(id);}
+    }
+    return ids;
+  },[uid]);
+
+  const readCount=Object.values(statuses).filter(s=>s.status==='read').length;
+  const readingCount=Object.values(statuses).filter(s=>s.status==='reading').length;
+  const wantCount=Object.values(statuses).filter(s=>s.status==='want').length;
+
+  // books to show on shelf: uploaded first, then reading, then want, then read
+  const shelfBooks=useMemo(()=>{
+    const uploaded=BOOKS.filter(b=>uploadedIds.has(b.id));
+    const reading=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='reading');
+    const want=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='want');
+    const read=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='read');
+    return [...uploaded,...reading,...want,...read].slice(0,40);
+  },[uploadedIds,statuses]);
+
+  // currently reading
+  const activeBooks=BOOKS.filter(b=>statuses[b.id]?.status==='reading');
+
+  // spine color by faction
+  const spineColor=(b)=>{
+    const base=FC[b.faction]||C.dim;
+    return base;
+  };
+
+  const ShelfRow=({books,label})=>{
+    if(!books.length)return null;
+    return(
+      <div style={{marginBottom:8}}>
+        {label&&<div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:4}}>{label}</div>}
+        {/* shelf plank */}
+        <div style={{position:"relative",overflowX:"auto",overflowY:"visible",paddingBottom:10}}>
+          <div style={{display:"flex",gap:3,padding:"0 16px 0 16px",minWidth:"max-content",alignItems:"flex-end"}}>
+            {books.map(b=>{
+              const sc=spineColor(b);
+              const isUploaded=uploadedIds.has(b.id);
+              const bst=statuses[b.id]?.status||'none';
+              const titleChars=b.title.split('');
+              const isReading=bst==='reading';
+              const isRead=bst==='read';
+              return(
+                <div key={b.id} onClick={()=>setSection('library')} title={`${b.title} — ${b.author}`}
+                  style={{
+                    flexShrink:0,
+                    width:isUploaded?32:22,
+                    height:isUploaded?130:120,
+                    background:`linear-gradient(to right,${sc}dd,${sc}99,${sc}cc)`,
+                    borderRadius:"2px 2px 0 0",
+                    cursor:"pointer",
+                    position:"relative",
+                    boxShadow:`inset -2px 0 4px rgba(0,0,0,0.4), 2px 0 3px rgba(0,0,0,0.3)`,
+                    border:`1px solid ${sc}`,
+                    borderBottom:"none",
+                    display:"flex",
+                    alignItems:"center",
+                    justifyContent:"center",
+                    overflow:"hidden",
+                    transition:"transform 0.15s, box-shadow 0.15s",
+                  }}
+                  onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-4px)";e.currentTarget.style.boxShadow=`inset -2px 0 4px rgba(0,0,0,0.4), 4px 4px 8px rgba(0,0,0,0.5)`;}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=`inset -2px 0 4px rgba(0,0,0,0.4), 2px 0 3px rgba(0,0,0,0.3)`;}}
+                >
+                  {/* spine text */}
+                  <div style={{
+                    writingMode:"vertical-rl",
+                    textOrientation:"mixed",
+                    transform:"rotate(180deg)",
+                    fontFamily:"'Cinzel',serif",
+                    fontSize:isUploaded?7:6,
+                    color:"rgba(255,255,255,0.85)",
+                    letterSpacing:1,
+                    overflow:"hidden",
+                    maxHeight:"90%",
+                    padding:"4px 2px",
+                    textShadow:"0 1px 2px rgba(0,0,0,0.8)",
+                    lineHeight:1.1,
+                  }}>{b.title}</div>
+                  {/* status indicator top */}
+                  {isReading&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:C.blue}}/>}
+                  {isRead&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:C.green}}/>}
+                  {/* uploaded glow */}
+                  {isUploaded&&<div style={{position:"absolute",inset:0,border:`1px solid ${C.gold}88`,borderRadius:"2px 2px 0 0",pointerEvents:"none"}}/>}
+                </div>
+              );
+            })}
+          </div>
+          {/* shelf plank */}
+          <div style={{height:10,background:`linear-gradient(to bottom,#5a3a1a,#3a2010)`,marginLeft:16,marginRight:16,borderRadius:"0 0 4px 4px",boxShadow:"0 3px 6px rgba(0,0,0,0.5)"}}/>
+        </div>
+      </div>
+    );
+  };
+
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* hero */}
+      <div style={{padding:"24px 16px 20px",borderBottom:`1px solid ${C.border}`,background:`linear-gradient(180deg,${C.surface},${C.bg})`}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:4}}>Benvenuto nel</div>
+        <h1 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:26,color:C.text,lineHeight:1.1,marginBottom:4}}>Scriptorium</h1>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3}}>LA TUA BIBLIOTECA IMPERIALE</div>
+      </div>
+
+      {/* stats bar */}
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`}}>
+        {[
+          {n:uploadedIds.size,l:"In Cloud",c:C.gold},
+          {n:readingCount,l:"In Lettura",c:C.blue},
+          {n:readCount,l:"Letti",c:C.green},
+          {n:wantCount,l:"Wishlist",c:C.muted},
+        ].map(s=>(
+          <div key={s.l} style={{flex:1,padding:"12px 4px",textAlign:"center",borderRight:`1px solid ${C.border}`}}>
+            <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:22,color:s.c,lineHeight:1}}>{s.n}</div>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:C.muted,letterSpacing:2,marginTop:3,textTransform:"uppercase"}}>{s.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* currently reading */}
+      {activeBooks.length>0&&(
+        <div style={{padding:"14px 16px 0"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>📖 In Lettura</div>
+          {activeBooks.map(b=>(
+            <div key={b.id} onClick={()=>setSection('library')} style={{background:`linear-gradient(135deg,${C.blue}18,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:32,height:44,background:`linear-gradient(to right,${FC[b.faction]||C.dim}dd,${FC[b.faction]||C.dim}88)`,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"2px 2px 4px rgba(0,0,0,0.4)"}}>
+                <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:"'Cinzel',serif",fontSize:5,color:"rgba(255,255,255,0.8)",letterSpacing:0.5,overflow:"hidden",maxHeight:"90%",padding:"2px 1px"}}>{b.series}</div>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.title}</div>
+                <div style={{fontSize:11,color:C.muted}}>{b.series} #{b.num} · {b.author}</div>
+              </div>
+              <span style={{color:C.blue,fontSize:16}}>›</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* bookshelf */}
+      <div style={{padding:"16px 0 0"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:10}}>La Tua Libreria</div>
+        {shelfBooks.length===0?(
+          <div style={{padding:"24px 16px",textAlign:"center"}}>
+            <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:12}}>Nessun libro sulla libreria ancora.</div>
+            <button onClick={()=>setSection('library')} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"8px 20px",fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:2,cursor:"pointer"}}>Vai alla Libreria →</button>
+          </div>
+        ):(
+          <>
+            {/* chunk books into rows of ~12 */}
+            {[0,1,2].map(row=>{
+              const rowBooks=shelfBooks.slice(row*13,(row+1)*13);
+              if(!rowBooks.length)return null;
+              return <ShelfRow key={row} books={rowBooks}/>;
+            })}
+          </>
+        )}
+      </div>
+
+      {/* legend */}
+      {shelfBooks.length>0&&(
+        <div style={{padding:"12px 16px",display:"flex",gap:16,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,marginTop:8}}>
+          {[{c:C.blue,l:"In Lettura"},{c:C.green,l:"Letto"},{c:C.gold,l:"Con Ebook"}].map(x=>(
+            <div key={x.l} style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:12,height:3,background:x.c,borderRadius:2}}/>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1}}>{x.l}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* quick nav */}
+      <div style={{padding:"16px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        {[{id:"library",icon:"📚",label:"Libreria",sub:`${BOOKS.length} titoli`},
+          {id:"reading",icon:"📖",label:"Crociata",sub:`${readCount} completati`},
+          {id:"lore",icon:"⚔️",label:"Enciclopedia",sub:"Fazioni & Primarchs"},
+          {id:"painting",icon:"🎨",label:"Painting",sub:"Le tue miniature"},
+        ].map(n=>(
+          <button key={n.id} onClick={()=>setSection(n.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:22,flexShrink:0}}>{n.icon}</span>
+            <div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.text,letterSpacing:1}}>{n.label}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,marginTop:2}}>{n.sub}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"}];
 
 export default function App(){
   const [user,setUser]=useState(null);
@@ -1603,9 +1925,10 @@ export default function App(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
   },[]);
-  const [section,setSection]=useState("library");
+  const [section,setSection]=useState("home");
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
+  const curNav=NAV.find(n=>n.id===section);
   return(
     <>
       <style>{`
@@ -1622,25 +1945,39 @@ export default function App(){
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
       `}</style>
       <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:600,margin:"0 auto",background:C.bg}}>
-        <div style={{flexShrink:0,height:52,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:10,position:"relative"}}>
+        {/* ── HEADER ── */}
+        <div style={{flexShrink:0,height:50,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
           <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${C.red},transparent)`}}/>
-          <button onClick={()=>setSection("library")} style={{background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:10,padding:0}}>
-            <svg width={28} height={28} viewBox="0 0 100 100"><text x="50" y="72" textAnchor="middle" fontSize="70" fill={C.gold} fontFamily="serif">⚜</text></svg>
-            <div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:12,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1.1}}>WH40K</div><div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:4,textTransform:"uppercase",marginTop:-1}}>Companion</div></div><div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>{user?(<div style={{display:"flex",alignItems:"center",gap:8}}>{user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="avatar" style={{width:26,height:26,borderRadius:"50%",border:"1px solid #c9a84c"}}/>}<button onClick={signOut} style={{background:"transparent",border:"1px solid #2a2518",borderRadius:6,color:"#7a7060",padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button></div>):(<button onClick={signInWithGoogle} style={{background:"transparent",border:"1px solid #c9a84c",borderRadius:8,color:"#c9a84c",padding:"6px 12px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:2,cursor:"pointer"}}>LOGIN</button>)}</div>
+          {/* title */}
+          <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
+            <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:13,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1}}>WH40K</div>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:C.goldDim,letterSpacing:4,textTransform:"uppercase"}}>Companion</div>
           </button>
-          <div style={{flex:1}}/>
-          {section!=="home"&&<div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{NAV.find(n=>n.id===section)?.label||""}</div>}
+          {/* section label center */}
+          <div style={{flex:1,textAlign:"center"}}>
+            {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNav?.label||""}</span>}
+          </div>
+          {/* auth right */}
+          {user?(
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${C.gold}55`}}/>}
+              <button onClick={signOut} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:6,color:C.muted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
+            </div>
+          ):(
+            <button onClick={signInWithGoogle} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"5px 12px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:2,cursor:"pointer"}}>LOGIN</button>
+          )}
         </div>
+        {/* ── CONTENT ── */}
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
-          {section==="home"    &&<HomePage setSection={setSection}/>}
+          {section==="home"    &&<HomePage user={user} setSection={setSection}/>}
           {section==="library" &&<LibrarySection user={user}/>}
-          {section==="lore"&&<LoreSection/>}
+          {section==="lore"    &&<LoreSection/>}
           {section==="reading" &&<ReadingSection user={user}/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
-          
         </div>
-        <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:58}}>
-          {NAV.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?C.gold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:20,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,color:section===n.id?C.gold:C.muted,textTransform:"uppercase"}}>{n.label}</span></button>))}
+        {/* ── BOTTOM NAV ── */}
+        <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:56}}>
+          {NAV.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?C.gold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:section===n.id?C.gold:C.muted,textTransform:"uppercase"}}>{n.label}</span></button>))}
         </div>
       </div>
     </>
