@@ -1524,17 +1524,34 @@ async function fetchBookCover(book) {
   const key = COVER_CACHE_PREFIX + book.id;
   const cached = localStorage.getItem(key);
   if(cached !== null) return cached; // "" = confirmed not found; url = cover
+
+  // 1. Try Open Library (better Black Library coverage, free, no key)
+  try{
+    const t = encodeURIComponent(book.title);
+    const a = encodeURIComponent(book.author);
+    const r = await fetch(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=1&fields=cover_i`);
+    if(r.ok){
+      const d = await r.json();
+      const coverId = d.docs?.[0]?.cover_i;
+      if(coverId){
+        const url = `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+        localStorage.setItem(key, url);
+        return url;
+      }
+    }
+  }catch{ /* fall through to Google Books */ }
+
+  // 2. Fallback: Google Books
   try{
     const q = encodeURIComponent(`"${book.title}" ${book.author}`);
     const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
-    // Don't cache transient server errors (5xx) — let it retry next time
     if(!r.ok){ return r.status>=500 ? null : (localStorage.setItem(key,""), ""); }
     const d = await r.json();
     const thumb = d.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || "";
     const url = thumb.replace("http://","https://").replace("&edge=curl","").replace("zoom=1","zoom=2");
-    localStorage.setItem(key, url); // cache "" if genuinely no cover, or the url
+    localStorage.setItem(key, url);
     return url;
-  }catch{ return null; } // network error — don't cache, will retry on next render
+  }catch{ return null; }
 }
 
 function CoverImage({ book, width=60, height=90, radius=4, style={} }){
