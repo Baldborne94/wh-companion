@@ -1006,7 +1006,7 @@ function BattleLog({userId}){
 }
 
 export default function PaintingTracker({ user }) {
-  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection" | "battles"
+  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
   const [minis,    setMinis]    = useState([]);
   const [paints,   setPaintsMap]= useState({});       // miniatureId → paint[]
   const [loading,  setLoading]  = useState(true);
@@ -1063,9 +1063,8 @@ export default function PaintingTracker({ user }) {
                     borderBottom:`1px solid ${C.border}`, padding:"0 16px" }}>
         <div style={{ display:"flex", gap:0 }}>
           {[
-            { id:"gallery",    label:"🏛 Gallery" },
-            { id:"collection", label:"⚙ Collezione" },
-            { id:"battles",    label:"⚔️ Battaglie" },
+            { id:"gallery",    label:"🏛 Community Gallery" },
+            { id:"collection", label:"⚙ My Collection" },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex:1, padding:"14px 8px", background:"transparent",
@@ -1078,9 +1077,6 @@ export default function PaintingTracker({ user }) {
           ))}
         </div>
       </div>
-
-      {/* ── BATTLE LOG TAB ────────────────────────────────────────── */}
-      {tab === "battles" && <BattleLog userId={user?.id}/>}
 
       {/* ── COLLECTION STATS ──────────────────────────────────────── */}
       {tab === "collection" && minis.length > 0 && (
@@ -1098,8 +1094,8 @@ export default function PaintingTracker({ user }) {
         </div>
       )}
 
-      {/* ── FACTION FILTER + GRID (nascosto nel tab battaglie) ─────── */}
-      {tab !== "battles" && (
+      {/* ── FACTION FILTER + GRID ─────────────────────────────────── */}
+      {true && (
       <>
       <div style={{ overflowX:"auto", padding:"12px 16px 0",
                     display:"flex", gap:8, scrollbarWidth:"none" }}>
