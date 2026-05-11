@@ -1376,6 +1376,80 @@ function ReadingSection({user}){
 
   const activeSeries=seriesList.find(s=>s.readingCount>0);
 
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* Header stats */}
+      <div style={{padding:"20px 16px 12px",borderBottom:`1px solid ${C.border}`}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Black Library</div>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:14}}>La Tua Crociata</h2>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+          {[{label:"Letti",count:readCount,color:C.green},{label:"In Lettura",count:readingCount,color:C.blue},{label:"Da Leggere",count:wantCount,color:C.gold},{label:"Totali",count:BOOKS.length,color:C.muted}].map(s=>(
+            <div key={s.label} style={{flex:"1 1 60px",background:C.card,border:`1px solid ${s.color}44`,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
+              <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color,lineHeight:1}}>{s.count}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:2,marginTop:4}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{height:6,background:C.dim,borderRadius:3,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${BOOKS.length>0?(readCount/BOOKS.length)*100:0}%`,background:`linear-gradient(to right,${C.green},${C.gold})`,borderRadius:3,transition:"width 0.5s ease"}}/>
+        </div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,marginTop:6,textAlign:"right"}}>{BOOKS.length>0?Math.round((readCount/BOOKS.length)*100):0}% COMPLETATO</div>
+      </div>
+
+      {/* Continue reading suggestion */}
+      {activeSeries&&(
+        <div style={{margin:"14px 16px 0",background:`linear-gradient(135deg,${C.blue}22,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"14px 16px"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Continua la Lettura</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,marginBottom:4}}>{activeSeries.name}</div>
+          <div style={{fontSize:12,color:C.muted}}>{activeSeries.readCount}/{activeSeries.total} letti · {activeSeries.readingCount} in corso</div>
+          {activeSeries.nextBook&&<div style={{marginTop:6,fontSize:11,color:C.gold,fontStyle:"italic"}}>Prossimo: {activeSeries.nextBook.title}</div>}
+        </div>
+      )}
+
+      {/* Series list */}
+      <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:8}}>
+        {seriesList.map(serie=>{
+          const pct=serie.total>0?(serie.readCount/serie.total)*100:0;
+          const isExp=expanded===serie.name;
+          return(
+            <div key={serie.name} style={{background:C.card,border:`1px solid ${serie.readingCount>0?C.blue:C.border}`,borderLeft:`3px solid ${serie.readingCount>0?C.blue:serie.readCount===serie.total&&serie.total>0?C.green:C.dim}`,borderRadius:10,overflow:"hidden"}}>
+              <div onClick={()=>setExpanded(isExp?null:serie.name)} style={{padding:"12px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Cinzel',serif",fontSize:13,fontWeight:700,color:C.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{serie.name}</div>
+                  <div style={{height:4,background:C.dim,borderRadius:2,overflow:"hidden",marginTop:6}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:pct>=100?C.green:C.gold,borderRadius:2}}/>
+                  </div>
+                  <div style={{display:"flex",gap:10,marginTop:5}}>
+                    {serie.readCount>0&&<span style={{fontSize:10,color:C.green}}>✅ {serie.readCount}</span>}
+                    {serie.readingCount>0&&<span style={{fontSize:10,color:C.blue}}>📖 {serie.readingCount}</span>}
+                    <span style={{fontSize:10,color:C.muted}}>{serie.total} libri</span>
+                  </div>
+                </div>
+                <span style={{color:C.goldDim,fontSize:16,flexShrink:0,transition:"transform 0.2s",transform:isExp?"rotate(90deg)":"none"}}>›</span>
+              </div>
+              {isExp&&(
+                <div style={{borderTop:`1px solid ${C.border}`,padding:"8px 14px 10px",display:"flex",flexDirection:"column",gap:4}}>
+                  {serie.books.map(b=>{
+                    const bs=statuses[b.id]?.status||'none';
+                    const cfg=STATUS_CFG[bs];
+                    return(
+                      <div key={b.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+                        <span style={{fontSize:13,flexShrink:0}}>{cfg.icon}</span>
+                        <span style={{fontSize:12,color:bs==='none'?C.muted:C.text,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.title}</span>
+                        <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:cfg.color,letterSpacing:1}}>{b.num}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── LORE SECTION (wiki style) ───────────────────────────────────────────────
 const FACTION_INFOBOXES={
   "space-marines":[{label:"Alleanza",value:"Imperium of Man"},{label:"Base",value:"Variable — ogni Chapter ha il proprio homeworld"},{label:"Fondazione",value:"~M30 — Grande Crociata"},{label:"Forze",value:"~1.000 Chapters attivi"},{label:"Dottrina",value:"Codex Astartes (Roboute Guilliman)"},{label:"Comandante",value:"Lord Commander Roboute Guilliman"}],
