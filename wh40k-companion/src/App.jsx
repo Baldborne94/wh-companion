@@ -1479,33 +1479,34 @@ function LibrarySection({ user }) {
   useEffect(()=>{
     if(tab==="shelf"){
       setShelfLoading(true);
-      sb.get("ebook_files","select=book_id,file_name,file_path,file_type").then(files=>{
+      if(!user?.id){
+        setShelfBooks([]);
+        setShelfLoading(false);
+        return;
+      }
+      // Always filter by user_id — don't rely on RLS alone
+      sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
         if(files?.length){
           const ids=new Set(files.map(f=>f.book_id));
           setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
-          setShelfLoading(false);
         } else {
-          // Supabase vuoto (schema non configurato o RLS) → fallback localStorage
-          if(user?.id){
-            const lsBooks=[];
-            for(let i=0;i<localStorage.length;i++){
-              const key=localStorage.key(i);
-              if(key&&key.startsWith(`wh40k_ebook_${user.id}_`)){
-                try{
-                  const meta=JSON.parse(localStorage.getItem(key));
-                  if(meta?.book_id){
-                    const book=BOOKS.find(b=>b.id===meta.book_id);
-                    if(book) lsBooks.push({...book,_file:meta});
-                  }
-                }catch{}
-              }
+          // DB empty or table not set up → fallback to localStorage cache
+          const lsBooks=[];
+          for(let i=0;i<localStorage.length;i++){
+            const key=localStorage.key(i);
+            if(key&&key.startsWith(`wh40k_ebook_${user.id}_`)){
+              try{
+                const meta=JSON.parse(localStorage.getItem(key));
+                if(meta?.book_id){
+                  const book=BOOKS.find(b=>b.id===meta.book_id);
+                  if(book) lsBooks.push({...book,_file:meta});
+                }
+              }catch{}
             }
-            setShelfBooks(lsBooks);
-          } else {
-            setShelfBooks([]);
           }
-          setShelfLoading(false);
+          setShelfBooks(lsBooks);
         }
+        setShelfLoading(false);
       });
     }
   },[tab, user?.id]);
