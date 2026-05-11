@@ -2212,9 +2212,11 @@ function HHGuideSection({statuses}){
     const mainBooks=(part.books||[]).filter(b=>!b.b40k);
     const novelCount=mainBooks.filter(b=>!b.type||b.type==='novel'||b.type==='novella').length;
     const extraCount=mainBooks.length-novelCount;
-    const matched=mainBooks.map(e=>findHHBook(e)).filter(Boolean);
-    const readCount=matched.filter(b=>statuses[b.id]?.status==='read').length;
-    const allRead=matched.length>0&&readCount===matched.length;
+    // Progress counts novels/novellas only (shorts live in anthologies — not individually trackable)
+    const novelEntries=mainBooks.filter(b=>!b.type||b.type==='novel'||b.type==='novella');
+    const novelMatched=novelEntries.map(e=>findHHBook(e)).filter(Boolean);
+    const readCount=novelMatched.filter(b=>statuses[b.id]?.status==='read').length;
+    const allRead=novelMatched.length>0&&readCount===novelMatched.length;
     const accentColor=dimmed?C.dim:allRead?C.green:C.dim;
     return(
       <div style={{background:C.card,border:`1px solid ${dimmed?C.dim+"33":C.border}`,borderLeft:`3px solid ${accentColor}`,borderRadius:10,overflow:"hidden",opacity:dimmed?0.85:1}}>
@@ -2228,7 +2230,7 @@ function HHGuideSection({statuses}){
               {part.pickOne?<span>Pick one path · 4 options</span>:<>
                 {novelCount>0&&`${novelCount} novel${novelCount!==1?'s':''}`}
                 {extraCount>0&&` + ${extraCount} shorts/audio`}
-                {matched.length>0&&readCount>0&&<span style={{color:allRead?C.green:C.blue,marginLeft:6}}>{allRead?'✅':''}{readCount}/{matched.length} read</span>}
+                {novelMatched.length>0&&readCount>0&&<span style={{color:allRead?C.green:C.blue,marginLeft:6}}>{allRead?'✅':''}{readCount}/{novelMatched.length} read</span>}
               </>}
             </div>
           </div>
