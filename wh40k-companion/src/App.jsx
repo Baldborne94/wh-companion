@@ -678,21 +678,14 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   },[pageIndex,totalPages,chIdx,chapters.length]);
 
   // ── Kindle-style tap zones (paginated mode) ───────────────────────────────
-  const [tapFlash, setTapFlash] = useState(null); // 'left'|'right'|null
   const handlePageTap = useCallback((e)=>{
     if(!settings.paginate) return;
-    // Ignore taps on interactive elements
     if(e.target.closest('button,a,input,select,[role=button]')) return;
     const rect=e.currentTarget.getBoundingClientRect();
     const relX=e.clientX-rect.left;
     const w=rect.width;
-    if(relX < w*0.35){
-      setTapFlash('left'); setTimeout(()=>setTapFlash(null),200);
-      prevPage(); // prevPage already guards against going before the start
-    } else if(relX > w*0.65){
-      setTapFlash('right'); setTimeout(()=>setTapFlash(null),200);
-      nextPage(); // nextPage already guards against going past the end
-    }
+    if(relX < w*0.35) prevPage();
+    else if(relX > w*0.65) nextPage();
   },[settings.paginate,prevPage,nextPage]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -985,8 +978,6 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
         {settings.paginate ? (
           <div ref={outerRef} onClick={handlePageTap} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box",cursor:"default",userSelect:"none"}}>
-            {/* Tap-zone flash feedback */}
-            {tapFlash&&<div style={{position:"absolute",top:0,bottom:0,left:tapFlash==="left"?0:"50%",right:tapFlash==="right"?0:"50%",background:`${C.gold}14`,pointerEvents:"none",zIndex:1,borderRadius:tapFlash==="left"?"0 8px 8px 0":"8px 0 0 8px"}}/>}
             {/* Side arrows — non-fullscreen only (fullscreen uses tap zones) */}
             {sideArrows&&<button onClick={e=>{e.stopPropagation();prevPage();}} disabled={atStart} style={{...arrowBtn(atStart),left:4}}>‹</button>}
             {sideArrows&&<button onClick={e=>{e.stopPropagation();nextPage();}} disabled={atEnd}   style={{...arrowBtn(atEnd),right:4}}>›</button>}
