@@ -481,7 +481,28 @@ function SettingsPanel({ settings, onChange, onClose }) {
 }
 
 // ─── EPUB READER ──────────────────────────────────────────────────────────────
+// While the reader is open, restore full device-width viewport so two-page
+// spread and scroll positions work at the real tablet resolution.
+function useReaderViewport(){
+  useEffect(()=>{
+    const meta=document.querySelector('meta[name=viewport]');
+    if(!meta) return;
+    const prev=meta.content;
+    meta.content='width=device-width,initial-scale=1,user-scalable=no';
+    return()=>{
+      // Restore tablet scaling on close
+      meta.content=prev;
+      // Re-trigger tablet scale in case orientation changed
+      if(navigator.maxTouchPoints>0){
+        const w=window.innerWidth;
+        if(w>520){ const s=Math.min(1.9,w/430); meta.content=`width=430,initial-scale=${s.toFixed(2)},user-scalable=no`; }
+      }
+    };
+  },[]);
+}
+
 function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex, initPageIndex, onProgress, onClose }) {
+  useReaderViewport();
   const [bookmarkSaved, setBookmarkSaved] = useState(false);
   const [chapters,  setChapters]  = useState([]);
   const [chIdx,     setChIdx]     = useState(0);
@@ -964,7 +985,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
           </div>
         ) : (
           /* Scroll mode: all chapters rendered as one continuous document */
-          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
+          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative",overscrollBehavior:"contain"}} ref={outerRef} onScroll={handleScroll}>
             <div ref={innerRef}>
               {chapters.map((ch,i)=>(
                 <div key={i} id={`epub-ch-${bookId}-${i}`}>
@@ -1030,6 +1051,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
 // ─── PDF READER ───────────────────────────────────────────────────────────────
 function PdfReader({ url, title, bookId, userId, onClose }) {
+  useReaderViewport();
   // Save "last opened" timestamp on mount
   useEffect(()=>{
     if(userId&&bookId){
