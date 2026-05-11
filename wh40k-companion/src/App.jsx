@@ -1277,7 +1277,7 @@ function LibrarySection({ user }) {
             {l:"Tomes",v:BOOKS.length,color:C.text},
             {l:"Letti",v:Object.values(statuses).filter(s=>s.status==='read').length,color:"#4aaa6a"},
             {l:"In Lettura",v:Object.values(statuses).filter(s=>s.status==='reading').length,color:"#4a8adc"},
-            {l:"In Cloud",v:shelfBooks.length,color:C.gold},
+            {l:"Ebook",v:shelfBooks.length,color:C.gold},
           ].map(s=>(<div key={s.l}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color}}>{s.v}</div></div>))}
         </div>
         <div style={{display:"flex",gap:0}}>
@@ -1286,23 +1286,131 @@ function LibrarySection({ user }) {
       </div>
 
       {tab==="shelf"&&(
-        <div style={{padding:"16px"}}>
-          {shelfLoading?(<div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Loading your shelf…</div>)
-          :shelfBooks.length===0?(<div style={{textAlign:"center",padding:"60px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}><div style={{fontSize:52}}>📂</div><div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:C.muted}}>Your shelf is empty</div><div style={{color:C.dim,fontSize:13,maxWidth:280,lineHeight:1.6}}>Go to Catalogue, find a book, tap it, and load your EPUB or PDF.</div><button onClick={()=>setTab("catalogue")} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Browse Catalogue</button></div>)
-          :(<div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {shelfBooks.map(book=>{
-              const fc2=FC[book.faction]||C.dim;
-              return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${C.gold}55`,borderLeft:`3px solid ${C.gold}`,borderRadius:8,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>
-                <div style={{fontSize:28,flexShrink:0}}>📖</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700,color:C.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
-                  <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
+        <>
+          {shelfLoading?(
+            <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Caricamento…</div>
+          ):shelfBooks.length===0?(
+            <div style={{textAlign:"center",padding:"60px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
+              <div style={{fontSize:52}}>📂</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:C.muted}}>Nessun ebook caricato</div>
+              <div style={{color:C.muted,fontSize:13,maxWidth:280,lineHeight:1.6,textAlign:"center"}}>Vai al Catalogue, seleziona un libro e carica il tuo file EPUB o PDF per aggiungerlo qui.</div>
+              <button onClick={()=>setTab("catalogue")} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Vai al Catalogue →</button>
+            </div>
+          ):(
+            <>
+              {/* search shelf */}
+              <div style={{padding:"12px 16px 0"}}>
+                <div style={{position:"relative"}}>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca tra i tuoi ebook…"
+                    style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"12px 40px 12px 44px",fontSize:15,outline:"none"}}/>
+                  <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:18,pointerEvents:"none"}}>🔍</span>
+                  {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>}
                 </div>
-                <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.gold,letterSpacing:1,flexShrink:0}}>Read →</span>
-              </div>);
-            })}
-          </div>)}
-        </div>
+              </div>
+              {/* view toggle + count */}
+              <div style={{padding:"8px 16px",display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted,flex:1}}>
+                  {shelfBooks.filter(b=>!search||b.title.toLowerCase().includes(search.toLowerCase())||b.author.toLowerCase().includes(search.toLowerCase())).length} ebook
+                </span>
+                <div style={{display:"flex",gap:2,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:2}}>
+                  {[{m:"card",icon:"▦"},{m:"list",icon:"☰"},{m:"shelf",icon:"📚"}].map(v=>(
+                    <button key={v.m} onClick={()=>setViewMode(v.m)}
+                      style={{background:viewMode===v.m?`${C.gold}33`:"transparent",border:"none",borderRadius:6,width:28,height:26,cursor:"pointer",color:viewMode===v.m?C.gold:C.muted,fontSize:viewMode===v.m?13:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {v.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* books — reuses same view modes as catalogue */}
+              {(()=>{
+                const sfilt=shelfBooks.filter(b=>!search||b.title.toLowerCase().includes(search.toLowerCase())||b.series.toLowerCase().includes(search.toLowerCase())||b.author.toLowerCase().includes(search.toLowerCase()));
+                if(sfilt.length===0) return <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontStyle:"italic"}}>Nessun risultato.</div>;
+
+                if(viewMode==="card") return(
+                  <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                    {sfilt.map(book=>{
+                      const fc2=FC[book.faction]||C.dim;
+                      const bst=statuses[book.id]?.status||'none';
+                      const bstCfg=STATUS_CFG[bst];
+                      return(
+                        <div key={book.id} onClick={()=>setDetail(book)}
+                          style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${C.gold}55`,borderLeft:`3px solid ${C.gold}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                            <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
+                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
+                              <span style={{background:`${C.gold}22`,border:`1px solid ${C.gold}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:1}}>EPUB</span>
+                            </div>
+                          </div>
+                          <div style={{fontSize:16,fontWeight:700,color:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif"}}>{book.title}</div>
+                          <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+
+                if(viewMode==="list") return(
+                  <div style={{padding:"6px 16px 16px"}}>
+                    {sfilt.map(book=>{
+                      const fc2=FC[book.faction]||C.dim;
+                      const bst=statuses[book.id]?.status||'none';
+                      const bstCfg=STATUS_CFG[bst];
+                      return(
+                        <div key={book.id} onClick={()=>setDetail(book)}
+                          style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
+                          <div style={{width:3,height:36,background:C.gold,borderRadius:2,flexShrink:0}}/>
+                          <div style={{width:28,flexShrink:0,fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,textAlign:"right",letterSpacing:1}}>{book.num>0?`#${book.num}`:""}</div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
+                            <div style={{fontSize:10,color:C.muted,marginTop:1}}>{book.series} · {book.author}</div>
+                          </div>
+                          {bst!=='none'&&<span style={{fontSize:14,flexShrink:0}}>{bstCfg.icon}</span>}
+                          <span style={{color:C.gold,fontSize:12,flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>Leggi ›</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+
+                // shelf view
+                const seriesMap={};
+                sfilt.forEach(b=>{if(!seriesMap[b.series])seriesMap[b.series]=[];seriesMap[b.series].push(b);});
+                return(
+                  <div style={{padding:"8px 0 16px"}}>
+                    {Object.entries(seriesMap).map(([sName,books])=>(
+                      <div key={sName} style={{marginBottom:6}}>
+                        <div style={{padding:"6px 16px 4px",fontFamily:"'Cinzel',serif",fontSize:10,color:C.gold,letterSpacing:2}}>{sName}</div>
+                        <div style={{overflowX:"auto",paddingBottom:2}}>
+                          <div style={{display:"flex",gap:2,padding:"0 16px",minWidth:"max-content",alignItems:"flex-end"}}>
+                            {[...books].sort((a,b)=>a.num-b.num).map(book=>{
+                              const sc=FC[book.faction]||C.dim;
+                              const bst=statuses[book.id]?.status||'none';
+                              const bstCfg=STATUS_CFG[bst];
+                              return(
+                                <div key={book.id} onClick={()=>setDetail(book)} title={book.title}
+                                  style={{flexShrink:0,width:24,height:110,background:`linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`,borderRadius:"3px 3px 0 0",cursor:"pointer",position:"relative",boxShadow:`inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`,border:`1px solid ${C.gold}66`,borderBottom:"none",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",transition:"transform 0.12s"}}
+                                  onMouseEnter={e=>e.currentTarget.style.transform="translateY(-5px)"}
+                                  onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+                                  <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:"'Cinzel',serif",fontSize:6,color:"rgba(255,255,255,0.85)",letterSpacing:0.8,overflow:"hidden",maxHeight:"90%",padding:"3px 2px",textShadow:"0 1px 2px rgba(0,0,0,0.9)",lineHeight:1.1,textAlign:"center"}}>
+                                    {book.num>0?`#${book.num} `+book.title.split(' ').slice(0,3).join(' '):book.title.split(' ').slice(0,3).join(' ')}
+                                  </div>
+                                  {bst!=='none'&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:bstCfg.color}}/>}
+                                  <div style={{position:"absolute",inset:0,border:`1px solid ${C.gold}44`,borderRadius:"3px 3px 0 0",pointerEvents:"none"}}/>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{height:8,background:"linear-gradient(to bottom,#5a3a1a,#3a2010)",margin:"0 16px",borderRadius:"0 0 3px 3px",boxShadow:"0 2px 5px rgba(0,0,0,0.5)"}}/>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </>
+          )}
+        </>
       )}
 
       {tab==="catalogue"&&(
