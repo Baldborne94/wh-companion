@@ -1551,13 +1551,13 @@ function LibrarySection({ user }) {
       {tab==="shelf"&&(
         <>
           {shelfLoading?(
-            <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Caricamento…</div>
+            <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Loading…</div>
           ):shelfBooks.length===0?(
             <div style={{textAlign:"center",padding:"60px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
               <div style={{fontSize:52}}>📂</div>
               <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:C.muted}}>No ebooks loaded</div>
-              <div style={{color:C.muted,fontSize:13,maxWidth:280,lineHeight:1.6,textAlign:"center"}}>Vai al Catalogue, seleziona un libro e carica il tuo file EPUB o PDF per aggiungerlo qui.</div>
-              <button onClick={()=>setTab("catalogue")} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Vai al Catalogue →</button>
+              <div style={{color:C.muted,fontSize:13,maxWidth:280,lineHeight:1.6,textAlign:"center"}}>Go to Catalogue, select a book and upload your EPUB or PDF file to add it here.</div>
+              <button onClick={()=>setTab("catalogue")} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Go to Catalogue →</button>
             </div>
           ):(
             <>
@@ -1687,12 +1687,12 @@ function LibrarySection({ user }) {
           </div>
           {/* ── filter + view toggle bar ── */}
           <div style={{padding:"8px 16px",display:"flex",gap:8,alignItems:"center"}}>
-            <button onClick={()=>setShowFilters(f=>!f)} style={{background:showFilters||isFiltered?`${C.gold}22`:"transparent",border:`1px solid ${showFilters||isFiltered?C.gold:C.dim}`,borderRadius:20,padding:"7px 14px",color:showFilters||isFiltered?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>⚙ Filtri{isFiltered?" •":""}</button>
-            <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted,flex:1}}>{filtered.length} tomi</span>
+            <button onClick={()=>setShowFilters(f=>!f)} style={{background:showFilters||isFiltered?`${C.gold}22`:"transparent",border:`1px solid ${showFilters||isFiltered?C.gold:C.dim}`,borderRadius:20,padding:"7px 14px",color:showFilters||isFiltered?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>⚙ Filters{isFiltered?" •":""}</button>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted,flex:1}}>{filtered.length} titles</span>
             {isFiltered&&<button onClick={()=>{setSeries("All");setFaction("All");setType("All");setEra("All");}} style={{background:"transparent",border:`1px solid ${C.red}55`,borderRadius:20,padding:"5px 12px",color:C.red,fontFamily:"'Cinzel',serif",fontSize:10,cursor:"pointer"}}>Reset</button>}
             {/* view mode toggle */}
             <div style={{display:"flex",gap:2,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:2}}>
-              {[{m:"card",icon:"▦",title:"Card"},{m:"list",icon:"☰",title:"Lista"},{m:"shelf",icon:"📚",title:"Scaffale"}].map(v=>(
+              {[{m:"card",icon:"▦",title:"Card"},{m:"list",icon:"☰",title:"List"},{m:"shelf",icon:"📚",title:"Shelf"}].map(v=>(
                 <button key={v.m} onClick={()=>setViewMode(v.m)} title={v.title}
                   style={{background:viewMode===v.m?`${C.gold}33`:"transparent",border:"none",borderRadius:6,width:28,height:26,cursor:"pointer",color:viewMode===v.m?C.gold:C.muted,fontSize:viewMode===v.m?13:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
                   {v.icon}
@@ -1861,7 +1861,7 @@ function ReadingSection({user}){
       {/* Header stats */}
       <div style={{padding:"20px 16px 12px",borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Black Library</div>
-        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:14}}>La Tua Crociata</h2>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:14}}>Your Crusade</h2>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
           {[{label:"Read",count:readCount,color:C.green},{label:"Reading",count:readingCount,color:C.blue},{label:"To Read",count:wantCount,color:C.gold},{label:"Total",count:BOOKS.length,color:C.muted}].map(s=>(
             <div key={s.label} style={{flex:"1 1 60px",background:C.card,border:`1px solid ${s.color}44`,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
@@ -1873,7 +1873,7 @@ function ReadingSection({user}){
         <div style={{height:6,background:C.dim,borderRadius:3,overflow:"hidden"}}>
           <div style={{height:"100%",width:`${BOOKS.length>0?(readCount/BOOKS.length)*100:0}%`,background:`linear-gradient(to right,${C.green},${C.gold})`,borderRadius:3,transition:"width 0.5s ease"}}/>
         </div>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,marginTop:6,textAlign:"right"}}>{BOOKS.length>0?Math.round((readCount/BOOKS.length)*100):0}% COMPLETATO</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,marginTop:6,textAlign:"right"}}>{BOOKS.length>0?Math.round((readCount/BOOKS.length)*100):0}% COMPLETE</div>
       </div>
 
       {/* Continue reading suggestion */}
@@ -1881,8 +1881,8 @@ function ReadingSection({user}){
         <div style={{margin:"14px 16px 0",background:`linear-gradient(135deg,${C.blue}22,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"14px 16px"}}>
           <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Continue Reading</div>
           <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,marginBottom:4}}>{activeSeries.name}</div>
-          <div style={{fontSize:12,color:C.muted}}>{activeSeries.readCount}/{activeSeries.total} letti · {activeSeries.readingCount} in corso</div>
-          {activeSeries.nextBook&&<div style={{marginTop:6,fontSize:11,color:C.gold,fontStyle:"italic"}}>Prossimo: {activeSeries.nextBook.title}</div>}
+          <div style={{fontSize:12,color:C.muted}}>{activeSeries.readCount}/{activeSeries.total} read · {activeSeries.readingCount} in progress</div>
+          {activeSeries.nextBook&&<div style={{marginTop:6,fontSize:11,color:C.gold,fontStyle:"italic"}}>Next: {activeSeries.nextBook.title}</div>}
         </div>
       )}
 
@@ -2362,7 +2362,7 @@ function HomePage({user,setSection}){
       {/* quick nav */}
       <div style={{padding:"16px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         {[{id:"library",icon:"📚",label:"Library",sub:`${BOOKS.length} titles`},
-          {id:"reading",icon:"📖",label:"Reading",sub:`${readCount} completed`},
+          {id:"reading",icon:"📖",label:"Crusade",sub:`${readCount} completed`},
           {id:"lore",icon:"⚔️",label:"Encyclopedia",sub:"Factions & Primarchs"},
           {id:"painting",icon:"🎨",label:"Painting",sub:"Your miniatures"},
         ].map(n=>(
@@ -2379,7 +2379,7 @@ function HomePage({user,setSection}){
   );
 }
 
-const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Reading"},{id:"painting",icon:"🎨",label:"Painting"}];
+const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"}];
 
 export default function App(){
   const [user,setUser]=useState(null);
