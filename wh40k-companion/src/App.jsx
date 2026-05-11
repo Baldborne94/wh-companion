@@ -514,12 +514,22 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   const scrollSaveTimer  = useRef(null);
   const [scrollPct, setScrollPct] = useState(Math.round((initProgress||0)*100));
 
-  // ── Bookmarks array (separate from auto-save progress) ────────────────────
+  // ── Bookmarks — load from localStorage then sync from Supabase ───────────
   const [bookmarks, setBookmarks] = useState(()=>{
     if(!userId||!bookId) return [];
     try{ return JSON.parse(localStorage.getItem(`wh40k_bm_${userId}_${bookId}`)||'[]'); }
     catch{ return []; }
   });
+  useEffect(()=>{
+    if(!userId||!bookId) return;
+    sb.get("bookmarks",`user_id=eq.${userId}&book_id=eq.${bookId}&order=created_at.desc`).then(rows=>{
+      if(rows?.length&&!rows._error){
+        const bms=rows.map(r=>({id:r.id,chapter_index:r.chapter_index,page_index:r.page_index,scroll_top:r.scroll_top||0,progress_pct:r.progress_pct,label:r.label,createdAt:r.created_at}));
+        setBookmarks(bms);
+        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(bms));
+      }
+    });
+  },[userId,bookId]);
 
   // ── Load EPUB ─────────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -681,6 +691,8 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify({
           progress_pct:pct,chapter_index:0,page_index:0,scroll_top:scrollTop,
         }));
+        // Sync to Supabase
+        sb.upsert("reading_progress",{user_id:userId,book_id:bookId,chapter_index:0,page_index:0,progress_pct:pct,last_read:new Date().toISOString()},"user_id,book_id");
       }
     },800);
   },[chapters.length,settings.paginate,onProgress,userId,bookId]);
@@ -707,22 +719,19 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         curPageIndex = pageIndex;
         scrollTop = 0;
       }
-      const bm={
-        id:Date.now(),
-        chapter_index:curChIdx,
-        page_index:curPageIndex,
-        scroll_top:scrollTop,
-        progress_pct:pct,
-        label:chapters[curChIdx]?.label||`Chapter ${curChIdx+1}`,
-        createdAt:new Date().toISOString(),
-      };
-      const updated=[bm,...bookmarks].slice(0,30);
-      setBookmarks(updated);
-      localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(updated));
+      const bmData={user_id:userId,book_id:bookId,chapter_index:curChIdx,page_index:curPageIndex,scroll_top:scrollTop,progress_pct:pct,label:chapters[curChIdx]?.label||`Chapter ${curChIdx+1}`};
+      // Save to Supabase and get back the real id
+      sb.upsert("bookmarks",bmData,"id").then(res=>{
+        const dbId=Array.isArray(res)?res[0]?.id:res?.id;
+        const bm={id:dbId||Date.now(),chapter_index:curChIdx,page_index:curPageIndex,scroll_top:scrollTop,progress_pct:pct,label:bmData.label,createdAt:new Date().toISOString()};
+        const updated=[bm,...bookmarks.filter(b=>b.id!==bm.id)].slice(0,30);
+        setBookmarks(updated);
+        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(updated));
+      });
       // Also update the auto-save key so BookDetail can show it
       localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify({
         progress_pct:pct,chapter_index:curChIdx,page_index:curPageIndex,
-        scroll_top:scrollTop,bookmarked:true,bookmarkedAt:bm.createdAt,
+        scroll_top:scrollTop,bookmarked:true,bookmarkedAt:new Date().toISOString(),
       }));
     }
     setBookmarkSaved(true);
@@ -899,7 +908,14 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
                     <div style={{fontSize:9,color:T.muted,marginTop:1}}>{new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                   </button>
                 </div>
-                <button onClick={()=>{const u=[...bookmarks];u.splice(i,1);setBookmarks(u);localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));}} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Remove">✕</button>
+                <button onClick={()=>{
+                  const u=[...bookmarks];u.splice(i,1);
+                  setBookmarks(u);
+                  localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));
+                  // Delete from Supabase if we have a numeric id (from DB)
+                  if(bm.id&&typeof bm.id==='number'&&bm.id>1000000000000) {/* temp local id, skip */}
+                  else if(bm.id) sb.del("bookmarks",`id=eq.${bm.id}&user_id=eq.${userId}`);
+                }} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Remove">✕</button>
               </div>
             ))}
           </div>
@@ -1498,7 +1514,7 @@ const ALL_FACTIONS = ["All",...new Set(BOOKS.map(b=>b.faction))].sort((a,b)=>a==
 const ALL_TYPES    = ["All",...new Set(BOOKS.map(b=>b.type))];
 const ALL_ERAS     = ["All",...new Set(BOOKS.map(b=>b.era))];
 
-function LibrarySection({ user }) {
+function LibrarySection({ user, statuses={}, onStatusChange }) {
   const [tab,setTab]=useState("catalogue");
   const [viewMode,setViewMode]=useState("card"); // card | list | shelf
   const [search,setSearch]=useState("");
@@ -1511,17 +1527,8 @@ function LibrarySection({ user }) {
   const [reader,setReader]=useState(null);
   const [shelfBooks,setShelfBooks]=useState([]);
   const [shelfLoading,setShelfLoading]=useState(false);
-  const [statuses,setStatuses]=useState({});
 
-  const handleStatusChange=useCallback((bookId,newStatus)=>{
-    setBookStatusLS(user?.id,bookId,newStatus);
-    setStatuses(prev=>({...prev,[bookId]:getBookStatus(user?.id,bookId)}));
-  },[user?.id]);
-
-  // Carica statuses da localStorage al mount e quando cambia utente
-  useEffect(()=>{ setStatuses(loadAllStatuses(user?.id)); },[user?.id]);
-
-  // Carica subito da localStorage al mount (per il contatore IN CLOUD)
+  // Pre-load shelf from localStorage cache on mount
   useEffect(()=>{
     if(!user?.id) return;
     const lsBooks=[];
@@ -1574,7 +1581,7 @@ function LibrarySection({ user }) {
     if(fileType==="pdf") return <PdfReader url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={()=>setReader(null)}/>;
     return <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex||0} initPageIndex={reader.pageIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
-  if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={handleStatusChange}/>;
+  if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
 
   const filtered=BOOKS.filter(b=>{
     if(series!=="All"&&b.series!==series) return false;
@@ -1884,11 +1891,8 @@ function LibrarySection({ user }) {
 }
 
 // ─── READING CRUSADE ──────────────────────────────────────────────────────────
-function ReadingSection({user}){
-  const [statuses,setStatuses]=useState(()=>loadAllStatuses(user?.id));
+function ReadingSection({user, statuses={}}){
   const [expanded,setExpanded]=useState(null);
-
-  useEffect(()=>{ setStatuses(loadAllStatuses(user?.id)); },[user?.id]);
 
   const readCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='read').length,[statuses]);
   const readingCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='reading').length,[statuses]);
@@ -2236,9 +2240,8 @@ function LoreSection(){
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
 // ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
-function HomePage({user,setSection}){
+function HomePage({user,setSection,statuses={}}){
   const uid=user?.id||'anon';
-  const statuses=useMemo(()=>loadAllStatuses(uid),[uid]);
 
   // Load uploaded book IDs: DB first, fall back to localStorage
   const [uploadedIds,setUploadedIds]=useState(()=>{
@@ -2463,6 +2466,45 @@ export default function App(){
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
   },[]);
+
+  // ── Global statuses — single source of truth ──────────────────────────────
+  const [statuses,setStatuses]=useState({});
+  useEffect(()=>{
+    const uid=user?.id;
+    // Load immediately from localStorage (instant UI)
+    setStatuses(loadAllStatuses(uid));
+    if(!uid) return;
+    // Then sync from Supabase (merges newer DB data)
+    sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      setStatuses(prev=>{
+        const merged={...prev};
+        rows.forEach(r=>{
+          const ls=merged[r.book_id];
+          if(!ls||!ls.updatedAt||new Date(r.updated_at)>new Date(ls.updatedAt)){
+            merged[r.book_id]=r;
+            localStorage.setItem(`wh40k_status_${uid}_${r.book_id}`,JSON.stringify(r));
+          }
+        });
+        return merged;
+      });
+    });
+  },[user?.id]);
+
+  const updateStatus=useCallback((bookId,newStatus)=>{
+    const uid=user?.id;
+    const updated=setBookStatusLS(uid,bookId,newStatus);
+    setStatuses(prev=>({...prev,[bookId]:updated}));
+    if(uid){
+      sb.upsert("reading_status",{
+        user_id:uid,book_id:bookId,status:newStatus,
+        updated_at:new Date().toISOString(),
+        ...(newStatus==='reading'&&!updated.startedAt?{started_at:new Date().toISOString()}:{}),
+        ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
+      },"user_id,book_id");
+    }
+  },[user?.id]);
+
   const [section,setSection]=useState("home");
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
@@ -2507,10 +2549,10 @@ export default function App(){
         </div>
         {/* ── CONTENT ── */}
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
-          {section==="home"    &&<HomePage user={user} setSection={setSection}/>}
-          {section==="library" &&<LibrarySection user={user}/>}
+          {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses}/>}
+          {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
           {section==="lore"    &&<LoreSection/>}
-          {section==="reading" &&<ReadingSection user={user}/>}
+          {section==="reading" &&<ReadingSection user={user} statuses={statuses}/>}
           {section==="painting"&&<PaintingTracker user={user}/>}
         </div>
         {/* ── BOTTOM NAV ── */}
