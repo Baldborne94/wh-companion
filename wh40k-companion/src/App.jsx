@@ -78,9 +78,9 @@ const FC = {
 // ─── READING STATUS SYSTEM ────────────────────────────────────────────────────
 const STATUS_CFG={
   none:   {label:"—",           icon:"·",  color:"#3a3428",bg:"transparent"},
-  want:   {label:"Da Leggere",  icon:"📋", color:"#c9a84c",bg:"#c9a84c18"},
-  reading:{label:"In Lettura",  icon:"📖", color:"#4a8adc",bg:"#1a3a7022"},
-  read:   {label:"Letto ✓",     icon:"✅", color:"#4aaa6a",bg:"#1a6a2a22"},
+  want:   {label:"To Read",   icon:"📋", color:"#c9a84c",bg:"#c9a84c18"},
+  reading:{label:"Reading",   icon:"📖", color:"#4a8adc",bg:"#1a3a7022"},
+  read:   {label:"Read ✓",    icon:"✅", color:"#4aaa6a",bg:"#1a6a2a22"},
 };
 function getBookStatus(uid,bid){
   try{return JSON.parse(localStorage.getItem(`wh40k_status_${uid||'anon'}_${bid}`))||{status:'none'};}
@@ -185,7 +185,7 @@ function highlightKeywords(html) {
     if(i%2===1||part.includes("lore-kw")) return part;
     return part.replace(KW_REGEX, m=>{
       const k=m.toLowerCase(); if(!LORE_DB[k]) return m;
-      return `<span class="lore-kw" data-kw="${k}" style="color:#4a8adc;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal;" title="Apri su Fandom Wiki ↗">${m}</span>`;
+      return `<span class="lore-kw" data-kw="${k}" style="color:#4a8adc;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal;" title="Open on Fandom Wiki ↗">${m}</span>`;
     });
   }).join("");
 }
@@ -445,9 +445,19 @@ function SettingsPanel({ settings, onChange, onClose }) {
         <Row label="Reading mode">
           <div style={{display:"flex",gap:6}}>
             <Btn label="Pages" active={settings.paginate}  onClick={()=>onChange("paginate",true)}/>
-            <Btn label="Scroll" active={!settings.paginate} onClick={()=>onChange("paginate",false)}/>
+            <Btn label="Scroll" active={!settings.paginate} onClick={()=>{onChange("paginate",false);onChange("twoPage",false);}}/>
           </div>
         </Row>
+
+        {/* Two-page spread — only in paginated mode */}
+        {settings.paginate&&(
+          <Row label="Layout">
+            <div style={{display:"flex",gap:6}}>
+              <Btn label="Single" active={!settings.twoPage} onClick={()=>onChange("twoPage",false)}/>
+              <Btn label="Two-page" active={settings.twoPage}  onClick={()=>onChange("twoPage",true)}/>
+            </div>
+          </Row>
+        )}
       </div>
     </div>
   );
@@ -462,7 +472,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   const [error,     setError]     = useState(null);
 
   const [settings, setSettings] = useState({
-    theme:"dark", fontIndex:0, fontSize:18, lineHeight:1.8, margin:24, paginate:true,
+    theme:"dark", fontIndex:0, fontSize:18, lineHeight:1.8, margin:24, paginate:true, twoPage:false,
   });
   const updateSetting = (key,val) => setSettings(s=>({...s,[key]:val}));
   const T   = THEMES[settings.theme];
@@ -695,7 +705,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     </div>
   );
 
-  // ── Arrow button style helper ─────────────────────────────────────────────
+  // ── Layout helpers ────────────────────────────────────────────────────────
   const arrowBtn=(disabled)=>({
     position:"absolute",top:"50%",transform:"translateY(-50%)",
     background:`${T.surface}cc`,border:`1px solid ${T.border}`,
@@ -705,6 +715,17 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     zIndex:2,transition:"opacity 0.2s",opacity:disabled?0.25:0.75,
     flexShrink:0,userSelect:"none",
   });
+  // In two-page mode arrows are hidden — navigation via bottom bar Prev/Next
+  const sideArrows = settings.paginate && !settings.twoPage;
+  // Horizontal indent: leave room for side arrows when shown
+  const hPad = settings.twoPage ? settings.margin : settings.margin + 44;
+  // Column width for paginated layout
+  const colWidth = settings.twoPage
+    ? Math.max(80, Math.floor((pageWidth - 2*settings.margin - 48) / 2)) // 48px gutter between pages
+    : Math.max(100, pageWidth - 2*hPad);
+  const colGap = settings.twoPage ? 48 : 2*hPad;
+  const atStart = pageIndex===0 && chIdx===0;
+  const atEnd   = pageIndex>=totalPages-1 && chIdx>=chapters.length-1;
 
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:T.bg,display:"flex",flexDirection:"column",transition:"background 0.3s"}}>
@@ -715,20 +736,21 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}}>{title}</div>
         {readingMinutes&&<div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>}
 
-        {/* Save bookmark button */}
-        <button onClick={saveBookmark} title="Aggiungi segnalibro" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
+        {/* Add bookmark */}
+        <button onClick={saveBookmark} title="Add bookmark" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
           🔖
-          {bookmarkSaved&&<span style={{position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",background:C.gold,color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,padding:"3px 7px",borderRadius:4,whiteSpace:"nowrap",pointerEvents:"none"}}>Salvato ✓</span>}
+          {bookmarkSaved&&<span style={{position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",background:C.gold,color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,padding:"3px 7px",borderRadius:4,whiteSpace:"nowrap",pointerEvents:"none"}}>Saved ✓</span>}
         </button>
 
-        {/* Show bookmarks list button */}
-        <button onClick={()=>setShowBookmarks(v=>!v)} title="Segnalibri" style={{background:showBookmarks?`${C.gold}22`:"transparent",border:`1px solid ${showBookmarks?C.gold:T.border}`,borderRadius:6,color:showBookmarks?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:0}}>
-          {bookmarks.length>0?<span style={{position:"relative"}}><span>🔖</span><span style={{position:"absolute",top:-6,right:-6,background:C.gold,color:C.bg,borderRadius:10,fontSize:9,minWidth:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",fontWeight:"bold",padding:"0 2px"}}>{bookmarks.length}</span></span>:"🔖"}
+        {/* Bookmark list */}
+        <button onClick={()=>setShowBookmarks(v=>!v)} title="Bookmarks" style={{background:showBookmarks?`${C.gold}22`:"transparent",border:`1px solid ${showBookmarks?C.gold:T.border}`,borderRadius:6,color:showBookmarks?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,position:"relative"}}>
+          🔖
+          {bookmarks.length>0&&<span style={{position:"absolute",top:-4,right:-4,background:C.gold,color:C.bg,borderRadius:10,fontSize:8,minWidth:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",fontWeight:"bold",padding:"0 2px",pointerEvents:"none"}}>{bookmarks.length}</span>}
         </button>
 
-        <button onClick={()=>setShowToc(t=>!t)} title="Indice (T)" style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>≡</button>
-        <button onClick={toggleFullscreen} title="Schermo intero (F)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:isFullscreen?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:13,flexShrink:0}}>⛶</button>
-        <button onClick={()=>setShowSettings(true)} title="Impostazioni" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>⚙</button>
+        <button onClick={()=>setShowToc(t=>!t)} title="Contents (T)" style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>≡</button>
+        <button onClick={toggleFullscreen} title="Fullscreen (F)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:isFullscreen?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:13,flexShrink:0}}>⛶</button>
+        <button onClick={()=>setShowSettings(true)} title="Settings" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>⚙</button>
       </div>
 
       {/* ── PROGRESS BAR ── */}
@@ -744,7 +766,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         {showToc&&(
           <div style={{width:220,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:4,animation:"slideLeft 0.2s ease"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>
-              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Indice</span>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Contents</span>
               <button onClick={()=>setShowToc(false)} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:16,padding:0}}>✕</button>
             </div>
             {chapters.map((ch,i)=>(
@@ -757,11 +779,11 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         {showBookmarks&&(
           <div style={{width:240,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:4,animation:"slideLeft 0.2s ease"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>
-              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Segnalibri</span>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Bookmarks</span>
               <button onClick={()=>setShowBookmarks(false)} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:16,padding:0}}>✕</button>
             </div>
             {bookmarks.length===0&&(
-              <div style={{padding:"20px 16px",color:T.muted,fontSize:12,fontStyle:"italic",textAlign:"center"}}>Nessun segnalibro.<br/>Premi 🔖 per aggiungerne uno.</div>
+              <div style={{padding:"20px 16px",color:T.muted,fontSize:12,fontStyle:"italic",textAlign:"center"}}>No bookmarks yet.<br/>Press 🔖 to add one.</div>
             )}
             {bookmarks.map((bm,i)=>(
               <div key={bm.id} style={{borderBottom:`1px solid ${T.border}55`,padding:"10px 12px",display:"flex",gap:8,alignItems:"flex-start"}}>
@@ -775,7 +797,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
                     <div style={{fontSize:9,color:T.muted,marginTop:1}}>{new Date(bm.createdAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                   </button>
                 </div>
-                <button onClick={()=>{const u=[...bookmarks];u.splice(i,1);setBookmarks(u);localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));}} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Rimuovi">✕</button>
+                <button onClick={()=>{const u=[...bookmarks];u.splice(i,1);setBookmarks(u);localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));}} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Remove">✕</button>
               </div>
             ))}
           </div>
@@ -790,21 +812,18 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
         {settings.paginate ? (
           <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box"}}>
-            {/* Left arrow */}
-            <button onClick={prevPage} disabled={pageIndex===0&&chIdx===0}
-              style={{...arrowBtn(pageIndex===0&&chIdx===0),left:4}}>‹</button>
-            {/* Right arrow */}
-            <button onClick={nextPage} disabled={pageIndex>=totalPages-1&&chIdx>=chapters.length-1}
-              style={{...arrowBtn(pageIndex>=totalPages-1&&chIdx>=chapters.length-1),right:4}}>›</button>
+            {/* Side arrows — only in single-page mode */}
+            {sideArrows&&<button onClick={prevPage} disabled={atStart} style={{...arrowBtn(atStart),left:4}}>‹</button>}
+            {sideArrows&&<button onClick={nextPage} disabled={atEnd}   style={{...arrowBtn(atEnd),right:4}}>›</button>}
 
             <div ref={innerRef} className="epub-col" style={{
               fontFamily:fnt.value,fontSize:settings.fontSize,lineHeight:settings.lineHeight,
               color:T.text,wordBreak:"break-word",hyphens:"auto",textAlign:"justify",
-              paddingLeft:`${settings.margin+44}px`,
-              paddingRight:`${settings.margin+44}px`,
-              columnWidth:`${Math.max(100,(pageWidth||300)-2*(settings.margin+44))}px`,
+              paddingLeft:`${hPad}px`,
+              paddingRight:`${hPad}px`,
+              columnWidth:`${colWidth}px`,
               columnFill:"auto",
-              columnGap:`${2*(settings.margin+44)}px`,
+              columnGap:`${colGap}px`,
               height:pageHeight?`${pageHeight-48}px`:"100%",
               transform:`translateX(-${pageIndex*(pageWidth||300)}px)`,
               transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
@@ -812,32 +831,36 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
             }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
           </div>
         ) : (
-          <div style={{flex:1,overflowY:"auto",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
+          /* Scroll mode: full height, no arrows, free scrolling */
+          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
             <div ref={innerRef} style={readerStyle} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
           </div>
         )}
       </div>
 
-      {/* ── BOTTOM BAR — always visible ── */}
-      <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:2}}>
-        <button onClick={prevPage} disabled={pageIndex===0&&chIdx===0} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:pageIndex===0&&chIdx===0?T.border:T.text,padding:"7px 16px",cursor:pageIndex===0&&chIdx===0?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:70}}>← Prec</button>
-        <div style={{textAlign:"center"}}>
-          {settings.paginate?(
-            <>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>p. {pageIndex+1} / {totalPages}</div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>cap. {chIdx+1}/{chapters.length} · {globalPct}%</div>
-            </>
-          ):(
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>cap. {chIdx+1} / {chapters.length} · {globalPct}%</div>
-          )}
+      {/* ── BOTTOM BAR — paginated mode only ── */}
+      {settings.paginate&&(
+        <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:48,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:2}}>
+          <button onClick={prevPage} disabled={atStart} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atStart?T.border:T.text,padding:"6px 14px",cursor:atStart?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>← Prev</button>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>ch. {chIdx+1}/{chapters.length} · {globalPct}%</div>
+            {settings.twoPage&&<div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>spread {pageIndex+1}/{totalPages}</div>}
+          </div>
+          <button onClick={nextPage} disabled={atEnd} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atEnd?T.border:T.text,padding:"6px 14px",cursor:atEnd?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>Next →</button>
         </div>
-        <button onClick={nextPage} disabled={pageIndex>=totalPages-1&&chIdx>=chapters.length-1} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:pageIndex>=totalPages-1&&chIdx>=chapters.length-1?T.border:T.text,padding:"7px 16px",cursor:pageIndex>=totalPages-1&&chIdx>=chapters.length-1?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:70}}>Succ →</button>
-      </div>
+      )}
+
+      {/* ── SCROLL MODE — floating mini progress indicator ── */}
+      {!settings.paginate&&(
+        <div style={{position:"absolute",bottom:8,right:10,background:`${T.ui}cc`,border:`1px solid ${T.border}`,borderRadius:12,padding:"3px 10px",fontFamily:"'Cinzel',serif",fontSize:9,color:T.muted,pointerEvents:"none",zIndex:3}}>
+          ch. {chIdx+1}/{chapters.length} · {globalPct}%
+        </div>
+      )}
 
       {/* ── LORE HINT (first open only) ── */}
       {showHint&&(
-        <div style={{position:"absolute",bottom:60,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
-          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>🔵 Termini blu → Fandom Wiki · Seleziona testo → Dizionario</span>
+        <div style={{position:"absolute",bottom:settings.paginate?56:20,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
+          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>🔵 Blue terms → Fandom Wiki · Select text → Dictionary</span>
         </div>
       )}
 
@@ -997,7 +1020,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                 {progress>0&&(
                   <div style={{marginBottom:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>Progresso</span>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>Progress</span>
                       <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold}}>{Math.round(progress*100)}%</span>
                     </div>
                     <div style={{height:4,background:C.dim,borderRadius:2}}><div style={{height:"100%",width:`${progress*100}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,borderRadius:2}}/></div>
@@ -1008,8 +1031,8 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                   <div style={{marginBottom:12,background:`${C.surface}`,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
                     <span style={{fontSize:16,flexShrink:0}}>📍</span>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Ultima posizione letta</div>
-                      <div style={{fontSize:12,color:C.text}}>Cap. {bookmarkInfo.chapter_index+1} · Pag. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Last read position</div>
+                      <div style={{fontSize:12,color:C.text}}>Ch. {bookmarkInfo.chapter_index+1} · p. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
                       {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
@@ -1019,7 +1042,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                   <div style={{marginBottom:12,background:C.surface,border:`1px solid ${C.gold}33`,borderRadius:8,overflow:"hidden"}}>
                     <div style={{padding:"8px 12px 6px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:6}}>
                       <span>🔖</span>
-                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:2,textTransform:"uppercase"}}>Segnalibri ({bookmarksList.length})</span>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:2,textTransform:"uppercase"}}>Bookmarks ({bookmarksList.length})</span>
                     </div>
                     {bookmarksList.slice(0,5).map((bm,i)=>(
                       <div key={bm.id} style={{padding:"8px 12px",borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${C.border}55`:"none",display:"flex",alignItems:"center",gap:8}}>
@@ -1029,12 +1052,12 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                         </div>
                       </div>
                     ))}
-                    {bookmarksList.length>5&&<div style={{padding:"6px 12px",fontSize:10,color:C.muted,fontStyle:"italic"}}>+{bookmarksList.length-5} altri segnalibri nel lettore</div>}
+                    {bookmarksList.length>5&&<div style={{padding:"6px 12px",fontSize:10,color:C.muted,fontStyle:"italic"}}>+{bookmarksList.length-5} more bookmarks in reader</div>}
                   </div>
                 )}
                 {uploadMsg&&<div style={{color:uploadMsg.startsWith("❌")?C.red:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center",marginBottom:8}}>{uploadMsg}</div>}
                 <button onClick={handleOpenReader} style={{width:"100%",padding:"16px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:15,letterSpacing:3,textTransform:"uppercase",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-                  {bookmarkInfo||progress>0?"📖 Continua a Leggere":"📖 Inizia a Leggere"}
+                  {bookmarkInfo||progress>0?"📖 Continue Reading":"📖 Start Reading"}
                 </button>
                 <button onClick={()=>inp.current.click()} style={{marginTop:8,width:"100%",padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
               </>
@@ -1043,7 +1066,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                 <div style={{color:C.muted,fontSize:13,lineHeight:1.6}}>Load your personal EPUB or PDF — saved to your private cloud, accessible from any device.</div>
                 <div style={{background:"#ffffff06",borderRadius:8,padding:"12px 14px"}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Reader features</div>
-                  <div style={{color:C.dim,fontSize:12,lineHeight:1.8}}>📖 Paginazione o scroll<br/>🎨 Tema Dark / Sepia / Paper<br/>🔤 Font e tipografia<br/>🔵 Termini WH40K → Fandom Wiki<br/>📝 Seleziona parole → dizionario</div>
+                  <div style={{color:C.dim,fontSize:12,lineHeight:1.8}}>📖 Pages or scroll mode<br/>🎨 Dark / Sepia / Paper theme<br/>🔤 Font &amp; typography<br/>📄 Single or two-page spread<br/>🔵 WH40K terms → Fandom Wiki<br/>📝 Select words → dictionary</div>
                 </div>
                 {(uploading||uploadMsg)&&<div style={{color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center"}}>{uploadMsg||"Uploading…"}</div>}
                 <button onClick={()=>inp.current.click()} disabled={uploading} style={{width:"100%",padding:"16px",borderRadius:10,background:"transparent",border:`2px dashed ${C.goldDim}`,color:C.gold,fontFamily:"'Cinzel',serif",fontSize:14,letterSpacing:2,textTransform:"uppercase",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,opacity:uploading?0.5:1}}>
@@ -1056,7 +1079,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
         </div>
         {/* Reading Status Selector */}
         <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Stato di Lettura</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Reading Status</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             {['want','reading','read'].map(s=>{
               const cfg=STATUS_CFG[s];const active=curStatus===s;
@@ -1068,7 +1091,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
               );
             })}
           </div>
-          {curStatus==='read'&&<div style={{marginTop:8,fontSize:11,color:STATUS_CFG.read.color,textAlign:"center",fontFamily:"'Cinzel',serif",letterSpacing:1}}>Questo libro è nella tua collezione dei completati!</div>}
+          {curStatus==='read'&&<div style={{marginTop:8,fontSize:11,color:STATUS_CFG.read.color,textAlign:"center",fontFamily:"'Cinzel',serif",letterSpacing:1}}>This book is in your completed collection!</div>}
         </div>
       </div>
     </div>
@@ -1426,8 +1449,8 @@ function LibrarySection({ user }) {
         <div style={{display:"flex",gap:20,marginBottom:14,flexWrap:"wrap"}}>
           {[
             {l:"Tomes",v:BOOKS.length,color:C.text},
-            {l:"Letti",v:Object.values(statuses).filter(s=>s.status==='read').length,color:"#4aaa6a"},
-            {l:"In Lettura",v:Object.values(statuses).filter(s=>s.status==='reading').length,color:"#4a8adc"},
+            {l:"Read",v:Object.values(statuses).filter(s=>s.status==='read').length,color:"#4aaa6a"},
+            {l:"Reading",v:Object.values(statuses).filter(s=>s.status==='reading').length,color:"#4a8adc"},
             {l:"Ebook",v:shelfBooks.length,color:C.gold},
           ].map(s=>(<div key={s.l}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color}}>{s.v}</div></div>))}
         </div>
@@ -1443,7 +1466,7 @@ function LibrarySection({ user }) {
           ):shelfBooks.length===0?(
             <div style={{textAlign:"center",padding:"60px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:16}}>
               <div style={{fontSize:52}}>📂</div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:C.muted}}>Nessun ebook caricato</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:16,color:C.muted}}>No ebooks loaded</div>
               <div style={{color:C.muted,fontSize:13,maxWidth:280,lineHeight:1.6,textAlign:"center"}}>Vai al Catalogue, seleziona un libro e carica il tuo file EPUB o PDF per aggiungerlo qui.</div>
               <button onClick={()=>setTab("catalogue")} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Vai al Catalogue →</button>
             </div>
@@ -1452,7 +1475,7 @@ function LibrarySection({ user }) {
               {/* search shelf */}
               <div style={{padding:"12px 16px 0"}}>
                 <div style={{position:"relative"}}>
-                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca tra i tuoi ebook…"
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search your ebooks..."
                     style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"12px 40px 12px 44px",fontSize:15,outline:"none"}}/>
                   <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:18,pointerEvents:"none"}}>🔍</span>
                   {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>}
@@ -1475,7 +1498,7 @@ function LibrarySection({ user }) {
               {/* books — reuses same view modes as catalogue */}
               {(()=>{
                 const sfilt=shelfBooks.filter(b=>!search||b.title.toLowerCase().includes(search.toLowerCase())||b.series.toLowerCase().includes(search.toLowerCase())||b.author.toLowerCase().includes(search.toLowerCase()));
-                if(sfilt.length===0) return <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontStyle:"italic"}}>Nessun risultato.</div>;
+                if(sfilt.length===0) return <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontStyle:"italic"}}>No results.</div>;
 
                 if(viewMode==="card") return(
                   <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
@@ -1595,7 +1618,7 @@ function LibrarySection({ user }) {
           {/* ── VIEW: CARD ── */}
           {viewMode==="card"&&(
             <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
-              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>)
+              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>No tomes found, Inquisitor.</div>)
               :filtered.map(book=>{
                 const fc2=FC[book.faction]||C.dim; const tc=book.type==="Codex"?C.red:C.gold;
                 const bst=statuses[book.id]?.status||'none';
@@ -1619,7 +1642,7 @@ function LibrarySection({ user }) {
           {/* ── VIEW: LIST ── */}
           {viewMode==="list"&&(
             <div style={{padding:"6px 16px 16px"}}>
-              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>)
+              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>No tomes found, Inquisitor.</div>)
               :filtered.map((book,i)=>{
                 const fc2=FC[book.faction]||C.dim;
                 const bst=statuses[book.id]?.status||'none';
@@ -1649,7 +1672,7 @@ function LibrarySection({ user }) {
 
           {/* ── VIEW: SHELF (by series) ── */}
           {viewMode==="shelf"&&(()=>{
-            if(filtered.length===0) return <div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>;
+            if(filtered.length===0) return <div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>No tomes found, Inquisitor.</div>;
             // group by series
             const seriesMap={};
             filtered.forEach(b=>{if(!seriesMap[b.series])seriesMap[b.series]=[];seriesMap[b.series].push(b);});
@@ -1666,7 +1689,7 @@ function LibrarySection({ user }) {
                         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,flexShrink:0}}>
                           {readC>0&&<span style={{color:C.green}}>✅{readC} </span>}
                           {readingC>0&&<span style={{color:C.blue}}>📖{readingC} </span>}
-                          <span>{books.length} libri</span>
+                          <span>{books.length} books</span>
                         </div>
                       </div>
                       {/* spines row */}
@@ -1751,7 +1774,7 @@ function ReadingSection({user}){
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Black Library</div>
         <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:14}}>La Tua Crociata</h2>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-          {[{label:"Letti",count:readCount,color:C.green},{label:"In Lettura",count:readingCount,color:C.blue},{label:"Da Leggere",count:wantCount,color:C.gold},{label:"Totali",count:BOOKS.length,color:C.muted}].map(s=>(
+          {[{label:"Read",count:readCount,color:C.green},{label:"Reading",count:readingCount,color:C.blue},{label:"To Read",count:wantCount,color:C.gold},{label:"Total",count:BOOKS.length,color:C.muted}].map(s=>(
             <div key={s.label} style={{flex:"1 1 60px",background:C.card,border:`1px solid ${s.color}44`,borderRadius:10,padding:"10px 14px",textAlign:"center"}}>
               <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:20,color:s.color,lineHeight:1}}>{s.count}</div>
               <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:2,marginTop:4}}>{s.label}</div>
@@ -1767,7 +1790,7 @@ function ReadingSection({user}){
       {/* Continue reading suggestion */}
       {activeSeries&&(
         <div style={{margin:"14px 16px 0",background:`linear-gradient(135deg,${C.blue}22,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"14px 16px"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Continua la Lettura</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Continue Reading</div>
           <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,marginBottom:4}}>{activeSeries.name}</div>
           <div style={{fontSize:12,color:C.muted}}>{activeSeries.readCount}/{activeSeries.total} letti · {activeSeries.readingCount} in corso</div>
           {activeSeries.nextBook&&<div style={{marginTop:6,fontSize:11,color:C.gold,fontStyle:"italic"}}>Prossimo: {activeSeries.nextBook.title}</div>}
@@ -1790,7 +1813,7 @@ function ReadingSection({user}){
                   <div style={{display:"flex",gap:10,marginTop:5}}>
                     {serie.readCount>0&&<span style={{fontSize:10,color:C.green}}>✅ {serie.readCount}</span>}
                     {serie.readingCount>0&&<span style={{fontSize:10,color:C.blue}}>📖 {serie.readingCount}</span>}
-                    <span style={{fontSize:10,color:C.muted}}>{serie.total} libri</span>
+                    <span style={{fontSize:10,color:C.muted}}>{serie.total} books</span>
                   </div>
                 </div>
                 <span style={{color:C.goldDim,fontSize:16,flexShrink:0,transition:"transform 0.2s",transform:isExp?"rotate(90deg)":"none"}}>›</span>
@@ -1818,7 +1841,7 @@ function ReadingSection({user}){
   );
 }
 
-// ─── LORE DATA ────────────────────────────────────────────────────────────────
+// ─── LORE DATA (unused — Lore section links to Fandom Wiki directly) ─────────
 const FACTIONS_LORE=[
   {id:"space-marines",name:"Space Marines",sub:"Adeptus Astartes",icon:"⚔️",color:"#2a5fa0",era:"M30–M42",
    short:"I guerrieri più potenti dell'Imperium, creati dalla genetica dei Primachi.",
@@ -1999,13 +2022,13 @@ function LoreSection(){
       {/* header */}
       <div style={{padding:"22px 16px 16px",borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Warhammer 40,000</div>
-        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>Lore & Risorse</h2>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Accesso diretto alle migliori enciclopedie online. La lore di WH40K è vasta — lascia fare agli esperti.</p>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>Lore & Resources</h2>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Direct access to the best online encyclopedias. WH40K lore is vast — let the experts handle it.</p>
       </div>
 
       {/* search bar → apre wiki */}
       <div style={{padding:"16px 16px 0"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>Cerca su Fandom Wiki</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>Search on Fandom Wiki</div>
         <div style={{display:"flex",gap:8}}>
           <div style={{flex:1,position:"relative"}}>
             <input value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}
@@ -2015,17 +2038,17 @@ function LoreSection(){
             <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:16,pointerEvents:"none"}}>🔍</span>
           </div>
           <button onClick={openWikiSearch}
-            style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:10,color:C.gold,padding:"0 18px",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",flexShrink:0}}>Cerca ↗</button>
+            style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:10,color:C.gold,padding:"0 18px",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",flexShrink:0}}>Search ↗</button>
         </div>
       </div>
 
       {/* main link cards */}
       <div style={{padding:"20px 16px 4px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Risorse Principali</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Main Resources</div>
         <LinkCard
           title="Warhammer 40k Wiki"
           icon="📖"
-          desc="La wiki più completa: fazioni, personaggi, eventi, battaglie, pianeti. Migliaia di articoli in inglese aggiornati continuamente dalla community."
+          desc="The most complete wiki: factions, characters, events, battles, planets. Thousands of articles continuously updated by the community."
           url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki"
           color={C.gold}
           badge="FANDOM"
@@ -2033,7 +2056,7 @@ function LoreSection(){
         <LinkCard
           title="Lexicanum"
           icon="📜"
-          desc="Enciclopedia enciclopedica e tecnica. Ottima per dettagli su equipaggiamento, unità, date e cronologia. Disponibile anche in italiano."
+          desc="Encyclopedic and technical reference. Great for equipment details, units, dates and chronology."
           url="https://wh40k.lexicanum.com"
           color={C.blue}
           badge="LEXICANUM"
@@ -2042,7 +2065,7 @@ function LoreSection(){
 
       {/* quick links grid */}
       <div style={{padding:"8px 16px 16px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Accesso Rapido</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Quick Access</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {QUICK_LINKS.map(q=>(
             <a key={q.wiki} href={`https://warhammer40k.fandom.com/wiki/${q.wiki}`} target="_blank" rel="noopener noreferrer"
@@ -2057,8 +2080,8 @@ function LoreSection(){
 
       {/* reader hint */}
       <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Nel Reader</div>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Mentre leggi, i termini WH40K appaiono <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>sottolineati in blu</span>. Toccali per aprire direttamente la pagina Fandom Wiki corrispondente.</p>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, WH40K terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the Fandom Wiki page directly.</p>
       </div>
     </div>
   );
@@ -2185,9 +2208,9 @@ function HomePage({user,setSection}){
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`}}>
         {[
           {n:uploadedIds.size,l:"Ebook",c:C.gold},
-          {n:readingCount,l:"In Lettura",c:C.blue},
-          {n:readCount,l:"Letti",c:C.green},
-          {n:BOOKS.length,l:"Totali",c:C.muted},
+          {n:readingCount,l:"Reading",c:C.blue},
+          {n:readCount,l:"Read",c:C.green},
+          {n:BOOKS.length,l:"Total",c:C.muted},
         ].map(s=>(
           <div key={s.l} style={{flex:1,padding:"12px 4px",textAlign:"center",borderRight:`1px solid ${C.border}`}}>
             <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:22,color:s.c,lineHeight:1}}>{s.n}</div>
@@ -2199,7 +2222,7 @@ function HomePage({user,setSection}){
       {/* currently reading */}
       {activeBooks.length>0&&(
         <div style={{padding:"14px 16px 0"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>📖 In Lettura</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>📖 Reading</div>
           {activeBooks.map(b=>(
             <div key={b.id} onClick={()=>setSection('library')} style={{background:`linear-gradient(135deg,${C.blue}18,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
               <div style={{width:32,height:44,background:`linear-gradient(to right,${FC[b.faction]||C.dim}dd,${FC[b.faction]||C.dim}88)`,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"2px 2px 4px rgba(0,0,0,0.4)"}}>
@@ -2217,11 +2240,11 @@ function HomePage({user,setSection}){
 
       {/* bookshelf */}
       <div style={{padding:"16px 0 0"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:10}}>La Tua Libreria</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:10}}>Your Shelf</div>
         {shelfBooks.length===0?(
           <div style={{padding:"24px 16px",textAlign:"center"}}>
-            <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:12}}>Nessun libro sulla libreria ancora.</div>
-            <button onClick={()=>setSection('library')} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"8px 20px",fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:2,cursor:"pointer"}}>Vai alla Libreria →</button>
+            <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:12}}>No books on the shelf yet.</div>
+            <button onClick={()=>setSection('library')} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"8px 20px",fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:2,cursor:"pointer"}}>Go to Library →</button>
           </div>
         ):(
           <>
@@ -2238,7 +2261,7 @@ function HomePage({user,setSection}){
       {/* legend */}
       {shelfBooks.length>0&&(
         <div style={{padding:"12px 16px",display:"flex",gap:16,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,marginTop:8}}>
-          {[{c:C.blue,l:"In Lettura"},{c:C.green,l:"Letto"},{c:C.gold,l:"Con Ebook"}].map(x=>(
+          {[{c:C.blue,l:"Reading"},{c:C.green,l:"Read"},{c:C.gold,l:"With Ebook"}].map(x=>(
             <div key={x.l} style={{display:"flex",alignItems:"center",gap:6}}>
               <div style={{width:12,height:3,background:x.c,borderRadius:2}}/>
               <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1}}>{x.l}</span>
@@ -2249,10 +2272,10 @@ function HomePage({user,setSection}){
 
       {/* quick nav */}
       <div style={{padding:"16px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        {[{id:"library",icon:"📚",label:"Libreria",sub:`${BOOKS.length} titoli`},
-          {id:"reading",icon:"📖",label:"Crociata",sub:`${readCount} completati`},
-          {id:"lore",icon:"⚔️",label:"Enciclopedia",sub:"Fazioni & Primarchs"},
-          {id:"painting",icon:"🎨",label:"Painting",sub:"Le tue miniature"},
+        {[{id:"library",icon:"📚",label:"Library",sub:`${BOOKS.length} titles`},
+          {id:"reading",icon:"📖",label:"Reading",sub:`${readCount} completed`},
+          {id:"lore",icon:"⚔️",label:"Encyclopedia",sub:"Factions & Primarchs"},
+          {id:"painting",icon:"🎨",label:"Painting",sub:"Your miniatures"},
         ].map(n=>(
           <button key={n.id} onClick={()=>setSection(n.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:22,flexShrink:0}}>{n.icon}</span>
