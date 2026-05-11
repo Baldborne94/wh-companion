@@ -1962,8 +1962,58 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
   );
 }
 
+// ─── NEXT BOOK SUGGESTION ─────────────────────────────────────────────────────
+// Returns { book, reason, seriesProgress } or null
+function getNextSuggestion(statuses) {
+  const COLD_STARTS = ["Horus Rising","Eisenhorn","Gaunt's Ghosts","Ultramarines: The Omnibus","Night Lords: The Omnibus"];
+
+  // Build per-series info
+  const seriesMap = {};
+  BOOKS.forEach(b => {
+    if(!seriesMap[b.series]) seriesMap[b.series] = [];
+    seriesMap[b.series].push(b);
+  });
+  Object.values(seriesMap).forEach(arr => arr.sort((a,b)=>a.num-b.num));
+
+  const st = id => statuses[id]?.status || 'none';
+  const isUnread = id => { const s=st(id); return s==='none'||s==='want'; };
+
+  // P1 — next after a book you're currently reading
+  const readingIds = BOOKS.filter(b=>st(b.id)==='reading').map(b=>b.id);
+  for(const rid of readingIds){
+    const rb = BOOKS.find(b=>b.id===rid);
+    if(!rb) continue;
+    const series = seriesMap[rb.series] || [];
+    const readCount = series.filter(b=>st(b.id)==='read').length;
+    const next = series.find(b=>b.num > rb.num && isUnread(b.id));
+    if(next) return { book:next, reason:`Next in ${rb.series}`, seriesProgress:`${readCount}/${series.length} read`, priority:1 };
+  }
+
+  // P2 — next after the furthest-read book in any in-progress series
+  const seriesProgress = {};
+  BOOKS.forEach(b=>{ if(st(b.id)==='read'){ if(!seriesProgress[b.series]) seriesProgress[b.series]=0; seriesProgress[b.series]=Math.max(seriesProgress[b.series],b.num); } });
+  // sort by most progress descending
+  const progressEntries = Object.entries(seriesProgress).sort((a,b)=>b[1]-a[1]);
+  for(const [sName, maxNum] of progressEntries){
+    const series = seriesMap[sName] || [];
+    const next = series.find(b=>b.num>maxNum && isUnread(b.id));
+    const readCount = series.filter(b=>st(b.id)==='read').length;
+    if(next) return { book:next, reason:`Continue ${sName}`, seriesProgress:`${readCount}/${series.length} read`, priority:2 };
+  }
+
+  // P3 — cold start recommendation
+  for(const title of COLD_STARTS){
+    const book = BOOKS.find(b=>b.title===title);
+    if(book && isUnread(book.id)){
+      const series = seriesMap[book.series] || [];
+      return { book, reason:`Recommended start`, seriesProgress:`${series.length} book series`, priority:3 };
+    }
+  }
+  return null;
+}
+
 // ─── READING CRUSADE ──────────────────────────────────────────────────────────
-function ReadingSection({user, statuses={}}){
+function ReadingSection({user, statuses={}, onOpenBook, setSection}){
   const [expanded,setExpanded]=useState(null);
 
   const readCount=useMemo(()=>Object.values(statuses).filter(s=>s.status==='read').length,[statuses]);
@@ -1987,7 +2037,16 @@ function ReadingSection({user, statuses={}}){
     });
   },[statuses]);
 
-  const activeSeries=seriesList.find(s=>s.readingCount>0);
+  const suggestion = useMemo(()=>getNextSuggestion(statuses),[statuses]);
+  const [opening,setOpening] = useState(false);
+
+  const handleReadNext = async(book) => {
+    if(!onOpenBook||!setSection) return setSection?.('library');
+    setOpening(true);
+    const ok = await onOpenBook(book);
+    setOpening(false);
+    if(!ok) setSection('library');
+  };
 
   return(
     <div style={{paddingBottom:80}}>
@@ -2009,13 +2068,32 @@ function ReadingSection({user, statuses={}}){
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,marginTop:6,textAlign:"right"}}>{BOOKS.length>0?Math.round((readCount/BOOKS.length)*100):0}% COMPLETE</div>
       </div>
 
-      {/* Continue reading suggestion */}
-      {activeSeries&&(
-        <div style={{margin:"14px 16px 0",background:`linear-gradient(135deg,${C.blue}22,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"14px 16px"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Continue Reading</div>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,marginBottom:4}}>{activeSeries.name}</div>
-          <div style={{fontSize:12,color:C.muted}}>{activeSeries.readCount}/{activeSeries.total} read · {activeSeries.readingCount} in progress</div>
-          {activeSeries.nextBook&&<div style={{marginTop:6,fontSize:11,color:C.gold,fontStyle:"italic"}}>Next: {activeSeries.nextBook.title}</div>}
+      {/* ── Next Up suggestion ── */}
+      {suggestion&&(
+        <div style={{margin:"14px 16px 0",background:`linear-gradient(135deg,${C.gold}12,${C.card})`,border:`1px solid ${C.gold}44`,borderRadius:12,overflow:"hidden"}}>
+          <div style={{padding:"10px 14px 0",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.gold,letterSpacing:3,textTransform:"uppercase"}}>⚔ Next Up</span>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:1}}>· {suggestion.reason}</span>
+            {suggestion.seriesProgress&&<span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,marginLeft:"auto"}}>{suggestion.seriesProgress}</span>}
+          </div>
+          <div style={{padding:"10px 14px 14px",display:"flex",gap:14,alignItems:"center"}}>
+            <CoverImage book={suggestion.book} width={64} height={96} radius={4} style={{boxShadow:"0 4px 12px rgba(0,0,0,0.5)",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{suggestion.book.series}{suggestion.book.num>0?` #${suggestion.book.num}`:""}</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:15,color:C.text,lineHeight:1.3,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{suggestion.book.title}</div>
+              <div style={{fontSize:12,color:C.muted,fontStyle:"italic",marginBottom:10}}>{suggestion.book.author}</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>handleReadNext(suggestion.book)} disabled={opening}
+                  style={{flex:1,padding:"9px 10px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:2,cursor:"pointer",fontWeight:700}}>
+                  {opening?"Opening…":"📖 Read Next"}
+                </button>
+                <button onClick={()=>setSection?.('library')}
+                  style={{padding:"9px 12px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:1,cursor:"pointer"}}>
+                  Details
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2045,11 +2123,13 @@ function ReadingSection({user, statuses={}}){
                   {serie.books.map(b=>{
                     const bs=statuses[b.id]?.status||'none';
                     const cfg=STATUS_CFG[bs];
+                    const isNext=serie.nextBook?.id===b.id;
                     return(
-                      <div key={b.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+                      <div key={b.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",background:isNext?`${C.gold}0a`:"transparent",borderRadius:6,paddingLeft:isNext?6:0}}>
                         <span style={{fontSize:13,flexShrink:0}}>{cfg.icon}</span>
                         <span style={{fontSize:12,color:bs==='none'?C.muted:C.text,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.title}</span>
-                        <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:cfg.color,letterSpacing:1}}>{b.num}</span>
+                        {isNext&&<span style={{fontFamily:"'Cinzel',serif",fontSize:7,color:C.gold,background:`${C.gold}22`,border:`1px solid ${C.gold}44`,borderRadius:4,padding:"1px 5px",letterSpacing:1,flexShrink:0}}>NEXT</span>}
+                        <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:cfg.color,letterSpacing:1,flexShrink:0}}>{b.num>0?`#${b.num}`:""}</span>
                       </div>
                     );
                   })}
@@ -2312,6 +2392,37 @@ function LoreSection(){
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
 // ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
+function NextUpCard({statuses,activeBooks,onOpenBook,setSection}){
+  const suggestion=useMemo(()=>getNextSuggestion(statuses),[statuses]);
+  const [opening,setOpening]=useState(false);
+  if(!suggestion) return null;
+  if(activeBooks.some(b=>b.id===suggestion.book.id)) return null;
+  const handle=async()=>{
+    if(!onOpenBook) return setSection('library');
+    setOpening(true);
+    const ok=await onOpenBook(suggestion.book);
+    setOpening(false);
+    if(!ok) setSection('library');
+  };
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.gold,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>⚔ Next Up</div>
+      <div style={{background:`linear-gradient(135deg,${C.gold}12,${C.card})`,border:`1px solid ${C.gold}44`,borderLeft:`3px solid ${C.gold}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:12,alignItems:"center"}}>
+        <CoverImage book={suggestion.book} width={44} height={64} radius={3} style={{boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}/>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:1,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{suggestion.reason.toUpperCase()}{suggestion.seriesProgress?` · ${suggestion.seriesProgress}`:""}</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{suggestion.book.title}</div>
+          <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>{suggestion.book.author}</div>
+        </div>
+        <button onClick={handle} disabled={opening}
+          style={{flexShrink:0,padding:"8px 12px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer",fontWeight:700}}>
+          {opening?"…":"READ ›"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function HomePage({user,setSection,statuses={},onOpenBook}){
   const uid=user?.id||'anon';
 
@@ -2474,6 +2585,9 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
         </div>
       )}
 
+      {/* ── Next Up suggestion ── */}
+      <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection}/>
+
       {/* bookshelf */}
       <div style={{padding:"16px 0 0"}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:10}}>Your Shelf</div>
@@ -2604,6 +2718,7 @@ export default function App(){
       if(p){ progress=p.progress_pct||0; chapterIndex=p.chapter_index||0; pageIndex=p.page_index||0; }
     }catch{}
     setAppReader({book,url,fileType:meta.file_type||'epub',progress,chapterIndex,pageIndex});
+    return true;
   },[user?.id]);
   return(
     <>
@@ -2654,7 +2769,7 @@ export default function App(){
               {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
               {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
               {section==="lore"    &&<LoreSection/>}
-              {section==="reading" &&<ReadingSection user={user} statuses={statuses}/>}
+              {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
             </>
           )}
