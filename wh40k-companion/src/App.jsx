@@ -2291,7 +2291,8 @@ function HHGuideSection({statuses}){
           </>
         )}
         <div style={{marginTop:8,padding:"10px 12px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,fontSize:10,color:C.muted,lineHeight:1.6,textAlign:"center"}}>
-          Guide by <span style={{color:C.gold}}>u/cd8d</span> · Full article on <span style={{color:C.blue}}>Polygon (Feb 2025)</span>
+          Guide by <span style={{color:C.gold}}>u/cd8d</span> · Full article on{' '}
+          <a href="https://www.polygon.com/warhammer-40k/522708/warhammer-40k-horus-heresy-reading-guide-cd8d-redditor/" target="_blank" rel="noopener noreferrer" style={{color:C.blue,textDecoration:"underline",textDecorationColor:`${C.blue}66`}}>Polygon (Feb 2025)</a>
         </div>
       </div>
     </div>
