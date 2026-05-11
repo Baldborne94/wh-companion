@@ -1563,7 +1563,10 @@ function LibrarySection({ user }) {
 
       {tab==="shelf"&&(
         <>
-          {shelfDebug&&<div style={{margin:"8px 16px",padding:"8px 12px",background:"#1a1200",border:"1px solid #c9a84c55",borderRadius:8,fontSize:10,color:"#c9a84c",fontFamily:"monospace",wordBreak:"break-all"}}>{shelfDebug}</div>}
+          <div style={{margin:"8px 16px",padding:"8px 12px",background:"#1a1200",border:"1px solid #c9a84c55",borderRadius:8,fontSize:10,color:"#c9a84c",fontFamily:"monospace",wordBreak:"break-all"}}>
+            user: {user?.id ? user.id.slice(0,12)+"…" : "NULL ⚠️"}<br/>
+            {shelfDebug||"(loading…)"}
+          </div>
           {shelfLoading?(
             <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Loading…</div>
           ):shelfBooks.length===0?(
