@@ -1523,17 +1523,18 @@ const COVER_CACHE_PREFIX = "wh40k_cover_";
 async function fetchBookCover(book) {
   const key = COVER_CACHE_PREFIX + book.id;
   const cached = localStorage.getItem(key);
-  if(cached !== null) return cached; // "" = not found (cached), or url
+  if(cached !== null) return cached; // "" = confirmed not found; url = cover
   try{
     const q = encodeURIComponent(`"${book.title}" ${book.author}`);
     const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
-    if(!r.ok){ localStorage.setItem(key,""); return ""; }
+    // Don't cache transient server errors (5xx) — let it retry next time
+    if(!r.ok){ return r.status>=500 ? null : (localStorage.setItem(key,""), ""); }
     const d = await r.json();
     const thumb = d.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || "";
     const url = thumb.replace("http://","https://").replace("&edge=curl","").replace("zoom=1","zoom=2");
-    localStorage.setItem(key, url);
+    localStorage.setItem(key, url); // cache "" if genuinely no cover, or the url
     return url;
-  }catch{ localStorage.setItem(key,""); return ""; }
+  }catch{ return null; } // network error — don't cache, will retry on next render
 }
 
 function CoverImage({ book, width=60, height=90, radius=4, style={} }){
@@ -1543,7 +1544,7 @@ function CoverImage({ book, width=60, height=90, radius=4, style={} }){
   useEffect(()=>{
     if(url !== null) return;
     const obs = new IntersectionObserver(([e])=>{
-      if(e.isIntersecting){ obs.disconnect(); fetchBookCover(book).then(setUrl); }
+      if(e.isIntersecting){ obs.disconnect(); fetchBookCover(book).then(v=>{ if(v!==null) setUrl(v); }); }
     },{rootMargin:"300px"});
     if(ref.current) obs.observe(ref.current);
     return ()=>obs.disconnect();
