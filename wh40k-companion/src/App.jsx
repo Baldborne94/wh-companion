@@ -609,10 +609,18 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[settings.paginate,chapters.length]); // only re-run when chapters load or mode changes
 
-  // ── Fullscreen ─────────────────────────────────────────────────────────────
+  // ── Fullscreen / Cinema mode ───────────────────────────────────────────────
+  // Native fullscreen works on desktop + Android Chrome.
+  // iOS Safari doesn't support the API → fall back to cinema mode
+  // (hide the reader's own top/bottom bars for maximum reading area).
   const toggleFullscreen = useCallback(()=>{
-    if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.(); }
-    else { document.exitFullscreen?.(); }
+    if(document.fullscreenEnabled){
+      if(!document.fullscreenElement){ document.documentElement.requestFullscreen().catch(()=>setIsFullscreen(f=>!f)); }
+      else { document.exitFullscreen(); }
+    } else {
+      // Fallback: cinema mode — toggle our own bars
+      setIsFullscreen(f=>!f);
+    }
   },[]);
   useEffect(()=>{
     const h=()=>setIsFullscreen(!!document.fullscreenElement);
@@ -796,8 +804,8 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:T.bg,display:"flex",flexDirection:"column",transition:"background 0.3s"}}>
 
-      {/* ── TOP BAR — always visible ── */}
-      <div style={{flexShrink:0,height:52,background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:"0 10px",gap:6,zIndex:2}}>
+      {/* ── TOP BAR — hidden in cinema/fullscreen mode ── */}
+      <div style={{flexShrink:0,height:isFullscreen?0:52,overflow:"hidden",background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:isFullscreen?"0":"0 10px",gap:6,zIndex:2,transition:"height 0.2s"}}>
         <button onClick={onClose} title="Back (Esc)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"7px 12px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,flexShrink:0}}>← Back</button>
         <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}}>{title}</div>
         {readingMinutes&&<div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>}
@@ -825,6 +833,12 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
       </div>
 
       {/* ── READING AREA ── */}
+      {/* In cinema mode, tap the top strip to restore bars */}
+      {isFullscreen&&!document.fullscreenElement&&(
+        <div onClick={toggleFullscreen} style={{position:"absolute",top:0,left:0,right:0,height:36,zIndex:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:`${T.ui}dd`,border:`1px solid ${T.border}`,borderRadius:12,padding:"4px 14px",fontFamily:"'Cinzel',serif",fontSize:9,color:T.muted,letterSpacing:2,pointerEvents:"none"}}>TAP TO RESTORE</div>
+        </div>
+      )}
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}
         onClick={handleContentClick} onMouseUp={handleMouseUp}>
 
@@ -944,15 +958,22 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         )}
       </div>
 
-      {/* ── BOTTOM BAR — paginated mode only ── */}
-      {settings.paginate&&(
+      {/* ── BOTTOM BAR — paginated mode only, hidden in fullscreen ── */}
+      {settings.paginate&&!isFullscreen&&(
         <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:48,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:2}}>
-          <button onClick={prevPage} disabled={atStart} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atStart?T.border:T.text,padding:"6px 14px",cursor:atStart?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>← Prev</button>
+          {/* Prev/Next only in two-page mode — single-page uses side arrows */}
+          {settings.twoPage
+            ? <button onClick={prevPage} disabled={atStart} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atStart?T.border:T.text,padding:"6px 14px",cursor:atStart?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>← Prev</button>
+            : <div style={{minWidth:66}}/>
+          }
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>ch. {chIdx+1}/{chapters.length} · {globalPct}%</div>
             {settings.twoPage&&<div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>spread {pageIndex+1}/{totalPages}</div>}
           </div>
-          <button onClick={nextPage} disabled={atEnd} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atEnd?T.border:T.text,padding:"6px 14px",cursor:atEnd?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>Next →</button>
+          {settings.twoPage
+            ? <button onClick={nextPage} disabled={atEnd} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:atEnd?T.border:T.text,padding:"6px 14px",cursor:atEnd?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:66}}>Next →</button>
+            : <div style={{minWidth:66}}/>
+          }
         </div>
       )}
 
