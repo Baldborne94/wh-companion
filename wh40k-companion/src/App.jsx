@@ -2167,14 +2167,11 @@ const HH_MIN=[
 ];
 
 function findHHBook(entry){
-  if(entry.n!=null){
-    const hh=BOOKS.find(b=>(b.series==='Horus Heresy'||b.series==='Siege of Terra')&&b.num===entry.n);
-    if(hh) return hh;
-  }
+  // Always match by title — guide article numbers don't always match our BOOKS num field
   const tl=entry.t.toLowerCase();
   return BOOKS.find(b=>b.title.toLowerCase()===tl)||
          BOOKS.find(b=>b.title.toLowerCase().includes(tl))||
-         BOOKS.find(b=>tl.includes(b.title.toLowerCase()));
+         BOOKS.find(b=>tl.includes(b.title.toLowerCase()))||null;
 }
 
 function HHBookRow({entry,statuses,isLast}){
