@@ -493,7 +493,9 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   const [dictWord,      setDictWord]      = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
   const [showHint,      setShowHint]      = useState(()=>!localStorage.getItem("wh40k_lore_hint"));
-  const measureTimerRef = useRef(null);
+  const measureTimerRef  = useRef(null);
+  const scrollSaveTimer  = useRef(null);
+  const [scrollPct, setScrollPct] = useState(Math.round((initProgress||0)*100));
 
   // ── Bookmarks array (separate from auto-save progress) ────────────────────
   const [bookmarks, setBookmarks] = useState(()=>{
@@ -560,16 +562,35 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     const ro=new ResizeObserver(measurePages); ro.observe(outerRef.current); return()=>ro.disconnect();
   },[measurePages]);
 
-  // ── Save progress (chapter + page) ────────────────────────────────────────
+  // ── Save progress — paginated mode only (scroll mode saves in handleScroll) ─
   useEffect(()=>{
-    if(!chapters.length||!userId) return;
+    if(!chapters.length||!userId||!settings.paginate) return;
     const pct=(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length;
     onProgress(pct);
     sb.upsert("reading_progress",{user_id:userId,book_id:bookId,chapter_index:chIdx,page_index:pageIndex,progress_pct:pct,last_read:new Date().toISOString()},"user_id,book_id");
-    if(userId) localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({progress_pct:pct,chapter_index:chIdx,page_index:pageIndex}));
-  },[chIdx,pageIndex,chapters.length,totalPages]);
+    localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({progress_pct:pct,chapter_index:chIdx,page_index:pageIndex}));
+  },[chIdx,pageIndex,chapters.length,totalPages,settings.paginate]);
 
   useEffect(()=>{ setPageIndex(0); },[chIdx]);
+
+  // ── Scroll mode: restore saved scroll position after chapters render ───────
+  useEffect(()=>{
+    if(settings.paginate||!chapters.length||!outerRef.current) return;
+    // Try to restore exact scroll_top saved from last session
+    try{
+      const saved=JSON.parse(localStorage.getItem(`wh40k_prog_${userId}_${bookId}`)||'{}');
+      if(saved.scroll_top>0){
+        requestAnimationFrame(()=>{ if(outerRef.current) outerRef.current.scrollTop=saved.scroll_top; });
+      } else if(initChapterIndex>0){
+        // Fallback: scroll to the chapter heading element
+        requestAnimationFrame(()=>{
+          const el=document.getElementById(`epub-ch-${bookId}-${initChapterIndex}`);
+          if(el&&outerRef.current) outerRef.current.scrollTop=el.offsetTop-48;
+        });
+      }
+    }catch{}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[settings.paginate,chapters.length]); // only re-run when chapters load or mode changes
 
   // ── Fullscreen ─────────────────────────────────────────────────────────────
   const toggleFullscreen = useCallback(()=>{
@@ -620,15 +641,24 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     return()=>document.removeEventListener("keydown",handler);
   },[showSettings,showToc,showBookmarks,loreKey,dictWord,nextPage,prevPage,onClose,toggleFullscreen]);
 
-  // ── Scroll-mode progress tracking ────────────────────────────────────────
+  // ── Scroll-mode: track progress + debounce-save position ─────────────────
   const handleScroll=useCallback(()=>{
     if(!outerRef.current||settings.paginate||!chapters.length) return;
     const {scrollTop,scrollHeight,clientHeight}=outerRef.current;
     if(scrollHeight<=clientHeight) return;
-    const scrollPct=scrollTop/(scrollHeight-clientHeight);
-    const pct=(chIdx+scrollPct)/chapters.length;
+    const pct=scrollTop/(scrollHeight-clientHeight);
     onProgress(pct);
-  },[chIdx,chapters.length,settings.paginate,onProgress]);
+    setScrollPct(Math.round(pct*100));
+    // Debounced save to localStorage (includes scroll_top for exact restore)
+    if(scrollSaveTimer.current) clearTimeout(scrollSaveTimer.current);
+    scrollSaveTimer.current=setTimeout(()=>{
+      if(userId&&bookId){
+        localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify({
+          progress_pct:pct,chapter_index:0,page_index:0,scroll_top:scrollTop,
+        }));
+      }
+    },800);
+  },[chapters.length,settings.paginate,onProgress,userId,bookId]);
 
   // ── Save bookmark (manual) ────────────────────────────────────────────────
   const saveBookmark=useCallback(()=>{
@@ -755,7 +785,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
       {/* ── PROGRESS BAR ── */}
       <div style={{height:2,background:T.border,flexShrink:0,zIndex:2}}>
-        <div style={{height:"100%",width:`${globalPct}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,transition:"width 0.5s"}}/>
+        <div style={{height:"100%",width:`${settings.paginate?globalPct:scrollPct}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,transition:"width 0.5s"}}/>
       </div>
 
       {/* ── READING AREA ── */}
@@ -831,9 +861,27 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
             }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
           </div>
         ) : (
-          /* Scroll mode: full height, no arrows, free scrolling */
+          /* Scroll mode: all chapters rendered as one continuous document */
           <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
-            <div ref={innerRef} style={readerStyle} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
+            <div ref={innerRef}>
+              {chapters.map((ch,i)=>(
+                <div key={i} id={`epub-ch-${bookId}-${i}`}>
+                  {/* Chapter divider (shown between chapters, not before first) */}
+                  {i>0&&(
+                    <div style={{margin:"40px 0 0",padding:`16px ${settings.margin}px 12px`,borderTop:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",flexShrink:0}}>Chapter {i+1}</span>
+                      <span style={{flex:1,height:1,background:T.border}}/>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"60%"}}>{ch.label}</span>
+                    </div>
+                  )}
+                  <div style={readerStyle} dangerouslySetInnerHTML={{__html:ch.html}}/>
+                </div>
+              ))}
+              {/* End of book marker */}
+              <div style={{padding:`32px ${settings.margin}px 60px`,textAlign:"center"}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:4,textTransform:"uppercase"}}>— End of Book —</div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -853,7 +901,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
       {/* ── SCROLL MODE — floating mini progress indicator ── */}
       {!settings.paginate&&(
         <div style={{position:"absolute",bottom:8,right:10,background:`${T.ui}cc`,border:`1px solid ${T.border}`,borderRadius:12,padding:"3px 10px",fontFamily:"'Cinzel',serif",fontSize:9,color:T.muted,pointerEvents:"none",zIndex:3}}>
-          ch. {chIdx+1}/{chapters.length} · {globalPct}%
+          {scrollPct}% complete
         </div>
       )}
 
