@@ -677,6 +677,24 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     else if(chIdx<chapters.length-1){ pendingPageRef.current=0; setChIdx(c=>c+1); }
   },[pageIndex,totalPages,chIdx,chapters.length]);
 
+  // ── Kindle-style tap zones (paginated mode) ───────────────────────────────
+  const [tapFlash, setTapFlash] = useState(null); // 'left'|'right'|null
+  const handlePageTap = useCallback((e)=>{
+    if(!settings.paginate) return;
+    // Ignore taps on interactive elements
+    if(e.target.closest('button,a,input,select,[role=button]')) return;
+    const rect=e.currentTarget.getBoundingClientRect();
+    const relX=e.clientX-rect.left;
+    const w=rect.width;
+    if(relX < w*0.35){
+      setTapFlash('left'); setTimeout(()=>setTapFlash(null),200);
+      if(!atStart) prevPage();
+    } else if(relX > w*0.65){
+      setTapFlash('right'); setTimeout(()=>setTapFlash(null),200);
+      if(!atEnd) nextPage();
+    }
+  },[settings.paginate,prevPage,nextPage,atStart,atEnd]);
+
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(()=>{
     const handler=(e)=>{
@@ -821,9 +839,8 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     zIndex:2,transition:"opacity 0.2s",opacity:disabled?0.2:(isFullscreen?0.9:0.75),
     flexShrink:0,userSelect:"none",
   });
-  // In two-page mode arrows are hidden normally (bottom bar handles it),
-  // but in fullscreen the bottom bar is gone so always show side arrows.
-  const sideArrows = settings.paginate && (!settings.twoPage || isFullscreen);
+  // Arrows only in non-fullscreen. In fullscreen → tap zones handle navigation.
+  const sideArrows = settings.paginate && !settings.twoPage && !isFullscreen;
   // Horizontal indent: leave room for side arrows when shown
   const hPad = settings.twoPage ? settings.margin : settings.margin + 44;
   // Column width for paginated layout
@@ -967,10 +984,12 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         `}</style>
 
         {settings.paginate ? (
-          <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box"}}>
-            {/* Side arrows — only in single-page mode */}
-            {sideArrows&&<button onClick={prevPage} disabled={atStart} style={{...arrowBtn(atStart),left:4}}>‹</button>}
-            {sideArrows&&<button onClick={nextPage} disabled={atEnd}   style={{...arrowBtn(atEnd),right:4}}>›</button>}
+          <div ref={outerRef} onClick={handlePageTap} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box",cursor:"default",userSelect:"none"}}>
+            {/* Tap-zone flash feedback */}
+            {tapFlash&&<div style={{position:"absolute",top:0,bottom:0,left:tapFlash==="left"?0:"50%",right:tapFlash==="right"?0:"50%",background:`${C.gold}14`,pointerEvents:"none",zIndex:1,borderRadius:tapFlash==="left"?"0 8px 8px 0":"8px 0 0 8px"}}/>}
+            {/* Side arrows — non-fullscreen only (fullscreen uses tap zones) */}
+            {sideArrows&&<button onClick={e=>{e.stopPropagation();prevPage();}} disabled={atStart} style={{...arrowBtn(atStart),left:4}}>‹</button>}
+            {sideArrows&&<button onClick={e=>{e.stopPropagation();nextPage();}} disabled={atEnd}   style={{...arrowBtn(atEnd),right:4}}>›</button>}
 
             <div ref={innerRef} className="epub-col" style={{
               fontFamily:fnt.value,fontSize:settings.fontSize,lineHeight:settings.lineHeight,
