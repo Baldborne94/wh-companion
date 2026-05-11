@@ -102,32 +102,80 @@ function loadAllStatuses(uid){
   return out;
 }
 
-// ─── LORE DATABASE ────────────────────────────────────────────────────────────
+// ─── LORE KEYWORDS → FANDOM WIKI ─────────────────────────────────────────────
+// Each entry: keyword (lowercase) → { name, wiki: fandom page slug }
 const LORE_DB = {
-  "horus":{ name:"Horus Lupercal",type:"character",subtitle:"Warmaster • Primarch of the Luna Wolves",icon:"👑",safe:"The favoured son of the Emperor and supreme Warmaster of the Imperium. Horus led the Great Crusade and was revered above all other Primarchs — a warrior of unmatched skill, charisma and tactical genius.",spoiler:"Mortally wounded at the Serpent Lodge on Davin, Horus was healed through Chaos corruption. He turned against the Emperor and ignited the Horus Heresy. He died during the Siege of Terra, slain by the Emperor himself.",spoilerFrom:"False Gods (Horus Heresy #2)" },
-  "luna wolves":{ name:"Luna Wolves / Sons of Horus",type:"faction",subtitle:"XVI Legion",icon:"🐺",safe:"The XVI Space Marine Legion, personally commanded by Primarch Horus. Renowned throughout the Great Crusade as unstoppable shock troops.",spoiler:"After Horus's corruption the Legion was renamed the Sons of Horus, becoming vanguard of the traitor forces.",spoilerFrom:"False Gods (HH #2)" },
-  "emperor":{ name:"The Emperor of Mankind",type:"character",subtitle:"The Master of Mankind",icon:"⚜",safe:"The immortal ruler of humanity, founder of the Imperium and creator of the Primarchs. The most powerful psyker in human history.",spoiler:"Mortally wounded by Horus at the Siege of Terra, the Emperor was interred within the Golden Throne — existing in a state of living death.",spoilerFrom:"The End and the Death (Siege of Terra)" },
-  "primarch":{ name:"Primarchs",type:"concept",subtitle:"The Emperor's Demigod Sons",icon:"🧬",safe:"Twenty demigod warriors created by the Emperor from his own genetic material. Each was superhuman in power, intellect and force of personality — gene-fathers of the Space Marine Legions.",spoiler:"Nine sided with Horus (Traitor Legions), nine remained loyal. The conflict shattered the original Legion structure forever.",spoilerFrom:"Various (Horus Heresy series)" },
-  "space marines":{ name:"Space Marines",type:"faction",subtitle:"Adeptus Astartes",icon:"⬡",safe:"Genetically enhanced superhuman warriors created from the Emperor's genetic blueprint. Each receives 19 gene-seed implants that transform them into towering warriors of superhuman ability.",spoiler:null,spoilerFrom:null },
-  "chaos":{ name:"Chaos",type:"concept",subtitle:"The Ruinous Powers",icon:"⛧",safe:"The collective name for the malevolent energies of the Warp. Four major gods: Khorne (war), Tzeentch (change), Nurgle (decay), Slaanesh (excess). Chaos tempts, corrupts and destroys.",spoiler:null,spoilerFrom:null },
-  "warp":{ name:"The Warp",type:"concept",subtitle:"The Immaterium",icon:"🌀",safe:"A parallel dimension of pure psychic energy. Source of all psychic power and medium for faster-than-light travel. Also home to daemons, Chaos Gods and malevolent entities that prey on mortal souls.",spoiler:null,spoilerFrom:null },
-  "isstvan iii":{ name:"Isstvan III",type:"battle",subtitle:"The First Betrayal",icon:"☠",safe:"A planetary bombardment ordered by Horus. Loyalist Space Marines from the traitor legions were deployed to the surface, then bombarded with lethal virus bombs — killed by their own commanders.",spoiler:"Survivors led by Captain Garro fought back against the traitors. This event marked the first open act of the Heresy.",spoilerFrom:"Galaxy in Flames (HH #3)" },
-  "isstvan v":{ name:"Isstvan V",type:"battle",subtitle:"The Drop Site Massacre",icon:"💀",safe:"A world in the Isstvan system where Horus's rebellion first became open war.",spoiler:"Three loyalist Legions were deployed to crush the traitors, only to be betrayed when four more supposedly loyal Legions turned their guns on them. Tens of thousands of Space Marines were killed.",spoilerFrom:"Fulgrim (HH #5)" },
-  "great crusade":{ name:"The Great Crusade",type:"event",subtitle:"~800-005.M31",icon:"⚔️",safe:"The Emperor's grand campaign to reunite all of humanity under a single Imperium, conducted over two centuries. Led by the Primarchs and their Legions.",spoiler:null,spoilerFrom:null },
-  "death guard":{ name:"Death Guard",type:"faction",subtitle:"XIV Legion",icon:"☣",safe:"The XIV Space Marine Legion, led by Primarch Mortarion. Known for their legendary endurance. Specialists in grinding, implacable warfare and siege combat.",spoiler:"During the Heresy the fleet became becalmed in the Warp. Nurgle offered salvation from a plague killing the entire fleet. Mortarion accepted — transforming the Legion into Plague Marines.",spoilerFrom:"The Buried Dagger (HH #54)" },
-  "thousand sons":{ name:"Thousand Sons",type:"faction",subtitle:"XV Legion",icon:"🔮",safe:"The XV Space Marine Legion led by Magnus the Red. A Legion of prodigious psychic talent — virtually every warrior was a psyker. They pursued knowledge and sorcery with obsessive dedication.",spoiler:"Magnus made a catastrophic mistake using forbidden sorcery. As punishment the Space Wolves were sent to destroy Prospero. The Thousand Sons eventually fell to Tzeentch.",spoilerFrom:"A Thousand Sons (HH #12)" },
-  "word bearers":{ name:"Word Bearers",type:"faction",subtitle:"XVII Legion",icon:"📖",safe:"The XVII Legion led by Lorgar Aurelian. The most devout of all the Legions — fervent missionaries who spread the Emperor's creed. They constructed vast temples demanding worship.",spoiler:"The Emperor publicly humiliated Lorgar for his religious devotion. This broke Lorgar, who found true gods in Chaos. The Word Bearers became the first Legion to turn traitor.",spoilerFrom:"The First Heretic (HH #14)" },
-  "night lords":{ name:"Night Lords",type:"faction",subtitle:"VIII Legion",icon:"🦇",safe:"The VIII Legion led by Konrad Curze. Masters of terror and psychological warfare. They operated in darkness, spreading fear through brutal theatrical violence.",spoiler:null,spoilerFrom:null },
-  "alpha legion":{ name:"Alpha Legion",type:"faction",subtitle:"XX Legion",icon:"🐍",safe:"The XX Legion — most secretive of all, masters of infiltration and subversion. Led by twin Primarchs Alpharius and Omegon. Their motto: 'I am Alpharius.'",spoiler:null,spoilerFrom:null },
-  "inquisition":{ name:"The Inquisition",type:"faction",subtitle:"Ordo Malleus • Ordo Xenos • Ordo Hereticus",icon:"🔍",safe:"The secret organisation protecting the Imperium from threats within and without. Inquisitors wield near-unlimited authority, investigating heresy, daemon incursion and alien infiltration.",spoiler:null,spoilerFrom:null },
-  "sanguinius":{ name:"Sanguinius",type:"character",subtitle:"Primarch of the Blood Angels",icon:"🩸",safe:"Primarch of the Blood Angels. Possessed of angelic wings and impossible beauty, considered by many to be the greatest of all the Primarchs. A warrior-poet of extraordinary compassion.",spoiler:"Sanguinius was slain by Horus at the Siege of Terra. His death created the Sanguinary curse — the Black Rage — that afflicts Blood Angels to this day.",spoilerFrom:"Fear to Tread (HH #21)" },
-  "prospero":{ name:"Prospero",type:"battle",subtitle:"The Burning of Prospero",icon:"🔥",safe:"Homeworld of the Thousand Sons. A world of crystal cities and vast libraries of forbidden lore.",spoiler:"The Emperor dispatched the Space Wolves to destroy Prospero as punishment for Magnus's forbidden sorcery. Prospero burned, and Magnus made a pact with Tzeentch.",spoilerFrom:"A Thousand Sons (#12) / Prospero Burns (#15)" },
-  "aeldari":{ name:"Aeldari (Eldar)",type:"faction",subtitle:"The Elder Race",icon:"◇",safe:"An ancient race whose Fall shattered their empire and birthed the Chaos God Slaanesh. Now a dying race, surviving Aeldari live aboard vast Craftworld ships.",spoiler:null,spoilerFrom:null },
-  "necrons":{ name:"Necrons",type:"faction",subtitle:"The Undying Legions",icon:"☽",safe:"An ancient race of living metal warriors who slumbered for sixty million years. Once flesh-and-blood, the Necrontyr transferred their consciousnesses into indestructible metal bodies.",spoiler:null,spoilerFrom:null },
-  "eisenhorn":{ name:"Gregor Eisenhorn",type:"character",subtitle:"Inquisitor • Ordo Xenos",icon:"🔍",safe:"One of the most renowned Inquisitors of his age. A skilled investigator, powerful psyker and relentless hunter of heresy and alien conspiracy.",spoiler:"Over decades Eisenhorn increasingly uses radical methods including daemonhosts. His colleagues brand him a radical and eventually a heretic.",spoilerFrom:"Malleus (Eisenhorn #2)" },
-  "gaunt":{ name:"Ibram Gaunt",type:"character",subtitle:"Colonel-Commissar • Tanith First",icon:"🎖",safe:"Colonel-Commissar of the Tanith First-and-Only. A rare combination of field commander and political officer who earned fierce loyalty through competence and genuine care.",spoiler:null,spoilerFrom:null },
-  "tanith":{ name:"Tanith First-and-Only",type:"faction",subtitle:"Gaunt's Ghosts",icon:"🎖",safe:"An Imperial Guard regiment from the destroyed world of Tanith. Unparalleled scouts and light infantry using stealth skills and camo-cloaks. They serve in the brutal Sabbat Worlds Crusade.",spoiler:null,spoilerFrom:null },
+  "horus":            { name:"Horus Lupercal",              wiki:"Horus_Lupercal" },
+  "luna wolves":      { name:"Luna Wolves",                 wiki:"Luna_Wolves" },
+  "sons of horus":    { name:"Sons of Horus",               wiki:"Sons_of_Horus" },
+  "emperor":          { name:"Emperor of Mankind",          wiki:"Emperor_of_Mankind" },
+  "primarch":         { name:"Primarchs",                   wiki:"Primarch" },
+  "primarchs":        { name:"Primarchs",                   wiki:"Primarch" },
+  "space marines":    { name:"Space Marines",               wiki:"Space_Marines" },
+  "chaos":            { name:"Chaos",                       wiki:"Chaos_(Warhammer)" },
+  "warp":             { name:"The Warp",                    wiki:"Warp" },
+  "isstvan iii":      { name:"Isstvan III",                 wiki:"Isstvan_III_Atrocity" },
+  "isstvan v":        { name:"Isstvan V",                   wiki:"Drop_Site_Massacre" },
+  "great crusade":    { name:"Great Crusade",               wiki:"Great_Crusade" },
+  "horus heresy":     { name:"Horus Heresy",                wiki:"Horus_Heresy" },
+  "death guard":      { name:"Death Guard",                 wiki:"Death_Guard" },
+  "thousand sons":    { name:"Thousand Sons",               wiki:"Thousand_Sons" },
+  "word bearers":     { name:"Word Bearers",                wiki:"Word_Bearers" },
+  "night lords":      { name:"Night Lords",                 wiki:"Night_Lords" },
+  "alpha legion":     { name:"Alpha Legion",                wiki:"Alpha_Legion" },
+  "iron warriors":    { name:"Iron Warriors",               wiki:"Iron_Warriors" },
+  "world eaters":     { name:"World Eaters",                wiki:"World_Eaters" },
+  "inquisition":      { name:"The Inquisition",             wiki:"Inquisition" },
+  "sanguinius":       { name:"Sanguinius",                  wiki:"Sanguinius" },
+  "prospero":         { name:"Prospero",                    wiki:"Prospero_(World)" },
+  "aeldari":          { name:"Aeldari",                     wiki:"Aeldari" },
+  "eldar":            { name:"Aeldari (Eldar)",             wiki:"Aeldari" },
+  "necrons":          { name:"Necrons",                     wiki:"Necrons" },
+  "tyranids":         { name:"Tyranids",                    wiki:"Tyranids" },
+  "orks":             { name:"Orks",                        wiki:"Orks" },
+  "tau":              { name:"T'au Empire",                 wiki:"T%27au_Empire" },
+  "eisenhorn":        { name:"Gregor Eisenhorn",            wiki:"Gregor_Eisenhorn" },
+  "gaunt":            { name:"Ibram Gaunt",                 wiki:"Ibram_Gaunt" },
+  "tanith":           { name:"Tanith First-and-Only",       wiki:"Tanith_First-and-Only" },
+  "adeptus mechanicus":{ name:"Adeptus Mechanicus",         wiki:"Adeptus_Mechanicus" },
+  "astra militarum":  { name:"Astra Militarum",             wiki:"Astra_Militarum" },
+  "space wolves":     { name:"Space Wolves",                wiki:"Space_Wolves" },
+  "dark angels":      { name:"Dark Angels",                 wiki:"Dark_Angels" },
+  "blood angels":     { name:"Blood Angels",                wiki:"Blood_Angels" },
+  "ultramarines":     { name:"Ultramarines",                wiki:"Ultramarines" },
+  "imperial fists":   { name:"Imperial Fists",              wiki:"Imperial_Fists" },
+  "salamanders":      { name:"Salamanders",                 wiki:"Salamanders_(Chapter)" },
+  "raven guard":      { name:"Raven Guard",                 wiki:"Raven_Guard" },
+  "white scars":      { name:"White Scars",                 wiki:"White_Scars" },
+  "golden throne":    { name:"Golden Throne",               wiki:"Golden_Throne" },
+  "guilliman":        { name:"Roboute Guilliman",           wiki:"Roboute_Guilliman" },
+  "roboute guilliman":{ name:"Roboute Guilliman",           wiki:"Roboute_Guilliman" },
+  "angron":           { name:"Angron",                      wiki:"Angron" },
+  "magnus":           { name:"Magnus the Red",              wiki:"Magnus_the_Red" },
+  "mortarion":        { name:"Mortarion",                   wiki:"Mortarion" },
+  "fulgrim":          { name:"Fulgrim",                     wiki:"Fulgrim" },
+  "lorgar":           { name:"Lorgar",                      wiki:"Lorgar" },
+  "perturabo":        { name:"Perturabo",                   wiki:"Perturabo" },
+  "konrad curze":     { name:"Konrad Curze",                wiki:"Konrad_Curze" },
+  "lion el'jonson":   { name:"Lion El'Jonson",              wiki:"Lion_El%27Jonson" },
+  "rogal dorn":       { name:"Rogal Dorn",                  wiki:"Rogal_Dorn" },
+  "ferrus manus":     { name:"Ferrus Manus",                wiki:"Ferrus_Manus" },
+  "vulkan":           { name:"Vulkan",                      wiki:"Vulkan" },
+  "corax":            { name:"Corvus Corax",                wiki:"Corvus_Corax" },
+  "jaghatai khan":    { name:"Jaghatai Khan",               wiki:"Jaghatai_Khan" },
+  "leman russ":       { name:"Leman Russ",                  wiki:"Leman_Russ_(Primarch)" },
+  "alpharius":        { name:"Alpharius",                   wiki:"Alpharius_Omegon" },
+  "siege of terra":   { name:"Siege of Terra",              wiki:"Siege_of_Terra" },
+  "abaddon":          { name:"Abaddon the Despoiler",       wiki:"Abaddon_the_Despoiler" },
+  "eye of terror":    { name:"Eye of Terror",               wiki:"Eye_of_Terror" },
+  "webway":           { name:"Webway",                      wiki:"Webway" },
+  "codex astartes":   { name:"Codex Astartes",              wiki:"Codex_Astartes" },
+  "black library":    { name:"The Black Library",           wiki:"Black_Library_(Craftworld)" },
+  "indomitus crusade":{ name:"Indomitus Crusade",           wiki:"Indomitus_Crusade" },
+  "cicatrix maledictum":{ name:"Cicatrix Maledictum",       wiki:"Cicatrix_Maledictum" },
 };
+
+function wikiUrl(key){ return `https://warhammer40k.fandom.com/wiki/${LORE_DB[key]?.wiki||encodeURIComponent(LORE_DB[key]?.name||key)}`; }
 
 const KW_KEYS  = Object.keys(LORE_DB).sort((a,b)=>b.length-a.length);
 const KW_REGEX = new RegExp(`\\b(${KW_KEYS.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")})\\b`,"gi");
@@ -137,7 +185,7 @@ function highlightKeywords(html) {
     if(i%2===1||part.includes("lore-kw")) return part;
     return part.replace(KW_REGEX, m=>{
       const k=m.toLowerCase(); if(!LORE_DB[k]) return m;
-      return `<span class="lore-kw" data-kw="${k}" style="color:#c9a84c;cursor:pointer;border-bottom:1px dotted #c9a84c66;font-style:normal;">${m}</span>`;
+      return `<span class="lore-kw" data-kw="${k}" style="color:#4a8adc;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal;" title="Apri su Fandom Wiki ↗">${m}</span>`;
     });
   }).join("");
 }
@@ -581,7 +629,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   // ── Lore click / dictionary selection ─────────────────────────────────────
   const handleContentClick=useCallback(e=>{
     const kw=e.target.getAttribute?.("data-kw");
-    if(kw&&LORE_DB[kw]){ setLoreKey(kw); }
+    if(kw&&LORE_DB[kw]){ window.open(wikiUrl(kw),'_blank','noopener'); }
   },[]);
 
   const handleMouseUp=useCallback(()=>{
@@ -734,7 +782,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
       {/* ── LORE HINT (first open only) ── */}
       {showHint&&(
         <div style={{position:"absolute",bottom:64,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
-          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>✨ Tap gold words for lore · Select text for dictionary</span>
+          <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>🔵 Termini blu → Fandom Wiki · Seleziona testo → Dizionario</span>
         </div>
       )}
 
@@ -747,7 +795,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
       {/* ── OVERLAYS ── */}
       {showSettings&&<SettingsPanel settings={settings} onChange={updateSetting} onClose={()=>setShowSettings(false)}/>}
-      {loreKey&&<LorePanel kwKey={loreKey} onClose={()=>setLoreKey(null)} theme={settings.theme}/>}
+      {/* LorePanel removed — keywords now open Fandom Wiki directly */}
       {dictWord&&<DictionaryPanel word={dictWord} onClose={()=>setDictWord(null)} theme={settings.theme}/>}
     </div>
   );
@@ -1801,126 +1849,121 @@ const FACTION_INFOBOXES={
 };
 
 function LoreSection(){
-  const [article,setArticle]=useState(null);
-  const [search,setSearch]=useState("");
-  const [cat,setCat]=useState("all");
+  const [wikiSearch,setWikiSearch]=useState("");
+  // eslint-disable-next-line no-unused-vars
+  const _unused=null; // FACTIONS_LORE/TIMELINE_LORE/PRIMARCHS_LORE kept for future use
 
-  const ALL_ARTICLES=useMemo(()=>[
-    ...FACTIONS_LORE.map(f=>({id:f.id,type:'faction',cat:'factions',name:f.name,sub:f.sub,color:f.color,icon:f.icon,era:f.era,short:f.short,long:f.long,keyFacts:f.keyFacts,infobox:FACTION_INFOBOXES[f.id]||[]})),
-    ...TIMELINE_LORE.map(t=>({id:t.era,type:'timeline',cat:'timeline',name:t.name,sub:t.era,color:t.color,icon:t.icon,era:t.era,short:t.summary.slice(0,130)+'…',long:t.summary,keyFacts:[],infobox:[]})),
-    ...PRIMARCHS_LORE.map(p=>({id:`primarch-${p.num}`,type:'primarch',cat:'primarchs',name:p.name,sub:p.legion,color:p.color,icon:p.icon,era:'Horus Heresy',short:p.short,long:p.short+'\n\n'+p.fate,keyFacts:[],infobox:[],status:p.status,loyal:p.loyal,num:p.num,fate:p.fate})),
-  ],[]);
+  const openWikiSearch=()=>{
+    const q=wikiSearch.trim();
+    if(!q) return;
+    window.open(`https://warhammer40k.fandom.com/wiki/Special:Search?query=${encodeURIComponent(q)}`,'_blank','noopener');
+  };
 
-  const filtered=useMemo(()=>ALL_ARTICLES.filter(a=>{
-    if(cat!=='all'&&a.cat!==cat)return false;
-    if(search){const q=search.toLowerCase();return a.name.toLowerCase().includes(q)||a.sub.toLowerCase().includes(q)||a.short.toLowerCase().includes(q);}
-    return true;
-  }),[ALL_ARTICLES,cat,search]);
+  const QUICK_LINKS=[
+    {label:"Space Marines",   wiki:"Space_Marines",           icon:"⚔️"},
+    {label:"Chaos",           wiki:"Chaos_(Warhammer)",       icon:"⛧"},
+    {label:"Necrons",         wiki:"Necrons",                 icon:"💀"},
+    {label:"Tyranids",        wiki:"Tyranids",                icon:"🦑"},
+    {label:"Aeldari",         wiki:"Aeldari",                 icon:"🌙"},
+    {label:"Orks",            wiki:"Orks",                    icon:"💪"},
+    {label:"T'au",            wiki:"T%27au_Empire",           icon:"🔵"},
+    {label:"Primarchs",       wiki:"Primarch",                icon:"🧬"},
+    {label:"Horus Heresy",    wiki:"Horus_Heresy",            icon:"🔥"},
+    {label:"Astra Militarum", wiki:"Astra_Militarum",         icon:"🪖"},
+    {label:"Inquisition",     wiki:"Inquisition",             icon:"🔍"},
+    {label:"Ad. Mechanicus",  wiki:"Adeptus_Mechanicus",      icon:"⚙️"},
+  ];
 
-  if(article){
-    const a=article;
-    const paragraphs=a.long.split('\n\n').filter(Boolean);
-    const loyalColor=a.loyal===true?C.gold:a.loyal===false?C.red:C.muted;
-    return(
-      <div style={{paddingBottom:80}}>
-        <div style={{position:"sticky",top:0,zIndex:10,background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"10px 16px",display:"flex",alignItems:"center",gap:10}}>
-          <button onClick={()=>setArticle(null)} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:8,color:C.gold,padding:"7px 14px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1,flexShrink:0}}>← Enciclopedia</button>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.cat==='factions'?'Fazione':a.cat==='primarchs'?'Primarch':a.era}</div>
-        </div>
-        <div style={{background:`linear-gradient(160deg,${a.color}99,${a.color}18)`,borderBottom:`1px solid ${a.color}66`,padding:"28px 20px 24px"}}>
-          <div style={{fontSize:48,marginBottom:10}}>{a.icon}</div>
-          <h1 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:"clamp(18px,5vw,26px)",color:C.text,lineHeight:1.2,marginBottom:6}}>{a.name}</h1>
-          <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:a.loyal!==undefined?12:0}}>{a.sub}</div>
-          {a.loyal!==undefined&&(<span style={{display:"inline-block",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:2,padding:"3px 10px",borderRadius:4,border:`1px solid ${loyalColor}55`,color:loyalColor,background:`${loyalColor}18`}}>{a.loyal===true?'⚜ LEALE':a.loyal===false?'⛧ TRADITORE':'? SCONOSCIUTO'}{a.status?` · ${a.status}`:""}</span>)}
-        </div>
-        {a.infobox.length>0&&(
-          <div style={{margin:"16px 16px 0",background:C.card,border:`1px solid ${a.color}44`,borderRadius:10,overflow:"hidden"}}>
-            <div style={{background:`${a.color}22`,padding:"9px 14px",borderBottom:`1px solid ${a.color}33`}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:a.color,letterSpacing:3,textTransform:"uppercase"}}>Scheda</div>
-            </div>
-            {a.infobox.map((row,i)=>(
-              <div key={i} style={{display:"flex",borderBottom:i<a.infobox.length-1?`1px solid ${C.border}`:"none",padding:"9px 14px",alignItems:"flex-start",gap:12}}>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",minWidth:96,flexShrink:0,paddingTop:1}}>{row.label}</div>
-                <div style={{color:C.text,fontSize:12,lineHeight:1.5}}>{row.value}</div>
-              </div>
-            ))}
+  const LinkCard=({title,icon,desc,url,color,badge})=>(
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      style={{display:"block",textDecoration:"none",background:`linear-gradient(135deg,${color}22,${C.card})`,border:`1px solid ${color}55`,borderLeft:`3px solid ${color}`,borderRadius:12,padding:"18px 18px",marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+        <span style={{fontSize:32}}>{icon}</span>
+        <div style={{flex:1}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+            <span style={{fontFamily:"'Cinzel Decorative',serif",fontSize:16,color:C.text,fontWeight:700}}>{title}</span>
+            {badge&&<span style={{fontFamily:"'Cinzel',serif",fontSize:8,padding:"2px 8px",borderRadius:4,background:`${color}33`,border:`1px solid ${color}55`,color,letterSpacing:1}}>{badge}</span>}
           </div>
-        )}
-        {a.type==='primarch'&&(
-          <div style={{margin:"16px 16px 0",background:C.card,border:`1px solid ${a.color}44`,borderRadius:10,overflow:"hidden"}}>
-            <div style={{background:`${a.color}22`,padding:"9px 14px",borderBottom:`1px solid ${a.color}33`}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:a.color,letterSpacing:3,textTransform:"uppercase"}}>Scheda Primarch</div>
-            </div>
-            {[{label:"Numero",value:`Primarch ${a.num}`},{label:"Legione",value:a.sub},{label:"Alleanza",value:a.loyal===true?"Leale":(a.loyal===false?"Traditore":"Sconosciuto")},{label:"Destino",value:a.status}].map((row,i,arr)=>(
-              <div key={i} style={{display:"flex",borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none",padding:"9px 14px",alignItems:"flex-start",gap:12}}>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",minWidth:96,flexShrink:0,paddingTop:1}}>{row.label}</div>
-                <div style={{color:C.text,fontSize:12}}>{row.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div style={{padding:"20px 16px"}}>
-          <div style={{height:1,background:`linear-gradient(to right,${a.color}88,transparent)`,marginBottom:20}}/>
-          {paragraphs.map((para,i)=>(<p key={i} style={{color:C.text,fontSize:14,lineHeight:1.9,marginBottom:18}}>{para}</p>))}
-          {a.type==='primarch'&&a.fate&&(
-            <div style={{marginTop:8,background:`${a.color}11`,border:`1px solid ${a.color}44`,borderRadius:10,padding:"14px 16px"}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:a.color,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>Destino</div>
-              <p style={{color:C.muted,fontSize:13,lineHeight:1.7,fontStyle:"italic"}}>{a.fate}</p>
-            </div>
-          )}
-          {a.keyFacts.length>0&&(
-            <div style={{marginTop:16,background:`${a.color}11`,border:`1px solid ${a.color}33`,borderRadius:10,padding:"14px 16px"}}>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:a.color,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Punti Chiave</div>
-              {a.keyFacts.map((fact,i)=>(
-                <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:8}}>
-                  <span style={{color:a.color,fontSize:10,marginTop:4,flexShrink:0}}>▪</span>
-                  <span style={{color:C.muted,fontSize:13,lineHeight:1.6}}>{fact}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{fontSize:12,color:C.muted,lineHeight:1.5}}>{desc}</div>
         </div>
+        <span style={{color,fontSize:20,flexShrink:0}}>↗</span>
       </div>
-    );
-  }
+    </a>
+  );
 
   return(
     <div style={{paddingBottom:80}}>
-      <div style={{padding:"20px 16px 12px",borderBottom:`1px solid ${C.border}`}}>
+      {/* header */}
+      <div style={{padding:"22px 16px 16px",borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Warhammer 40,000</div>
-        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:12}}>Enciclopedia</h2>
-        <div style={{position:"relative",marginBottom:10}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca fazioni, Primarchs, eventi…"
-            style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"10px 36px 10px 40px",fontSize:14,outline:"none"}}/>
-          <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:15,pointerEvents:"none"}}>🔍</span>
-          {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20}}>×</button>}
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>Lore & Risorse</h2>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Accesso diretto alle migliori enciclopedie online. La lore di WH40K è vasta — lascia fare agli esperti.</p>
+      </div>
+
+      {/* search bar → apre wiki */}
+      <div style={{padding:"16px 16px 0"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>Cerca su Fandom Wiki</div>
+        <div style={{display:"flex",gap:8}}>
+          <div style={{flex:1,position:"relative"}}>
+            <input value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&openWikiSearch()}
+              placeholder="Space Marines, Horus, Aeldari…"
+              style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"11px 12px 11px 40px",fontSize:14,outline:"none"}}/>
+            <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:16,pointerEvents:"none"}}>🔍</span>
+          </div>
+          <button onClick={openWikiSearch}
+            style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:10,color:C.gold,padding:"0 18px",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",flexShrink:0}}>Cerca ↗</button>
         </div>
-        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
-          {[{id:"all",label:"Tutto"},{id:"factions",label:"Fazioni"},{id:"timeline",label:"Timeline"},{id:"primarchs",label:"Primarchs"}].map(c=>(
-            <button key={c.id} onClick={()=>setCat(c.id)} style={{flexShrink:0,padding:"5px 14px",borderRadius:20,border:`1px solid ${cat===c.id?C.gold:C.dim}`,background:cat===c.id?`${C.gold}22`:"transparent",color:cat===c.id?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:1,cursor:"pointer"}}>{c.label}</button>
+      </div>
+
+      {/* main link cards */}
+      <div style={{padding:"20px 16px 4px"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Risorse Principali</div>
+        <LinkCard
+          title="Warhammer 40k Wiki"
+          icon="📖"
+          desc="La wiki più completa: fazioni, personaggi, eventi, battaglie, pianeti. Migliaia di articoli in inglese aggiornati continuamente dalla community."
+          url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki"
+          color={C.gold}
+          badge="FANDOM"
+        />
+        <LinkCard
+          title="Lexicanum"
+          icon="📜"
+          desc="Enciclopedia enciclopedica e tecnica. Ottima per dettagli su equipaggiamento, unità, date e cronologia. Disponibile anche in italiano."
+          url="https://wh40k.lexicanum.com"
+          color={C.blue}
+          badge="LEXICANUM"
+        />
+        <LinkCard
+          title="Lexicanum Italiano"
+          icon="🇮🇹"
+          desc="Versione italiana del Lexicanum. Meno completa dell'originale ma ottima per chi preferisce leggere in italiano."
+          url="https://it.wh40k.lexicanum.com"
+          color="#4aaa6a"
+          badge="ITA"
+        />
+      </div>
+
+      {/* quick links grid */}
+      <div style={{padding:"8px 16px 16px"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Accesso Rapido</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+          {QUICK_LINKS.map(q=>(
+            <a key={q.wiki} href={`https://warhammer40k.fandom.com/wiki/${q.wiki}`} target="_blank" rel="noopener noreferrer"
+              style={{display:"flex",alignItems:"center",gap:8,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",textDecoration:"none",cursor:"pointer"}}>
+              <span style={{fontSize:18,flexShrink:0}}>{q.icon}</span>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.text,letterSpacing:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.label}</span>
+              <span style={{color:C.goldDim,fontSize:10,marginLeft:"auto",flexShrink:0}}>↗</span>
+            </a>
           ))}
         </div>
       </div>
-      <div style={{padding:"8px 16px 4px",fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2}}>{filtered.length} ARTICOLI</div>
-      <div style={{padding:"4px 16px 16px",display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map(a=>{
-          const loyalColor=a.loyal===true?C.gold:a.loyal===false?C.red:C.muted;
-          return(
-            <div key={a.id} onClick={()=>setArticle(a)} style={{background:`linear-gradient(135deg,${a.color}22,${C.card})`,border:`1px solid ${a.color}44`,borderLeft:`3px solid ${a.color}`,borderRadius:10,padding:"14px 16px",cursor:"pointer",display:"flex",gap:12,alignItems:"center"}}>
-              <span style={{fontSize:28,flexShrink:0}}>{a.icon}</span>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",gap:6,marginBottom:3,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:a.color,letterSpacing:2,textTransform:"uppercase"}}>{a.cat==='factions'?'Fazione':a.cat==='primarchs'?'Primarch':a.era}</span>
-                  {a.loyal!==undefined&&(<span style={{fontFamily:"'Cinzel',serif",fontSize:8,padding:"1px 6px",borderRadius:3,border:`1px solid ${loyalColor}44`,color:loyalColor}}>{a.loyal===true?'Leale':a.loyal===false?'Traditore':'Incerto'}</span>)}
-                  {a.status&&a.type==='primarch'&&(<span style={{fontFamily:"'Cinzel',serif",fontSize:8,padding:"1px 6px",borderRadius:3,background:C.dim,color:C.muted,border:`1px solid ${C.border}`}}>{a.status}</span>)}
-                </div>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:14,fontWeight:700,color:C.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.name}</div>
-                <div style={{fontSize:11,color:C.muted,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.sub}</div>
-              </div>
-              <span style={{color:C.goldDim,fontSize:18,flexShrink:0}}>›</span>
-            </div>
-          );
-        })}
+
+      {/* reader hint */}
+      <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>Nel Reader</div>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Mentre leggi, i termini WH40K appaiono <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>sottolineati in blu</span>. Toccali per aprire direttamente la pagina Fandom Wiki corrispondente.</p>
       </div>
     </div>
   );
@@ -2046,10 +2089,10 @@ function HomePage({user,setSection}){
       {/* stats bar */}
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`}}>
         {[
-          {n:uploadedIds.size,l:"In Cloud",c:C.gold},
+          {n:uploadedIds.size,l:"Ebook",c:C.gold},
           {n:readingCount,l:"In Lettura",c:C.blue},
           {n:readCount,l:"Letti",c:C.green},
-          {n:wantCount,l:"Wishlist",c:C.muted},
+          {n:BOOKS.length,l:"Totali",c:C.muted},
         ].map(s=>(
           <div key={s.l} style={{flex:1,padding:"12px 4px",textAlign:"center",borderRight:`1px solid ${C.border}`}}>
             <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:22,color:s.c,lineHeight:1}}>{s.n}</div>
