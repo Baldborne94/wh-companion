@@ -454,7 +454,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 }
 
 // ─── EPUB READER ──────────────────────────────────────────────────────────────
-function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex, onProgress, onClose }) {
+function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex, initPageIndex, onProgress, onClose }) {
   const [bookmarkSaved, setBookmarkSaved] = useState(false);
   const [chapters,  setChapters]  = useState([]);
   const [chIdx,     setChIdx]     = useState(0);
@@ -498,6 +498,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         ? Math.min(initChapterIndex, chs.length-1)
         : Math.min(Math.floor((initProgress||0)*chs.length), Math.max(0,chs.length-1));
       setChIdx(startCh);
+      if(initPageIndex>0) setPageIndex(initPageIndex);
       setLoading(false);
     }).catch(e=>{ if(!cancelled){setError(e.message);setLoading(false);} });
     return()=>{cancelled=true;};
@@ -687,15 +688,14 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
           <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>
         )}
         <button onClick={()=>{
-          // Salva segnalibro: posizione attuale già salvata in localStorage, mostra conferma
           if(userId&&bookId){
-            const key=`wh40k_prog_${userId}_${bookId}`;
-            const existing=localStorage.getItem(key);
-            if(existing) localStorage.setItem(key,existing); // refresh timestamp visivo
+            const pct=chapters.length>0?Math.round(((chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length)*100):0;
+            const data={progress_pct:pct/100,chapter_index:chIdx,page_index:pageIndex,bookmarked:true,bookmarkedAt:new Date().toISOString()};
+            localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify(data));
           }
           setBookmarkSaved(true);
           setTimeout(()=>setBookmarkSaved(false),2000);
-        }} title="Segna posizione (B)" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
+        }} title="Salva posizione (B)" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
           🔖
           {bookmarkSaved&&<span style={{position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",background:C.gold,color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,padding:"3px 7px",borderRadius:4,whiteSpace:"nowrap",pointerEvents:"none"}}>Salvato ✓</span>}
         </button>
@@ -753,8 +753,8 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
               transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
               willChange:"transform",
             }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
-            <div style={{position:"absolute",top:0,left:0,width:"25%",height:"100%",cursor:"w-resize"}} onClick={e=>{e.stopPropagation();prevPage();setShowUI(true);}}/>
-            <div style={{position:"absolute",top:0,right:0,width:"25%",height:"100%",cursor:"e-resize"}} onClick={e=>{e.stopPropagation();nextPage();setShowUI(true);}}/>
+            <div style={{position:"absolute",top:0,left:0,width:"25%",height:"100%"}} onClick={e=>{if(e.target.getAttribute?.("data-kw"))return;prevPage();setShowUI(true);}}/>
+            <div style={{position:"absolute",top:0,right:0,width:"25%",height:"100%"}} onClick={e=>{if(e.target.getAttribute?.("data-kw"))return;nextPage();setShowUI(true);}}/>
           </div>
         ) : (
           <div style={{flex:1,overflowY:"auto",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
@@ -802,7 +802,15 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 }
 
 // ─── PDF READER ───────────────────────────────────────────────────────────────
-function PdfReader({ url, title, onClose }) {
+function PdfReader({ url, title, bookId, userId, onClose }) {
+  // Save "last opened" timestamp on mount
+  useEffect(()=>{
+    if(userId&&bookId){
+      const key=`wh40k_prog_${userId}_${bookId}`;
+      const existing=JSON.parse(localStorage.getItem(key)||'{}');
+      localStorage.setItem(key,JSON.stringify({...existing,bookmarkedAt:new Date().toISOString(),progress_pct:existing.progress_pct||0,chapter_index:0,page_index:0}));
+    }
+  },[]);
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:"#0a0905",display:"flex",flexDirection:"column"}}>
       <div style={{flexShrink:0,height:52,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:12}}>
@@ -825,6 +833,8 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
   const [curStatus,    setCurStatus]    = useState(status?.status||'none');
   const [progress,     setProgress]     = useState(0);
   const [chapterIndex, setChapterIndex] = useState(0);
+  const [pageIndex,    setPageIndex]    = useState(0);
+  const [bookmarkInfo, setBookmarkInfo] = useState(null); // {chapter_index, page_index, bookmarkedAt}
 
   useEffect(()=>{ setCurStatus(status?.status||'none'); },[status]);
 
@@ -850,9 +860,16 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
       if(progData?.length){
         setProgress(progData[0].progress_pct||0);
         setChapterIndex(progData[0].chapter_index||0);
+        setPageIndex(progData[0].page_index||0);
       } else {
         const cp=localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
-        if(cp){ try{ const p=JSON.parse(cp); setProgress(p.progress_pct||0); setChapterIndex(p.chapter_index||0); }catch{} }
+        if(cp){ try{
+          const p=JSON.parse(cp);
+          setProgress(p.progress_pct||0);
+          setChapterIndex(p.chapter_index||0);
+          setPageIndex(p.page_index||0);
+          if(p.chapter_index>0||p.page_index>0) setBookmarkInfo({chapter_index:p.chapter_index||0,page_index:p.page_index||0,bookmarkedAt:p.bookmarkedAt||p.last_read||null,progress_pct:p.progress_pct||0});
+        }catch{} }
       }
     })();
   },[book.id, user?.id]);
@@ -880,7 +897,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     const url=await sb.storage.signedUrl(ebookMeta.file_path);
     if(!url){ setUploadMsg("❌ Could not open file — try re-uploading."); return; }
     setUploadMsg("");
-    onOpenReader({book,url,fileType:ebookMeta.file_type,progress,chapterIndex});
+    onOpenReader({book,url,fileType:ebookMeta.file_type,progress,chapterIndex,pageIndex});
   };
 
   return(
@@ -920,10 +937,20 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
               </div>
             ):ebookMeta?(
               <>
-                {progress>0&&(
+                {bookmarkInfo&&(
+                  <div style={{marginBottom:14,background:`${C.gold}11`,border:`1px solid ${C.gold}33`,borderRadius:8,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:18,flexShrink:0}}>🔖</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Ultima Posizione</div>
+                      <div style={{fontSize:12,color:C.text}}>Cap. {bookmarkInfo.chapter_index+1} · Pag. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
+                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})}</div>}
+                    </div>
+                  </div>
+                )}
+                {progress>0&&!bookmarkInfo&&(
                   <div style={{marginBottom:14}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>Reading Progress</span>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>Progresso</span>
                       <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold}}>{Math.round(progress*100)}%</span>
                     </div>
                     <div style={{height:4,background:C.dim,borderRadius:2}}><div style={{height:"100%",width:`${progress*100}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,borderRadius:2}}/></div>
@@ -931,7 +958,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                 )}
                 {uploadMsg&&<div style={{color:uploadMsg.startsWith("❌")?C.red:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center",marginBottom:8}}>{uploadMsg}</div>}
                 <button onClick={handleOpenReader} style={{width:"100%",padding:"16px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:15,letterSpacing:3,textTransform:"uppercase",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-                  {progress>0?"📖 Continue Reading":"📖 Start Reading"}
+                  {bookmarkInfo||progress>0?"📖 Continua a Leggere":"📖 Inizia a Leggere"}
                 </button>
                 <button onClick={()=>inp.current.click()} style={{marginTop:8,width:"100%",padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
               </>
@@ -940,7 +967,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                 <div style={{color:C.muted,fontSize:13,lineHeight:1.6}}>Load your personal EPUB or PDF — saved to your private cloud, accessible from any device.</div>
                 <div style={{background:"#ffffff06",borderRadius:8,padding:"12px 14px"}}>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Reader features</div>
-                  <div style={{color:C.dim,fontSize:12,lineHeight:1.8}}>📖 Page-flip or scroll mode<br/>🎨 Dark / Sepia / Paper themes<br/>🔤 Font & typography controls<br/>📚 Gold keywords → lore info<br/>📝 Select words → dictionary</div>
+                  <div style={{color:C.dim,fontSize:12,lineHeight:1.8}}>📖 Paginazione o scroll<br/>🎨 Tema Dark / Sepia / Paper<br/>🔤 Font e tipografia<br/>🔵 Termini WH40K → Fandom Wiki<br/>📝 Seleziona parole → dizionario</div>
                 </div>
                 {(uploading||uploadMsg)&&<div style={{color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center"}}>{uploadMsg||"Uploading…"}</div>}
                 <button onClick={()=>inp.current.click()} disabled={uploading} style={{width:"100%",padding:"16px",borderRadius:10,background:"transparent",border:`2px dashed ${C.goldDim}`,color:C.gold,fontFamily:"'Cinzel',serif",fontSize:14,letterSpacing:2,textTransform:"uppercase",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10,opacity:uploading?0.5:1}}>
@@ -1295,12 +1322,12 @@ function LibrarySection({ user }) {
     }
   },[tab, user?.id]);
 
-  const handleOpenReader=({book,url,fileType,progress,chapterIndex})=>setReader({book,url,fileType,progress,chapterIndex});
+  const handleOpenReader=({book,url,fileType,progress,chapterIndex,pageIndex})=>setReader({book,url,fileType,progress,chapterIndex,pageIndex:pageIndex||0});
 
   if(reader){
     const {book,url,fileType,progress,chapterIndex}=reader;
-    if(fileType==="pdf") return <PdfReader url={url} title={book.title} onClose={()=>setReader(null)}/>;
-    return <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
+    if(fileType==="pdf") return <PdfReader url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={()=>setReader(null)}/>;
+    return <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex||0} initPageIndex={reader.pageIndex||0} onProgress={()=>{}} onClose={()=>setReader(null)}/>;
   }
   if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={handleStatusChange}/>;
 
@@ -1934,14 +1961,6 @@ function LoreSection(){
           url="https://wh40k.lexicanum.com"
           color={C.blue}
           badge="LEXICANUM"
-        />
-        <LinkCard
-          title="Lexicanum Italiano"
-          icon="🇮🇹"
-          desc="Versione italiana del Lexicanum. Meno completa dell'originale ma ottima per chi preferisce leggere in italiano."
-          url="https://it.wh40k.lexicanum.com"
-          color="#4aaa6a"
-          badge="ITA"
         />
       </div>
 
