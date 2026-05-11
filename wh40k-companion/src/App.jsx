@@ -27,8 +27,15 @@ const sb = {
         headers:{...await this._h(),Prefer:"resolution=merge-duplicates,return=representation"},
         body:JSON.stringify(d)
       });
-      return r.ok?r.json():null;
-    } catch{return null;}
+      if(!r.ok){ const body=await r.text(); console.error(`[sb.upsert] ${t} → HTTP ${r.status}`,body); return {_error:r.status,_body:body}; }
+      return r.json();
+    } catch(e){ console.error(`[sb.upsert] ${t} exception`,e); return null; }
+  },
+  async del(t,q="") {
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{method:"DELETE",headers:await this._h()});
+      return r.ok;
+    } catch(e){ console.error(`[sb.del] ${t} exception`,e); return false; }
   },
   storage:{
     async upload(path,file){
@@ -45,6 +52,12 @@ const sb = {
         const {data}=await supabase.storage.from("ebooks").createSignedUrl(path,7200);
         return data?.signedUrl??null;
       } catch{return null;}
+    },
+    async remove(path){
+      try{
+        const {error}=await supabase.storage.from("ebooks").remove([path]);
+        return !error;
+      } catch{return false;}
     },
     url(path){ return `${SB_URL}/storage/v1/object/public/ebooks/${path}`; }
   }
@@ -1055,10 +1068,15 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     const ok=await sb.storage.upload(path,file);
     if(ok){
       const meta={user_id:user.id,book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub"};
-      await sb.upsert("ebook_files",meta,"user_id,book_id");
+      const dbResult=await sb.upsert("ebook_files",meta,"user_id,book_id");
       const lsKey = `wh40k_ebook_${user.id}_${book.id}`;
       localStorage.setItem(lsKey, JSON.stringify(meta));
-      setEbookMeta(meta); setUploadMsg("✅ Uploaded!");
+      setEbookMeta(meta);
+      if(dbResult?._error){
+        setUploadMsg(`⚠️ File saved but DB error ${dbResult._error}: ${dbResult._body?.slice(0,80)}`);
+      } else {
+        setUploadMsg("✅ Uploaded & synced!");
+      }
     } else { setUploadMsg("❌ Upload failed — check Supabase storage policy."); }
     setUploading(false); setTimeout(()=>setUploadMsg(""),3000);
   };
@@ -1070,6 +1088,22 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     if(!url){ setUploadMsg("❌ Could not open file — try re-uploading."); return; }
     setUploadMsg("");
     onOpenReader({book,url,fileType:ebookMeta.file_type,progress,chapterIndex,pageIndex});
+  };
+
+  const [deleteConfirm,setDeleteConfirm]=useState(false);
+  const handleDeleteEbook=async()=>{
+    if(!deleteConfirm){ setDeleteConfirm(true); setTimeout(()=>setDeleteConfirm(false),4000); return; }
+    setDeleteConfirm(false);
+    setUploadMsg("Removing…");
+    // Delete from Storage
+    if(ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
+    // Delete from DB
+    if(user?.id) await sb.del("ebook_files",`user_id=eq.${user.id}&book_id=eq.${book.id}`);
+    // Clear localStorage cache
+    if(user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
+    setEbookMeta(null);
+    setUploadMsg("✅ Ebook removed.");
+    setTimeout(()=>setUploadMsg(""),2500);
   };
 
   return(
@@ -1152,7 +1186,12 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                 <button onClick={handleOpenReader} style={{width:"100%",padding:"16px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:15,letterSpacing:3,textTransform:"uppercase",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
                   {bookmarkInfo||progress>0?"📖 Continue Reading":"📖 Start Reading"}
                 </button>
-                <button onClick={()=>inp.current.click()} style={{marginTop:8,width:"100%",padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
+                <div style={{display:"flex",gap:8,marginTop:8}}>
+                  <button onClick={()=>inp.current.click()} style={{flex:1,padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
+                  <button onClick={handleDeleteEbook} style={{flex:1,padding:"10px",borderRadius:8,background:deleteConfirm?`${C.red}22`:"transparent",border:`1px solid ${deleteConfirm?C.red:C.dim}`,color:deleteConfirm?C.red:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",transition:"all 0.2s"}}>
+                    {deleteConfirm?"⚠️ Confirm delete":"🗑 Remove ebook"}
+                  </button>
+                </div>
               </>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
