@@ -524,7 +524,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     if(!userId||!bookId) return;
     sb.get("bookmarks",`user_id=eq.${userId}&book_id=eq.${bookId}&order=created_at.desc`).then(rows=>{
       if(rows?.length&&!rows._error){
-        const bms=rows.map(r=>({id:r.id,chapter_index:r.chapter_index,page_index:r.page_index,scroll_top:r.scroll_top||0,progress_pct:r.progress_pct,label:r.label,createdAt:r.created_at}));
+        const bms=rows.map(r=>({id:r.id,chapter_index:r.chapter_index,page_index:r.page_index,scroll_top:r.scroll_top??null,progress_pct:r.progress_pct,label:r.label,createdAt:r.created_at}));
         setBookmarks(bms);
         localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(bms));
       }
@@ -887,16 +887,30 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
               <div key={bm.id} style={{borderBottom:`1px solid ${T.border}55`,padding:"10px 12px",display:"flex",gap:8,alignItems:"flex-start"}}>
                 <div style={{flex:1,minWidth:0}}>
                   <button onClick={()=>{
-                    if(!settings.paginate && bm.scroll_top>=0 && outerRef.current){
-                      // Scroll mode: restore exact scroll position
-                      requestAnimationFrame(()=>{ if(outerRef.current) outerRef.current.scrollTop=bm.scroll_top; });
+                    if(!settings.paginate){
+                      // Scroll mode — close panel first, then scroll after layout settles
+                      setShowBookmarks(false);
+                      setTimeout(()=>{
+                        const el=outerRef.current; if(!el) return;
+                        if(bm.scroll_top>0){
+                          // Exact position saved → use it directly
+                          el.scrollTop=bm.scroll_top;
+                        } else if(bm.progress_pct>0){
+                          // Fallback: derive position from progress percentage
+                          el.scrollTop=bm.progress_pct*(el.scrollHeight-el.clientHeight);
+                        } else {
+                          // Last resort: scroll to chapter heading element
+                          const chEl=document.getElementById(`epub-ch-${bookId}-${bm.chapter_index||0}`);
+                          if(chEl) el.scrollTop=chEl.offsetTop-48;
+                        }
+                      },80);
                     } else {
                       // Paginated mode: navigate to saved chapter/page
                       pendingPageRef.current=bm.page_index||0;
                       setChIdx(bm.chapter_index||0);
                       setPageIndex(0);
+                      setShowBookmarks(false);
                     }
-                    setShowBookmarks(false);
                   }} style={{background:"none",border:"none",textAlign:"left",cursor:"pointer",padding:0,width:"100%"}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:i===0?C.gold:T.text,marginBottom:2}}>
                       {i===0&&<span style={{fontSize:9,color:C.gold,marginRight:4}}>●</span>}
