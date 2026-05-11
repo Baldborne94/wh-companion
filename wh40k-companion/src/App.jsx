@@ -468,8 +468,9 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   const T   = THEMES[settings.theme];
   const fnt = FONTS[settings.fontIndex];
 
-  const outerRef    = useRef(null);
-  const innerRef    = useRef(null);
+  const outerRef       = useRef(null);
+  const innerRef       = useRef(null);
+  const pendingPageRef = useRef(initPageIndex||0); // deferred page restore after layout
   const [pageIndex, setPageIndex]   = useState(0);
   const [totalPages,setTotalPages]  = useState(1);
   const [pageWidth, setPageWidth]   = useState(0);
@@ -498,7 +499,8 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         ? Math.min(initChapterIndex, chs.length-1)
         : Math.min(Math.floor((initProgress||0)*chs.length), Math.max(0,chs.length-1));
       setChIdx(startCh);
-      if(initPageIndex>0) setPageIndex(initPageIndex);
+      // Don't call setPageIndex here — layout hasn't been measured yet.
+      // pendingPageRef will be applied in measurePages once totalPages is known.
       setLoading(false);
     }).catch(e=>{ if(!cancelled){setError(e.message);setLoading(false);} });
     return()=>{cancelled=true;};
@@ -524,8 +526,15 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     setPageWidth(ow); setPageHeight(oh);
     setTimeout(()=>{
       if(innerRef.current){
-        setTotalPages(Math.max(1,Math.round(innerRef.current.scrollWidth/ow)));
-        setPageIndex(0);
+        const tp=Math.max(1,Math.round(innerRef.current.scrollWidth/ow));
+        setTotalPages(tp);
+        // Restore saved page if pending, otherwise reset to 0
+        if(pendingPageRef.current>0){
+          setPageIndex(Math.min(pendingPageRef.current,tp-1));
+          pendingPageRef.current=0;
+        } else {
+          setPageIndex(0);
+        }
       }
     },150);
   },[settings.paginate]);
@@ -576,12 +585,12 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   // ── Navigation ────────────────────────────────────────────────────────────
   const prevPage=useCallback(()=>{
     if(pageIndex>0){ setPageIndex(p=>p-1); setShowUI(true); }
-    else if(chIdx>0){ setChIdx(c=>c-1); }
+    else if(chIdx>0){ pendingPageRef.current=0; setChIdx(c=>c-1); }
   },[pageIndex,chIdx]);
 
   const nextPage=useCallback(()=>{
     if(pageIndex<totalPages-1){ setPageIndex(p=>p+1); setShowUI(true); }
-    else if(chIdx<chapters.length-1){ setChIdx(c=>c+1); }
+    else if(chIdx<chapters.length-1){ pendingPageRef.current=0; setChIdx(c=>c+1); }
   },[pageIndex,totalPages,chIdx,chapters.length]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -719,7 +728,7 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
           <div style={{width:220,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:3,animation:"slideLeft 0.2s ease"}}>
             <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>Contents</div>
             {chapters.map((ch,i)=>(
-              <button key={i} onClick={()=>{setChIdx(i);setPageIndex(0);setShowToc(false);setShowUI(true);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
+              <button key={i} onClick={()=>{pendingPageRef.current=0;setChIdx(i);setPageIndex(0);setShowToc(false);setShowUI(true);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
             ))}
           </div>
         )}
