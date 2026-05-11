@@ -13,7 +13,11 @@ const sb = {
     return { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
   },
   async get(t,q="") {
-    try{ const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:await this._h()}); return r.ok?r.json():[]; } catch{return[];}
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/${t}?${q}`,{headers:await this._h()});
+      if(!r.ok){ const body=await r.text(); console.error(`[sb.get] ${t} → HTTP ${r.status}`,body); return {_error:r.status,_body:body}; }
+      return r.json();
+    } catch(e){ console.error(`[sb.get] ${t} exception`,e); return []; }
   },
   // conflict: comma-separated columns for ON CONFLICT (PostgREST ?on_conflict param)
   async upsert(t,d,conflict="user_id,book_id") {
@@ -1476,19 +1480,26 @@ function LibrarySection({ user }) {
     if(lsBooks.length>0) setShelfBooks(lsBooks);
   },[user?.id]);
 
+  const [shelfDebug,setShelfDebug]=useState(null);
   useEffect(()=>{
     if(tab==="shelf"){
       setShelfLoading(true);
+      setShelfDebug(null);
       if(!user?.id){
         setShelfBooks([]);
         setShelfLoading(false);
+        setShelfDebug("Not logged in");
         return;
       }
       // Always filter by user_id — don't rely on RLS alone
       sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
-        if(files?.length){
+        if(files?._error){
+          setShelfDebug(`DB error ${files._error}: ${files._body}`);
+          setShelfBooks([]);
+        } else if(files?.length){
           const ids=new Set(files.map(f=>f.book_id));
           setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
+          setShelfDebug(`OK — ${files.length} rows from DB`);
         } else {
           // DB empty or table not set up → fallback to localStorage cache
           const lsBooks=[];
@@ -1505,6 +1516,7 @@ function LibrarySection({ user }) {
             }
           }
           setShelfBooks(lsBooks);
+          setShelfDebug(`DB returned 0 rows. LS fallback: ${lsBooks.length} books. uid=${user.id.slice(0,8)}…`);
         }
         setShelfLoading(false);
       });
@@ -1551,6 +1563,7 @@ function LibrarySection({ user }) {
 
       {tab==="shelf"&&(
         <>
+          {shelfDebug&&<div style={{margin:"8px 16px",padding:"8px 12px",background:"#1a1200",border:"1px solid #c9a84c55",borderRadius:8,fontSize:10,color:"#c9a84c",fontFamily:"monospace",wordBreak:"break-all"}}>{shelfDebug}</div>}
           {shelfLoading?(
             <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Loading…</div>
           ):shelfBooks.length===0?(
