@@ -476,17 +476,21 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   const [pageWidth, setPageWidth]   = useState(0);
   const [pageHeight,setPageHeight]  = useState(0);
 
-  const [showUI,       setShowUI]       = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showToc,      setShowToc]      = useState(false);
-  const [loreKey,      setLoreKey]      = useState(null);
-  const [dictWord,     setDictWord]     = useState(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showHint,     setShowHint]     = useState(()=>!localStorage.getItem("wh40k_lore_hint"));
-  const uiTimerRef  = useRef(null);
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const touchMoved  = useRef(false);
+  const [showSettings,  setShowSettings]  = useState(false);
+  const [showToc,       setShowToc]       = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [loreKey,       setLoreKey]       = useState(null);
+  const [dictWord,      setDictWord]      = useState(null);
+  const [isFullscreen,  setIsFullscreen]  = useState(false);
+  const [showHint,      setShowHint]      = useState(()=>!localStorage.getItem("wh40k_lore_hint"));
+  const measureTimerRef = useRef(null);
+
+  // ── Bookmarks array (separate from auto-save progress) ────────────────────
+  const [bookmarks, setBookmarks] = useState(()=>{
+    if(!userId||!bookId) return [];
+    try{ return JSON.parse(localStorage.getItem(`wh40k_bm_${userId}_${bookId}`)||'[]'); }
+    catch{ return []; }
+  });
 
   // ── Load EPUB ─────────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -519,24 +523,25 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   },[settings.fontIndex]);
 
   // ── Measure columns for paginated mode ────────────────────────────────────
+  // measureTimerRef debounces multiple rapid calls so only ONE fires and
+  // pendingPageRef (saved page restore) is applied exactly once.
   const measurePages = useCallback(()=>{
     if(!outerRef.current||!innerRef.current||!settings.paginate) return;
     const ow=outerRef.current.clientWidth;
     const oh=outerRef.current.clientHeight;
     setPageWidth(ow); setPageHeight(oh);
-    setTimeout(()=>{
-      if(innerRef.current){
-        const tp=Math.max(1,Math.round(innerRef.current.scrollWidth/ow));
-        setTotalPages(tp);
-        // Restore saved page if pending, otherwise reset to 0
-        if(pendingPageRef.current>0){
-          setPageIndex(Math.min(pendingPageRef.current,tp-1));
-          pendingPageRef.current=0;
-        } else {
-          setPageIndex(0);
-        }
+    if(measureTimerRef.current) clearTimeout(measureTimerRef.current);
+    measureTimerRef.current = setTimeout(()=>{
+      if(!innerRef.current) return;
+      const tp=Math.max(1,Math.round(innerRef.current.scrollWidth/ow));
+      setTotalPages(tp);
+      if(pendingPageRef.current>0){
+        setPageIndex(Math.min(pendingPageRef.current,tp-1));
+        pendingPageRef.current=0;
+      } else {
+        setPageIndex(prev=>Math.min(prev,Math.max(0,tp-1)));
       }
-    },150);
+    },200);
   },[settings.paginate]);
 
   useEffect(()=>{ measurePages(); },[chIdx,settings,chapters,measurePages]);
@@ -574,22 +579,14 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     return()=>clearTimeout(t);
   },[showHint]);
 
-  // ── Auto-hide top/bottom bars ──────────────────────────────────────────────
-  const resetUiTimer = useCallback(()=>{
-    if(uiTimerRef.current) clearTimeout(uiTimerRef.current);
-    if(!showSettings&&!showToc&&!loreKey&&!dictWord)
-      uiTimerRef.current=setTimeout(()=>setShowUI(false),4000);
-  },[showSettings,showToc,loreKey,dictWord]);
-  useEffect(()=>{ if(showUI) resetUiTimer(); return()=>{ if(uiTimerRef.current) clearTimeout(uiTimerRef.current); }; },[showUI,resetUiTimer]);
-
   // ── Navigation ────────────────────────────────────────────────────────────
   const prevPage=useCallback(()=>{
-    if(pageIndex>0){ setPageIndex(p=>p-1); setShowUI(true); }
+    if(pageIndex>0){ setPageIndex(p=>p-1); }
     else if(chIdx>0){ pendingPageRef.current=0; setChIdx(c=>c-1); }
   },[pageIndex,chIdx]);
 
   const nextPage=useCallback(()=>{
-    if(pageIndex<totalPages-1){ setPageIndex(p=>p+1); setShowUI(true); }
+    if(pageIndex<totalPages-1){ setPageIndex(p=>p+1); }
     else if(chIdx<chapters.length-1){ pendingPageRef.current=0; setChIdx(c=>c+1); }
   },[pageIndex,totalPages,chIdx,chapters.length]);
 
@@ -597,16 +594,21 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   useEffect(()=>{
     const handler=(e)=>{
       if(showSettings||loreKey||dictWord) return;
-      if(e.key==="ArrowRight"||e.key==="ArrowDown"){ e.preventDefault(); nextPage(); setShowUI(true); return; }
-      if(e.key==="ArrowLeft"||e.key==="ArrowUp"){ e.preventDefault(); prevPage(); setShowUI(true); return; }
-      if(e.key===" "){ e.preventDefault(); nextPage(); setShowUI(true); return; }
-      if(e.key==="Escape"){ if(showToc){setShowToc(false);}else{onClose();} return; }
+      if(e.key==="ArrowRight"||e.key==="ArrowDown"){ e.preventDefault(); nextPage(); return; }
+      if(e.key==="ArrowLeft"||e.key==="ArrowUp"){ e.preventDefault(); prevPage(); return; }
+      if(e.key===" "){ e.preventDefault(); nextPage(); return; }
+      if(e.key==="Escape"){
+        if(showBookmarks){setShowBookmarks(false);}
+        else if(showToc){setShowToc(false);}
+        else{onClose();}
+        return;
+      }
       if(e.key==="f"||e.key==="F"){ toggleFullscreen(); return; }
-      if(e.key==="t"||e.key==="T"){ setShowToc(v=>!v); setShowUI(true); return; }
+      if(e.key==="t"||e.key==="T"){ setShowToc(v=>!v); return; }
     };
     document.addEventListener("keydown",handler);
     return()=>document.removeEventListener("keydown",handler);
-  },[showSettings,showToc,loreKey,dictWord,nextPage,prevPage,onClose,toggleFullscreen]);
+  },[showSettings,showToc,showBookmarks,loreKey,dictWord,nextPage,prevPage,onClose,toggleFullscreen]);
 
   // ── Scroll-mode progress tracking ────────────────────────────────────────
   const handleScroll=useCallback(()=>{
@@ -618,25 +620,32 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     onProgress(pct);
   },[chIdx,chapters.length,settings.paginate,onProgress]);
 
-  // ── Touch ─────────────────────────────────────────────────────────────────
-  const onTouchStart=e=>{ touchStartX.current=e.touches[0].clientX; touchStartY.current=e.touches[0].clientY; touchMoved.current=false; };
-  const onTouchMove =e=>{ if(Math.abs(e.touches[0].clientX-touchStartX.current)>10) touchMoved.current=true; };
-  const onTouchEnd  =e=>{
-    const dx=touchStartX.current-e.changedTouches[0].clientX;
-    const dy=Math.abs(touchStartY.current-e.changedTouches[0].clientY);
-    if(dy>40) return;
-    if(dx>50){ nextPage(); return; }
-    if(dx<-50){ prevPage(); return; }
-    if(!touchMoved.current){
-      const x=e.changedTouches[0].clientX;
-      const W=window.innerWidth;
-      if(x<W*0.25){ prevPage(); return; }
-      if(x>W*0.75){ nextPage(); return; }
-      setShowUI(u=>!u);
+  // ── Save bookmark (manual) ────────────────────────────────────────────────
+  const saveBookmark=useCallback(()=>{
+    if(userId&&bookId){
+      const pct=chapters.length>0?(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length:0;
+      const bm={
+        id:Date.now(),
+        chapter_index:chIdx,
+        page_index:pageIndex,
+        progress_pct:pct,
+        label:chapters[chIdx]?.label||`Cap. ${chIdx+1}`,
+        createdAt:new Date().toISOString(),
+      };
+      const updated=[bm,...bookmarks].slice(0,30);
+      setBookmarks(updated);
+      localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(updated));
+      // Also update the auto-save key so BookDetail can show it
+      localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify({
+        progress_pct:pct,chapter_index:chIdx,page_index:pageIndex,
+        bookmarked:true,bookmarkedAt:bm.createdAt,
+      }));
     }
-  };
+    setBookmarkSaved(true);
+    setTimeout(()=>setBookmarkSaved(false),2000);
+  },[userId,bookId,chapters,chIdx,pageIndex,totalPages,bookmarks]);
 
-  // ── Lore click / dictionary selection ─────────────────────────────────────
+  // ── Lore click (keywords only — no tap-to-navigate) ───────────────────────
   const handleContentClick=useCallback(e=>{
     const kw=e.target.getAttribute?.("data-kw");
     if(kw&&LORE_DB[kw]){ window.open(wikiUrl(kw),'_blank','noopener'); }
@@ -686,31 +695,40 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     </div>
   );
 
+  // ── Arrow button style helper ─────────────────────────────────────────────
+  const arrowBtn=(disabled)=>({
+    position:"absolute",top:"50%",transform:"translateY(-50%)",
+    background:`${T.surface}cc`,border:`1px solid ${T.border}`,
+    borderRadius:8,color:disabled?T.border:T.text,
+    width:36,height:64,cursor:disabled?"default":"pointer",
+    fontSize:22,display:"flex",alignItems:"center",justifyContent:"center",
+    zIndex:2,transition:"opacity 0.2s",opacity:disabled?0.25:0.75,
+    flexShrink:0,userSelect:"none",
+  });
+
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:T.bg,display:"flex",flexDirection:"column",transition:"background 0.3s"}}>
 
-      {/* ── TOP BAR ── */}
-      <div style={{flexShrink:0,height:52,background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:"0 10px",gap:6,transition:"opacity 0.3s,transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(-100%)",pointerEvents:showUI?"auto":"none",zIndex:2}}>
+      {/* ── TOP BAR — always visible ── */}
+      <div style={{flexShrink:0,height:52,background:T.ui,borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",padding:"0 10px",gap:6,zIndex:2}}>
         <button onClick={onClose} title="Back (Esc)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"7px 12px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,flexShrink:0}}>← Back</button>
         <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 4px"}}>{title}</div>
-        {readingMinutes&&(
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>
-        )}
-        <button onClick={()=>{
-          if(userId&&bookId){
-            const pct=chapters.length>0?Math.round(((chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length)*100):0;
-            const data={progress_pct:pct/100,chapter_index:chIdx,page_index:pageIndex,bookmarked:true,bookmarkedAt:new Date().toISOString()};
-            localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify(data));
-          }
-          setBookmarkSaved(true);
-          setTimeout(()=>setBookmarkSaved(false),2000);
-        }} title="Salva posizione (B)" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
+        {readingMinutes&&<div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,flexShrink:0,whiteSpace:"nowrap"}}>~{readingMinutes} min</div>}
+
+        {/* Save bookmark button */}
+        <button onClick={saveBookmark} title="Aggiungi segnalibro" style={{background:bookmarkSaved?`${C.gold}22`:"transparent",border:`1px solid ${bookmarkSaved?C.gold:T.border}`,borderRadius:6,color:bookmarkSaved?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0,position:"relative"}}>
           🔖
           {bookmarkSaved&&<span style={{position:"absolute",top:-28,left:"50%",transform:"translateX(-50%)",background:C.gold,color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,padding:"3px 7px",borderRadius:4,whiteSpace:"nowrap",pointerEvents:"none"}}>Salvato ✓</span>}
         </button>
-        <button onClick={()=>{setShowToc(t=>!t);setShowUI(true);}} title="Contents (T)" style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>≡</button>
-        <button onClick={toggleFullscreen} title="Fullscreen (F)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:isFullscreen?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:13,flexShrink:0}}>{isFullscreen?"⛶":"⛶"}</button>
-        <button onClick={()=>{setShowSettings(true);setShowUI(true);}} title="Settings" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>⚙</button>
+
+        {/* Show bookmarks list button */}
+        <button onClick={()=>setShowBookmarks(v=>!v)} title="Segnalibri" style={{background:showBookmarks?`${C.gold}22`:"transparent",border:`1px solid ${showBookmarks?C.gold:T.border}`,borderRadius:6,color:showBookmarks?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:14,flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:0}}>
+          {bookmarks.length>0?<span style={{position:"relative"}}><span>🔖</span><span style={{position:"absolute",top:-6,right:-6,background:C.gold,color:C.bg,borderRadius:10,fontSize:9,minWidth:14,height:14,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"sans-serif",fontWeight:"bold",padding:"0 2px"}}>{bookmarks.length}</span></span>:"🔖"}
+        </button>
+
+        <button onClick={()=>setShowToc(t=>!t)} title="Indice (T)" style={{background:showToc?`${C.gold}22`:"transparent",border:`1px solid ${showToc?C.gold:T.border}`,borderRadius:6,color:showToc?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>≡</button>
+        <button onClick={toggleFullscreen} title="Schermo intero (F)" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:isFullscreen?C.gold:T.muted,width:34,height:34,cursor:"pointer",fontSize:13,flexShrink:0}}>⛶</button>
+        <button onClick={()=>setShowSettings(true)} title="Impostazioni" style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:6,color:T.muted,width:34,height:34,cursor:"pointer",fontSize:16,flexShrink:0}}>⚙</button>
       </div>
 
       {/* ── PROGRESS BAR ── */}
@@ -720,15 +738,45 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 
       {/* ── READING AREA ── */}
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
         onClick={handleContentClick} onMouseUp={handleMouseUp}>
 
         {/* TOC sidebar */}
         {showToc&&(
-          <div style={{width:220,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:3,animation:"slideLeft 0.2s ease"}}>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>Contents</div>
+          <div style={{width:220,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:4,animation:"slideLeft 0.2s ease"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Indice</span>
+              <button onClick={()=>setShowToc(false)} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:16,padding:0}}>✕</button>
+            </div>
             {chapters.map((ch,i)=>(
-              <button key={i} onClick={()=>{pendingPageRef.current=0;setChIdx(i);setPageIndex(0);setShowToc(false);setShowUI(true);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
+              <button key={i} onClick={()=>{pendingPageRef.current=0;setChIdx(i);setPageIndex(0);setShowToc(false);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
+            ))}
+          </div>
+        )}
+
+        {/* Bookmarks sidebar */}
+        {showBookmarks&&(
+          <div style={{width:240,flexShrink:0,background:T.ui,borderRight:`1px solid ${T.border}`,overflowY:"auto",position:"absolute",top:0,left:0,bottom:0,zIndex:4,animation:"slideLeft 0.2s ease"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px 10px",borderBottom:`1px solid ${T.border}`}}>
+              <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>Segnalibri</span>
+              <button onClick={()=>setShowBookmarks(false)} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:16,padding:0}}>✕</button>
+            </div>
+            {bookmarks.length===0&&(
+              <div style={{padding:"20px 16px",color:T.muted,fontSize:12,fontStyle:"italic",textAlign:"center"}}>Nessun segnalibro.<br/>Premi 🔖 per aggiungerne uno.</div>
+            )}
+            {bookmarks.map((bm,i)=>(
+              <div key={bm.id} style={{borderBottom:`1px solid ${T.border}55`,padding:"10px 12px",display:"flex",gap:8,alignItems:"flex-start"}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <button onClick={()=>{pendingPageRef.current=0;setChIdx(bm.chapter_index);setPageIndex(bm.page_index);setShowBookmarks(false);}} style={{background:"none",border:"none",textAlign:"left",cursor:"pointer",padding:0,width:"100%"}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:i===0?C.gold:T.text,marginBottom:2}}>
+                      {i===0&&<span style={{fontSize:9,color:C.gold,marginRight:4}}>●</span>}
+                      {bm.label}
+                    </div>
+                    <div style={{fontSize:10,color:T.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}%</div>
+                    <div style={{fontSize:9,color:T.muted,marginTop:1}}>{new Date(bm.createdAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                  </button>
+                </div>
+                <button onClick={()=>{const u=[...bookmarks];u.splice(i,1);setBookmarks(u);localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));}} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Rimuovi">✕</button>
+              </div>
             ))}
           </div>
         )}
@@ -741,29 +789,27 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         `}</style>
 
         {settings.paginate ? (
-          // outerRef: provides vertical padding on EVERY page (top+bottom 24px)
-          // boxSizing:border-box ensures height:"100%" doesn't overflow parent
           <div ref={outerRef} style={{flex:1,overflow:"hidden",position:"relative",height:"100%",paddingTop:"24px",paddingBottom:"24px",boxSizing:"border-box"}}>
+            {/* Left arrow */}
+            <button onClick={prevPage} disabled={pageIndex===0&&chIdx===0}
+              style={{...arrowBtn(pageIndex===0&&chIdx===0),left:4}}>‹</button>
+            {/* Right arrow */}
+            <button onClick={nextPage} disabled={pageIndex>=totalPages-1&&chIdx>=chapters.length-1}
+              style={{...arrowBtn(pageIndex>=totalPages-1&&chIdx>=chapters.length-1),right:4}}>›</button>
+
             <div ref={innerRef} className="epub-col" style={{
-              // Build style explicitly — don't spread readerStyle (its padding breaks columns)
               fontFamily:fnt.value,fontSize:settings.fontSize,lineHeight:settings.lineHeight,
               color:T.text,wordBreak:"break-word",hyphens:"auto",textAlign:"justify",
-              // Horizontal margins: padding-left + column-gap trick gives margin on BOTH sides of every page
-              // column-width = pageWidth - 2×margin  →  each column is exactly one page of readable text
-              // column-gap   = 2×margin              →  half-gap = right-margin on current page, half-gap = left-margin on next page
-              paddingLeft:`${settings.margin}px`,
-              paddingRight:`${settings.margin}px`,
-              columnWidth:`${Math.max(100,(pageWidth||300)-2*settings.margin)}px`,
+              paddingLeft:`${settings.margin+44}px`,
+              paddingRight:`${settings.margin+44}px`,
+              columnWidth:`${Math.max(100,(pageWidth||300)-2*(settings.margin+44))}px`,
               columnFill:"auto",
-              columnGap:`${2*settings.margin}px`,
-              // Height minus the 48px of outerRef vertical padding
+              columnGap:`${2*(settings.margin+44)}px`,
               height:pageHeight?`${pageHeight-48}px`:"100%",
               transform:`translateX(-${pageIndex*(pageWidth||300)}px)`,
               transition:"transform 0.28s cubic-bezier(.4,0,.2,1)",
               willChange:"transform",
             }} dangerouslySetInnerHTML={{__html:chapters[chIdx]?.html||""}}/>
-            <div style={{position:"absolute",top:0,left:0,width:"25%",height:"100%"}} onClick={e=>{if(e.target.getAttribute?.("data-kw"))return;prevPage();setShowUI(true);}}/>
-            <div style={{position:"absolute",top:0,right:0,width:"25%",height:"100%"}} onClick={e=>{if(e.target.getAttribute?.("data-kw"))return;nextPage();setShowUI(true);}}/>
           </div>
         ) : (
           <div style={{flex:1,overflowY:"auto",position:"relative"}} ref={outerRef} onScroll={handleScroll}>
@@ -772,39 +818,31 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
         )}
       </div>
 
-      {/* ── BOTTOM BAR ── */}
-      <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",transition:"opacity 0.3s,transform 0.3s",opacity:showUI?1:0,transform:showUI?"translateY(0)":"translateY(100%)",pointerEvents:showUI?"auto":"none"}}>
-        <button onClick={prevPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>← Prev</button>
+      {/* ── BOTTOM BAR — always visible ── */}
+      <div style={{flexShrink:0,background:T.ui,borderTop:`1px solid ${T.border}`,height:52,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:2}}>
+        <button onClick={prevPage} disabled={pageIndex===0&&chIdx===0} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:pageIndex===0&&chIdx===0?T.border:T.text,padding:"7px 16px",cursor:pageIndex===0&&chIdx===0?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:70}}>← Prec</button>
         <div style={{textAlign:"center"}}>
           {settings.paginate?(
             <>
               <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>p. {pageIndex+1} / {totalPages}</div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>ch. {chIdx+1}/{chapters.length} · {globalPct}%</div>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim}}>cap. {chIdx+1}/{chapters.length} · {globalPct}%</div>
             </>
           ):(
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>ch. {chIdx+1} / {chapters.length} · {globalPct}%</div>
+            <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:T.muted}}>cap. {chIdx+1} / {chapters.length} · {globalPct}%</div>
           )}
         </div>
-        <button onClick={nextPage} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:T.text,padding:"8px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1}}>Next →</button>
+        <button onClick={nextPage} disabled={pageIndex>=totalPages-1&&chIdx>=chapters.length-1} style={{background:"transparent",border:`1px solid ${T.border}`,borderRadius:8,color:pageIndex>=totalPages-1&&chIdx>=chapters.length-1?T.border:T.text,padding:"7px 16px",cursor:pageIndex>=totalPages-1&&chIdx>=chapters.length-1?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,minWidth:70}}>Succ →</button>
       </div>
 
       {/* ── LORE HINT (first open only) ── */}
       {showHint&&(
-        <div style={{position:"absolute",bottom:64,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
+        <div style={{position:"absolute",bottom:60,left:"50%",transform:"translateX(-50%)",background:`${T.ui}f0`,border:`1px solid ${C.gold}55`,borderRadius:20,padding:"6px 16px",whiteSpace:"nowrap",pointerEvents:"none",zIndex:5,animation:"slideUp 0.3s ease"}}>
           <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1}}>🔵 Termini blu → Fandom Wiki · Seleziona testo → Dizionario</span>
-        </div>
-      )}
-
-      {/* ── KEYBOARD HINT (desktop, fades after UI hides) ── */}
-      {showUI&&!showHint&&(
-        <div style={{position:"absolute",bottom:64,right:14,background:`${T.ui}cc`,border:`1px solid ${T.border}`,borderRadius:8,padding:"4px 10px",pointerEvents:"none",opacity:0.55,zIndex:4}}>
-          <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:T.muted,letterSpacing:1}}>← → · Space · F fullscreen · T contents · Esc back</span>
         </div>
       )}
 
       {/* ── OVERLAYS ── */}
       {showSettings&&<SettingsPanel settings={settings} onChange={updateSetting} onClose={()=>setShowSettings(false)}/>}
-      {/* LorePanel removed — keywords now open Fandom Wiki directly */}
       {dictWord&&<DictionaryPanel word={dictWord} onClose={()=>setDictWord(null)} theme={settings.theme}/>}
     </div>
   );
@@ -840,10 +878,11 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
   const [uploading,    setUploading]    = useState(false);
   const [uploadMsg,    setUploadMsg]    = useState("");
   const [curStatus,    setCurStatus]    = useState(status?.status||'none');
-  const [progress,     setProgress]     = useState(0);
-  const [chapterIndex, setChapterIndex] = useState(0);
-  const [pageIndex,    setPageIndex]    = useState(0);
-  const [bookmarkInfo, setBookmarkInfo] = useState(null); // {chapter_index, page_index, bookmarkedAt}
+  const [progress,      setProgress]      = useState(0);
+  const [chapterIndex,  setChapterIndex]  = useState(0);
+  const [pageIndex,     setPageIndex]     = useState(0);
+  const [bookmarkInfo,  setBookmarkInfo]  = useState(null);
+  const [bookmarksList, setBookmarksList] = useState([]); // manual bookmarks array
 
   useEffect(()=>{ setCurStatus(status?.status||'none'); },[status]);
 
@@ -870,6 +909,8 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
         setProgress(progData[0].progress_pct||0);
         setChapterIndex(progData[0].chapter_index||0);
         setPageIndex(progData[0].page_index||0);
+        if(progData[0].chapter_index>0||progData[0].page_index>0)
+          setBookmarkInfo({chapter_index:progData[0].chapter_index||0,page_index:progData[0].page_index||0,progress_pct:progData[0].progress_pct||0});
       } else {
         const cp=localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
         if(cp){ try{
@@ -877,9 +918,15 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
           setProgress(p.progress_pct||0);
           setChapterIndex(p.chapter_index||0);
           setPageIndex(p.page_index||0);
-          if(p.chapter_index>0||p.page_index>0) setBookmarkInfo({chapter_index:p.chapter_index||0,page_index:p.page_index||0,bookmarkedAt:p.bookmarkedAt||p.last_read||null,progress_pct:p.progress_pct||0});
+          if(p.bookmarked||p.chapter_index>0||p.page_index>0)
+            setBookmarkInfo({chapter_index:p.chapter_index||0,page_index:p.page_index||0,bookmarkedAt:p.bookmarkedAt||p.last_read||null,progress_pct:p.progress_pct||0});
         }catch{} }
       }
+      // Load manual bookmarks array
+      try{
+        const bms=JSON.parse(localStorage.getItem(`wh40k_bm_${user.id}_${book.id}`)||'[]');
+        setBookmarksList(bms);
+      }catch{}
     })();
   },[book.id, user?.id]);
 
@@ -946,23 +993,43 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
               </div>
             ):ebookMeta?(
               <>
-                {bookmarkInfo&&(
-                  <div style={{marginBottom:14,background:`${C.gold}11`,border:`1px solid ${C.gold}33`,borderRadius:8,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
-                    <span style={{fontSize:18,flexShrink:0}}>🔖</span>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Ultima Posizione</div>
-                      <div style={{fontSize:12,color:C.text}}>Cap. {bookmarkInfo.chapter_index+1} · Pag. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
-                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})}</div>}
-                    </div>
-                  </div>
-                )}
-                {progress>0&&!bookmarkInfo&&(
-                  <div style={{marginBottom:14}}>
+                {/* Progress bar */}
+                {progress>0&&(
+                  <div style={{marginBottom:12}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
                       <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase"}}>Progresso</span>
                       <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold}}>{Math.round(progress*100)}%</span>
                     </div>
                     <div style={{height:4,background:C.dim,borderRadius:2}}><div style={{height:"100%",width:`${progress*100}%`,background:`linear-gradient(to right,${C.gold},${C.red})`,borderRadius:2}}/></div>
+                  </div>
+                )}
+                {/* Last read position (auto-save) */}
+                {bookmarkInfo&&(
+                  <div style={{marginBottom:12,background:`${C.surface}`,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:16,flexShrink:0}}>📍</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Ultima posizione letta</div>
+                      <div style={{fontSize:12,color:C.text}}>Cap. {bookmarkInfo.chapter_index+1} · Pag. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
+                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})}</div>}
+                    </div>
+                  </div>
+                )}
+                {/* Manual bookmarks */}
+                {bookmarksList.length>0&&(
+                  <div style={{marginBottom:12,background:C.surface,border:`1px solid ${C.gold}33`,borderRadius:8,overflow:"hidden"}}>
+                    <div style={{padding:"8px 12px 6px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:6}}>
+                      <span>🔖</span>
+                      <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:2,textTransform:"uppercase"}}>Segnalibri ({bookmarksList.length})</span>
+                    </div>
+                    {bookmarksList.slice(0,5).map((bm,i)=>(
+                      <div key={bm.id} style={{padding:"8px 12px",borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${C.border}55`:"none",display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:11,color:C.text,fontFamily:"'Cinzel',serif"}}>{bm.label}</div>
+                          <div style={{fontSize:10,color:C.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}</div>
+                        </div>
+                      </div>
+                    ))}
+                    {bookmarksList.length>5&&<div style={{padding:"6px 12px",fontSize:10,color:C.muted,fontStyle:"italic"}}>+{bookmarksList.length-5} altri segnalibri nel lettore</div>}
                   </div>
                 )}
                 {uploadMsg&&<div style={{color:uploadMsg.startsWith("❌")?C.red:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center",marginBottom:8}}>{uploadMsg}</div>}
