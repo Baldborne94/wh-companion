@@ -1149,10 +1149,13 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
         <button onClick={onBack} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:8,color:C.gold,padding:"7px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:1}}>← Library</button>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
       </div>
-      <div style={{background:`linear-gradient(160deg,${fc}55,${C.card})`,borderBottom:`1px solid ${fc}66`,padding:"28px 20px 24px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>{book.series}{book.num>0?` · Book ${book.num}`:""}</div>
-        <h1 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:"clamp(18px,5vw,26px)",color:C.text,lineHeight:1.2,marginBottom:6}}>{book.title}</h1>
-        <div style={{color:C.muted,fontSize:14,fontStyle:"italic"}}>by {book.author}</div>
+      <div style={{background:`linear-gradient(160deg,${fc}55,${C.card})`,borderBottom:`1px solid ${fc}66`,padding:"28px 20px 24px",display:"flex",gap:16,alignItems:"flex-start"}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>{book.series}{book.num>0?` · Book ${book.num}`:""}</div>
+          <h1 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:"clamp(18px,5vw,26px)",color:C.text,lineHeight:1.2,marginBottom:6}}>{book.title}</h1>
+          <div style={{color:C.muted,fontSize:14,fontStyle:"italic"}}>by {book.author}</div>
+        </div>
+        <CoverImage book={book} width={80} height={120} radius={5} style={{flexShrink:0,boxShadow:`0 4px 16px rgba(0,0,0,0.5)`}}/>
       </div>
       <div style={{padding:"20px 16px",display:"flex",flexDirection:"column",gap:14}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -1514,6 +1517,59 @@ const ALL_FACTIONS = ["All",...new Set(BOOKS.map(b=>b.faction))].sort((a,b)=>a==
 const ALL_TYPES    = ["All",...new Set(BOOKS.map(b=>b.type))];
 const ALL_ERAS     = ["All",...new Set(BOOKS.map(b=>b.era))];
 
+// ─── COVER IMAGE ─────────────────────────────────────────────────────────────
+const COVER_CACHE_PREFIX = "wh40k_cover_";
+
+async function fetchBookCover(book) {
+  const key = COVER_CACHE_PREFIX + book.id;
+  const cached = localStorage.getItem(key);
+  if(cached !== null) return cached; // "" = not found (cached), or url
+  try{
+    const q = encodeURIComponent(`"${book.title}" ${book.author}`);
+    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
+    if(!r.ok){ localStorage.setItem(key,""); return ""; }
+    const d = await r.json();
+    const thumb = d.items?.[0]?.volumeInfo?.imageLinks?.thumbnail || "";
+    const url = thumb.replace("http://","https://").replace("&edge=curl","").replace("zoom=1","zoom=2");
+    localStorage.setItem(key, url);
+    return url;
+  }catch{ localStorage.setItem(key,""); return ""; }
+}
+
+function CoverImage({ book, width=60, height=90, radius=4, style={} }){
+  const fc = FC[book.faction]||C.dim;
+  const [url, setUrl] = useState(()=> localStorage.getItem(COVER_CACHE_PREFIX+book.id) ?? null);
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(url !== null) return;
+    const obs = new IntersectionObserver(([e])=>{
+      if(e.isIntersecting){ obs.disconnect(); fetchBookCover(book).then(setUrl); }
+    },{rootMargin:"300px"});
+    if(ref.current) obs.observe(ref.current);
+    return ()=>obs.disconnect();
+  },[book.id]);
+
+  const base = { width, height, borderRadius:radius, overflow:"hidden", flexShrink:0, ...style };
+
+  if(!url){
+    // Placeholder: faction-colored gradient with title
+    return(
+      <div ref={ref} style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}>
+        <span style={{fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), color:"rgba(255,255,255,0.75)", lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden"}}>{book.title}</span>
+      </div>
+    );
+  }
+  if(url===""){
+    // Confirmed not found — static faction block
+    return <div style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`}}/>;
+  }
+  return(
+    <div ref={ref} style={base}>
+      <img src={url} alt={book.title} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={()=>setUrl("")}/>
+    </div>
+  );
+}
+
 function LibrarySection({ user, statuses={}, onStatusChange }) {
   const [tab,setTab]=useState("catalogue");
   const [viewMode,setViewMode]=useState("card"); // card | list | shelf
@@ -1661,16 +1717,19 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                       const bstCfg=STATUS_CFG[bst];
                       return(
                         <div key={book.id} onClick={()=>setDetail(book)}
-                          style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${C.gold}55`,borderLeft:`3px solid ${C.gold}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                            <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
-                            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                              {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
-                              <span style={{background:`${C.gold}22`,border:`1px solid ${C.gold}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:1}}>EPUB</span>
+                          style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${C.gold}55`,borderLeft:`3px solid ${C.gold}`,borderRadius:8,padding:"10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start"}}>
+                          <CoverImage book={book} width={54} height={80} radius={3}/>
+                          <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                              <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
+                              <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                                {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
+                                <span style={{background:`${C.gold}22`,border:`1px solid ${C.gold}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:1}}>EPUB</span>
+                              </div>
                             </div>
+                            <div style={{fontSize:14,fontWeight:700,color:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif"}}>{book.title}</div>
+                            <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
                           </div>
-                          <div style={{fontSize:16,fontWeight:700,color:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif"}}>{book.title}</div>
-                          <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
                         </div>
                       );
                     })}
@@ -1685,15 +1744,14 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                       const bstCfg=STATUS_CFG[bst];
                       return(
                         <div key={book.id} onClick={()=>setDetail(book)}
-                          style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
-                          <div style={{width:3,height:36,background:C.gold,borderRadius:2,flexShrink:0}}/>
-                          <div style={{width:28,flexShrink:0,fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,textAlign:"right",letterSpacing:1}}>{book.num>0?`#${book.num}`:""}</div>
+                          style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
+                          <CoverImage book={book} width={36} height={52} radius={2}/>
                           <div style={{flex:1,minWidth:0}}>
                             <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.title}</div>
-                            <div style={{fontSize:10,color:C.muted,marginTop:1}}>{book.series} · {book.author}</div>
+                            <div style={{fontSize:10,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""} · {book.author}</div>
                           </div>
                           {bst!=='none'&&<span style={{fontSize:14,flexShrink:0}}>{bstCfg.icon}</span>}
-                          <span style={{color:C.gold,fontSize:12,flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>Leggi ›</span>
+                          <span style={{color:C.dim,fontSize:14,flexShrink:0}}>›</span>
                         </div>
                       );
                     })}
@@ -1777,16 +1835,20 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                 const bst=statuses[book.id]?.status||'none';
                 const bstCfg=STATUS_CFG[bst];
                 const borderColor=bst!=='none'?bstCfg.color:fc2;
-                return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"55"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                    <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
-                      <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:tc,letterSpacing:1,flexShrink:0}}>{book.type}</span>
+                return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}18,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"44"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start"}}>
+                  <CoverImage book={book} width={54} height={80} radius={3}/>
+                  <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,textTransform:"uppercase",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
+                      <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                        {bst!=='none'&&<span style={{fontSize:12}}>{bstCfg.icon}</span>}
+                        <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 6px",fontFamily:"'Cinzel',serif",fontSize:8,color:tc,letterSpacing:1}}>{book.type}</span>
+                      </div>
                     </div>
+                    <div style={{fontSize:14,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
+                    <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
+                    <div style={{fontSize:10,color:FC[book.faction]||C.dim,marginTop:2,fontFamily:"'Cinzel',serif",letterSpacing:1}}>{book.faction}</div>
                   </div>
-                  <div style={{fontSize:16,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
-                  <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
                 </div>);
               })}
             </div>
@@ -1802,19 +1864,12 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                 const bstCfg=STATUS_CFG[bst];
                 return(
                   <div key={book.id} onClick={()=>setDetail(book)}
-                    style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
-                    {/* faction color dot */}
-                    <div style={{width:3,height:36,background:bst!=='none'?bstCfg.color:fc2,borderRadius:2,flexShrink:0}}/>
-                    {/* num badge */}
-                    <div style={{width:28,flexShrink:0,fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,textAlign:"right",letterSpacing:1}}>
-                      {book.num>0?`#${book.num}`:""}
-                    </div>
-                    {/* title + series */}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
+                    <CoverImage book={book} width={36} height={52} radius={2}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:bst==='read'?C.muted:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",opacity:bst==='read'?0.7:1}}>{book.title}</div>
-                      <div style={{fontSize:10,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series} · {book.author}</div>
+                      <div style={{fontSize:10,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""} · {book.author}</div>
                     </div>
-                    {/* status icon */}
                     {bst!=='none'&&<span style={{fontSize:14,flexShrink:0}}>{bstCfg.icon}</span>}
                     <span style={{color:C.dim,fontSize:14,flexShrink:0}}>›</span>
                   </div>
