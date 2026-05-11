@@ -2240,8 +2240,8 @@ function HomePage({user,setSection}){
   const uid=user?.id||'anon';
   const statuses=useMemo(()=>loadAllStatuses(uid),[uid]);
 
-  // scan localStorage for uploaded books
-  const uploadedIds=useMemo(()=>{
+  // Load uploaded book IDs: DB first, fall back to localStorage
+  const [uploadedIds,setUploadedIds]=useState(()=>{
     const ids=new Set();
     const prefix=`wh40k_ebook_${uid}_`;
     for(let i=0;i<localStorage.length;i++){
@@ -2249,7 +2249,22 @@ function HomePage({user,setSection}){
       if(k?.startsWith(prefix)){const id=parseInt(k.slice(prefix.length));if(!isNaN(id))ids.add(id);}
     }
     return ids;
-  },[uid]);
+  });
+  useEffect(()=>{
+    if(!user?.id) return;
+    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id`).then(files=>{
+      if(files?.length&&!files._error){
+        const ids=new Set(files.map(f=>f.book_id));
+        // Also merge localStorage cache
+        const prefix=`wh40k_ebook_${user.id}_`;
+        for(let i=0;i<localStorage.length;i++){
+          const k=localStorage.key(i);
+          if(k?.startsWith(prefix)){const id=parseInt(k.slice(prefix.length));if(!isNaN(id))ids.add(id);}
+        }
+        setUploadedIds(ids);
+      }
+    });
+  },[user?.id]);
 
   const readCount=Object.values(statuses).filter(s=>s.status==='read').length;
   const readingCount=Object.values(statuses).filter(s=>s.status==='reading').length;
@@ -2345,9 +2360,9 @@ function HomePage({user,setSection}){
     <div style={{paddingBottom:80}}>
       {/* hero */}
       <div style={{padding:"24px 16px 20px",borderBottom:`1px solid ${C.border}`,background:`linear-gradient(180deg,${C.surface},${C.bg})`}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:4}}>Benvenuto nel</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:4}}>Welcome to the</div>
         <h1 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:26,color:C.text,lineHeight:1.1,marginBottom:4}}>Scriptorium</h1>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3}}>LA TUA BIBLIOTECA IMPERIALE</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3}}>YOUR IMPERIAL LIBRARY</div>
       </div>
 
       {/* stats bar */}
