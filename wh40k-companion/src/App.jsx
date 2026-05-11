@@ -663,13 +663,32 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
   // ── Save bookmark (manual) ────────────────────────────────────────────────
   const saveBookmark=useCallback(()=>{
     if(userId&&bookId){
-      const pct=chapters.length>0?(chIdx+(pageIndex/Math.max(1,totalPages)))/chapters.length:0;
+      let pct, curChIdx, curPageIndex, scrollTop=0;
+      if(!settings.paginate && outerRef.current){
+        // Scroll mode: read actual scroll position from DOM
+        scrollTop = outerRef.current.scrollTop;
+        const {scrollHeight, clientHeight} = outerRef.current;
+        pct = scrollHeight > clientHeight ? scrollTop / (scrollHeight - clientHeight) : 0;
+        // Find which chapter the viewport is currently in
+        curChIdx = 0;
+        for(let i = chapters.length - 1; i >= 0; i--){
+          const el = document.getElementById(`epub-ch-${bookId}-${i}`);
+          if(el && el.offsetTop <= scrollTop + 80){ curChIdx = i; break; }
+        }
+        curPageIndex = 0;
+      } else {
+        pct = chapters.length > 0 ? (chIdx + (pageIndex / Math.max(1, totalPages))) / chapters.length : 0;
+        curChIdx = chIdx;
+        curPageIndex = pageIndex;
+        scrollTop = 0;
+      }
       const bm={
         id:Date.now(),
-        chapter_index:chIdx,
-        page_index:pageIndex,
+        chapter_index:curChIdx,
+        page_index:curPageIndex,
+        scroll_top:scrollTop,
         progress_pct:pct,
-        label:chapters[chIdx]?.label||`Cap. ${chIdx+1}`,
+        label:chapters[curChIdx]?.label||`Chapter ${curChIdx+1}`,
         createdAt:new Date().toISOString(),
       };
       const updated=[bm,...bookmarks].slice(0,30);
@@ -677,13 +696,13 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
       localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(updated));
       // Also update the auto-save key so BookDetail can show it
       localStorage.setItem(`wh40k_prog_${userId}_${bookId}`,JSON.stringify({
-        progress_pct:pct,chapter_index:chIdx,page_index:pageIndex,
-        bookmarked:true,bookmarkedAt:bm.createdAt,
+        progress_pct:pct,chapter_index:curChIdx,page_index:curPageIndex,
+        scroll_top:scrollTop,bookmarked:true,bookmarkedAt:bm.createdAt,
       }));
     }
     setBookmarkSaved(true);
     setTimeout(()=>setBookmarkSaved(false),2000);
-  },[userId,bookId,chapters,chIdx,pageIndex,totalPages,bookmarks]);
+  },[userId,bookId,chapters,chIdx,pageIndex,totalPages,bookmarks,settings.paginate]);
 
   // ── Lore click (keywords only — no tap-to-navigate) ───────────────────────
   const handleContentClick=useCallback(e=>{
@@ -800,7 +819,16 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
               <button onClick={()=>setShowToc(false)} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:16,padding:0}}>✕</button>
             </div>
             {chapters.map((ch,i)=>(
-              <button key={i} onClick={()=>{pendingPageRef.current=0;setChIdx(i);setPageIndex(0);setShowToc(false);}} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
+              <button key={i} onClick={()=>{
+                if(!settings.paginate && outerRef.current){
+                  // Scroll mode: scroll to the chapter's DOM element
+                  const el=document.getElementById(`epub-ch-${bookId}-${i}`);
+                  if(el) requestAnimationFrame(()=>{ if(outerRef.current) outerRef.current.scrollTop=el.offsetTop-48; });
+                } else {
+                  pendingPageRef.current=0; setChIdx(i); setPageIndex(0);
+                }
+                setShowToc(false);
+              }} style={{display:"block",width:"100%",textAlign:"left",background:i===chIdx?`${C.gold}18`:"transparent",border:"none",borderLeft:`3px solid ${i===chIdx?C.gold:"transparent"}`,padding:"10px 16px",color:i===chIdx?C.gold:T.muted,fontSize:12,cursor:"pointer",lineHeight:1.4,transition:"background 0.15s"}}>{ch.label}</button>
             ))}
           </div>
         )}
@@ -818,13 +846,26 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
             {bookmarks.map((bm,i)=>(
               <div key={bm.id} style={{borderBottom:`1px solid ${T.border}55`,padding:"10px 12px",display:"flex",gap:8,alignItems:"flex-start"}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <button onClick={()=>{pendingPageRef.current=0;setChIdx(bm.chapter_index);setPageIndex(bm.page_index);setShowBookmarks(false);}} style={{background:"none",border:"none",textAlign:"left",cursor:"pointer",padding:0,width:"100%"}}>
+                  <button onClick={()=>{
+                    if(!settings.paginate && bm.scroll_top>=0 && outerRef.current){
+                      // Scroll mode: restore exact scroll position
+                      requestAnimationFrame(()=>{ if(outerRef.current) outerRef.current.scrollTop=bm.scroll_top; });
+                    } else {
+                      // Paginated mode: navigate to saved chapter/page
+                      pendingPageRef.current=bm.page_index||0;
+                      setChIdx(bm.chapter_index||0);
+                      setPageIndex(0);
+                    }
+                    setShowBookmarks(false);
+                  }} style={{background:"none",border:"none",textAlign:"left",cursor:"pointer",padding:0,width:"100%"}}>
                     <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:i===0?C.gold:T.text,marginBottom:2}}>
                       {i===0&&<span style={{fontSize:9,color:C.gold,marginRight:4}}>●</span>}
                       {bm.label}
                     </div>
-                    <div style={{fontSize:10,color:T.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}%</div>
-                    <div style={{fontSize:9,color:T.muted,marginTop:1}}>{new Date(bm.createdAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                    <div style={{fontSize:10,color:T.muted}}>
+                      {settings.paginate ? `p. ${bm.page_index+1} · ` : ''}{Math.round((bm.progress_pct||0)*100)}%
+                    </div>
+                    <div style={{fontSize:9,color:T.muted,marginTop:1}}>{new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
                   </button>
                 </div>
                 <button onClick={()=>{const u=[...bookmarks];u.splice(i,1);setBookmarks(u);localStorage.setItem(`wh40k_bm_${userId}_${bookId}`,JSON.stringify(u));}} style={{background:"transparent",border:"none",color:T.muted,cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}} title="Remove">✕</button>
@@ -1081,7 +1122,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Last read position</div>
                       <div style={{fontSize:12,color:C.text}}>Ch. {bookmarkInfo.chapter_index+1} · p. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
-                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'})}</div>}
+                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
                 )}
@@ -1096,7 +1137,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                       <div key={bm.id} style={{padding:"8px 12px",borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${C.border}55`:"none",display:"flex",alignItems:"center",gap:8}}>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:11,color:C.text,fontFamily:"'Cinzel',serif"}}>{bm.label}</div>
-                          <div style={{fontSize:10,color:C.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}</div>
+                          <div style={{fontSize:10,color:C.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div>
                         </div>
                       </div>
                     ))}
