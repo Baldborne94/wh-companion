@@ -1519,43 +1519,27 @@ function LibrarySection({ user }) {
     if(lsBooks.length>0) setShelfBooks(lsBooks);
   },[user?.id]);
 
-  const [shelfDebug,setShelfDebug]=useState(null);
   useEffect(()=>{
     if(tab==="shelf"){
       setShelfLoading(true);
-      setShelfDebug(null);
-      if(!user?.id){
-        setShelfBooks([]);
-        setShelfLoading(false);
-        setShelfDebug("Not logged in");
-        return;
-      }
-      // Always filter by user_id — don't rely on RLS alone
+      if(!user?.id){ setShelfBooks([]); setShelfLoading(false); return; }
       sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
-        if(files?._error){
-          setShelfDebug(`DB error ${files._error}: ${files._body}`);
-          setShelfBooks([]);
-        } else if(files?.length){
+        if(files?.length&&!files._error){
           const ids=new Set(files.map(f=>f.book_id));
           setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
-          setShelfDebug(`OK — ${files.length} rows from DB`);
         } else {
-          // DB empty or table not set up → fallback to localStorage cache
+          // Fallback to localStorage cache
           const lsBooks=[];
           for(let i=0;i<localStorage.length;i++){
             const key=localStorage.key(i);
-            if(key&&key.startsWith(`wh40k_ebook_${user.id}_`)){
+            if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
               try{
                 const meta=JSON.parse(localStorage.getItem(key));
-                if(meta?.book_id){
-                  const book=BOOKS.find(b=>b.id===meta.book_id);
-                  if(book) lsBooks.push({...book,_file:meta});
-                }
+                if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
               }catch{}
             }
           }
           setShelfBooks(lsBooks);
-          setShelfDebug(`DB returned 0 rows. LS fallback: ${lsBooks.length} books. uid=${user.id.slice(0,8)}…`);
         }
         setShelfLoading(false);
       });
@@ -1602,10 +1586,6 @@ function LibrarySection({ user }) {
 
       {tab==="shelf"&&(
         <>
-          <div style={{margin:"8px 16px",padding:"8px 12px",background:"#1a1200",border:"1px solid #c9a84c55",borderRadius:8,fontSize:10,color:"#c9a84c",fontFamily:"monospace",wordBreak:"break-all"}}>
-            user: {user?.id ? user.id.slice(0,12)+"…" : "NULL ⚠️"}<br/>
-            {shelfDebug||"(loading…)"}
-          </div>
           {shelfLoading?(
             <div style={{textAlign:"center",padding:40,color:C.muted,fontStyle:"italic"}}>Loading…</div>
           ):shelfBooks.length===0?(
