@@ -1173,6 +1173,7 @@ const ALL_ERAS     = ["All",...new Set(BOOKS.map(b=>b.era))];
 
 function LibrarySection({ user }) {
   const [tab,setTab]=useState("catalogue");
+  const [viewMode,setViewMode]=useState("card"); // card | list | shelf
   const [search,setSearch]=useState("");
   const [series,setSeries]=useState("All");
   const [faction,setFaction]=useState("All");
@@ -1313,34 +1314,141 @@ function LibrarySection({ user }) {
               {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>}
             </div>
           </div>
+          {/* ── filter + view toggle bar ── */}
           <div style={{padding:"8px 16px",display:"flex",gap:8,alignItems:"center"}}>
-            <button onClick={()=>setShowFilters(f=>!f)} style={{background:showFilters||isFiltered?`${C.gold}22`:"transparent",border:`1px solid ${showFilters||isFiltered?C.gold:C.dim}`,borderRadius:20,padding:"7px 14px",color:showFilters||isFiltered?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>⚙ Filters{isFiltered?" •":""}</button>
-            <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted}}>{filtered.length} tomes</span>
+            <button onClick={()=>setShowFilters(f=>!f)} style={{background:showFilters||isFiltered?`${C.gold}22`:"transparent",border:`1px solid ${showFilters||isFiltered?C.gold:C.dim}`,borderRadius:20,padding:"7px 14px",color:showFilters||isFiltered?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>⚙ Filtri{isFiltered?" •":""}</button>
+            <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted,flex:1}}>{filtered.length} tomi</span>
             {isFiltered&&<button onClick={()=>{setSeries("All");setFaction("All");setType("All");setEra("All");}} style={{background:"transparent",border:`1px solid ${C.red}55`,borderRadius:20,padding:"5px 12px",color:C.red,fontFamily:"'Cinzel',serif",fontSize:10,cursor:"pointer"}}>Reset</button>}
+            {/* view mode toggle */}
+            <div style={{display:"flex",gap:2,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:2}}>
+              {[{m:"card",icon:"▦",title:"Card"},{m:"list",icon:"☰",title:"Lista"},{m:"shelf",icon:"📚",title:"Scaffale"}].map(v=>(
+                <button key={v.m} onClick={()=>setViewMode(v.m)} title={v.title}
+                  style={{background:viewMode===v.m?`${C.gold}33`:"transparent",border:"none",borderRadius:6,width:28,height:26,cursor:"pointer",color:viewMode===v.m?C.gold:C.muted,fontSize:viewMode===v.m?13:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {v.icon}
+                </button>
+              ))}
+            </div>
           </div>
           {showFilters&&(<div style={{padding:"0 16px 12px",borderBottom:`1px solid ${C.border}`}}>
             {[{label:"Series",value:series,set:setSeries,opts:ALL_SERIES.slice(0,22)},{label:"Faction",value:faction,set:setFaction,opts:ALL_FACTIONS},{label:"Type",value:type,set:setType,opts:ALL_TYPES},{label:"Era",value:era,set:setEra,opts:ALL_ERAS}].map(f=>(<div key={f.label} style={{marginBottom:10}}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>{f.label}</div><div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>{f.opts.map(o=><Chip key={o} label={o} active={f.value===o} onClick={()=>f.set(o)}/>)}</div></div>))}
           </div>)}
-          <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
-            {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>No tomes found, Inquisitor.</div>)
-            :filtered.map(book=>{
-              const fc2=FC[book.faction]||C.dim; const tc=book.type==="Codex"?C.red:C.gold;
-              const bst=statuses[book.id]?.status||'none';
-              const bstCfg=STATUS_CFG[bst];
-              const borderColor=bst!=='none'?bstCfg.color:fc2;
-              return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"55"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                  <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
-                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                    {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
-                    <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:tc,letterSpacing:1,flexShrink:0}}>{book.type}</span>
+
+          {/* ── VIEW: CARD ── */}
+          {viewMode==="card"&&(
+            <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:8}}>
+              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>)
+              :filtered.map(book=>{
+                const fc2=FC[book.faction]||C.dim; const tc=book.type==="Codex"?C.red:C.gold;
+                const bst=statuses[book.id]?.status||'none';
+                const bstCfg=STATUS_CFG[bst];
+                const borderColor=bst!=='none'?bstCfg.color:fc2;
+                return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}22,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"55"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"14px 14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:5}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:1,textTransform:"uppercase"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      {bst!=='none'&&<span style={{fontSize:13}}>{bstCfg.icon}</span>}
+                      <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 7px",fontFamily:"'Cinzel',serif",fontSize:9,color:tc,letterSpacing:1,flexShrink:0}}>{book.type}</span>
+                    </div>
                   </div>
-                </div>
-                <div style={{fontSize:16,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
-                <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
-              </div>);
-            })}
-          </div>
+                  <div style={{fontSize:16,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
+                  <div style={{fontSize:12,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
+                </div>);
+              })}
+            </div>
+          )}
+
+          {/* ── VIEW: LIST ── */}
+          {viewMode==="list"&&(
+            <div style={{padding:"6px 16px 16px"}}>
+              {filtered.length===0?(<div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>)
+              :filtered.map((book,i)=>{
+                const fc2=FC[book.faction]||C.dim;
+                const bst=statuses[book.id]?.status||'none';
+                const bstCfg=STATUS_CFG[bst];
+                return(
+                  <div key={book.id} onClick={()=>setDetail(book)}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
+                    {/* faction color dot */}
+                    <div style={{width:3,height:36,background:bst!=='none'?bstCfg.color:fc2,borderRadius:2,flexShrink:0}}/>
+                    {/* num badge */}
+                    <div style={{width:28,flexShrink:0,fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,textAlign:"right",letterSpacing:1}}>
+                      {book.num>0?`#${book.num}`:""}
+                    </div>
+                    {/* title + series */}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:bst==='read'?C.muted:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",opacity:bst==='read'?0.7:1}}>{book.title}</div>
+                      <div style={{fontSize:10,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series} · {book.author}</div>
+                    </div>
+                    {/* status icon */}
+                    {bst!=='none'&&<span style={{fontSize:14,flexShrink:0}}>{bstCfg.icon}</span>}
+                    <span style={{color:C.dim,fontSize:14,flexShrink:0}}>›</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── VIEW: SHELF (by series) ── */}
+          {viewMode==="shelf"&&(()=>{
+            if(filtered.length===0) return <div style={{textAlign:"center",padding:"60px 20px",color:C.muted,fontStyle:"italic"}}>Nessun tomo trovato, Inquisitore.</div>;
+            // group by series
+            const seriesMap={};
+            filtered.forEach(b=>{if(!seriesMap[b.series])seriesMap[b.series]=[];seriesMap[b.series].push(b);});
+            const seriesEntries=Object.entries(seriesMap).sort((a,b)=>b[1].length-a[1].length);
+            return(
+              <div style={{padding:"8px 0 16px"}}>
+                {seriesEntries.map(([sName,books])=>{
+                  const readC=books.filter(b=>statuses[b.id]?.status==='read').length;
+                  const readingC=books.filter(b=>statuses[b.id]?.status==='reading').length;
+                  return(
+                    <div key={sName} style={{marginBottom:6}}>
+                      <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"6px 16px 4px"}}>
+                        <div style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.gold,letterSpacing:2,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sName}</div>
+                        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,flexShrink:0}}>
+                          {readC>0&&<span style={{color:C.green}}>✅{readC} </span>}
+                          {readingC>0&&<span style={{color:C.blue}}>📖{readingC} </span>}
+                          <span>{books.length} libri</span>
+                        </div>
+                      </div>
+                      {/* spines row */}
+                      <div style={{overflowX:"auto",paddingBottom:2}}>
+                        <div style={{display:"flex",gap:2,padding:"0 16px",minWidth:"max-content",alignItems:"flex-end"}}>
+                          {[...books].sort((a,b)=>a.num-b.num).map(book=>{
+                            const sc=FC[book.faction]||C.dim;
+                            const bst=statuses[book.id]?.status||'none';
+                            const bstCfg=STATUS_CFG[bst];
+                            return(
+                              <div key={book.id} onClick={()=>setDetail(book)}
+                                title={`${book.title}${book.num>0?' #'+book.num:''}`}
+                                style={{flexShrink:0,width:24,height:110,
+                                  background:`linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`,
+                                  borderRadius:"3px 3px 0 0",cursor:"pointer",position:"relative",
+                                  boxShadow:`inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`,
+                                  border:`1px solid ${bst!=='none'?bstCfg.color+'aa':sc+'88'}`,
+                                  borderBottom:"none",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",
+                                  transition:"transform 0.12s",
+                                }}
+                                onMouseEnter={e=>e.currentTarget.style.transform="translateY(-5px)"}
+                                onMouseLeave={e=>e.currentTarget.style.transform="none"}
+                              >
+                                <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:"'Cinzel',serif",fontSize:6,color:"rgba(255,255,255,0.85)",letterSpacing:0.8,overflow:"hidden",maxHeight:"90%",padding:"3px 2px",textShadow:"0 1px 2px rgba(0,0,0,0.9)",lineHeight:1.1,textAlign:"center"}}>
+                                  {book.num>0?`#${book.num} `+book.title.split(' ').slice(0,3).join(' '):book.title.split(' ').slice(0,3).join(' ')}
+                                </div>
+                                {/* status stripe top */}
+                                {bst!=='none'&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:bstCfg.color}}/>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* plank */}
+                        <div style={{height:8,background:"linear-gradient(to bottom,#5a3a1a,#3a2010)",margin:"0 16px",borderRadius:"0 0 3px 3px",boxShadow:"0 2px 5px rgba(0,0,0,0.5)"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </>
       )}
     </div>
