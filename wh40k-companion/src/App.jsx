@@ -688,12 +688,12 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
     const w=rect.width;
     if(relX < w*0.35){
       setTapFlash('left'); setTimeout(()=>setTapFlash(null),200);
-      if(!atStart) prevPage();
+      prevPage(); // prevPage already guards against going before the start
     } else if(relX > w*0.65){
       setTapFlash('right'); setTimeout(()=>setTapFlash(null),200);
-      if(!atEnd) nextPage();
+      nextPage(); // nextPage already guards against going past the end
     }
-  },[settings.paginate,prevPage,nextPage,atStart,atEnd]);
+  },[settings.paginate,prevPage,nextPage]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useEffect(()=>{
