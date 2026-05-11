@@ -2312,7 +2312,7 @@ function LoreSection(){
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
 // ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
-function HomePage({user,setSection,statuses={}}){
+function HomePage({user,setSection,statuses={},onOpenBook}){
   const uid=user?.id||'anon';
 
   // Load uploaded book IDs: DB first, fall back to localStorage
@@ -2454,18 +2454,23 @@ function HomePage({user,setSection,statuses={}}){
       {activeBooks.length>0&&(
         <div style={{padding:"14px 16px 0"}}>
           <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>📖 Reading</div>
-          {activeBooks.map(b=>(
-            <div key={b.id} onClick={()=>setSection('library')} style={{background:`linear-gradient(135deg,${C.blue}18,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:32,height:44,background:`linear-gradient(to right,${FC[b.faction]||C.dim}dd,${FC[b.faction]||C.dim}88)`,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:"2px 2px 4px rgba(0,0,0,0.4)"}}>
-                <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:"'Cinzel',serif",fontSize:5,color:"rgba(255,255,255,0.8)",letterSpacing:0.5,overflow:"hidden",maxHeight:"90%",padding:"2px 1px"}}>{b.series}</div>
-              </div>
+          {activeBooks.map(b=>{
+            const hasEbook=uploadedIds.has(b.id);
+            return(
+            <div key={b.id} onClick={()=>hasEbook&&onOpenBook?onOpenBook(b):setSection('library')}
+              style={{background:`linear-gradient(135deg,${C.blue}18,${C.card})`,border:`1px solid ${C.blue}44`,borderLeft:`3px solid ${C.blue}`,borderRadius:10,padding:"12px 14px",cursor:"pointer",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+              <CoverImage book={b} width={36} height={50} radius={3}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.title}</div>
-                <div style={{fontSize:11,color:C.muted}}>{b.series} #{b.num} · {b.author}</div>
+                <div style={{fontSize:11,color:C.muted}}>{b.series}{b.num>0?` #${b.num}`:""} · {b.author}</div>
               </div>
-              <span style={{color:C.blue,fontSize:16}}>›</span>
+              {hasEbook
+                ?<span style={{background:`${C.gold}22`,border:`1px solid ${C.gold}55`,borderRadius:6,padding:"4px 8px",fontFamily:"'Cinzel',serif",fontSize:9,color:C.gold,letterSpacing:1,flexShrink:0}}>READ ›</span>
+                :<span style={{color:C.blue,fontSize:16,flexShrink:0}}>›</span>
+              }
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -2576,6 +2581,30 @@ export default function App(){
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
+
+  // ── App-level reader (opened from Home page) ──────────────────────────────
+  const [appReader,setAppReader]=useState(null);
+  const openBook=useCallback(async(book)=>{
+    const uid=user?.id; if(!uid) return;
+    // 1. Get ebook meta — localStorage first, then DB
+    let meta=null;
+    try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
+    if(!meta){
+      const files=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${book.id}&limit=1`);
+      if(files?.length&&!files._error) meta=files[0];
+    }
+    if(!meta) return;
+    // 2. Signed URL
+    const url=await sb.storage.signedUrl(meta.file_path);
+    if(!url) return;
+    // 3. Last reading position
+    let progress=0,chapterIndex=0,pageIndex=0;
+    try{
+      const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
+      if(p){ progress=p.progress_pct||0; chapterIndex=p.chapter_index||0; pageIndex=p.page_index||0; }
+    }catch{}
+    setAppReader({book,url,fileType:meta.file_type||'epub',progress,chapterIndex,pageIndex});
+  },[user?.id]);
   return(
     <>
       <style>{`
@@ -2616,11 +2645,19 @@ export default function App(){
         </div>
         {/* ── CONTENT ── */}
         <div ref={mainRef} style={{flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
-          {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses}/>}
-          {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-          {section==="lore"    &&<LoreSection/>}
-          {section==="reading" &&<ReadingSection user={user} statuses={statuses}/>}
-          {section==="painting"&&<PaintingTracker user={user}/>}
+          {appReader?(
+            appReader.fileType==="pdf"
+              ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)}/>
+              :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)}/>
+          ):(
+            <>
+              {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
+              {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
+              {section==="lore"    &&<LoreSection/>}
+              {section==="reading" &&<ReadingSection user={user} statuses={statuses}/>}
+              {section==="painting"&&<PaintingTracker user={user}/>}
+            </>
+          )}
         </div>
         {/* ── BOTTOM NAV ── */}
         <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:56}}>
