@@ -414,7 +414,11 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({ progress_pct:pct, chapter_index:chIdx, page_index:pageIndex }));
   }, [chIdx, pageIndex, chapters.length, totalPages, settings.paginate]);
 
-  useEffect(() => { setPageIndex(0); }, [chIdx]);
+  useEffect(() => {
+    // If we're navigating to a pending target page (e.g. backwards to last page),
+    // set a large offscreen index so no page flashes before measurePages corrects it.
+    setPageIndex(pendingPageRef.current > 0 ? pendingPageRef.current : 0);
+  }, [chIdx]);
 
   // ── Scroll mode: restore position ────────────────────────────────────────
   useEffect(() => {
