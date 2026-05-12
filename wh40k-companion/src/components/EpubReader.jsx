@@ -457,6 +457,8 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     const kw = e.target.getAttribute?.("data-kw");
     if (kw && LORE_DB[kw]) { window.open(wikiUrl(kw), '_blank', 'noopener'); return; }
     if (e.target.closest('button,a,input,select,[role=button]')) return;
+    // If user just selected text (for dictionary), don't navigate
+    if (window.getSelection()?.toString().trim()) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const relX = e.clientX - rect.left;
@@ -470,15 +472,18 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     revealUI();
   }, [settings.paginate, prevPage, nextPage, revealUI]);
 
-  // ── Word select → dictionary ──────────────────────────────────────────────
-  const handleMouseUp = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) return;
-    const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, "");
-    if (word.length < 2 || word.includes(" ")) return;
-    if (LORE_DB[word.toLowerCase()]) return;
-    setDictWord(word);
-    sel.removeAllRanges();
+  // ── Word select → dictionary (mouse + touch via pointerup) ───────────────
+  const handlePointerUp = useCallback((e) => {
+    // Give browser a tick to finalise the selection (especially on touch)
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, "");
+      if (word.length < 2 || word.includes(" ")) return;
+      if (LORE_DB[word.toLowerCase()]) return;
+      setDictWord(word);
+      sel.removeAllRanges();
+    }, 50);
   }, []);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -626,13 +631,13 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
         ref={settings.paginate ? null : outerRef}
         style={{ position:"absolute", inset:0, overflow:settings.paginate ? "hidden" : "auto", WebkitOverflowScrolling:"touch" }}
         onClick={handleTap}
-        onMouseUp={handleMouseUp}
+        onPointerUp={handlePointerUp}
         onScroll={settings.paginate ? undefined : handleScroll}
       >
         <style>{`.epub-col img{break-inside:avoid;max-width:100%;height:auto;}.epub-col h1,.epub-col h2,.epub-col h3{break-after:avoid;}.epub-col p{orphans:3;widows:3;}`}</style>
 
         {settings.paginate ? (
-          <div ref={outerRef} style={{ position:"absolute", inset:0, overflow:"hidden", paddingTop:0, paddingBottom:0, boxSizing:"border-box", cursor:"default", userSelect:"none" }}>
+          <div ref={outerRef} style={{ position:"absolute", inset:0, overflow:"hidden", paddingTop:0, paddingBottom:0, boxSizing:"border-box", cursor:"text" }}>
             <div ref={innerRef} className="epub-col" style={{
               fontFamily:fnt.value, fontSize:settings.fontSize, lineHeight:settings.lineHeight,
               color:T.text, wordBreak:"break-word", hyphens:"auto", textAlign:"justify",
