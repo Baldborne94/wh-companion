@@ -2847,16 +2847,23 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
 
   const readCount=Object.values(statuses).filter(s=>s.status==='read').length;
   const readingCount=Object.values(statuses).filter(s=>s.status==='reading').length;
-  const wantCount=Object.values(statuses).filter(s=>s.status==='want').length;
 
-  // books to show on shelf: uploaded first, then reading, then want, then read
+  // books to show on shelf: only uploaded, sorted by series then number
   const shelfBooks=useMemo(()=>{
-    const uploaded=BOOKS.filter(b=>uploadedIds.has(b.id));
-    const reading=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='reading');
-    const want=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='want');
-    const read=BOOKS.filter(b=>!uploadedIds.has(b.id)&&statuses[b.id]?.status==='read');
-    return [...uploaded,...reading,...want,...read].slice(0,40);
-  },[uploadedIds,statuses]);
+    return BOOKS.filter(b=>uploadedIds.has(b.id))
+      .sort((a,b)=>a.series.localeCompare(b.series)||(a.num-b.num));
+  },[uploadedIds]);
+
+  // group by series for display
+  const shelfBySeries=useMemo(()=>{
+    const groups=[];
+    const seen={};
+    shelfBooks.forEach(b=>{
+      if(!seen[b.series]){seen[b.series]=[];groups.push({series:b.series,books:seen[b.series]});}
+      seen[b.series].push(b);
+    });
+    return groups;
+  },[shelfBooks]);
 
   // currently reading
   const activeBooks=BOOKS.filter(b=>statuses[b.id]?.status==='reading');
@@ -2879,11 +2886,10 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
               const sc=spineColor(b);
               const isUploaded=uploadedIds.has(b.id);
               const bst=statuses[b.id]?.status||'none';
-              const titleChars=b.title.split('');
               const isReading=bst==='reading';
               const isRead=bst==='read';
               return(
-                <div key={b.id} onClick={()=>setSection('library')} title={`${b.title} — ${b.author}`}
+                <div key={b.id} onClick={()=>onOpenBook?onOpenBook(b):setSection('library')} title={`${b.title} — ${b.author}`}
                   style={{
                     flexShrink:0,
                     width:isUploaded?32:22,
@@ -2991,48 +2997,16 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",padding:"0 16px",marginBottom:10}}>Your Shelf</div>
         {shelfBooks.length===0?(
           <div style={{padding:"24px 16px",textAlign:"center"}}>
-            <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:12}}>No books on the shelf yet.</div>
+            <div style={{color:C.muted,fontSize:13,fontStyle:"italic",marginBottom:12}}>No ebooks uploaded yet.</div>
             <button onClick={()=>setSection('library')} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"8px 20px",fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:2,cursor:"pointer"}}>Go to Library →</button>
           </div>
         ):(
           <>
-            {/* chunk books into rows of ~12 */}
-            {[0,1,2].map(row=>{
-              const rowBooks=shelfBooks.slice(row*13,(row+1)*13);
-              if(!rowBooks.length)return null;
-              return <ShelfRow key={row} books={rowBooks}/>;
-            })}
+            {shelfBySeries.map(({series,books})=>(
+              <ShelfRow key={series} books={books} label={series}/>
+            ))}
           </>
         )}
-      </div>
-
-      {/* legend */}
-      {shelfBooks.length>0&&(
-        <div style={{padding:"12px 16px",display:"flex",gap:16,flexWrap:"wrap",borderTop:`1px solid ${C.border}`,marginTop:8}}>
-          {[{c:C.blue,l:"Reading"},{c:C.green,l:"Read"},{c:C.gold,l:"With Ebook"}].map(x=>(
-            <div key={x.l} style={{display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:12,height:3,background:x.c,borderRadius:2}}/>
-              <span style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1}}>{x.l}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* quick nav */}
-      <div style={{padding:"16px 16px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        {[{id:"library",icon:"📚",label:"Library",sub:`${BOOKS.length} titles`},
-          {id:"reading",icon:"📖",label:"Crusade",sub:`${readCount} completed`},
-          {id:"lore",icon:"⚔️",label:"Encyclopedia",sub:"Factions & Primarchs"},
-          {id:"painting",icon:"🎨",label:"Painting",sub:"Your miniatures"},
-        ].map(n=>(
-          <button key={n.id} onClick={()=>setSection(n.id)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:12}}>
-            <span style={{fontSize:22,flexShrink:0}}>{n.icon}</span>
-            <div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.text,letterSpacing:1}}>{n.label}</div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,marginTop:2}}>{n.sub}</div>
-            </div>
-          </button>
-        ))}
       </div>
     </div>
   );
@@ -3133,7 +3107,7 @@ export default function App(){
         @keyframes slideLeft{from{transform:translateX(100%);}to{transform:translateX(0);}}
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
       `}</style>
-      <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:600,margin:"0 auto",background:C.bg}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:1100,margin:"0 auto",background:C.bg}}>
         {/* ── HEADER ── */}
         <div style={{flexShrink:0,height:50,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
           <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${C.red},transparent)`}}/>
