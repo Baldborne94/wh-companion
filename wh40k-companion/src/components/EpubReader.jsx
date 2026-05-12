@@ -616,6 +616,14 @@ export default function EpubReader({
   }, [allHtml, settings.fontSize, settings.lineHeight, settings.margin,
       settings.paginate, settings.twoPage, settings.fontIndex]);
 
+      // When leaving paginate mode, clear the horizontal scrollLeft that the
+  // column layout set — otherwise the content is offscreen and appears black.
+  useEffect(() => {
+    if (!settings.paginate && colRef.current) {
+      colRef.current.scrollLeft = 0;
+    }
+  }, [settings.paginate]);
+
   // ─────────────────────────────────────────────────────────────────────────
   // Keyboard navigation
   // ─────────────────────────────────────────────────────────────────────────
