@@ -145,7 +145,7 @@ function useReaderViewport() {
 function useEpubStyles() {
   useEffect(() => {
     const id = "wh40k-epub-styles";
-    if (document.getElementById(id)) return;
+    document.getElementById(id)?.remove(); // always recreate (handles hot-reload / remount)
     const el = document.createElement("style");
     el.id = id;
     el.textContent = `
@@ -156,11 +156,24 @@ function useEpubStyles() {
       .epub-body { box-sizing:border-box; }
       .epub-body *, .epub-body *::before, .epub-body *::after { box-sizing:inherit; }
 
-      /* Prevent content from splitting mid-word across columns */
-      .epub-body p   { margin:0; padding-bottom:.9em; orphans:3; widows:3; }
+      /* ── Book-style typography: no gap between paragraphs, first-line indent ── */
+      .epub-body p {
+        margin: 0;
+        padding: 0;
+        text-indent: 1.4em;   /* classic book indent */
+        orphans: 3;
+        widows: 3;
+      }
+      /* No indent on first paragraph of a chapter or after a heading */
+      .epub-chapter > p:first-child,
+      .epub-body h1 + p, .epub-body h2 + p,
+      .epub-body h3 + p, .epub-body h4 + p {
+        text-indent: 0;
+      }
       .epub-body h1,.epub-body h2,.epub-body h3,.epub-body h4 {
         break-after:avoid; page-break-after:avoid;
-        margin-top:0; padding-top:.6em; padding-bottom:.35em;
+        margin: 0; padding: .5em 0 .25em;
+        text-align: center;
       }
       .epub-body img {
         max-width:100% !important; height:auto !important;
@@ -168,7 +181,8 @@ function useEpubStyles() {
         break-inside:avoid; page-break-inside:avoid;
       }
       .epub-body a { color:#4a8adc; text-decoration:none; }
-      .epub-body blockquote { border-left:3px solid #c9a84c55; padding-left:1em; margin:0 0 .9em; }
+      /* Dialogue / special blocks that already have spacing in EPUB source */
+      .epub-body blockquote { border-left:3px solid #c9a84c55; padding-left:1em; margin:.5em 0; }
       .epub-body table { max-width:100%; border-collapse:collapse; }
       .epub-body td, .epub-body th { padding:.3em .6em; border:1px solid currentColor; }
 
@@ -186,7 +200,7 @@ function useEpubStyles() {
       .lore-kw:hover { border-bottom-color:#4a8adc; }
     `;
     document.head.appendChild(el);
-    // No cleanup — styles persist for the session
+    return () => el.remove();
   }, []);
 }
 
