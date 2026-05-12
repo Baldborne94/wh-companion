@@ -839,29 +839,39 @@ export default function EpubReader({
   const isDesktop = !isTouch.current;
   const uiVisible = isDesktop || showUI;
 
-  // Column container: on desktop offset below/above the permanent header/footer
+  // Single-page: cap reading column to a comfortable max width on wide screens.
+  // We widen the left/right margins symmetrically using window.innerWidth (not colWidth,
+  // to avoid a feedback loop with ResizeObserver).
+  const MAX_SINGLE_COL = 860; // px — comfortable max for single-page text columns
+  const TWO_PAGE_GAP   = 48;  // px — gutter between left and right pages
+  const autoMargin = (settings.paginate && !settings.twoPage && typeof window !== "undefined")
+    ? Math.max(settings.margin, Math.floor((window.innerWidth - MAX_SINGLE_COL) / 2))
+    : settings.margin;
+
+  // Column container: on desktop offset below/above the permanent header/footer.
   const colContainerStyle = {
     position:"absolute",
     top:    isDesktop ? 54 : 0,
     bottom: isDesktop ? 54 : 0,
-    left: settings.margin, right: settings.margin,
+    left:  autoMargin,
+    right: autoMargin,
     overflow: settings.paginate ? "hidden" : "auto",
     WebkitOverflowScrolling:"touch",
   };
 
-  // colWidth state (set by ResizeObserver) drives the CSS columns layout.
-  // Single page: each column = full container width.
-  // Two-page:    each column = (containerWidth - gap) / 2  → 2 columns + 1 gutter = full width.
-  const TWO_PAGE_GAP = 48; // px gutter between left and right page
-  const colPx = settings.twoPage
-    ? `${Math.max(100, Math.floor((colWidth - TWO_PAGE_GAP) / 2))}px`
-    : `${Math.max(100, colWidth)}px`;
+  // bodyStyle drives the CSS columns layout.
+  // Two-page: columnCount:2 lets CSS size columns perfectly — no manual pixel math,
+  //           no rounding drift across hundreds of pages.
+  // Single:   columnWidth = full container (autoMargin already caps width above).
+  const colPx = `${Math.max(100, colWidth)}px`;
 
   const bodyStyle = settings.paginate ? {
-    columnFill:  "auto",
-    columnGap:   settings.twoPage ? TWO_PAGE_GAP : 0,
-    columnRule:  settings.twoPage ? `1px solid ${T.border}` : "none",
-    columnWidth: colPx,
+    columnFill: "auto",
+    columnGap:  settings.twoPage ? TWO_PAGE_GAP : 0,
+    columnRule: settings.twoPage ? `1px solid ${T.border}` : "none",
+    ...(settings.twoPage
+      ? { columnCount: 2 }       // CSS auto-sizes 2 equal columns — no rounding errors
+      : { columnWidth: colPx }), // 1 column = full (already-capped) container
     height: "100%",
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
