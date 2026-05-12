@@ -521,7 +521,15 @@ export default function EpubReader({
   // ─────────────────────────────────────────────────────────────────────────
   // Navigation helpers (all pure DOM — zero React state updates during nav)
   // ─────────────────────────────────────────────────────────────────────────
-  const getColWidth = useCallback(() => colRef.current?.clientWidth ?? 0, []);
+  // In two-page mode, CSS column-gap:48 is inserted between EVERY adjacent column,
+  // including the junction between the right page of spread N and the left page of
+  // spread N+1.  This makes each spread occupy (containerWidth + 48) pixels, not
+  // containerWidth.  All navigation math (goToPage, measurePages, chapterPage) must
+  // use this adjusted value as the "page unit".
+  const getColWidth = useCallback(() => {
+    const cw = colRef.current?.clientWidth ?? 0;
+    return settings.twoPage ? cw + 48 : cw;
+  }, [settings.twoPage]);
 
   /** Return absolute page index where chapter idx starts */
   const chapterPage = useCallback((idx) => {
