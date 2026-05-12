@@ -156,25 +156,34 @@ function useEpubStyles() {
       .epub-body { box-sizing:border-box; }
       .epub-body *, .epub-body *::before, .epub-body *::after { box-sizing:inherit; }
 
-      /* ── Book-style typography: no gap between paragraphs, first-line indent ── */
+      /* ── Book typography: justified, first-line indent, no gap between paragraphs ── */
       .epub-body p {
         margin: 0;
         padding: 0;
-        text-indent: 1.4em;   /* classic book indent */
+        text-indent: 1.5em;
+        text-align: justify;
+        hyphens: auto;
+        -webkit-hyphens: auto;
         orphans: 3;
         widows: 3;
       }
-      /* No indent on first paragraph of a chapter or after a heading */
+      /* No indent on first paragraph after chapter start or heading */
       .epub-chapter > p:first-child,
       .epub-body h1 + p, .epub-body h2 + p,
-      .epub-body h3 + p, .epub-body h4 + p {
+      .epub-body h3 + p, .epub-body h4 + p,
+      .epub-body hr  + p {
         text-indent: 0;
       }
       .epub-body h1,.epub-body h2,.epub-body h3,.epub-body h4 {
         break-after:avoid; page-break-after:avoid;
-        margin: 0; padding: .5em 0 .25em;
+        margin: 0; padding: .6em 0 .3em;
         text-align: center;
+        font-variant: small-caps;
+        letter-spacing: .04em;
       }
+      /* Italic / small-caps for section breaks (common in HH novels) */
+      .epub-body hr { border:none; text-align:center; margin:.3em 0; }
+      .epub-body hr::after { content:"· · ·"; color:currentColor; opacity:.4; }
       .epub-body img {
         max-width:100% !important; height:auto !important;
         display:block; margin:1em auto;
@@ -456,6 +465,11 @@ export default function EpubReader({
   const [totalPages,   setTotalPages]   = useState(1);
   const [currentChIdx, setCurrentChIdx] = useState(0);
   const [scrollPct,    setScrollPct]    = useState(0);
+  // colWidth: actual pixel width of the column container, updated by ResizeObserver.
+  // Stored in state so bodyStyle re-renders with correct columnWidth on first paint.
+  const [colWidth, setColWidth] = useState(() =>
+    typeof window !== "undefined" ? Math.max(100, window.innerWidth - 2 * 28) : 600
+  );
 
   // ── UI panels ─────────────────────────────────────────────────────────────
   const [showUI,         setShowUI]         = useState(false);
@@ -555,12 +569,14 @@ export default function EpubReader({
     setDisplayPage(p);
   }, [getColWidth, settings.paginate]);
 
-  // ResizeObserver → re-measure on container size change
+  // ResizeObserver → update colWidth state + re-measure on container size change
   useEffect(() => {
     if (!colRef.current) return;
-    const ro = new ResizeObserver(() => {
+    const ro = new ResizeObserver((entries) => {
+      const cw = entries[0].contentRect.width;
+      if (cw > 0) setColWidth(cw); // triggers re-render with correct columnWidth
       if (msrTimer.current) clearTimeout(msrTimer.current);
-      msrTimer.current = setTimeout(() => measurePages(), 100);
+      msrTimer.current = setTimeout(() => measurePages(), 120);
     });
     ro.observe(colRef.current);
     return () => ro.disconnect();
@@ -630,29 +646,56 @@ export default function EpubReader({
   }, [showSettings, showToc, showBookmarks]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Tap handler: left 30% = prev, right 30% = next, center = toggle UI / lore
+  // Get the word at screen coordinates (for single-click dictionary on desktop)
+  // ─────────────────────────────────────────────────────────────────────────
+  const getWordAtPoint = useCallback((x, y) => {
+    try {
+      let node, offset;
+      if (document.caretRangeFromPoint) {
+        const r = document.caretRangeFromPoint(x, y);
+        if (!r || r.startContainer.nodeType !== Node.TEXT_NODE) return null;
+        node = r.startContainer; offset = r.startOffset;
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(x, y);
+        if (!pos || pos.offsetNode.nodeType !== Node.TEXT_NODE) return null;
+        node = pos.offsetNode; offset = pos.offset;
+      } else return null;
+
+      const text = node.textContent;
+      let s = offset, e = offset;
+      while (s > 0 && /[a-zA-Z'-]/.test(text[s - 1])) s--;
+      while (e < text.length && /[a-zA-Z'-]/.test(text[e])) e++;
+      if (s === e) return null;
+      return text.slice(s, e).replace(/^[-']+|[-']+$/g, "") || null;
+    } catch { return null; }
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tap handler — center tap toggles UI; desktop single-click opens dictionary
   // ─────────────────────────────────────────────────────────────────────────
   const handleTap = useCallback((e) => {
     // Suppress click that follows a touch swipe
     if (didSwipe.current) { didSwipe.current = false; return; }
 
-    // Lore keyword?
+    // Lore keyword — always highest priority
     const kw = e.target.getAttribute?.("data-kw");
     if (kw && LORE_DB[kw]) { window.open(wikiUrl(kw), "_blank", "noopener"); return; }
     if (e.target.closest("button,a,input,select,[role=button]")) return;
 
-    // Left/right tap zones for navigation:
-    // • Touch devices (phone/tablet): DISABLED — navigation is swipe-only,
-    //   so single taps near margins can be used freely for text selection.
-    // • Mouse/desktop: DISABLED — navigation is keyboard-only (←/→/Space).
-    //   This avoids accidental page turns when clicking to place cursor.
-    // Tap always just toggles the UI overlay (or clears selection).
+    // Desktop single-click: try to look up the word at click position
+    if (!isTouch.current) {
+      const word = getWordAtPoint(e.clientX, e.clientY);
+      if (word && word.length >= 2 && !LORE_DB[word.toLowerCase()]) {
+        setDictWord(word);
+        return;
+      }
+    }
 
     // Clear any lingering selection, then toggle UI
     const sel = window.getSelection();
     if (sel?.toString().trim()) { sel.removeAllRanges(); return; }
     revealUI();
-  }, [revealUI]);
+  }, [revealUI, getWordAtPoint]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Touch swipe (paginate mode only)
@@ -673,7 +716,7 @@ export default function EpubReader({
   }, [settings.paginate, prevPage, nextPage]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Dictionary: word selection via pointerUp (works on mouse + touch)
+  // Dictionary via text selection (touch long-press or mouse drag-select)
   // ─────────────────────────────────────────────────────────────────────────
   const handlePointerUp = useCallback(() => {
     setTimeout(() => {
@@ -681,10 +724,25 @@ export default function EpubReader({
       if (!sel || sel.isCollapsed) return;
       const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, "");
       if (word.length < 2 || word.includes(" ")) return;
-      if (LORE_DB[word.toLowerCase()]) return; // lore tap handled separately
+      if (LORE_DB[word.toLowerCase()]) return; // lore words handled by tap→wiki
       setDictWord(word);
       sel.removeAllRanges();
     }, 50);
+  }, []);
+
+  // Double-click / double-tap: browser auto-selects the word → open dictionary
+  const handleDblClick = useCallback((e) => {
+    const kw = e.target.getAttribute?.("data-kw");
+    if (kw && LORE_DB[kw]) return; // let lore click handle it
+    setTimeout(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, "");
+      if (word.length < 2 || word.includes(" ")) return;
+      if (LORE_DB[word.toLowerCase()]) return;
+      setDictWord(word);
+      sel.removeAllRanges();
+    }, 30);
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -785,23 +843,24 @@ export default function EpubReader({
     WebkitOverflowScrolling:"touch",
   };
 
-  // The CSS-columns content div (paginate) or normal flow (scroll)
-  const rawCw = colRef.current?.clientWidth ?? 0;
-  // Single page: column = full container width.
-  // Two-page:    column = half container width → 2 columns fit side-by-side per "page".
-  const colPx = rawCw > 0
-    ? (settings.twoPage ? `${Math.floor(rawCw / 2)}px` : `${rawCw}px`)
-    : (settings.twoPage ? "50vw" : "100vw");
+  // colWidth state (set by ResizeObserver) drives the CSS columns layout.
+  // Single page: each column = full container width.
+  // Two-page:    each column = half container width → 2 columns per "spread".
+  const colPx = settings.twoPage
+    ? `${Math.max(100, Math.floor(colWidth / 2))}px`
+    : `${Math.max(100, colWidth)}px`;
 
   const bodyStyle = settings.paginate ? {
-    columnFill:"auto",
-    columnGap:0,
+    columnFill: "auto",
+    columnGap:  0,
     columnWidth: colPx,
-    height:"100%",
-    color:T.text, fontFamily:fnt.value, fontSize:settings.fontSize, lineHeight:settings.lineHeight,
+    height: "100%",
+    color: T.text, fontFamily: fnt.value,
+    fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   } : {
-    padding:"60px 0 80px",
-    color:T.text, fontFamily:fnt.value, fontSize:settings.fontSize, lineHeight:settings.lineHeight,
+    padding: "60px 0 80px",
+    color: T.text, fontFamily: fnt.value,
+    fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -840,6 +899,7 @@ export default function EpubReader({
         ref={colRef}
         style={colContainerStyle}
         onClick={handleTap}
+        onDoubleClick={handleDblClick}
         onPointerUp={handlePointerUp}
         onScroll={handleScroll}
         onTouchStart={handleTouchStart}
