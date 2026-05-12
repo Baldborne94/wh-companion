@@ -405,14 +405,15 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     return () => ro.disconnect();
   }, [measurePages]);
 
-  // ── Save progress (paginated) ────────────────────────────────────────────
+  // ── Save progress (paginated) — fires only on chapter change, not every page turn ──
   useEffect(() => {
     if (!chapters.length || !userId || !settings.paginate) return;
-    const pct = (chIdx + (pageIndex / Math.max(1, totalPages))) / chapters.length;
+    const pct = chIdx / chapters.length;
     onProgress(pct);
     sbr.upsert("reading_progress", { user_id:userId, book_id:bookId, chapter_index:chIdx, page_index:pageIndex, progress_pct:pct, last_read:new Date().toISOString() }, "user_id,book_id");
     localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({ progress_pct:pct, chapter_index:chIdx, page_index:pageIndex }));
-  }, [chIdx, pageIndex, chapters.length, totalPages, settings.paginate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chIdx, chapters.length, settings.paginate]);
 
   // Note: pageIndex is now set synchronously alongside setChIdx in prevPage/nextPage
   // via React 18 automatic batching, so no separate effect is needed to avoid flash.
@@ -572,9 +573,6 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     const mins = Math.ceil(words / 250);
     return mins < 1 ? null : mins;
   }, [chapters, chIdx]);
-
-  const globalPct = chapters.length > 0
-    ? Math.round(((chIdx + (pageIndex / Math.max(1, totalPages))) / chapters.length) * 100) : 0;
 
   const hPad    = settings.twoPage ? settings.margin : settings.margin + 8; // narrow padding — no side arrows
   const colWidth = settings.twoPage
@@ -763,9 +761,7 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
           ? <button onClick={prevPage} disabled={atStart} style={{ background:"transparent", border:`1px solid ${T.border}`, borderRadius:8, color:atStart ? T.border : T.text, padding:"6px 14px", cursor:atStart ? "default" : "pointer", fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, minWidth:66 }}>← Prev</button>
           : <div style={{ minWidth:66 }} />}
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.muted }}>
-            {settings.paginate ? `ch. ${chIdx + 1}/${chapters.length} · ${globalPct}%` : `${scrollPct}% complete`}
-          </div>
+          {!settings.paginate && <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.muted }}>{scrollPct}%</div>}
           {settings.paginate && settings.twoPage && <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim }}>spread {pageIndex + 1}/{totalPages}</div>}
         </div>
         {settings.twoPage
