@@ -1063,24 +1063,108 @@ function EpubReader({ url, title, bookId, userId, initProgress, initChapterIndex
 }
 
 // ─── PDF READER ───────────────────────────────────────────────────────────────
+const PDFJS_CDN='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+let _pdfjsPromise=null;
+function loadPdfJs(){
+  if(_pdfjsPromise) return _pdfjsPromise;
+  _pdfjsPromise=new Promise((resolve,reject)=>{
+    if(window.pdfjsLib){resolve(window.pdfjsLib);return;}
+    const s=document.createElement('script');
+    s.src=`${PDFJS_CDN}/pdf.min.js`;
+    s.onload=()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc=`${PDFJS_CDN}/pdf.worker.min.js`;
+      resolve(window.pdfjsLib);
+    };
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+  return _pdfjsPromise;
+}
+
 function PdfReader({ url, title, bookId, userId, onClose }) {
   useReaderViewport();
-  // Save "last opened" timestamp on mount
-  useEffect(()=>{
+  const [pdfDoc,setPdfDoc]=useState(null);
+  const [pageNum,setPageNum]=useState(()=>{
     if(userId&&bookId){
-      const key=`wh40k_prog_${userId}_${bookId}`;
-      const existing=JSON.parse(localStorage.getItem(key)||'{}');
-      localStorage.setItem(key,JSON.stringify({...existing,bookmarkedAt:new Date().toISOString(),progress_pct:existing.progress_pct||0,chapter_index:0,page_index:0}));
+      try{ const p=JSON.parse(localStorage.getItem(`wh40k_prog_${userId}_${bookId}`)||'{}'); return Math.max(1,p.page_index||1); }catch{}
     }
-  },[]);
+    return 1;
+  });
+  const [totalPages,setTotalPages]=useState(0);
+  const [loading,setLoading]=useState(true);
+  const [err,setErr]=useState(null);
+  const canvasRef=useRef(null);
+  const containerRef=useRef(null);
+  const renderTaskRef=useRef(null);
+
+  // Load PDF.js + document
+  useEffect(()=>{
+    let cancelled=false;
+    setLoading(true); setErr(null);
+    loadPdfJs().then(lib=>lib.getDocument({url,withCredentials:false}).promise).then(doc=>{
+      if(cancelled) return;
+      setPdfDoc(doc); setTotalPages(doc.numPages); setLoading(false);
+    }).catch(e=>{
+      if(!cancelled){setErr('Failed to load PDF: '+e.message);setLoading(false);}
+    });
+    return()=>{cancelled=true;};
+  },[url]);
+
+  // Render page
+  useEffect(()=>{
+    if(!pdfDoc||!canvasRef.current) return;
+    let cancelled=false;
+    if(renderTaskRef.current){try{renderTaskRef.current.cancel();}catch{}}
+    pdfDoc.getPage(pageNum).then(page=>{
+      if(cancelled) return;
+      const container=containerRef.current;
+      const cw=container?container.clientWidth-32:600;
+      const vp0=page.getViewport({scale:1});
+      const scale=Math.min(cw/vp0.width, 2.5);
+      const vp=page.getViewport({scale});
+      const canvas=canvasRef.current;
+      canvas.width=vp.width; canvas.height=vp.height;
+      const ctx=canvas.getContext('2d');
+      const task=page.render({canvasContext:ctx,viewport:vp});
+      renderTaskRef.current=task;
+      task.promise.catch(e=>{ if(e.name!=='RenderingCancelledException') console.error(e); });
+    });
+    return()=>{cancelled=true;};
+  },[pdfDoc,pageNum]);
+
+  // Save progress
+  useEffect(()=>{
+    if(!userId||!bookId||totalPages<1) return;
+    const key=`wh40k_prog_${userId}_${bookId}`;
+    const ex=JSON.parse(localStorage.getItem(key)||'{}');
+    localStorage.setItem(key,JSON.stringify({...ex,page_index:pageNum,progress_pct:Math.round((pageNum/totalPages)*100),bookmarkedAt:new Date().toISOString()}));
+  },[pageNum,totalPages,userId,bookId]);
+
+  const prev=()=>setPageNum(p=>Math.max(1,p-1));
+  const next=()=>setPageNum(p=>Math.min(totalPages,p+1));
+
   return(
     <div style={{position:"fixed",inset:0,zIndex:600,background:"#0a0905",display:"flex",flexDirection:"column"}}>
+      {/* header */}
       <div style={{flexShrink:0,height:52,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:12}}>
         <button onClick={onClose} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:8,color:C.gold,padding:"7px 16px",cursor:"pointer",fontFamily:"'Cinzel',serif",fontSize:13,letterSpacing:1}}>← Back</button>
         <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
         <span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.red,letterSpacing:2,border:`1px solid ${C.red}55`,borderRadius:4,padding:"2px 7px"}}>PDF</span>
       </div>
-      <iframe src={url} style={{flex:1,border:"none",width:"100%"}} title={title}/>
+      {/* canvas area */}
+      <div ref={containerRef} style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",alignItems:"center",padding:"16px 0",background:"#111"}}>
+        {loading&&<div style={{color:C.muted,marginTop:60,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2}}>Loading PDF…</div>}
+        {err&&<div style={{color:C.red,margin:40,textAlign:"center",fontSize:13}}>{err}</div>}
+        {!loading&&!err&&<canvas ref={canvasRef} style={{maxWidth:"100%",boxShadow:"0 4px 24px rgba(0,0,0,0.7)",borderRadius:2}}/>}
+      </div>
+      {/* page nav */}
+      {totalPages>0&&(
+        <div style={{flexShrink:0,height:52,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",gap:20}}>
+          <button onClick={prev} disabled={pageNum<=1} style={{background:"transparent",border:`1px solid ${pageNum<=1?C.dim:C.gold}`,borderRadius:8,color:pageNum<=1?C.muted:C.gold,padding:"7px 18px",cursor:pageNum<=1?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1}}>‹</button>
+          <span style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.muted,letterSpacing:1,minWidth:80,textAlign:"center"}}>{pageNum} / {totalPages}</span>
+          <button onClick={next} disabled={pageNum>=totalPages} style={{background:"transparent",border:`1px solid ${pageNum>=totalPages?C.dim:C.gold}`,borderRadius:8,color:pageNum>=totalPages?C.muted:C.gold,padding:"7px 18px",cursor:pageNum>=totalPages?"default":"pointer",fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1}}>›</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2350,8 +2434,42 @@ function HHGuideSection({statuses}){
 
 // ─── NEXT BOOK SUGGESTION ─────────────────────────────────────────────────────
 // Returns { book, reason, seriesProgress } or null
-function getNextSuggestion(statuses) {
+// Walk an HH guide (HH_FULL or HH_MIN) and return first unread novel/novella that exists in BOOKS
+function getHHNextFromGuide(guide, statuses){
+  const isUnread=id=>{const s=statuses[id]?.status||'none';return s==='none'||s==='want';};
+  for(const part of guide){
+    if(part.pickOne) continue; // skip prologue choose-one block
+    const entries=part.books||[];
+    for(const entry of entries){
+      const t=entry.type||'novel';
+      if(t==='short'||t==='audio') continue; // novels & novellas only
+      if(entry.b40k) continue; // skip 40K-era bonus books
+      const book=findHHBook(entry);
+      if(book&&isUnread(book.id)){
+        const hhRead=guide.flatMap(p=>p.books||[])
+          .filter(e=>{const et=e.type||'novel';return et!=='short'&&et!=='audio'&&!e.b40k;})
+          .map(e=>findHHBook(e)).filter(Boolean)
+          .filter(b=>statuses[b.id]?.status==='read').length;
+        const hhTotal=guide.flatMap(p=>p.books||[])
+          .filter(e=>{const et=e.type||'novel';return et!=='short'&&et!=='audio'&&!e.b40k;})
+          .map(e=>findHHBook(e)).filter(Boolean).length;
+        return{book,reason:'Next in Horus Heresy',seriesProgress:`${hhRead}/${hhTotal} read`,priority:0};
+      }
+    }
+  }
+  return null;
+}
+
+function getNextSuggestion(statuses, hhMode='full') {
   const COLD_STARTS = ["Horus Rising","Eisenhorn","Gaunt's Ghosts","Ultramarines: The Omnibus","Night Lords: The Omnibus"];
+
+  // P0 — HH guide suggestion (takes priority when user has read any HH book)
+  const hasReadAnyHH=BOOKS.some(b=>b.series==='Horus Heresy'&&statuses[b.id]?.status==='read');
+  if(hasReadAnyHH||BOOKS.some(b=>b.series==='Horus Heresy'&&statuses[b.id]?.status==='reading')){
+    const guide=hhMode==='essential'?HH_MIN:HH_FULL;
+    const hhNext=getHHNextFromGuide(guide,statuses);
+    if(hhNext) return hhNext;
+  }
 
   // Build per-series info
   const seriesMap = {};
@@ -2424,7 +2542,8 @@ function ReadingSection({user, statuses={}, onOpenBook, setSection}){
     });
   },[statuses]);
 
-  const suggestion = useMemo(()=>getNextSuggestion(statuses),[statuses]);
+  const [hhMode,setHhMode]=useState(()=>localStorage.getItem('wh40k_hh_mode')||'full');
+  const suggestion = useMemo(()=>getNextSuggestion(statuses,hhMode),[statuses,hhMode]);
   const [opening,setOpening] = useState(false);
 
   const handleReadNext = async(book) => {
@@ -2791,8 +2910,15 @@ function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDir
 
 // ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
 function NextUpCard({statuses,activeBooks,onOpenBook,setSection}){
-  const suggestion=useMemo(()=>getNextSuggestion(statuses),[statuses]);
+  const [hhMode,setHhMode]=useState(()=>localStorage.getItem('wh40k_hh_mode')||'full');
+  const toggleHhMode=()=>{
+    const next=hhMode==='full'?'essential':'full';
+    setHhMode(next);
+    localStorage.setItem('wh40k_hh_mode',next);
+  };
+  const suggestion=useMemo(()=>getNextSuggestion(statuses,hhMode),[statuses,hhMode]);
   const [opening,setOpening]=useState(false);
+  const isHH=suggestion?.reason==='Next in Horus Heresy';
   if(!suggestion) return null;
   if(activeBooks.some(b=>b.id===suggestion.book.id)) return null;
   const handle=async()=>{
@@ -2804,7 +2930,16 @@ function NextUpCard({statuses,activeBooks,onOpenBook,setSection}){
   };
   return(
     <div style={{padding:"14px 16px 0"}}>
-      <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.gold,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>⚔ Next Up</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.gold,letterSpacing:3,textTransform:"uppercase"}}>⚔ Next Up</div>
+        {isHH&&(
+          <button onClick={toggleHhMode} style={{background:"transparent",border:`1px solid ${C.gold}55`,borderRadius:20,padding:"3px 10px",cursor:"pointer",display:"flex",gap:0,overflow:"hidden",flexShrink:0}}>
+            {['full','essential'].map(m=>(
+              <span key={m} style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:hhMode===m?C.bg:C.muted,background:hhMode===m?C.gold:"transparent",padding:"2px 8px",borderRadius:12,transition:"all 0.15s"}}>{m==='full'?'Full':'Essential'}</span>
+            ))}
+          </button>
+        )}
+      </div>
       <div style={{background:`linear-gradient(135deg,${C.gold}12,${C.card})`,border:`1px solid ${C.gold}44`,borderLeft:`3px solid ${C.gold}`,borderRadius:10,padding:"12px 14px",display:"flex",gap:12,alignItems:"center"}}>
         <CoverImage book={suggestion.book} width={44} height={64} radius={3} style={{boxShadow:"0 2px 8px rgba(0,0,0,0.5)"}}/>
         <div style={{flex:1,minWidth:0}}>
