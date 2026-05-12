@@ -442,9 +442,8 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const prevPage = useCallback(() => {
-    if (pageIndex > 0) { setPageIndex(p => p - 1); }
-    else if (chIdx > 0) { pendingPageRef.current = 0; setChIdx(c => c - 1); }
-  }, [pageIndex, chIdx]);
+    if (pageIndex > 0) setPageIndex(p => p - 1);
+  }, [pageIndex]);
 
   const nextPage = useCallback(() => {
     if (pageIndex < totalPages - 1) { setPageIndex(p => p + 1); }
