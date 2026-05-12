@@ -414,11 +414,8 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({ progress_pct:pct, chapter_index:chIdx, page_index:pageIndex }));
   }, [chIdx, pageIndex, chapters.length, totalPages, settings.paginate]);
 
-  useEffect(() => {
-    // If we're navigating to a pending target page (e.g. backwards to last page),
-    // set a large offscreen index so no page flashes before measurePages corrects it.
-    setPageIndex(pendingPageRef.current > 0 ? pendingPageRef.current : 0);
-  }, [chIdx]);
+  // Note: pageIndex is now set synchronously alongside setChIdx in prevPage/nextPage
+  // via React 18 automatic batching, so no separate effect is needed to avoid flash.
 
   // ── Scroll mode: restore position ────────────────────────────────────────
   useEffect(() => {
@@ -450,14 +447,20 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
       setPageIndex(p => p - 1);
     } else if (chIdx > 0) {
       // land on the LAST page of the previous chapter (9999 gets clamped to tp-1 in measurePages)
+      // Both setPageIndex and setChIdx are batched into ONE render by React 18 → no flash of page 0
       pendingPageRef.current = 9999;
+      setPageIndex(9999);
       setChIdx(c => c - 1);
     }
   }, [pageIndex, chIdx]);
 
   const nextPage = useCallback(() => {
     if (pageIndex < totalPages - 1) { setPageIndex(p => p + 1); }
-    else if (chIdx < chapters.length - 1) { pendingPageRef.current = 0; setChIdx(c => c + 1); }
+    else if (chIdx < chapters.length - 1) {
+      pendingPageRef.current = 0;
+      setPageIndex(0);
+      setChIdx(c => c + 1);
+    }
   }, [pageIndex, totalPages, chIdx, chapters.length]);
 
   // ── Tap handler: left/right = nav, center = toggle UI ────────────────────
