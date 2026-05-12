@@ -456,8 +456,6 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
     const kw = e.target.getAttribute?.("data-kw");
     if (kw && LORE_DB[kw]) { window.open(wikiUrl(kw), '_blank', 'noopener'); return; }
     if (e.target.closest('button,a,input,select,[role=button]')) return;
-    // If user just selected text (for dictionary), don't navigate
-    if (window.getSelection()?.toString().trim()) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const relX = e.clientX - rect.left;
@@ -468,6 +466,8 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
       if (relX > w * 0.70) { nextPage(); return; }
     }
     // Center 40% (or full area in scroll mode) → toggle UI
+    // but don't steal taps that just dismissed a text selection
+    if (window.getSelection()?.toString().trim()) { window.getSelection().removeAllRanges(); return; }
     revealUI();
   }, [settings.paginate, prevPage, nextPage, revealUI]);
 
