@@ -544,8 +544,8 @@ export default function EpubReader({
     setDisplayPage(p);
   }, [getColWidth]);
 
-  const prevPage = useCallback(() => goToPage(pageRef.current - (settings.twoPage ? 2 : 1)), [goToPage, settings.twoPage]);
-  const nextPage = useCallback(() => goToPage(pageRef.current + (settings.twoPage ? 2 : 1)), [goToPage, settings.twoPage]);
+  const prevPage = useCallback(() => goToPage(pageRef.current - 1), [goToPage]);
+  const nextPage = useCallback(() => goToPage(pageRef.current + 1), [goToPage]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Measure: calculate totalPages, then restore scrollLeft
@@ -685,7 +685,7 @@ export default function EpubReader({
     // Desktop single-click: try to look up the word at click position
     if (!isTouch.current) {
       const word = getWordAtPoint(e.clientX, e.clientY);
-      if (word && word.length >= 2 && !LORE_DB[word.toLowerCase()]) {
+      if (word && word.length >= 3 && !LORE_DB[word.toLowerCase()]) {
         setDictWord(word);
         return;
       }
@@ -835,9 +835,15 @@ export default function EpubReader({
   const atStart = displayPage === 0;
   const atEnd   = settings.paginate && displayPage >= totalPages - 1;
 
-  // Column container: sits between the side margins; header/footer overlay on top
+  // Desktop: header/footer always visible; touch: Kindle-style hide/show
+  const isDesktop = !isTouch.current;
+  const uiVisible = isDesktop || showUI;
+
+  // Column container: on desktop offset below/above the permanent header/footer
   const colContainerStyle = {
-    position:"absolute", top:0, bottom:0,
+    position:"absolute",
+    top:    isDesktop ? 54 : 0,
+    bottom: isDesktop ? 54 : 0,
     left: settings.margin, right: settings.margin,
     overflow: settings.paginate ? "hidden" : "auto",
     WebkitOverflowScrolling:"touch",
@@ -858,7 +864,7 @@ export default function EpubReader({
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   } : {
-    padding: "60px 0 80px",
+    padding: isDesktop ? "20px 0 24px" : "60px 0 80px",
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   };
@@ -919,7 +925,7 @@ export default function EpubReader({
         background:`${T.bg}ee`, backdropFilter:"blur(10px)",
         borderBottom:`1px solid ${T.border}`,
         display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 8px",
-        opacity: showUI ? 1 : 0, pointerEvents: showUI ? "auto" : "none",
+        opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? "auto" : "none",
         transition:"opacity .25s ease",
       }}>
         <button onClick={onClose} style={{ background:"transparent", border:"none",
@@ -947,7 +953,7 @@ export default function EpubReader({
         background:`${T.bg}ee`, backdropFilter:"blur(10px)",
         borderTop:`1px solid ${T.border}`,
         display:"flex", alignItems:"center", padding:"0 14px", gap:14,
-        opacity: showUI ? 1 : 0, pointerEvents: showUI ? "auto" : "none",
+        opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? "auto" : "none",
         transition:"opacity .25s ease",
       }}>
         {/* Prev — touch: button; desktop: keyboard hint */}
