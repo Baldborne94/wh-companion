@@ -851,20 +851,25 @@ export default function EpubReader({
 
   // colWidth state (set by ResizeObserver) drives the CSS columns layout.
   // Single page: each column = full container width.
-  // Two-page:    each column = half container width → 2 columns per "spread".
+  // Two-page:    each column = (containerWidth - gap) / 2  → 2 columns + 1 gutter = full width.
+  const TWO_PAGE_GAP = 48; // px gutter between left and right page
   const colPx = settings.twoPage
-    ? `${Math.max(100, Math.floor(colWidth / 2))}px`
+    ? `${Math.max(100, Math.floor((colWidth - TWO_PAGE_GAP) / 2))}px`
     : `${Math.max(100, colWidth)}px`;
 
   const bodyStyle = settings.paginate ? {
-    columnFill: "auto",
-    columnGap:  0,
+    columnFill:  "auto",
+    columnGap:   settings.twoPage ? TWO_PAGE_GAP : 0,
+    columnRule:  settings.twoPage ? `1px solid ${T.border}` : "none",
     columnWidth: colPx,
     height: "100%",
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   } : {
-    padding: isDesktop ? "20px 0 24px" : "60px 0 80px",
+    // Scroll mode: cap line length for readability, center in container
+    padding:  isDesktop ? "20px 0 24px" : "60px 0 80px",
+    maxWidth:  "72ch",
+    margin:    "0 auto",
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   };
