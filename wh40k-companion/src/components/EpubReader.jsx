@@ -442,8 +442,14 @@ export default function EpubReader({ url, title, bookId, userId, initProgress, i
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const prevPage = useCallback(() => {
-    if (pageIndex > 0) setPageIndex(p => p - 1);
-  }, [pageIndex]);
+    if (pageIndex > 0) {
+      setPageIndex(p => p - 1);
+    } else if (chIdx > 0) {
+      // land on the LAST page of the previous chapter (9999 gets clamped to tp-1 in measurePages)
+      pendingPageRef.current = 9999;
+      setChIdx(c => c - 1);
+    }
+  }, [pageIndex, chIdx]);
 
   const nextPage = useCallback(() => {
     if (pageIndex < totalPages - 1) { setPageIndex(p => p + 1); }
