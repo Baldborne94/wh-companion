@@ -463,13 +463,15 @@ export default function EpubReader({
   const colRef     = useRef(null);
   const bodyRef    = useRef(null);
   const pageRef    = useRef(0);
-  const totalRef   = useRef(1);
-  const touchX     = useRef(0);
-  const touchY     = useRef(0);
-  const didSwipe   = useRef(false); // suppress click after a successful swipe
-  const hideTimer  = useRef(null);
-  const saveTimer  = useRef(null);
-  const msrTimer   = useRef(null);
+  const totalRef     = useRef(1);
+  const touchX       = useRef(0);
+  const touchY       = useRef(0);
+  const didSwipe     = useRef(false);  // suppress click after a successful swipe
+  const initialized  = useRef(false);  // true after first measurement (don't re-apply init position)
+  const isTouch      = useRef(typeof window !== "undefined" && window.matchMedia("(pointer:coarse)").matches);
+  const hideTimer    = useRef(null);
+  const saveTimer    = useRef(null);
+  const msrTimer     = useRef(null);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Load EPUB → build one big HTML string (all chapters concatenated)
@@ -526,6 +528,8 @@ export default function EpubReader({
     const cw = getColWidth();
     const sw = bodyRef.current.scrollWidth;
     if (cw <= 0 || sw <= 0) return;
+    // In two-page mode each "page" = one full-container-width spread (2 columns of cw/2)
+    // scrollWidth is already in terms of half-width columns; dividing by cw gives spreads
     const tp = Math.max(1, Math.round(sw / cw));
     totalRef.current = tp;
     setTotalPages(tp);
@@ -548,21 +552,26 @@ export default function EpubReader({
     return () => ro.disconnect();
   }, [measurePages]);
 
-  // Re-measure when content or relevant settings change
+  // Re-measure when content or relevant settings change.
+  // On first load (initialized=false) go to the saved/init page.
+  // On subsequent calls (settings tweak) keep the current page (pageRef.current).
   useEffect(() => {
     if (!allHtml || !settings.paginate) return;
     if (msrTimer.current) clearTimeout(msrTimer.current);
     msrTimer.current = setTimeout(() => {
-      // Determine the right starting page on first load
       let target;
-      if (initPageIndex > 0) {
-        target = initPageIndex;
-      } else if (initChapterIndex > 0) {
-        target = chapterPage(Math.min(initChapterIndex, chapters.length - 1));
-      } else if (initProgress > 0) {
-        // Best guess: proportional
-        target = Math.floor(initProgress * (totalRef.current - 1));
+      if (!initialized.current) {
+        // First measurement only: jump to saved position
+        if (initPageIndex > 0) {
+          target = initPageIndex;
+        } else if (initChapterIndex > 0) {
+          target = chapterPage(Math.min(initChapterIndex, chapters.length - 1));
+        } else if (initProgress > 0) {
+          target = Math.floor(initProgress * (totalRef.current - 1));
+        }
+        initialized.current = true;
       }
+      // target === undefined → measurePages keeps pageRef.current (current page)
       measurePages(target);
     }, 220);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -618,18 +627,18 @@ export default function EpubReader({
     if (kw && LORE_DB[kw]) { window.open(wikiUrl(kw), "_blank", "noopener"); return; }
     if (e.target.closest("button,a,input,select,[role=button]")) return;
 
-    if (settings.paginate) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const relX = (e.clientX - rect.left) / rect.width;
-      if (relX < 0.28) { prevPage(); return; }
-      if (relX > 0.72) { nextPage(); return; }
-    }
+    // Left/right tap zones for navigation:
+    // • Touch devices (phone/tablet): DISABLED — navigation is swipe-only,
+    //   so single taps near margins can be used freely for text selection.
+    // • Mouse/desktop: DISABLED — navigation is keyboard-only (←/→/Space).
+    //   This avoids accidental page turns when clicking to place cursor.
+    // Tap always just toggles the UI overlay (or clears selection).
 
-    // Center tap: clear selection or toggle UI
+    // Clear any lingering selection, then toggle UI
     const sel = window.getSelection();
     if (sel?.toString().trim()) { sel.removeAllRanges(); return; }
     revealUI();
-  }, [settings.paginate, prevPage, nextPage, revealUI]);
+  }, [revealUI]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Touch swipe (paginate mode only)
@@ -763,11 +772,17 @@ export default function EpubReader({
   };
 
   // The CSS-columns content div (paginate) or normal flow (scroll)
+  const rawCw = colRef.current?.clientWidth ?? 0;
+  // Single page: column = full container width.
+  // Two-page:    column = half container width → 2 columns fit side-by-side per "page".
+  const colPx = rawCw > 0
+    ? (settings.twoPage ? `${Math.floor(rawCw / 2)}px` : `${rawCw}px`)
+    : (settings.twoPage ? "50vw" : "100vw");
+
   const bodyStyle = settings.paginate ? {
     columnFill:"auto",
     columnGap:0,
-    // column-width must match container clientWidth exactly
-    columnWidth: colRef.current ? `${colRef.current.clientWidth}px` : "100vw",
+    columnWidth: colPx,
     height:"100%",
     color:T.text, fontFamily:fnt.value, fontSize:settings.fontSize, lineHeight:settings.lineHeight,
   } : {
@@ -861,14 +876,21 @@ export default function EpubReader({
         opacity: showUI ? 1 : 0, pointerEvents: showUI ? "auto" : "none",
         transition:"opacity .25s ease",
       }}>
-        {/* Prev */}
-        <button onClick={prevPage} disabled={atStart}
-          style={{ background:"transparent", border:`1px solid ${atStart ? T.border : T.muted}`,
-                   borderRadius:6, color: atStart ? T.border : T.text,
-                   padding:"5px 13px", cursor: atStart ? "default" : "pointer",
-                   fontFamily:"'Cinzel',serif", fontSize:13, flexShrink:0 }}>
-          ‹
-        </button>
+        {/* Prev — touch: button; desktop: keyboard hint */}
+        {isTouch.current ? (
+          <button onClick={prevPage} disabled={atStart}
+            style={{ background:"transparent", border:`1px solid ${atStart ? T.border : T.muted}`,
+                     borderRadius:6, color: atStart ? T.border : T.text,
+                     padding:"5px 14px", cursor: atStart ? "default" : "pointer",
+                     fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
+            ‹
+          </button>
+        ) : (
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.border,
+                         letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
+            ← prev
+          </span>
+        )}
 
         {/* Progress bar + label */}
         <div style={{ flex:1 }}>
@@ -877,23 +899,31 @@ export default function EpubReader({
                           borderRadius:1, transition:"width .4s ease" }} />
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1,
+                           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"60%" }}>
               {chapters[currentChIdx]?.label || ""}
             </span>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1, flexShrink:0 }}>
               {settings.paginate ? `${displayPage + 1} / ${totalPages}` : `${progressPct}%`}
             </span>
           </div>
         </div>
 
-        {/* Next */}
-        <button onClick={nextPage} disabled={atEnd}
-          style={{ background:"transparent", border:`1px solid ${atEnd ? T.border : T.muted}`,
-                   borderRadius:6, color: atEnd ? T.border : T.text,
-                   padding:"5px 13px", cursor: atEnd ? "default" : "pointer",
-                   fontFamily:"'Cinzel',serif", fontSize:13, flexShrink:0 }}>
-          ›
-        </button>
+        {/* Next — touch: button; desktop: keyboard hint */}
+        {isTouch.current ? (
+          <button onClick={nextPage} disabled={atEnd}
+            style={{ background:"transparent", border:`1px solid ${atEnd ? T.border : T.muted}`,
+                     borderRadius:6, color: atEnd ? T.border : T.text,
+                     padding:"5px 14px", cursor: atEnd ? "default" : "pointer",
+                     fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
+            ›
+          </button>
+        ) : (
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.border,
+                         letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
+            next →
+          </span>
+        )}
       </div>
 
       {/* ── Table of Contents (left drawer) ───────────────────────────────── */}
