@@ -121,7 +121,9 @@ async function parseEpub(url) {
     const tMatch   = html.match(/<title[^>]*>([^<]+)<\/title>/i) || html.match(/<h[123][^>]*>([^<]+)<\/h[123]>/i);
     const rawLabel = tMatch?.[1]?.trim() || "";
     const label    = tocLabel || (rawLabel && rawLabel.length < 80 && !/\.x?html?$/i.test(rawLabel) ? rawLabel : null) || `Chapter ${idx + 1}`;
-    return { body: highlightKeywords(extractBody(html)), label };
+    // FIX: salva il nome file sorgente per matching link interni
+    const srcFile  = hrefBase.toLowerCase();
+    return { body: highlightKeywords(extractBody(html)), label, srcFile };
   }));
   return chapters.filter(Boolean);
 }
@@ -465,8 +467,6 @@ export default function EpubReader({
   const [totalPages,   setTotalPages]   = useState(1);
   const [currentChIdx, setCurrentChIdx] = useState(0);
   const [scrollPct,    setScrollPct]    = useState(0);
-  // colWidth: actual pixel width of the column container, updated by ResizeObserver.
-  // Stored in state so bodyStyle re-renders with correct columnWidth on first paint.
   const [colWidth, setColWidth] = useState(() =>
     typeof window !== "undefined" ? Math.max(100, window.innerWidth - 2 * 28) : 600
   );
@@ -484,18 +484,14 @@ export default function EpubReader({
   });
 
   // ── Core refs ─────────────────────────────────────────────────────────────
-  // colRef   = the overflow:hidden div whose scrollLeft we control directly
-  // bodyRef  = the CSS-columns div holding all chapter HTML
-  // pageRef  = source-of-truth page index (no stale closures)
-  // totalRef = source-of-truth total pages
   const colRef     = useRef(null);
   const bodyRef    = useRef(null);
   const pageRef    = useRef(0);
   const totalRef     = useRef(1);
   const touchX       = useRef(0);
   const touchY       = useRef(0);
-  const didSwipe     = useRef(false);  // suppress click after a successful swipe
-  const initialized  = useRef(false);  // true after first measurement (don't re-apply init position)
+  const didSwipe     = useRef(false);
+  const initialized  = useRef(false);
   const isTouch      = useRef(typeof window !== "undefined" && window.matchMedia("(pointer:coarse)").matches);
   const hideTimer    = useRef(null);
   const saveTimer    = useRef(null);
@@ -519,30 +515,22 @@ export default function EpubReader({
   }, [url, bookId]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Navigation helpers (all pure DOM — zero React state updates during nav)
+  // Navigation helpers
   // ─────────────────────────────────────────────────────────────────────────
-  // In two-page mode, CSS column-gap:48 is inserted between EVERY adjacent column,
-  // including the junction between the right page of spread N and the left page of
-  // spread N+1.  This makes each spread occupy (containerWidth + 48) pixels, not
-  // containerWidth.  All navigation math (goToPage, measurePages, chapterPage) must
-  // use this adjusted value as the "page unit".
   const getColWidth = useCallback(() => {
     const cw = colRef.current?.clientWidth ?? 0;
     return settings.twoPage ? cw + 48 : cw;
   }, [settings.twoPage]);
 
-  /** Return absolute page index where chapter idx starts */
   const chapterPage = useCallback((idx) => {
     if (!colRef.current) return 0;
     const el = document.getElementById(`rdr-ch-${bookId}-${idx}`);
     if (!el) return 0;
     const cw = getColWidth();
     if (cw <= 0) return 0;
-    // offsetLeft is relative to the offsetParent (bodyRef). Works in column layout.
     return Math.max(0, Math.floor(el.offsetLeft / cw));
   }, [bookId, getColWidth]);
 
-  /** Scroll to page n — the ONLY place scrollLeft is set */
   const goToPage = useCallback((n) => {
     const cw = getColWidth();
     if (!colRef.current || cw <= 0) return;
@@ -556,16 +544,13 @@ export default function EpubReader({
   const nextPage = useCallback(() => goToPage(pageRef.current + 1), [goToPage]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Measure: calculate totalPages, then restore scrollLeft
-  // Called after content renders or container resizes
+  // Measure pages
   // ─────────────────────────────────────────────────────────────────────────
   const measurePages = useCallback((targetPage) => {
     if (!colRef.current || !bodyRef.current || !settings.paginate) return;
     const cw = getColWidth();
     const sw = bodyRef.current.scrollWidth;
     if (cw <= 0 || sw <= 0) return;
-    // In two-page mode each "page" = one full-container-width spread (2 columns of cw/2)
-    // scrollWidth is already in terms of half-width columns; dividing by cw gives spreads
     const tp = Math.max(1, Math.round(sw / cw));
     totalRef.current = tp;
     setTotalPages(tp);
@@ -577,12 +562,11 @@ export default function EpubReader({
     setDisplayPage(p);
   }, [getColWidth, settings.paginate]);
 
-  // ResizeObserver → update colWidth state + re-measure on container size change
   useEffect(() => {
     if (!colRef.current) return;
     const ro = new ResizeObserver((entries) => {
       const cw = entries[0].contentRect.width;
-      if (cw > 0) setColWidth(cw); // triggers re-render with correct columnWidth
+      if (cw > 0) setColWidth(cw);
       if (msrTimer.current) clearTimeout(msrTimer.current);
       msrTimer.current = setTimeout(() => measurePages(), 120);
     });
@@ -590,16 +574,12 @@ export default function EpubReader({
     return () => ro.disconnect();
   }, [measurePages]);
 
-  // Re-measure when content or relevant settings change.
-  // On first load (initialized=false) go to the saved/init page.
-  // On subsequent calls (settings tweak) keep the current page (pageRef.current).
   useEffect(() => {
     if (!allHtml || !settings.paginate) return;
     if (msrTimer.current) clearTimeout(msrTimer.current);
     msrTimer.current = setTimeout(() => {
       let target;
       if (!initialized.current) {
-        // First measurement only: jump to saved position
         if (initPageIndex > 0) {
           target = initPageIndex;
         } else if (initChapterIndex > 0) {
@@ -609,15 +589,12 @@ export default function EpubReader({
         }
         initialized.current = true;
       }
-      // target === undefined → measurePages keeps pageRef.current (current page)
       measurePages(target);
     }, 220);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allHtml, settings.fontSize, settings.lineHeight, settings.margin,
       settings.paginate, settings.twoPage, settings.fontIndex]);
 
-      // When leaving paginate mode, clear the horizontal scrollLeft that the
-  // column layout set — otherwise the content is offscreen and appears black.
   useEffect(() => {
     if (!settings.paginate && colRef.current) {
       colRef.current.scrollLeft = 0;
@@ -645,7 +622,7 @@ export default function EpubReader({
   }, [nextPage, prevPage, dictWord, showSettings, showToc, showBookmarks, onClose]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // UI show/hide (Kindle-style: tap center to reveal, auto-hide after 4s)
+  // UI show/hide
   // ─────────────────────────────────────────────────────────────────────────
   const revealUI = useCallback(() => {
     setShowUI(true);
@@ -653,7 +630,6 @@ export default function EpubReader({
     hideTimer.current = setTimeout(() => setShowUI(false), 4000);
   }, []);
 
-  // Keep UI visible while any panel is open
   useEffect(() => {
     if (showSettings || showToc || showBookmarks) {
       if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -662,7 +638,7 @@ export default function EpubReader({
   }, [showSettings, showToc, showBookmarks]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Get the word at screen coordinates (for single-click dictionary on desktop)
+  // Word at point (desktop dictionary)
   // ─────────────────────────────────────────────────────────────────────────
   const getWordAtPoint = useCallback((x, y) => {
     try {
@@ -676,7 +652,6 @@ export default function EpubReader({
         if (!pos || pos.offsetNode.nodeType !== Node.TEXT_NODE) return null;
         node = pos.offsetNode; offset = pos.offset;
       } else return null;
-
       const text = node.textContent;
       let s = offset, e = offset;
       while (s > 0 && /[a-zA-Z'-]/.test(text[s - 1])) s--;
@@ -687,18 +662,74 @@ export default function EpubReader({
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Tap handler — center tap toggles UI; desktop single-click opens dictionary
+  // FIX: intercetta click su <a> dentro il contenuto EPUB
+  // Previene la navigazione del browser (→ 404) e gestisce i link internamente
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleContentClick = useCallback((e) => {
+    const anchor = e.target.closest("a[href]");
+    if (!anchor) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const href = anchor.getAttribute("href") || "";
+
+    // 1. Link esterno → apri in nuova tab
+    if (/^https?:\/\//.test(href) || href.startsWith("//")) {
+      window.open(href, "_blank", "noopener");
+      return;
+    }
+
+    // 2. Ancora pura (#id) o link con ancora (file.xhtml#id)
+    const hashIdx = href.indexOf("#");
+    if (hashIdx !== -1) {
+      const id = href.slice(hashIdx + 1);
+      if (id) {
+        // Cerca prima dentro colRef (reader container)
+        const target = colRef.current?.querySelector(`#${CSS.escape(id)}`) ||
+                       colRef.current?.querySelector(`[name="${id}"]`);
+        if (target) {
+          if (settings.paginate) {
+            const cw = getColWidth();
+            if (cw > 0) {
+              const page = Math.floor(target.offsetLeft / cw);
+              goToPage(page);
+            }
+          } else {
+            target.scrollIntoView({ behavior:"smooth", block:"start" });
+          }
+          return;
+        }
+      }
+    }
+
+    // 3. Link a file capitolo (es. "chapter03.xhtml", "../Text/part2.html")
+    const filename = href.split("#")[0].split("/").pop().toLowerCase();
+    if (filename) {
+      const chIdx = chapters.findIndex(ch => ch.srcFile === filename);
+      if (chIdx !== -1) {
+        goToPage(chapterPage(chIdx));
+        return;
+      }
+    }
+
+    // 4. Fallback: ignora silenziosamente (non navigare fuori dall'app)
+  }, [chapters, getColWidth, goToPage, chapterPage, settings.paginate]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tap handler
   // ─────────────────────────────────────────────────────────────────────────
   const handleTap = useCallback((e) => {
-    // Suppress click that follows a touch swipe
     if (didSwipe.current) { didSwipe.current = false; return; }
 
-    // Lore keyword — always highest priority
+    // Lore keyword
     const kw = e.target.getAttribute?.("data-kw");
     if (kw && LORE_DB[kw]) { window.open(wikiUrl(kw), "_blank", "noopener"); return; }
-    if (e.target.closest("button,a,input,select,[role=button]")) return;
 
-    // Desktop single-click: try to look up the word at click position
+    // Link <a> — gestito da handleContentClick, non interferire
+    if (e.target.closest("a[href]")) return;
+
+    if (e.target.closest("button,input,select,[role=button]")) return;
+
     if (!isTouch.current) {
       const word = getWordAtPoint(e.clientX, e.clientY);
       if (word && word.length >= 3 && !LORE_DB[word.toLowerCase()]) {
@@ -707,14 +738,13 @@ export default function EpubReader({
       }
     }
 
-    // Clear any lingering selection, then toggle UI
     const sel = window.getSelection();
     if (sel?.toString().trim()) { sel.removeAllRanges(); return; }
     revealUI();
   }, [revealUI, getWordAtPoint]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Touch swipe (paginate mode only)
+  // Touch swipe
   // ─────────────────────────────────────────────────────────────────────────
   const handleTouchStart = useCallback((e) => {
     touchX.current = e.touches[0].clientX;
@@ -732,7 +762,7 @@ export default function EpubReader({
   }, [settings.paginate, prevPage, nextPage]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Dictionary via text selection (touch long-press or mouse drag-select)
+  // Dictionary via selection
   // ─────────────────────────────────────────────────────────────────────────
   const handlePointerUp = useCallback(() => {
     setTimeout(() => {
@@ -740,16 +770,15 @@ export default function EpubReader({
       if (!sel || sel.isCollapsed) return;
       const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, "");
       if (word.length < 2 || word.includes(" ")) return;
-      if (LORE_DB[word.toLowerCase()]) return; // lore words handled by tap→wiki
+      if (LORE_DB[word.toLowerCase()]) return;
       setDictWord(word);
       sel.removeAllRanges();
     }, 50);
   }, []);
 
-  // Double-click / double-tap: browser auto-selects the word → open dictionary
   const handleDblClick = useCallback((e) => {
     const kw = e.target.getAttribute?.("data-kw");
-    if (kw && LORE_DB[kw]) return; // let lore click handle it
+    if (kw && LORE_DB[kw]) return;
     setTimeout(() => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed) return;
@@ -762,7 +791,7 @@ export default function EpubReader({
   }, []);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Scroll mode: track position + save progress
+  // Scroll mode progress
   // ─────────────────────────────────────────────────────────────────────────
   const handleScroll = useCallback(() => {
     if (settings.paginate || !colRef.current) return;
@@ -773,7 +802,7 @@ export default function EpubReader({
   }, [settings.paginate]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Current chapter detection (for TOC highlight + bookmarks)
+  // Chapter detection
   // ─────────────────────────────────────────────────────────────────────────
   const detectChapter = useCallback(() => {
     if (!colRef.current || !chapters.length) return 0;
@@ -793,7 +822,7 @@ export default function EpubReader({
   }, [displayPage, detectChapter]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Progress save (debounced 1.5s, only on meaningful page change)
+  // Progress save
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!chapters.length || !userId || !bookId) return;
@@ -851,20 +880,15 @@ export default function EpubReader({
   const atStart = displayPage === 0;
   const atEnd   = settings.paginate && displayPage >= totalPages - 1;
 
-  // Desktop: header/footer always visible; touch: Kindle-style hide/show
   const isDesktop = !isTouch.current;
   const uiVisible = isDesktop || showUI;
 
-  // Single-page: cap reading column to a comfortable max width on wide screens.
-  // We widen the left/right margins symmetrically using window.innerWidth (not colWidth,
-  // to avoid a feedback loop with ResizeObserver).
-  const MAX_SINGLE_COL = 860; // px — comfortable max for single-page text columns
-  const TWO_PAGE_GAP   = 48;  // px — gutter between left and right pages
+  const MAX_SINGLE_COL = 860;
+  const TWO_PAGE_GAP   = 48;
   const autoMargin = (settings.paginate && !settings.twoPage && typeof window !== "undefined")
     ? Math.max(settings.margin, Math.floor((window.innerWidth - MAX_SINGLE_COL) / 2))
     : settings.margin;
 
-  // Column container: on desktop offset below/above the permanent header/footer.
   const colContainerStyle = {
     position:"absolute",
     top:    isDesktop ? 54 : 0,
@@ -875,10 +899,6 @@ export default function EpubReader({
     WebkitOverflowScrolling:"touch",
   };
 
-  // bodyStyle drives the CSS columns layout.
-  // Two-page: columnCount:2 lets CSS size columns perfectly — no manual pixel math,
-  //           no rounding drift across hundreds of pages.
-  // Single:   columnWidth = full container (autoMargin already caps width above).
   const colPx = `${Math.max(100, colWidth)}px`;
 
   const bodyStyle = settings.paginate ? {
@@ -886,13 +906,12 @@ export default function EpubReader({
     columnGap:  settings.twoPage ? TWO_PAGE_GAP : 0,
     columnRule: settings.twoPage ? `1px solid ${T.border}` : "none",
     ...(settings.twoPage
-      ? { columnCount: 2 }       // CSS auto-sizes 2 equal columns — no rounding errors
-      : { columnWidth: colPx }), // 1 column = full (already-capped) container
+      ? { columnCount: 2 }
+      : { columnWidth: colPx }),
     height: "100%",
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   } : {
-    // Scroll mode: cap line length for readability, center in container
     padding:  isDesktop ? "20px 0 24px" : "60px 0 80px",
     maxWidth:  "72ch",
     margin:    "0 auto",
@@ -945,12 +964,13 @@ export default function EpubReader({
         <div
           ref={bodyRef}
           className="epub-body"
+          onClick={handleContentClick}
           style={{ ...bodyStyle, userSelect:"text", cursor:"text" }}
           dangerouslySetInnerHTML={{ __html: allHtml }}
         />
       </div>
 
-      {/* ── Header (overlays content, fades in/out) ───────────────────────── */}
+      {/* ── Header ────────────────────────────────────────────────────────── */}
       <div style={{
         position:"absolute", top:0, left:0, right:0, height:54,
         background:`${T.bg}ee`, backdropFilter:"blur(10px)",
@@ -987,7 +1007,6 @@ export default function EpubReader({
         opacity: uiVisible ? 1 : 0, pointerEvents: uiVisible ? "auto" : "none",
         transition:"opacity .25s ease",
       }}>
-        {/* Prev — touch: button; desktop: keyboard hint */}
         {isTouch.current ? (
           <button onClick={prevPage} disabled={atStart}
             style={{ background:"transparent", border:`1px solid ${atStart ? T.border : T.muted}`,
@@ -1003,7 +1022,6 @@ export default function EpubReader({
           </span>
         )}
 
-        {/* Progress bar + label */}
         <div style={{ flex:1 }}>
           <div style={{ height:2, background:T.border, borderRadius:1, overflow:"hidden", marginBottom:4 }}>
             <div style={{ height:"100%", width:`${progressPct}%`, background:C.gold,
@@ -1020,7 +1038,6 @@ export default function EpubReader({
           </div>
         </div>
 
-        {/* Next — touch: button; desktop: keyboard hint */}
         {isTouch.current ? (
           <button onClick={nextPage} disabled={atEnd}
             style={{ background:"transparent", border:`1px solid ${atEnd ? T.border : T.muted}`,
@@ -1037,7 +1054,7 @@ export default function EpubReader({
         )}
       </div>
 
-      {/* ── Table of Contents (left drawer) ───────────────────────────────── */}
+      {/* ── Table of Contents ─────────────────────────────────────────────── */}
       {showToc && (
         <div onClick={() => setShowToc(false)}
           style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
@@ -1077,7 +1094,7 @@ export default function EpubReader({
         </div>
       )}
 
-      {/* ── Bookmarks (right drawer) ───────────────────────────────────────── */}
+      {/* ── Bookmarks ─────────────────────────────────────────────────────── */}
       {showBookmarks && (
         <div onClick={() => setShowBookmarks(false)}
           style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
