@@ -259,21 +259,26 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
       return Math.sqrt(dx * dx + dy * dy);
     };
 
+    const isScroll = viewMode === "scroll";
+
     const onStart = (e) => {
       bumpNav();
       if (e.touches.length === 2) {
-        pinchRef.current = { dist: pinchDist(e.touches), zoom: zoomRef.current };
+        if (!isScroll) {
+          // Pinch-to-zoom only in single/dual mode
+          pinchRef.current = { dist: pinchDist(e.touches), zoom: zoomRef.current };
+          e.preventDefault();
+        }
         touchX.current = null;
-        e.preventDefault();
       } else {
         pinchRef.current = null;
-        // When zoomed in, let the browser handle native pan scrolling
-        touchX.current = zoomRef.current <= 1.0 ? e.touches[0].clientX : null;
+        // In scroll mode or when zoomed in: let browser handle pan/scroll natively
+        touchX.current = (!isScroll && zoomRef.current <= 1.0) ? e.touches[0].clientX : null;
       }
     };
 
     const onMove = (e) => {
-      if (e.touches.length === 2 && pinchRef.current) {
+      if (!isScroll && e.touches.length === 2 && pinchRef.current) {
         const ratio   = pinchDist(e.touches) / pinchRef.current.dist;
         const newZoom = Math.min(4, Math.max(0.5, Math.round(pinchRef.current.zoom * ratio * 100) / 100));
         setZoom(newZoom);
@@ -283,7 +288,7 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
 
     const onEnd = (e) => {
       if (pinchRef.current) { pinchRef.current = null; touchX.current = null; return; }
-      if (touchX.current === null || viewMode === "scroll") return;
+      if (touchX.current === null || isScroll) return;
       const dx = e.changedTouches[0].clientX - touchX.current;
       touchX.current = null;
       const step = viewMode === "dual" ? 2 : 1;
@@ -470,7 +475,7 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         {/* Scroll mode */}
         {viewMode === "scroll" && (
           <div ref={scrollRef}
-            style={{ width: "100%", height: "100%", overflowY: "auto", background: "#1a1814",
+            style={{ width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
                      scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
           >
             {err && (
