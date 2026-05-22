@@ -6,11 +6,11 @@ const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const PDFJS   = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174";
 
-// ── pdfjs loader ─────────────────────────────────────────────────────────────
-let _pdfPromise = null;
+// ── pdfjs singleton ───────────────────────────────────────────────────────────
+let _lib = null;
 function getPdfJs() {
-  if (_pdfPromise) return _pdfPromise;
-  _pdfPromise = new Promise((ok, fail) => {
+  if (_lib) return _lib;
+  _lib = new Promise((ok, fail) => {
     if (window.pdfjsLib) { ok(window.pdfjsLib); return; }
     const s = document.createElement("script");
     s.src = `${PDFJS}/pdf.min.js`;
@@ -18,10 +18,10 @@ function getPdfJs() {
     s.onerror = fail;
     document.head.appendChild(s);
   });
-  return _pdfPromise;
+  return _lib;
 }
 
-// ── progress ─────────────────────────────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 async function saveProgress(userId, bookId, page, total) {
   if (!userId || !bookId) return;
   try {
@@ -37,38 +37,19 @@ async function saveProgress(userId, bookId, page, total) {
   } catch {}
 }
 
-// ── bookmarks ─────────────────────────────────────────────────────────────────
-function bmKey(userId, bookId) { return `wh40k_bm_${userId || "anon"}_${bookId}`; }
-function loadBookmarks(userId, bookId) {
-  try { return JSON.parse(localStorage.getItem(bmKey(userId, bookId)) || "[]"); } catch { return []; }
-}
-function persistBookmarks(userId, bookId, bms) {
-  localStorage.setItem(bmKey(userId, bookId), JSON.stringify(bms));
-}
+const bmKey = (uid, bid) => `wh40k_bm_${uid || "anon"}_${bid}`;
+const loadBm = (uid, bid) => { try { return JSON.parse(localStorage.getItem(bmKey(uid, bid)) || "[]"); } catch { return []; } };
+const saveBm = (uid, bid, bms) => localStorage.setItem(bmKey(uid, bid), JSON.stringify(bms));
 
-// ── viewport lock ─────────────────────────────────────────────────────────────
-function useViewport() {
-  useEffect(() => {
-    const meta = document.querySelector("meta[name=viewport]");
-    if (!meta) return;
-    const prev = meta.content;
-    meta.content = "width=device-width,initial-scale=1,user-scalable=no";
-    return () => { meta.content = prev; };
-  }, []);
-}
-
-// ── canvas render helper ──────────────────────────────────────────────────────
-async function renderPage(doc, pageNum, canvas, containerW, containerH, zoom, taskRef) {
-  if (!doc || !canvas || pageNum < 1 || pageNum > doc.numPages) return;
+// Render one page onto a canvas, fit to available space × zoom
+async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
+  if (!doc || !canvas || num < 1 || num > doc.numPages) return;
   if (taskRef?.current) { try { taskRef.current.cancel(); } catch {} taskRef.current = null; }
-  const pg  = await doc.getPage(pageNum);
-  const vp0 = pg.getViewport({ scale: 1 });
-  const scaleW = containerW / vp0.width;
-  const scaleH = containerH / vp0.height;
-  const base   = Math.min(scaleW, scaleH);
-  const scale  = base * zoom;
-  const vp     = pg.getViewport({ scale });
-  const dpr    = window.devicePixelRatio || 1;
+  const pg   = await doc.getPage(num);
+  const vp0  = pg.getViewport({ scale: 1 });
+  const scale = Math.min(availW / vp0.width, availH / vp0.height) * zoom;
+  const vp   = pg.getViewport({ scale });
+  const dpr  = window.devicePixelRatio || 1;
   canvas.width  = Math.floor(vp.width  * dpr);
   canvas.height = Math.floor(vp.height * dpr);
   canvas.style.width  = `${vp.width}px`;
@@ -82,7 +63,14 @@ async function renderPage(doc, pageNum, canvas, containerW, containerH, zoom, ta
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PdfReader({ url, title, bookId, userId, onClose }) {
-  useViewport();
+  // Lock viewport to prevent browser zoom interfering
+  useEffect(() => {
+    const meta = document.querySelector("meta[name=viewport]");
+    if (!meta) return;
+    const prev = meta.content;
+    meta.content = "width=device-width,initial-scale=1,user-scalable=no";
+    return () => { meta.content = prev; };
+  }, []);
 
   const initPage = (() => {
     try { return Math.max(1, JSON.parse(localStorage.getItem(`wh40k_prog_${userId}_${bookId}`) || "{}").page_index || 1); }
@@ -90,32 +78,42 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
   })();
 
   // ── state ─────────────────────────────────────────────────────────────────
-  const [doc,          setDoc]         = useState(null);
-  const [total,        setTotal]       = useState(0);
-  const [page,         setPage]        = useState(initPage);
-  const [zoom,         setZoom]        = useState(1.0);
-  const [viewMode,     setViewMode]    = useState("single"); // "single"|"dual"|"scroll"
-  const [err,          setErr]         = useState(null);
-  const [rendering,    setRendering]   = useState(false);
-  const [showNav,      setShowNav]     = useState(true);
-  const [bookmarks,    setBookmarks]   = useState(() => loadBookmarks(userId, bookId));
-  const [showBm,       setShowBm]      = useState(false);
+  const [doc,       setDoc]      = useState(null);
+  const [total,     setTotal]    = useState(0);
+  const [page,      setPage]     = useState(initPage);
+  const [zoom,      setZoom]     = useState(1.0);
+  const [viewMode,  setViewMode] = useState("single");
+  const [err,       setErr]      = useState(null);
+  const [rendering, setRendering]= useState(false);
+  const [showNav,   setShowNav]  = useState(true);
+  const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
+  const [showBm,    setShowBm]   = useState(false);
 
   // ── refs ─────────────────────────────────────────────────────────────────
-  const canvasRef    = useRef(null);  // single / dual left
-  const canvas2Ref   = useRef(null);  // dual right
-  const wrapRef      = useRef(null);
-  const scrollRef    = useRef(null);
-  const taskRef      = useRef(null);
-  const task2Ref     = useRef(null);
-  const saveTimer    = useRef(null);
-  const navTimer     = useRef(null);
-  const touchX       = useRef(null);
-  const pinchRef     = useRef(null);   // { dist, zoom } for pinch-to-zoom
-  const zoomRef      = useRef(zoom);
-  const scrollPages  = useRef([]);    // array of {canvas, pageNum} for scroll mode
-  const observerRef  = useRef(null);
-  const isDesktop    = useRef(window.matchMedia("(pointer:fine)").matches).current;
+  const canvasRef  = useRef(null);
+  const canvas2Ref = useRef(null);
+  const wrapRef    = useRef(null);
+  const scrollRef  = useRef(null);
+  const task1      = useRef(null);
+  const task2      = useRef(null);
+  const saveTimer  = useRef(null);
+  const navTimer   = useRef(null);
+  const touchX     = useRef(null);
+  const pinch      = useRef(null);
+  const zoomRef    = useRef(zoom);
+  const pageRef    = useRef(page);
+  const viewRef    = useRef(viewMode);
+  // Scroll mode page list: { wrapper, canvas, pageNum, rendered }
+  const scrollPages = useRef([]);
+  const scrollObs   = useRef(null);
+  // Scroll mode per-page task map
+  const scrollTasks = useRef(new Map());
+  const isDesktop   = useRef(window.matchMedia("(pointer:fine)").matches).current;
+
+  // Keep refs in sync with state (used in event handlers / observers)
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { viewRef.current = viewMode; }, [viewMode]);
 
   // ── load PDF ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,92 +126,91 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
     return () => { cancelled = true; };
   }, [url]);
 
-  // ── auto-hide nav ─────────────────────────────────────────────────────────
+  // ── auto-hide nav (mobile) ────────────────────────────────────────────────
   const bumpNav = useCallback(() => {
     if (isDesktop) return;
     setShowNav(true);
     clearTimeout(navTimer.current);
-    navTimer.current = setTimeout(() => setShowNav(false), 3500);
+    navTimer.current = setTimeout(() => setShowNav(false), 4000);
   }, [isDesktop]);
 
-  useEffect(() => { if (!isDesktop) bumpNav(); }, [bumpNav, isDesktop]);
+  useEffect(() => { if (!isDesktop) bumpNav(); }, []); // eslint-disable-line
 
   // ── navigation ────────────────────────────────────────────────────────────
-  const goTo = useCallback((n, skipSave) => {
+  const goTo = useCallback((n) => {
     if (!total) return;
-    const step  = viewMode === "dual" ? (n % 2 === 0 ? n - 1 : n) : n;
-    const clamped = Math.min(Math.max(step, 1), total);
-    setPage(clamped);
+    const mode = viewRef.current;
+    const raw  = mode === "dual" && n % 2 === 0 ? n - 1 : n;
+    const p    = Math.min(Math.max(raw, 1), total);
+    setPage(p);
     bumpNav();
-    if (skipSave) return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveProgress(userId, bookId, clamped, total), 1200);
-  }, [total, viewMode, userId, bookId, bumpNav]);
+    saveTimer.current = setTimeout(() => saveProgress(userId, bookId, p, total), 1200);
+  }, [total, userId, bookId, bumpNav]);
 
-  // ── render single / dual pages ────────────────────────────────────────────
+  // ── render single / dual ─────────────────────────────────────────────────
   useEffect(() => {
     if (!doc || viewMode === "scroll") return;
     const wrap = wrapRef.current;
     if (!wrap) return;
-    const W = wrap.clientWidth  - (viewMode === "dual" ? 32 : 24);
-    const H = wrap.clientHeight - 24;
-    const colW = viewMode === "dual" ? Math.floor(W / 2) - 4 : W;
-
+    const cols = viewMode === "dual" ? 2 : 1;
+    const gap  = cols === 2 ? 16 : 0;
+    const W    = Math.floor((wrap.clientWidth  - 24 - gap) / cols);
+    const H    = wrap.clientHeight - 24;
     setRendering(true);
-    const p1 = renderPage(doc, page, canvasRef.current, colW, H, zoom, taskRef)
-      .catch(() => {});
-    const p2 = viewMode === "dual" && page + 1 <= total
-      ? renderPage(doc, page + 1, canvas2Ref.current, colW, H, zoom, task2Ref).catch(() => {})
+    const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1).catch(() => {});
+    const p2 = (viewMode === "dual" && page + 1 <= total)
+      ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2).catch(() => {})
       : Promise.resolve();
     Promise.all([p1, p2]).finally(() => setRendering(false));
   }, [doc, page, zoom, viewMode, total]);
 
-  // ── scroll mode: build page list + lazy render ────────────────────────────
+  // ── scroll mode setup — deps minimal, use refs inside ────────────────────
   useEffect(() => {
     if (viewMode !== "scroll" || !doc || !scrollRef.current) return;
     const container = scrollRef.current;
     container.innerHTML = "";
     scrollPages.current = [];
-    if (observerRef.current) observerRef.current.disconnect();
+    scrollTasks.current.clear();
+    if (scrollObs.current) scrollObs.current.disconnect();
 
-    observerRef.current = new IntersectionObserver((entries) => {
+    scrollObs.current = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
         const item = scrollPages.current.find(p => p.wrapper === entry.target);
         if (!item || item.rendered) return;
         item.rendered = true;
-        const canvas = document.createElement("canvas");
-        canvas.style.display = "block";
-        canvas.style.margin = "0 auto";
-        canvas.style.borderRadius = "2px";
-        canvas.style.boxShadow = "0 4px 24px rgba(0,0,0,0.7)";
+        const canvas  = document.createElement("canvas");
+        canvas.style.cssText = "display:block;margin:0 auto;border-radius:2px;box-shadow:0 4px 24px rgba(0,0,0,.7)";
         item.wrapper.appendChild(canvas);
+        item.canvas = canvas;
         const W = container.clientWidth - 32;
-        const H = container.clientHeight - 32;
-        renderPage(doc, item.pageNum, canvas, W, H, zoom, null).catch(() => {});
+        const H = container.clientHeight;
+        const taskRef = { current: null };
+        scrollTasks.current.set(item.pageNum, taskRef);
+        renderPage(doc, item.pageNum, canvas, W, H, zoomRef.current, taskRef).catch(() => {});
       });
-    }, { root: container, rootMargin: "200px 0px" });
+    }, { root: container, rootMargin: "300px 0px" });
 
     for (let i = 1; i <= doc.numPages; i++) {
       const wrapper = document.createElement("div");
-      wrapper.style.cssText = `margin: 12px auto; max-width: calc(100% - 24px); min-height: 200px; display: flex; align-items: center; justify-content: center;`;
+      wrapper.style.cssText = "margin:12px auto;max-width:calc(100% - 24px);min-height:180px;display:flex;align-items:center;justify-content:center";
       wrapper.dataset.page = i;
       container.appendChild(wrapper);
-      const item = { wrapper, pageNum: i, rendered: false };
-      scrollPages.current.push(item);
-      observerRef.current.observe(wrapper);
+      scrollPages.current.push({ wrapper, canvas: null, pageNum: i, rendered: false });
+      scrollObs.current.observe(wrapper);
     }
 
     // Scroll to saved page
     const target = scrollPages.current[initPage - 1];
-    if (target) target.wrapper.scrollIntoView({ block: "start" });
+    if (target) setTimeout(() => target.wrapper.scrollIntoView({ block: "start" }), 50);
 
-    // Track current page via scroll
+    // Track current page
     const onScroll = () => {
+      bumpNav();
       const mid = container.scrollTop + container.clientHeight / 2;
       for (const item of scrollPages.current) {
-        const t = item.wrapper.offsetTop;
-        const b = t + item.wrapper.offsetHeight;
+        const t = item.wrapper.offsetTop, b = t + item.wrapper.offsetHeight;
         if (mid >= t && mid < b) {
           const p = item.pageNum;
           setPage(p);
@@ -222,77 +219,78 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
           break;
         }
       }
-      bumpNav();
     };
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       container.removeEventListener("scroll", onScroll);
-      if (observerRef.current) observerRef.current.disconnect();
+      if (scrollObs.current) scrollObs.current.disconnect();
     };
-  }, [viewMode, doc, zoom, userId, bookId, bumpNav, initPage]);
+  }, [viewMode, doc]); // eslint-disable-line — intentionally minimal deps
+
+  // ── zoom update for scroll mode (re-render rendered pages in place) ───────
+  useEffect(() => {
+    if (viewMode !== "scroll" || !doc || !scrollRef.current) return;
+    const container = scrollRef.current;
+    const W = container.clientWidth - 32;
+    const H = container.clientHeight;
+    scrollPages.current.forEach(item => {
+      if (!item.rendered || !item.canvas) return;
+      const taskRef = scrollTasks.current.get(item.pageNum) || { current: null };
+      scrollTasks.current.set(item.pageNum, taskRef);
+      renderPage(doc, item.pageNum, item.canvas, W, H, zoom, taskRef).catch(() => {});
+    });
+  }, [zoom, viewMode, doc]);
 
   // ── keyboard ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const h = (e) => {
       if (e.key === "Escape") { onClose(); return; }
-      if (viewMode === "scroll") return;
-      const step = viewMode === "dual" ? 2 : 1;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown")  goTo(page + step);
-      if (e.key === "ArrowLeft"  || e.key === "ArrowUp")    goTo(page - step);
+      if (viewRef.current === "scroll") return;
+      const step = viewRef.current === "dual" ? 2 : 1;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") goTo(pageRef.current + step);
+      if (e.key === "ArrowLeft"  || e.key === "ArrowUp")   goTo(pageRef.current - step);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [page, viewMode, goTo, onClose]);
+  }, [goTo, onClose]);
 
-  // ── keep zoomRef in sync ──────────────────────────────────────────────────
-  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-
-  // ── touch: swipe (1 finger) + pinch-to-zoom (2 fingers) ──────────────────
-  // Native non-passive listeners so we can call preventDefault during pinch.
+  // ── touch: swipe (single/dual) + pinch zoom (all modes) ──────────────────
   useEffect(() => {
     const el = viewMode === "scroll" ? scrollRef.current : wrapRef.current;
     if (!el) return;
 
-    const pinchDist = (t) => {
-      const dx = t[0].clientX - t[1].clientX;
-      const dy = t[0].clientY - t[1].clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    };
-
-    const isScroll = viewMode === "scroll";
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
 
     const onStart = (e) => {
       bumpNav();
       if (e.touches.length === 2) {
-        if (!isScroll) {
-          // Pinch-to-zoom only in single/dual mode
-          pinchRef.current = { dist: pinchDist(e.touches), zoom: zoomRef.current };
-          e.preventDefault();
-        }
+        pinch.current = { d: dist(e.touches), z: zoomRef.current };
         touchX.current = null;
+        e.preventDefault();
       } else {
-        pinchRef.current = null;
-        // In scroll mode or when zoomed in: let browser handle pan/scroll natively
-        touchX.current = (!isScroll && zoomRef.current <= 1.0) ? e.touches[0].clientX : null;
+        pinch.current = null;
+        const mode = viewRef.current;
+        touchX.current = (mode !== "scroll" && zoomRef.current <= 1.0) ? e.touches[0].clientX : null;
       }
     };
 
     const onMove = (e) => {
-      if (!isScroll && e.touches.length === 2 && pinchRef.current) {
-        const ratio   = pinchDist(e.touches) / pinchRef.current.dist;
-        const newZoom = Math.min(4, Math.max(0.5, Math.round(pinchRef.current.zoom * ratio * 100) / 100));
-        setZoom(newZoom);
+      if (e.touches.length === 2 && pinch.current) {
+        const newZ = Math.min(4, Math.max(0.5, Math.round(pinch.current.z * (dist(e.touches) / pinch.current.d) * 100) / 100));
+        setZoom(newZ);
         e.preventDefault();
       }
     };
 
     const onEnd = (e) => {
-      if (pinchRef.current) { pinchRef.current = null; touchX.current = null; return; }
-      if (touchX.current === null || isScroll) return;
+      if (pinch.current) { pinch.current = null; touchX.current = null; return; }
+      if (touchX.current === null || viewRef.current === "scroll") return;
       const dx = e.changedTouches[0].clientX - touchX.current;
       touchX.current = null;
-      const step = viewMode === "dual" ? 2 : 1;
-      if (Math.abs(dx) > 40) goTo(page + (dx < 0 ? step : -step));
+      if (Math.abs(dx) > 40) {
+        const step = viewRef.current === "dual" ? 2 : 1;
+        goTo(pageRef.current + (dx < 0 ? step : -step));
+      }
     };
 
     el.addEventListener("touchstart", onStart, { passive: false });
@@ -303,33 +301,30 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
       el.removeEventListener("touchmove",  onMove);
       el.removeEventListener("touchend",   onEnd);
     };
-  }, [viewMode, doc, page, goTo, bumpNav]);
+  }, [viewMode, doc, goTo, bumpNav]);
 
   // ── bookmarks ─────────────────────────────────────────────────────────────
   const isBookmarked = bookmarks.some(b => b.page === page);
-  const toggleBookmark = () => {
+  const toggleBm = () => {
     const next = isBookmarked
       ? bookmarks.filter(b => b.page !== page)
       : [...bookmarks, { page, addedAt: new Date().toISOString() }].sort((a, b) => a.page - b.page);
     setBookmarks(next);
-    persistBookmarks(userId, bookId, next);
+    saveBm(userId, bookId, next);
   };
 
-  // ── toolbar button helper ─────────────────────────────────────────────────
+  // ── toolbar button ────────────────────────────────────────────────────────
   const Btn = ({ label, onClick, active, disabled, title: tip }) => (
-    <button
-      title={tip} disabled={disabled} onClick={onClick}
-      style={{
-        background: active ? "rgba(201,168,76,0.18)" : "transparent",
-        border: active ? `1px solid ${C.gold}44` : "1px solid transparent",
-        borderRadius: 6, cursor: disabled ? "default" : "pointer",
-        color: disabled ? C.dim : active ? C.gold : C.text,
-        fontSize: 14, padding: "4px 8px", lineHeight: 1,
-        opacity: disabled ? 0.35 : 1, transition: "background 0.15s",
-      }}
-      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = active ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.1)"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = active ? "rgba(201,168,76,0.18)" : "transparent"; }}
-    >{label}</button>
+    <button title={tip} disabled={disabled} onClick={onClick} style={{
+      background: active ? "rgba(201,168,76,.18)" : "transparent",
+      border: active ? `1px solid ${C.gold}44` : "1px solid transparent",
+      borderRadius: 6, cursor: disabled ? "default" : "pointer",
+      color: disabled ? C.dim : active ? C.gold : C.text,
+      fontSize: 14, padding: "4px 8px", lineHeight: 1,
+      opacity: disabled ? 0.35 : 1,
+    }}>
+      {label}
+    </button>
   );
 
   const navVisible = isDesktop || showNav;
@@ -339,7 +334,6 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
     <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", display: "flex", flexDirection: "column", userSelect: "none" }}
       onClick={bumpNav}
     >
-
       {/* ── Header ── */}
       <div style={{
         flexShrink: 0, height: 48, background: "#111009", borderBottom: `1px solid ${C.border}`,
@@ -347,7 +341,6 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         opacity: navVisible ? 1 : 0, transition: "opacity 0.3s",
         pointerEvents: navVisible ? "auto" : "none",
       }}>
-
         <button onClick={onClose} style={{
           background: "transparent", border: `1px solid ${C.dim}`, borderRadius: 8,
           color: C.gold, padding: "5px 10px", cursor: "pointer",
@@ -359,7 +352,7 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
           {title}
         </div>
 
-        {/* Page counter + nav arrows (hidden in scroll mode) */}
+        {/* Page counter */}
         {viewMode !== "scroll" && total > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
             <Btn label="‹" onClick={() => goTo(page - step)} disabled={page <= 1} />
@@ -369,47 +362,34 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
             <Btn label="›" onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} />
           </div>
         )}
-
-        {/* Scroll page indicator */}
         {viewMode === "scroll" && total > 0 && (
-          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, flexShrink: 0 }}>
-            {page} / {total}
-          </span>
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, flexShrink: 0 }}>{page} / {total}</span>
         )}
 
-        {/* Divider */}
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
-        {/* View mode toggles */}
-        <Btn label="▯"    onClick={() => setViewMode("single")} active={viewMode === "single"} title="Single page" />
-        <Btn label="▯▯"   onClick={() => setViewMode("dual")}   active={viewMode === "dual"}   title="Dual page" />
-        <Btn label="≡"    onClick={() => setViewMode("scroll")} active={viewMode === "scroll"} title="Scroll" />
+        {/* View mode */}
+        <Btn label="▯"  onClick={() => setViewMode("single")} active={viewMode === "single"} title="Single page" />
+        <Btn label="▯▯" onClick={() => setViewMode("dual")}   active={viewMode === "dual"}   title="Dual page" />
+        <Btn label="≡"  onClick={() => setViewMode("scroll")} active={viewMode === "scroll"} title="Scroll" />
 
-        {/* Divider */}
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
-        {/* Bookmark */}
-        <Btn label="🔖" onClick={(e) => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title="Bookmarks" />
-        <Btn label={isBookmarked ? "★" : "☆"} onClick={(e) => { e.stopPropagation(); toggleBookmark(); }}
-             active={isBookmarked} title={isBookmarked ? "Remove bookmark" : "Add bookmark"} />
+        {/* Bookmarks */}
+        <Btn label="🔖" onClick={e => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title="Bookmarks" />
+        <Btn label={isBookmarked ? "★" : "☆"} onClick={e => { e.stopPropagation(); toggleBm(); }} active={isBookmarked} title={isBookmarked ? "Remove bookmark" : "Add bookmark"} />
 
-        {/* Zoom (hidden in scroll) */}
-        {viewMode !== "scroll" && (
-          <>
-            <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
-            <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.dim, minWidth: 28, textAlign: "center" }}>
-              {Math.round(zoom * 100)}%
-            </span>
-            <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
-            <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
-          </>
-        )}
+        {/* Zoom */}
+        <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
+        <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
+        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.dim, minWidth: 28, textAlign: "center" }}>
+          {Math.round(zoom * 100)}%
+        </span>
+        <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
+        <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
 
         <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.red, letterSpacing: 2,
-                       border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>
-          PDF
-        </span>
+                       border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>PDF</span>
       </div>
 
       {/* ── Bookmarks panel ── */}
@@ -428,31 +408,29 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
               No bookmarks yet.<br />Press ☆ to add one.
             </div>
           ) : bookmarks.map(bm => (
-            <button key={bm.page} onClick={() => { goTo(bm.page, true); setShowBm(false); }} style={{
-              background: bm.page === page ? "rgba(201,168,76,0.1)" : "transparent",
+            <button key={bm.page} onClick={() => { goTo(bm.page); setShowBm(false); }} style={{
+              background: bm.page === page ? "rgba(201,168,76,.1)" : "transparent",
               border: "none", borderBottom: `1px solid ${C.border}22`, cursor: "pointer",
               display: "flex", justifyContent: "space-between", alignItems: "center",
               padding: "10px 12px", color: bm.page === page ? C.gold : C.text,
               fontFamily: "'Cinzel',serif", fontSize: 10,
             }}>
               <span>Page {bm.page}</span>
-              <span style={{ fontSize: 8, color: C.dim }}>
-                {new Date(bm.addedAt).toLocaleDateString()}
-              </span>
+              <span style={{ fontSize: 8, color: C.dim }}>{new Date(bm.addedAt).toLocaleDateString()}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* ── Main content ── */}
+      {/* ── Main area ── */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
 
-        {/* Single / Dual mode canvas area */}
+        {/* Single / Dual */}
         {viewMode !== "scroll" && (
-          <div ref={wrapRef}
-            style={{ width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
-                     display: "flex", scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
-          >
+          <div ref={wrapRef} style={{
+            width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
+            display: "flex", scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
+          }}>
             {err ? (
               <div style={{ margin: "auto", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>✕</div>
@@ -463,31 +441,23 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>Loading…</div>
             ) : (
               <div style={{ margin: "auto", padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
-                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,0.8)", opacity: rendering ? 0.6 : 1, transition: "opacity 0.15s" }} />
+                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
                 {viewMode === "dual" && page + 1 <= total && (
-                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,0.8)", opacity: rendering ? 0.6 : 1, transition: "opacity 0.15s" }} />
+                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
                 )}
               </div>
             )}
           </div>
         )}
 
-        {/* Scroll mode */}
+        {/* Scroll */}
         {viewMode === "scroll" && (
-          <div ref={scrollRef}
-            style={{ width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
-                     scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
-          >
-            {err && (
-              <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>
-                Failed to load PDF: {err}
-              </div>
-            )}
-            {!doc && !err && (
-              <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>
-                Loading…
-              </div>
-            )}
+          <div ref={scrollRef} style={{
+            width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
+            scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
+          }}>
+            {err && <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>Failed to load PDF: {err}</div>}
+            {!doc && !err && <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>Loading…</div>}
           </div>
         )}
       </div>
@@ -502,7 +472,8 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         }}>
           <button onClick={() => goTo(page - step)} disabled={page <= 1} style={{
             background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-            color: page <= 1 ? C.dim : C.gold, padding: "8px 18px", cursor: page <= 1 ? "default" : "pointer",
+            color: page <= 1 ? C.dim : C.gold, padding: "8px 18px",
+            cursor: page <= 1 ? "default" : "pointer",
             fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page <= 1 ? 0.3 : 1,
           }}>‹ Prev</button>
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted }}>
