@@ -1,24 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// epub.js CDN loader (avoids Vite bundling issues with epubjs internals)
-// ─────────────────────────────────────────────────────────────────────────────
-let _epubLib = null;
-function loadEpubJs() {
-  if (_epubLib) return _epubLib;
-  _epubLib = new Promise((ok, fail) => {
-    if (window.ePub) { ok(window.ePub); return; }
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js";
-    s.onload = () => window.ePub ? ok(window.ePub) : fail(new Error("epub.js did not expose window.ePub"));
-    s.onerror = () => fail(new Error("Failed to load epub.js"));
-    document.head.appendChild(s);
-  });
-  return _epubLib;
-}
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -416,7 +400,7 @@ export default function EpubReader({
     const flow   = settings.paginate ? "paginated" : "scrolled-doc";
     const spread = settings.paginate && settings.twoPage ? "always" : "none";
 
-    loadEpubJs().then(async ePub => {
+    (async () => {
       if (cancelled || !containerRef.current) return;
 
       // Pre-fetch the EPUB binary so epub.js never makes its own network request.
@@ -567,9 +551,7 @@ export default function EpubReader({
       } catch (e) {
         if (!cancelled) { setError(e?.message || "Failed to initialize reader"); setLoading(false); }
       }
-    }).catch(e => {
-      if (!cancelled) { setError(e?.message || "Failed to load epub.js"); setLoading(false); }
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -598,6 +580,7 @@ export default function EpubReader({
     ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
+
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const next = useCallback(() => rendRef.current?.next(), []);
