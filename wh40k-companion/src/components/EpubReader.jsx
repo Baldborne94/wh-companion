@@ -60,9 +60,13 @@ function useReaderStyles() {
     const el = document.createElement("style");
     el.id = id;
     el.textContent = `
-      @keyframes rdrSpin { to { transform:rotate(360deg) } }
-      @keyframes rdrUp   { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
-      @keyframes rdrIn   { from { opacity:0 } to { opacity:1 } }
+      @keyframes rdrSpin    { to { transform:rotate(360deg) } }
+      @keyframes rdrUp      { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+      @keyframes rdrIn      { from { opacity:0 } to { opacity:1 } }
+      @keyframes rdrSlideL  { from { transform:translateX(100%) } to { transform:translateX(0) } }
+      @keyframes rdrSlideR  { from { transform:translateX(-100%) } to { transform:translateX(0) } }
+      .rdr-slide-left  { animation: rdrSlideL .22s ease; }
+      .rdr-slide-right { animation: rdrSlideR .22s ease; }
     `;
     document.head.appendChild(el);
   }, []);
@@ -208,7 +212,7 @@ function DictionaryPanel({ word, onClose, theme }) {
 // Settings bottom-sheet
 // ─────────────────────────────────────────────────────────────────────────────
 function SettingsPanel({ settings, onChange, onClose }) {
-  const T = THEMES[settings.theme];
+  const T = THEMES["dark"];
 
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick}
@@ -233,8 +237,8 @@ function SettingsPanel({ settings, onChange, onClose }) {
   );
 
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.5)" }}>
-      <div onClick={e => e.stopPropagation()}
+    <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.5)" }}>
+      <div onPointerDown={e => e.stopPropagation()}
         style={{ position:"absolute", bottom:0, left:0, right:0,
                  background:T.surface, borderTop:`2px solid ${C.gold}55`,
                  borderRadius:"18px 18px 0 0", padding:"12px 20px 52px",
@@ -349,9 +353,9 @@ export default function EpubReader({
   const saveTimer    = useRef(null);
   const hideTimer    = useRef(null);
   const isTouch      = useRef(window.matchMedia("(pointer:coarse)").matches);
-  // Always holds the latest T so the content hook reads fresh colors even after theme changes
   const themeRef     = useRef(T);
   themeRef.current   = T;
+  const swipeRef     = useRef({ x:0, y:0, active:false });
 
   const uiVisible = !isTouch.current || showUI;
 
@@ -389,8 +393,9 @@ export default function EpubReader({
     }
     rendRef.current = null;
 
-    const flow   = settings.paginate ? "paginated" : "scrolled-doc";
-    const spread = settings.paginate && settings.twoPage ? "always" : "none";
+    const flow    = settings.paginate ? "paginated" : "scrolled";
+    const manager = settings.paginate ? "default"   : "continuous";
+    const spread  = settings.paginate && settings.twoPage ? "always" : "none";
 
     (async () => {
       if (cancelled || !containerRef.current) return;
@@ -419,7 +424,7 @@ export default function EpubReader({
           spread,
           flow,
           minSpreadWidth: 900,
-          manager:        "default",
+          manager,
         });
         rendRef.current = rend;
 
@@ -608,8 +613,47 @@ export default function EpubReader({
 
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const next = useCallback(() => rendRef.current?.next(), []);
-  const prev = useCallback(() => rendRef.current?.prev(), []);
+  const slideAnim = useCallback((dir) => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.classList.remove("rdr-slide-left", "rdr-slide-right");
+    void el.offsetWidth; // reflow to restart animation
+    el.classList.add(dir === "left" ? "rdr-slide-left" : "rdr-slide-right");
+  }, []);
+
+  const next = useCallback(() => {
+    slideAnim("left");
+    rendRef.current?.next();
+  }, [slideAnim]);
+
+  const prev = useCallback(() => {
+    slideAnim("right");
+    rendRef.current?.prev();
+  }, [slideAnim]);
+
+  // ── Swipe gesture (touch devices) ─────────────────────────────────────────
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || !isTouch.current) return;
+    const onStart = (e) => {
+      swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: true };
+      revealUI();
+    };
+    const onEnd = (e) => {
+      if (!swipeRef.current.active) return;
+      swipeRef.current.active = false;
+      const dx = e.changedTouches[0].clientX - swipeRef.current.x;
+      const dy = e.changedTouches[0].clientY - swipeRef.current.y;
+      if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+      if (dx < 0) next(); else prev();
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend",   onEnd,   { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchend",   onEnd);
+    };
+  }, [next, prev, revealUI]);
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
