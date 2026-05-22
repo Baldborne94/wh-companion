@@ -1,39 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// epub.js CDN loader (avoids Vite bundling issues with epubjs internals)
-// ─────────────────────────────────────────────────────────────────────────────
-function loadScript(src, check) {
-  return new Promise((ok, fail) => {
-    if (check()) { ok(); return; }
-    const s = document.createElement("script");
-    s.src = src;
-    s.onload = () => check() ? ok() : fail(new Error(`Script loaded but ${src} did not expose expected global`));
-    s.onerror = () => fail(new Error(`Failed to load ${src}`));
-    document.head.appendChild(s);
-  });
-}
-
-let _epubLib = null;
-function loadEpubJs() {
-  if (_epubLib) return _epubLib;
-  _epubLib = (async () => {
-    // epub.js does not bundle JSZip — load the copy it ships in dist/libs/ first
-    await loadScript(
-      "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/libs/jszip.min.js",
-      () => !!window.JSZip
-    );
-    await loadScript(
-      "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js",
-      () => !!window.ePub
-    );
-    return window.ePub;
-  })();
-  return _epubLib;
-}
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -431,7 +400,7 @@ export default function EpubReader({
     const flow   = settings.paginate ? "paginated" : "scrolled-doc";
     const spread = settings.paginate && settings.twoPage ? "always" : "none";
 
-    loadEpubJs().then(async ePub => {
+    (async () => {
       if (cancelled || !containerRef.current) return;
 
       // Pre-fetch the EPUB binary so epub.js never makes its own network request.
@@ -582,9 +551,7 @@ export default function EpubReader({
       } catch (e) {
         if (!cancelled) { setError(e?.message || "Failed to initialize reader"); setLoading(false); }
       }
-    }).catch(e => {
-      if (!cancelled) { setError(e?.message || "Failed to load epub.js"); setLoading(false); }
-    });
+    })();
 
     return () => {
       cancelled = true;
