@@ -363,6 +363,9 @@ export default function EpubReader({
   const saveTimer    = useRef(null);
   const hideTimer    = useRef(null);
   const isTouch      = useRef(window.matchMedia("(pointer:coarse)").matches);
+  // Always holds the latest T so the content hook reads fresh colors even after theme changes
+  const themeRef     = useRef(T);
+  themeRef.current   = T;
 
   const uiVisible = !isTouch.current || showUI;
 
@@ -443,12 +446,19 @@ export default function EpubReader({
         rend.hooks.content.register((contents) => {
           const doc = contents.document;
           if (!doc?.body) return;
+          // Read current theme at hook-fire time (themeRef is always up to date)
+          const cT = themeRef.current;
           const st = doc.createElement("style");
-          // Injected AFTER epub's own CSS so cascade order guarantees we win.
-          // var(--rdr-text) is set by applyTheme on :root, so theme changes auto-propagate.
+          // This style is appended LAST to <head>, after all epub stylesheets.
+          // Same-specificity !important rules use cascade order → we win.
+          // html+body prefix raises specificity to 0-0-2, beating single-element epub rules.
           st.textContent = `
-            html body *:not(a):not(.lore-kw) {
-              color: var(--rdr-text) !important;
+            html, body {
+              background: ${cT.bg} !important;
+              color: ${cT.text} !important;
+            }
+            html body * {
+              color: ${cT.text} !important;
               background-color: transparent !important;
             }
             html body a { color: #4a8adc !important; }
@@ -595,6 +605,9 @@ export default function EpubReader({
   useEffect(() => {
     if (!rendRef.current) return;
     applyTheme(rendRef.current, settings, T, fnt);
+    // Re-display current location so the content hook re-fires with the new theme colors
+    const cfi = cfiRef.current;
+    rendRef.current.display(cfi || undefined).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.theme, settings.fontSize, settings.fontIndex, settings.lineHeight, settings.margin]);
 
