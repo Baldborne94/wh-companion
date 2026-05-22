@@ -530,8 +530,9 @@ export default function EpubReader({
   // Navigation helpers
   // ─────────────────────────────────────────────────────────────────────────
   const getColWidth = useCallback(() => {
-    return colRef.current?.clientWidth ?? 0;
-  }, []);
+    const cw = colRef.current?.clientWidth ?? 0;
+    return settings.twoPage ? cw + 48 : cw;
+  }, [settings.twoPage]);
 
   const chapterPage = useCallback((idx) => {
     if (!colRef.current) return 0;
@@ -909,8 +910,8 @@ export default function EpubReader({
 
   const colContainerStyle = {
     position:"absolute",
-    top:    isDesktop ? 54 : 0,
-    bottom: isDesktop ? 54 : 0,
+    top:    54,
+    bottom: 54,
     left:  autoMargin,
     right: autoMargin,
     overflow: settings.paginate ? "hidden" : "auto",
@@ -930,7 +931,7 @@ export default function EpubReader({
     color: T.text, fontFamily: fnt.value,
     fontSize: settings.fontSize, lineHeight: settings.lineHeight,
   } : {
-    padding:  isDesktop ? "20px 0 24px" : "60px 0 80px",
+    padding:  "20px 0 24px",
     maxWidth:  "72ch",
     margin:    "0 auto",
     color: T.text, fontFamily: fnt.value,
