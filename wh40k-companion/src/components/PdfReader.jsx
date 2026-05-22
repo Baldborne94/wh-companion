@@ -352,8 +352,8 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
           {title}
         </div>
 
-        {/* Page counter */}
-        {viewMode !== "scroll" && total > 0 && (
+        {/* Page counter — desktop only */}
+        {isDesktop && viewMode !== "scroll" && total > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
             <Btn label="‹" onClick={() => goTo(page - step)} disabled={page <= 1} />
             <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, minWidth: 54, textAlign: "center" }}>
@@ -362,11 +362,11 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
             <Btn label="›" onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} />
           </div>
         )}
-        {viewMode === "scroll" && total > 0 && (
+        {isDesktop && viewMode === "scroll" && total > 0 && (
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, flexShrink: 0 }}>{page} / {total}</span>
         )}
 
-        <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
+        {isDesktop && <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />}
 
         {/* View mode */}
         <Btn label="▯"  onClick={() => setViewMode("single")} active={viewMode === "single"} title="Single page" />
@@ -379,17 +379,18 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         <Btn label="🔖" onClick={e => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title="Bookmarks" />
         <Btn label={isBookmarked ? "★" : "☆"} onClick={e => { e.stopPropagation(); toggleBm(); }} active={isBookmarked} title={isBookmarked ? "Remove bookmark" : "Add bookmark"} />
 
-        {/* Zoom */}
-        <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
-        <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
-        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.dim, minWidth: 28, textAlign: "center" }}>
-          {Math.round(zoom * 100)}%
-        </span>
-        <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
-        <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
-
-        <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.red, letterSpacing: 2,
-                       border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>PDF</span>
+        {/* Zoom — desktop only */}
+        {isDesktop && (<>
+          <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
+          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.dim, minWidth: 28, textAlign: "center" }}>
+            {Math.round(zoom * 100)}%
+          </span>
+          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
+          <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.red, letterSpacing: 2,
+                         border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>PDF</span>
+        </>)}
       </div>
 
       {/* ── Bookmarks panel ── */}
@@ -462,29 +463,47 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         )}
       </div>
 
-      {/* ── Mobile bottom nav (single/dual) ── */}
-      {!isDesktop && viewMode !== "scroll" && total > 0 && (
+      {/* ── Mobile bottom bar (all modes) ── */}
+      {!isDesktop && total > 0 && (
         <div style={{
           flexShrink: 0, height: 48, background: "#111009", borderTop: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px",
+          display: "flex", alignItems: "center", padding: "0 6px", gap: 4,
           opacity: navVisible ? 1 : 0, transition: "opacity 0.3s",
           pointerEvents: navVisible ? "auto" : "none",
         }}>
-          <button onClick={() => goTo(page - step)} disabled={page <= 1} style={{
-            background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-            color: page <= 1 ? C.dim : C.gold, padding: "8px 18px",
-            cursor: page <= 1 ? "default" : "pointer",
-            fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page <= 1 ? 0.3 : 1,
-          }}>‹ Prev</button>
-          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted }}>
-            {viewMode === "dual" ? `${page}–${Math.min(page + 1, total)}` : page} / {total}
+          {/* Zoom controls */}
+          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
+          <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.dim, minWidth: 30, textAlign: "center" }}>
+            {Math.round(zoom * 100)}%
           </span>
-          <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} style={{
-            background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-            color: page + step - 1 >= total ? C.dim : C.gold, padding: "8px 18px",
-            cursor: page + step - 1 >= total ? "default" : "pointer",
-            fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page + step - 1 >= total ? 0.3 : 1,
-          }}>Next ›</button>
+          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
+          <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
+
+          <div style={{ flex: 1 }} />
+
+          {/* Page nav — single / dual */}
+          {viewMode !== "scroll" && (<>
+            <button onClick={() => goTo(page - step)} disabled={page <= 1} style={{
+              background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
+              color: page <= 1 ? C.dim : C.gold, padding: "6px 14px",
+              cursor: page <= 1 ? "default" : "pointer",
+              fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page <= 1 ? 0.3 : 1,
+            }}>‹</button>
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, minWidth: 46, textAlign: "center" }}>
+              {viewMode === "dual" ? `${page}–${Math.min(page + 1, total)}` : page} / {total}
+            </span>
+            <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} style={{
+              background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
+              color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 14px",
+              cursor: page + step - 1 >= total ? "default" : "pointer",
+              fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page + step - 1 >= total ? 0.3 : 1,
+            }}>›</button>
+          </>)}
+
+          {/* Page counter — scroll */}
+          {viewMode === "scroll" && (
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted }}>{page} / {total}</span>
+          )}
         </div>
       )}
     </div>
