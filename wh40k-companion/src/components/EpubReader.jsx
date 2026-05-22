@@ -433,12 +433,16 @@ export default function EpubReader({
 
         applyTheme(rend, settings, T, fnt);
 
+        // Capture outer window so we can open URLs from inside the epub iframe
+        const appWindow = window;
+
         // Inject lore-keyword highlighting into every rendered chapter iframe
         rend.hooks.content.register((contents) => {
           const doc = contents.document;
           if (!doc?.body) return;
           const st = doc.createElement("style");
-          st.textContent = `.lore-kw{color:#4a8adc!important;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal!important}.lore-kw:hover{border-bottom-color:#4a8adc}`;
+          // Force inline + static so epub absolute-positioned containers don't scatter the spans
+          st.textContent = `.lore-kw{display:inline!important;position:static!important;float:none!important;vertical-align:baseline!important;color:#4a8adc!important;cursor:pointer!important;border-bottom:1px solid #4a8adc55!important;font-style:normal!important;font-weight:inherit!important}.lore-kw:hover{border-bottom-color:#4a8adc!important}`;
           doc.head?.appendChild(st);
           const walker = doc.createTreeWalker(doc.body, 4, null);
           const textNodes = [];
@@ -477,7 +481,8 @@ export default function EpubReader({
             if (kw && LORE_DB[kw]) {
               e.preventDefault();
               e.stopPropagation();
-              contents.window.open(wikiUrl(kw), "_blank", "noopener");
+              // Use outer app window — iframe window.open can be blocked by browser
+              appWindow.open(wikiUrl(kw), "_blank", "noopener");
             }
           });
         });
