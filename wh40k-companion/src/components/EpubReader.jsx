@@ -373,6 +373,11 @@ export default function EpubReader({
   // ── Book init / layout change ─────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
+    if (!url) {
+      setError("No download link — please close and reopen the book.");
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
 
     setLoading(true);
@@ -401,7 +406,7 @@ export default function EpubReader({
       let epubData;
       try {
         const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status} — could not download book`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching book — the download link may have expired. Please close and reopen.`);
         epubData = await resp.arrayBuffer();
       } catch (fetchErr) {
         if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
@@ -658,13 +663,18 @@ export default function EpubReader({
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) return (
     <div style={{ position:"fixed", inset:0, background:"#0f0e09", zIndex:999,
-                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14 }}>
-      <p style={{ color:C.gold, fontFamily:"'Cinzel',serif", fontSize:14, margin:0 }}>Failed to load</p>
-      <p style={{ color:"#7a7060", fontSize:12, margin:0, textAlign:"center", padding:"0 24px" }}>{error}</p>
+                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14,
+                  padding:"0 28px" }}>
+      <p style={{ color:C.gold, fontFamily:"'Cinzel',serif", fontSize:15, margin:0, letterSpacing:1 }}>
+        Failed to load
+      </p>
+      <p style={{ color:"#c8bfa8", fontSize:13, margin:0, textAlign:"center", lineHeight:1.6, maxWidth:360 }}>
+        {error}
+      </p>
       <button onClick={onClose}
-        style={{ marginTop:8, background:"transparent", border:"1px solid #2a2518",
-                 borderRadius:8, color:"#7a7060", padding:"8px 20px", cursor:"pointer",
-                 fontFamily:"'Cinzel',serif", fontSize:12 }}>
+        style={{ marginTop:8, background:"transparent", border:`1px solid ${C.gold}55`,
+                 borderRadius:8, color:C.gold, padding:"9px 24px", cursor:"pointer",
+                 fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1 }}>
         Close
       </button>
     </div>
