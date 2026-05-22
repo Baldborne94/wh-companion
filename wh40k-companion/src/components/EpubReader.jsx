@@ -60,13 +60,9 @@ function useReaderStyles() {
     const el = document.createElement("style");
     el.id = id;
     el.textContent = `
-      @keyframes rdrSpin    { to { transform:rotate(360deg) } }
-      @keyframes rdrUp      { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
-      @keyframes rdrIn      { from { opacity:0 } to { opacity:1 } }
-      @keyframes rdrSlideL  { from { transform:translateX(100%) } to { transform:translateX(0) } }
-      @keyframes rdrSlideR  { from { transform:translateX(-100%) } to { transform:translateX(0) } }
-      .rdr-slide-left  { animation: rdrSlideL .22s ease; }
-      .rdr-slide-right { animation: rdrSlideR .22s ease; }
+      @keyframes rdrSpin { to { transform:rotate(360deg) } }
+      @keyframes rdrUp   { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+      @keyframes rdrIn   { from { opacity:0 } to { opacity:1 } }
     `;
     document.head.appendChild(el);
   }, []);
@@ -393,9 +389,8 @@ export default function EpubReader({
     }
     rendRef.current = null;
 
-    const flow    = settings.paginate ? "paginated" : "scrolled";
-    const manager = settings.paginate ? "default"   : "continuous";
-    const spread  = settings.paginate && settings.twoPage ? "always" : "none";
+    const flow   = settings.paginate ? "paginated" : "scrolled-doc";
+    const spread = settings.paginate && settings.twoPage ? "always" : "none";
 
     (async () => {
       if (cancelled || !containerRef.current) return;
@@ -424,7 +419,7 @@ export default function EpubReader({
           spread,
           flow,
           minSpreadWidth: 900,
-          manager,
+          manager:        "default",
         });
         rendRef.current = rend;
 
@@ -592,12 +587,10 @@ export default function EpubReader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, settings.paginate, settings.twoPage]);
 
-  // ── Typography updates (no rendition recreation needed) ──────────────────
+  // ── Typography updates ────────────────────────────────────────────────────
   useEffect(() => {
     if (!rendRef.current) return;
     applyTheme(rendRef.current, settings, T, fnt);
-    const cfi = cfiRef.current;
-    rendRef.current.display(cfi || undefined).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.margin]);
 
@@ -613,47 +606,24 @@ export default function EpubReader({
 
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const slideAnim = useCallback((dir) => {
-    const el = containerRef.current;
-    if (!el) return;
-    el.classList.remove("rdr-slide-left", "rdr-slide-right");
-    void el.offsetWidth; // reflow to restart animation
-    el.classList.add(dir === "left" ? "rdr-slide-left" : "rdr-slide-right");
-  }, []);
+  const next = useCallback(() => rendRef.current?.next(), []);
+  const prev = useCallback(() => rendRef.current?.prev(), []);
 
-  const next = useCallback(() => {
-    slideAnim("left");
-    rendRef.current?.next();
-  }, [slideAnim]);
+  // Swipe handler attached to the transparent overlay div in JSX (not the epub iframe container)
+  const onSwipeStart = useCallback((e) => {
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: true };
+    revealUI();
+  }, [revealUI]);
 
-  const prev = useCallback(() => {
-    slideAnim("right");
-    rendRef.current?.prev();
-  }, [slideAnim]);
-
-  // ── Swipe gesture (touch devices) ─────────────────────────────────────────
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || !isTouch.current) return;
-    const onStart = (e) => {
-      swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: true };
-      revealUI();
-    };
-    const onEnd = (e) => {
-      if (!swipeRef.current.active) return;
-      swipeRef.current.active = false;
-      const dx = e.changedTouches[0].clientX - swipeRef.current.x;
-      const dy = e.changedTouches[0].clientY - swipeRef.current.y;
-      if (Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
-      if (dx < 0) next(); else prev();
-    };
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchend",   onEnd,   { passive: true });
-    return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchend",   onEnd);
-    };
-  }, [next, prev, revealUI]);
+  const onSwipeEnd = useCallback((e) => {
+    if (!swipeRef.current.active) return;
+    swipeRef.current.active = false;
+    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
+    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
+    // Ignore if too short or more vertical than horizontal
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
+    if (dx < 0) next(); else prev();
+  }, [next, prev]);
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -720,6 +690,16 @@ export default function EpubReader({
 
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:54, left:0, right:0 }} />
+
+      {/* Swipe overlay — captures touch on top of epub iframes (which don't bubble events) */}
+      {isTouch.current && (
+        <div
+          onTouchStart={onSwipeStart}
+          onTouchEnd={onSwipeEnd}
+          style={{ position:"absolute", top:54, bottom:54, left:0, right:0, zIndex:10,
+                   pointerEvents: (showSettings || showToc || showBookmarks || dictWord) ? "none" : "auto" }}
+        />
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
