@@ -30,7 +30,7 @@ async function saveProgressToSupabase(userId, bookId, pct) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { theme:"dark", fontIndex:0, fontSize:18, lineHeight:1.8, margin:28, paginate:true, twoPage:false };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, margin:28, paginate:true, twoPage:false };
 
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
@@ -250,20 +250,6 @@ function SettingsPanel({ settings, onChange, onClose }) {
         </div>
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
-                      letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>Theme</div>
-        <div style={{ display:"flex", gap:8, marginBottom:22 }}>
-          {Object.values(THEMES).map(th => (
-            <button key={th.id} onClick={() => onChange("theme", th.id)}
-              style={{ flex:1, padding:"14px 8px", borderRadius:10, cursor:"pointer",
-                       background:th.bg, border:`2px solid ${settings.theme===th.id?C.gold:th.border}`,
-                       display:"flex", flexDirection:"column", alignItems:"center", gap:6, transition:"border-color .15s" }}>
-              <div style={{ width:22, height:22, borderRadius:"50%", background:th.text }} />
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:th.text, letterSpacing:1 }}>{th.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                       letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>Typeface</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:20 }}>
           {FONTS.map((f, i) => (
@@ -331,7 +317,7 @@ export default function EpubReader({
       return n;
     });
   }, []);
-  const T   = THEMES[settings.theme];
+  const T   = THEMES["dark"];
   const fnt = FONTS[settings.fontIndex];
 
   // ── Book state ─────────────────────────────────────────────────────────────
@@ -601,15 +587,14 @@ export default function EpubReader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, settings.paginate, settings.twoPage]);
 
-  // ── Theme / typography updates (no rendition recreation needed) ───────────
+  // ── Typography updates (no rendition recreation needed) ──────────────────
   useEffect(() => {
     if (!rendRef.current) return;
     applyTheme(rendRef.current, settings, T, fnt);
-    // Re-display current location so the content hook re-fires with the new theme colors
     const cfi = cfiRef.current;
     rendRef.current.display(cfi || undefined).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.theme, settings.fontSize, settings.fontIndex, settings.lineHeight, settings.margin]);
+  }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.margin]);
 
   // ── Resize observer ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -861,7 +846,7 @@ export default function EpubReader({
 
       {/* ── Dictionary ─────────────────────────────────────────────────────── */}
       {dictWord && (
-        <DictionaryPanel word={dictWord} onClose={() => setDictWord(null)} theme={settings.theme} />
+        <DictionaryPanel word={dictWord} onClose={() => setDictWord(null)} theme="dark" />
       )}
 
       {/* ── Settings ───────────────────────────────────────────────────────── */}
