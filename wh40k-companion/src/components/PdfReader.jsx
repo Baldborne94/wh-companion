@@ -111,6 +111,8 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
   const saveTimer    = useRef(null);
   const navTimer     = useRef(null);
   const touchX       = useRef(null);
+  const pinchRef     = useRef(null);   // { dist, zoom } for pinch-to-zoom
+  const zoomRef      = useRef(zoom);
   const scrollPages  = useRef([]);    // array of {canvas, pageNum} for scroll mode
   const observerRef  = useRef(null);
   const isDesktop    = useRef(window.matchMedia("(pointer:fine)").matches).current;
@@ -242,15 +244,60 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
     return () => window.removeEventListener("keydown", h);
   }, [page, viewMode, goTo, onClose]);
 
-  // ── touch swipe (single/dual only) ────────────────────────────────────────
-  const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; bumpNav(); };
-  const onTouchEnd   = (e) => {
-    if (touchX.current === null || viewMode === "scroll") return;
-    const dx = e.changedTouches[0].clientX - touchX.current;
-    touchX.current = null;
-    const step = viewMode === "dual" ? 2 : 1;
-    if (Math.abs(dx) > 40) goTo(page + (dx < 0 ? step : -step));
-  };
+  // ── keep zoomRef in sync ──────────────────────────────────────────────────
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+  // ── touch: swipe (1 finger) + pinch-to-zoom (2 fingers) ──────────────────
+  // Native non-passive listeners so we can call preventDefault during pinch.
+  useEffect(() => {
+    const el = viewMode === "scroll" ? scrollRef.current : wrapRef.current;
+    if (!el) return;
+
+    const pinchDist = (t) => {
+      const dx = t[0].clientX - t[1].clientX;
+      const dy = t[0].clientY - t[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    const onStart = (e) => {
+      bumpNav();
+      if (e.touches.length === 2) {
+        pinchRef.current = { dist: pinchDist(e.touches), zoom: zoomRef.current };
+        touchX.current = null;
+        e.preventDefault();
+      } else {
+        pinchRef.current = null;
+        touchX.current = e.touches[0].clientX;
+      }
+    };
+
+    const onMove = (e) => {
+      if (e.touches.length === 2 && pinchRef.current) {
+        const ratio   = pinchDist(e.touches) / pinchRef.current.dist;
+        const newZoom = Math.min(4, Math.max(0.5, Math.round(pinchRef.current.zoom * ratio * 100) / 100));
+        setZoom(newZoom);
+        e.preventDefault();
+      }
+    };
+
+    const onEnd = (e) => {
+      if (pinchRef.current) { pinchRef.current = null; touchX.current = null; return; }
+      if (touchX.current === null || viewMode === "scroll") return;
+      const dx = e.changedTouches[0].clientX - touchX.current;
+      touchX.current = null;
+      const step = viewMode === "dual" ? 2 : 1;
+      if (Math.abs(dx) > 40) goTo(page + (dx < 0 ? step : -step));
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("touchmove",  onMove,  { passive: false });
+    el.addEventListener("touchend",   onEnd,   { passive: true  });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove",  onMove);
+      el.removeEventListener("touchend",   onEnd);
+    };
+  }, [viewMode, doc, page, goTo, bumpNav]);
 
   // ── bookmarks ─────────────────────────────────────────────────────────────
   const isBookmarked = bookmarks.some(b => b.page === page);
@@ -399,8 +446,6 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
           <div ref={wrapRef}
             style={{ width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
                      display: "flex", scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
           >
             {err ? (
               <div style={{ margin: "auto", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
@@ -426,8 +471,6 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
           <div ref={scrollRef}
             style={{ width: "100%", height: "100%", overflowY: "auto", background: "#1a1814",
                      scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
           >
             {err && (
               <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>
