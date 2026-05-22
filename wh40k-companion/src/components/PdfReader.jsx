@@ -397,27 +397,26 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         {/* Single / Dual mode canvas area */}
         {viewMode !== "scroll" && (
           <div ref={wrapRef}
-            style={{ width: "100%", height: "100%", display: "flex", alignItems: "center",
-                     justifyContent: "center", gap: 8, background: "#1a1814",
-                     overflow: "auto", padding: 12 }}
+            style={{ width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
+                     display: "flex", scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent` }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
             {err ? (
-              <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
+              <div style={{ margin: "auto", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>✕</div>
                 <div>Failed to load PDF</div>
                 <div style={{ fontSize: 10, color: C.dim, marginTop: 8 }}>{err}</div>
               </div>
             ) : !doc ? (
-              <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>Loading…</div>
+              <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>Loading…</div>
             ) : (
-              <>
+              <div style={{ margin: "auto", padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
                 <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,0.8)", opacity: rendering ? 0.6 : 1, transition: "opacity 0.15s" }} />
                 {viewMode === "dual" && page + 1 <= total && (
                   <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,0.8)", opacity: rendering ? 0.6 : 1, transition: "opacity 0.15s" }} />
                 )}
-              </>
+              </div>
             )}
           </div>
         )}
