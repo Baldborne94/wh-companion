@@ -416,10 +416,25 @@ export default function EpubReader({
     const flow   = settings.paginate ? "paginated" : "scrolled-doc";
     const spread = settings.paginate && settings.twoPage ? "always" : "none";
 
-    loadEpubJs().then(ePub => {
+    loadEpubJs().then(async ePub => {
       if (cancelled || !containerRef.current) return;
+
+      // Pre-fetch the EPUB binary so epub.js never makes its own network request.
+      // This gives us explicit error messages when the signed URL is expired/invalid,
+      // instead of a silent hang inside book.ready.
+      let epubData;
       try {
-        const book = ePub(url);
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} — could not download book`);
+        epubData = await resp.arrayBuffer();
+      } catch (fetchErr) {
+        if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
+        return;
+      }
+      if (cancelled || !containerRef.current) return;
+
+      try {
+        const book = ePub(epubData);
         bookRef.current = book;
 
         const rend = book.renderTo(containerRef.current, {
@@ -519,8 +534,13 @@ export default function EpubReader({
 
         rend.on("click", () => revealUI());
 
+        const readyTimeout = setTimeout(() => {
+          if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
+        }, 20000);
+
         book.ready
           .then(() => {
+            clearTimeout(readyTimeout);
             if (cancelled) return;
             setLoading(false);
             return book.loaded.navigation;
@@ -532,6 +552,7 @@ export default function EpubReader({
             tocRef.current = flat;
           })
           .catch(e => {
+            clearTimeout(readyTimeout);
             if (!cancelled) { setError(e?.message || "Failed to load book"); setLoading(false); }
           });
 
