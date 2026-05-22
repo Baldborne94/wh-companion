@@ -69,7 +69,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
         setProgress(progData[0].progress_pct||0);
         setChapterIndex(progData[0].chapter_index||0);
         setPageIndex(progData[0].page_index||0);
-        if(progData[0].chapter_index>0||progData[0].page_index>0)
+        if(progData[0].progress_pct>0)
           setBookmarkInfo({chapter_index:progData[0].chapter_index||0,page_index:progData[0].page_index||0,progress_pct:progData[0].progress_pct||0});
       } else {
         const cp=localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
@@ -78,7 +78,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
           setProgress(p.progress_pct||0);
           setChapterIndex(p.chapter_index||0);
           setPageIndex(p.page_index||0);
-          if(p.bookmarked||p.chapter_index>0||p.page_index>0)
+          if(p.bookmarked||p.progress_pct>0||p.chapter_index>0||p.page_index>0)
             setBookmarkInfo({chapter_index:p.chapter_index||0,page_index:p.page_index||0,bookmarkedAt:p.bookmarkedAt||p.last_read||null,progress_pct:p.progress_pct||0});
         }catch{} }
       }
@@ -193,7 +193,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                     <span style={{fontSize:16,flexShrink:0}}>📍</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>Last read position</div>
-                      <div style={{fontSize:12,color:C.text}}>Ch. {bookmarkInfo.chapter_index+1} · p. {bookmarkInfo.page_index+1} · {Math.round((bookmarkInfo.progress_pct||0)*100)}%</div>
+                      <div style={{fontSize:12,color:C.text}}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index>0?` · Ch. ${bookmarkInfo.chapter_index+1}`:""}</div>
                       {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
@@ -209,7 +209,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
                       <div key={bm.id} style={{padding:"8px 12px",borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${C.border}55`:"none",display:"flex",alignItems:"center",gap:8}}>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:11,color:C.text,fontFamily:"'Cinzel',serif"}}>{bm.label}</div>
-                          <div style={{fontSize:10,color:C.muted}}>p. {bm.page_index+1} · {Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div>
+                          <div style={{fontSize:10,color:C.muted}}>{bm.pct!=null?bm.pct:Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div>
                         </div>
                       </div>
                     ))}
