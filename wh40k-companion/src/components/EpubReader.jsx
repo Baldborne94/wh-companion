@@ -21,9 +21,9 @@ let _epubLib = null;
 function loadEpubJs() {
   if (_epubLib) return _epubLib;
   _epubLib = (async () => {
-    // epub.js CDN bundle does not include JSZip — load it first
+    // epub.js does not bundle JSZip — load the copy it ships in dist/libs/ first
     await loadScript(
-      "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+      "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/libs/jszip.min.js",
       () => !!window.JSZip
     );
     await loadScript(
