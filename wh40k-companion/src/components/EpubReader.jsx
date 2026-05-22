@@ -79,6 +79,8 @@ function applyTheme(rend, settings, T, fnt) {
     : "";
   const name = `t${++_themeN}`;
   rend.themes.register(name, googleImport + `
+    /* Custom properties so hook-injected rules auto-update on theme change */
+    :root { --rdr-text: ${T.text}; --rdr-bg: ${T.bg}; }
     *, *::before, *::after { box-sizing: border-box; }
     html { background: ${T.bg} !important; }
     body {
@@ -90,7 +92,6 @@ function applyTheme(rend, settings, T, fnt) {
       margin: 0 !important;
       padding: 0 ${settings.margin}px !important;
     }
-    * { color: ${T.text} !important; background-color: transparent !important; }
     a { color: #4a8adc !important; }
     p {
       margin: 0 !important; padding: 0 !important;
@@ -443,8 +444,27 @@ export default function EpubReader({
           const doc = contents.document;
           if (!doc?.body) return;
           const st = doc.createElement("style");
-          // Force inline + static so epub absolute-positioned containers don't scatter the spans
-          st.textContent = `.lore-kw{display:inline!important;position:static!important;float:none!important;vertical-align:baseline!important;color:#4a8adc!important;cursor:pointer!important;border-bottom:1px solid #4a8adc55!important;font-style:normal!important;font-weight:inherit!important}.lore-kw:hover{border-bottom-color:#4a8adc!important}`;
+          // Injected AFTER epub's own CSS so cascade order guarantees we win.
+          // var(--rdr-text) is set by applyTheme on :root, so theme changes auto-propagate.
+          st.textContent = `
+            html body *:not(a):not(.lore-kw) {
+              color: var(--rdr-text) !important;
+              background-color: transparent !important;
+            }
+            html body a { color: #4a8adc !important; }
+            .lore-kw {
+              display: inline !important;
+              position: static !important;
+              float: none !important;
+              vertical-align: baseline !important;
+              color: #4a8adc !important;
+              cursor: pointer !important;
+              border-bottom: 1px solid #4a8adc55 !important;
+              font-style: normal !important;
+              font-weight: inherit !important;
+            }
+            .lore-kw:hover { border-bottom-color: #4a8adc !important; }
+          `;
           doc.head?.appendChild(st);
           const walker = doc.createTreeWalker(doc.body, 4, null);
           const textNodes = [];
