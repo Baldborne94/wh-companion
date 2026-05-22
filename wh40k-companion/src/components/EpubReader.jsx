@@ -530,9 +530,8 @@ export default function EpubReader({
   // Navigation helpers
   // ─────────────────────────────────────────────────────────────────────────
   const getColWidth = useCallback(() => {
-    const cw = colRef.current?.clientWidth ?? 0;
-    return settings.twoPage ? cw + 48 : cw;
-  }, [settings.twoPage]);
+    return colRef.current?.clientWidth ?? 0;
+  }, []);
 
   const chapterPage = useCallback((idx) => {
     if (!colRef.current) return 0;
