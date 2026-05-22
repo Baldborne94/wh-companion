@@ -498,6 +498,18 @@ export default function EpubReader({
   const msrTimer     = useRef(null);
 
   // ─────────────────────────────────────────────────────────────────────────
+  // Reset navigation state when the book changes
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    initialized.current = false;
+    pageRef.current = 0;
+    totalRef.current = 1;
+    setDisplayPage(0);
+    setTotalPages(1);
+    setCurrentChIdx(0);
+  }, [url]);
+
+  // ─────────────────────────────────────────────────────────────────────────
   // Load EPUB → build one big HTML string (all chapters concatenated)
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -546,7 +558,7 @@ export default function EpubReader({
   // ─────────────────────────────────────────────────────────────────────────
   // Measure pages
   // ─────────────────────────────────────────────────────────────────────────
-  const measurePages = useCallback((targetPage) => {
+  const measurePages = useCallback((targetPage, targetProgress) => {
     if (!colRef.current || !bodyRef.current || !settings.paginate) return;
     const cw = getColWidth();
     const sw = bodyRef.current.scrollWidth;
@@ -554,12 +566,18 @@ export default function EpubReader({
     const tp = Math.max(1, Math.round(sw / cw));
     totalRef.current = tp;
     setTotalPages(tp);
-    const p = targetPage !== undefined
-      ? Math.min(targetPage, tp - 1)
-      : Math.min(pageRef.current, tp - 1);
-    pageRef.current = p;
-    colRef.current.scrollLeft = p * cw;
-    setDisplayPage(p);
+    let p;
+    if (targetPage !== undefined) {
+      p = Math.min(Math.max(0, targetPage), tp - 1);
+    } else if (targetProgress !== undefined && targetProgress > 0) {
+      // calculate page from progress now that we know total pages
+      p = Math.min(Math.round(targetProgress * (tp - 1)), tp - 1);
+    } else {
+      p = Math.min(pageRef.current, tp - 1);
+    }
+    pageRef.current = Math.max(0, p);
+    colRef.current.scrollLeft = pageRef.current * cw;
+    setDisplayPage(pageRef.current);
   }, [getColWidth, settings.paginate]);
 
   useEffect(() => {
@@ -578,18 +596,19 @@ export default function EpubReader({
     if (!allHtml || !settings.paginate) return;
     if (msrTimer.current) clearTimeout(msrTimer.current);
     msrTimer.current = setTimeout(() => {
-      let target;
       if (!initialized.current) {
-        if (initPageIndex > 0) {
-          target = initPageIndex;
-        } else if (initChapterIndex > 0) {
-          target = chapterPage(Math.min(initChapterIndex, chapters.length - 1));
-        } else if (initProgress > 0) {
-          target = Math.floor(initProgress * (totalRef.current - 1));
-        }
         initialized.current = true;
+        if (initPageIndex > 0) {
+          measurePages(initPageIndex, undefined);
+        } else if (initChapterIndex > 0) {
+          measurePages(chapterPage(Math.min(initChapterIndex, chapters.length - 1)), undefined);
+        } else {
+          // pass initProgress so measurePages calculates the page after knowing total
+          measurePages(undefined, initProgress);
+        }
+      } else {
+        measurePages(undefined, undefined);
       }
-      measurePages(target);
     }, 220);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allHtml, settings.fontSize, settings.lineHeight, settings.margin,
