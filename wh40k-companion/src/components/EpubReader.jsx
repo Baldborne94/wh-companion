@@ -90,6 +90,8 @@ function applyTheme(rend, settings, T, fnt) {
       margin: 0 !important;
       padding: 0 ${settings.margin}px !important;
     }
+    * { color: ${T.text} !important; background-color: transparent !important; }
+    a { color: #4a8adc !important; }
     p {
       margin: 0 !important; padding: 0 !important;
       text-indent: 1.5em !important;
@@ -697,14 +699,14 @@ export default function EpubReader({
       }}>
         {isTouch.current ? (
           <button onClick={prev} disabled={atStart}
-            style={{ background:"transparent", border:`1px solid ${atStart?T.border:T.muted}`,
-                     borderRadius:6, color:atStart?T.border:T.text,
+            style={{ background:"transparent", border:`1px solid ${atStart?T.muted:T.text}`,
+                     borderRadius:6, color:atStart?T.muted:T.text, opacity:atStart?0.35:1,
                      padding:"5px 14px", cursor:atStart?"default":"pointer",
                      fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
             ‹
           </button>
         ) : (
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.border,
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted,
                          letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
             ← prev
           </span>
@@ -728,14 +730,14 @@ export default function EpubReader({
 
         {isTouch.current ? (
           <button onClick={next} disabled={atEnd}
-            style={{ background:"transparent", border:`1px solid ${atEnd?T.border:T.muted}`,
-                     borderRadius:6, color:atEnd?T.border:T.text,
+            style={{ background:"transparent", border:`1px solid ${atEnd?T.muted:T.text}`,
+                     borderRadius:6, color:atEnd?T.muted:T.text, opacity:atEnd?0.35:1,
                      padding:"5px 14px", cursor:atEnd?"default":"pointer",
                      fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
             ›
           </button>
         ) : (
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.border,
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted,
                          letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
             next →
           </span>
