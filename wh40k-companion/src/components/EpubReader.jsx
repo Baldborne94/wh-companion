@@ -6,17 +6,32 @@ import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
 // ─────────────────────────────────────────────────────────────────────────────
 // epub.js CDN loader (avoids Vite bundling issues with epubjs internals)
 // ─────────────────────────────────────────────────────────────────────────────
+function loadScript(src, check) {
+  return new Promise((ok, fail) => {
+    if (check()) { ok(); return; }
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = () => check() ? ok() : fail(new Error(`Script loaded but ${src} did not expose expected global`));
+    s.onerror = () => fail(new Error(`Failed to load ${src}`));
+    document.head.appendChild(s);
+  });
+}
+
 let _epubLib = null;
 function loadEpubJs() {
   if (_epubLib) return _epubLib;
-  _epubLib = new Promise((ok, fail) => {
-    if (window.ePub) { ok(window.ePub); return; }
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js";
-    s.onload = () => window.ePub ? ok(window.ePub) : fail(new Error("epub.js did not expose window.ePub"));
-    s.onerror = () => fail(new Error("Failed to load epub.js"));
-    document.head.appendChild(s);
-  });
+  _epubLib = (async () => {
+    // epub.js CDN bundle does not include JSZip — load it first
+    await loadScript(
+      "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+      () => !!window.JSZip
+    );
+    await loadScript(
+      "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js",
+      () => !!window.ePub
+    );
+    return window.ePub;
+  })();
   return _epubLib;
 }
 
