@@ -5,8 +5,7 @@ import { Worker, Viewer, SpecialZoomLevel } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
-
-const WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.js?url";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -130,7 +129,7 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
 
       {/* ── PDF Viewer ── */}
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <Worker workerUrl={WORKER_URL}>
+        <Worker workerUrl={workerUrl}>
           <Viewer
             fileUrl={url}
             theme="dark"
