@@ -267,7 +267,8 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         e.preventDefault();
       } else {
         pinchRef.current = null;
-        touchX.current = e.touches[0].clientX;
+        // When zoomed in, let the browser handle native pan scrolling
+        touchX.current = zoomRef.current <= 1.0 ? e.touches[0].clientX : null;
       }
     };
 
