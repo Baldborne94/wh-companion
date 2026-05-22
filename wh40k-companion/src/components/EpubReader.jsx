@@ -1,8 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// epub.js CDN loader (avoids Vite bundling issues with epubjs internals)
+// ─────────────────────────────────────────────────────────────────────────────
+let _epubLib = null;
+function loadEpubJs() {
+  if (_epubLib) return _epubLib;
+  _epubLib = new Promise((ok, fail) => {
+    if (window.ePub) { ok(window.ePub); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js";
+    s.onload = () => window.ePub ? ok(window.ePub) : fail(new Error("epub.js did not expose window.ePub"));
+    s.onerror = () => fail(new Error("Failed to load epub.js"));
+    document.head.appendChild(s);
+  });
+  return _epubLib;
+}
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -400,150 +416,145 @@ export default function EpubReader({
     const flow   = settings.paginate ? "paginated" : "scrolled-doc";
     const spread = settings.paginate && settings.twoPage ? "always" : "none";
 
-    const book = ePub(url);
-    bookRef.current = book;
+    loadEpubJs().then(ePub => {
+      if (cancelled || !containerRef.current) return;
+      try {
+        const book = ePub(url);
+        bookRef.current = book;
 
-    const rend = book.renderTo(containerRef.current, {
-      width:          "100%",
-      height:         "100%",
-      spread,
-      flow,
-      minSpreadWidth: 900,
-      manager:        "default",
-    });
-    rendRef.current = rend;
+        const rend = book.renderTo(containerRef.current, {
+          width:          "100%",
+          height:         "100%",
+          spread,
+          flow,
+          minSpreadWidth: 900,
+          manager:        "default",
+        });
+        rendRef.current = rend;
 
-    applyTheme(rend, settings, T, fnt);
+        applyTheme(rend, settings, T, fnt);
 
-    // Inject lore-keyword highlighting into every rendered chapter iframe
-    rend.hooks.content.register((contents) => {
-      const doc = contents.document;
-      if (!doc?.body) return;
+        // Inject lore-keyword highlighting into every rendered chapter iframe
+        rend.hooks.content.register((contents) => {
+          const doc = contents.document;
+          if (!doc?.body) return;
+          const st = doc.createElement("style");
+          st.textContent = `.lore-kw{color:#4a8adc!important;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal!important}.lore-kw:hover{border-bottom-color:#4a8adc}`;
+          doc.head?.appendChild(st);
+          const walker = doc.createTreeWalker(doc.body, 4, null);
+          const textNodes = [];
+          let tw;
+          while ((tw = walker.nextNode())) {
+            const p = tw.parentNode;
+            if (!p) continue;
+            const tag = p.tagName?.toUpperCase();
+            if (["SCRIPT","STYLE","A","CODE","PRE"].includes(tag)) continue;
+            if (p.classList?.contains("lore-kw")) continue;
+            KW_REGEX.lastIndex = 0;
+            if (KW_REGEX.test(tw.textContent)) textNodes.push(tw);
+          }
+          textNodes.forEach(node => {
+            KW_REGEX.lastIndex = 0;
+            const text = node.textContent;
+            const frag = doc.createDocumentFragment();
+            let last = 0, m;
+            while ((m = KW_REGEX.exec(text)) !== null) {
+              const k = m[0].toLowerCase();
+              if (!LORE_DB[k]) continue;
+              if (m.index > last) frag.appendChild(doc.createTextNode(text.slice(last, m.index)));
+              const span = doc.createElement("span");
+              span.className = "lore-kw";
+              span.setAttribute("data-kw", k);
+              span.title = "Open on Fandom Wiki ↗";
+              span.textContent = m[0];
+              frag.appendChild(span);
+              last = m.index + m[0].length;
+            }
+            if (last < text.length) frag.appendChild(doc.createTextNode(text.slice(last)));
+            node.parentNode?.replaceChild(frag, node);
+          });
+          doc.addEventListener("click", (e) => {
+            const kw = e.target?.getAttribute?.("data-kw");
+            if (kw && LORE_DB[kw]) {
+              e.preventDefault();
+              e.stopPropagation();
+              contents.window.open(wikiUrl(kw), "_blank", "noopener");
+            }
+          });
+        });
 
-      // Keyword style (colour + underline, never italic)
-      const st = doc.createElement("style");
-      st.textContent = `.lore-kw{color:#4a8adc!important;cursor:pointer;border-bottom:1px solid #4a8adc55;font-style:normal!important}.lore-kw:hover{border-bottom-color:#4a8adc}`;
-      doc.head?.appendChild(st);
+        const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
+        rend.display(savedCfi || undefined);
 
-      // Walk all text nodes and wrap recognised WH40K terms in <span class="lore-kw">
-      const walker = doc.createTreeWalker(doc.body, 4 /* SHOW_TEXT */, null);
-      const textNodes = [];
-      let tw;
-      while ((tw = walker.nextNode())) {
-        const p = tw.parentNode;
-        if (!p) continue;
-        const tag = p.tagName?.toUpperCase();
-        if (["SCRIPT","STYLE","A","CODE","PRE"].includes(tag)) continue;
-        if (p.classList?.contains("lore-kw")) continue;
-        KW_REGEX.lastIndex = 0;
-        if (KW_REGEX.test(tw.textContent)) textNodes.push(tw);
+        rend.on("relocated", (loc) => {
+          if (cancelled) return;
+          const cfi = loc.start?.cfi;
+          const pct = loc.start?.percentage ?? 0;
+          if (cfi) cfiRef.current = cfi;
+          setProgress(Math.round(pct * 100));
+          setAtStart(!!loc.atStart);
+          setAtEnd(!!loc.atEnd);
+          if (tocRef.current.length > 0 && loc.start?.href) {
+            const base = decodeURIComponent(loc.start.href).split("#")[0].split("/").pop();
+            const found = tocRef.current.find(ch =>
+              ch.href && decodeURIComponent(ch.href).split("#")[0].split("/").pop() === base
+            );
+            setChLabel(found?.label?.trim() || "");
+          }
+          clearTimeout(saveTimer.current);
+          saveTimer.current = setTimeout(() => {
+            if (cancelled || !cfi) return;
+            onProgress?.(pct);
+            localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
+            saveProgressToSupabase(userId, bookId, pct);
+          }, 1500);
+        });
+
+        rend.on("selected", (_range, contents) => {
+          if (cancelled) return;
+          const text = contents?.window?.getSelection?.()?.toString()?.trim() ?? "";
+          const word = text.replace(/[^a-zA-Z'-]/g, "");
+          if (word.length >= 2 && word.length < 40) setDictWord(word);
+        });
+
+        rend.on("click", () => revealUI());
+
+        book.ready
+          .then(() => {
+            if (cancelled) return;
+            setLoading(false);
+            return book.loaded.navigation;
+          })
+          .then(nav => {
+            if (cancelled || !nav) return;
+            const flat = flattenToc(nav.toc);
+            setToc(flat);
+            tocRef.current = flat;
+          })
+          .catch(e => {
+            if (!cancelled) { setError(e?.message || "Failed to load book"); setLoading(false); }
+          });
+
+        book.locations.generate(1536).then(() => {
+          if (cancelled) return;
+          if (!savedCfi && (initProgress ?? 0) > 0) {
+            const cfi = book.locations.cfiFromPercentage(initProgress);
+            if (cfi) rend.display(cfi);
+          }
+        }).catch(() => {});
+
+      } catch (e) {
+        if (!cancelled) { setError(e?.message || "Failed to initialize reader"); setLoading(false); }
       }
-
-      textNodes.forEach(node => {
-        KW_REGEX.lastIndex = 0;
-        const text = node.textContent;
-        const frag = doc.createDocumentFragment();
-        let last = 0, m;
-        while ((m = KW_REGEX.exec(text)) !== null) {
-          const k = m[0].toLowerCase();
-          if (!LORE_DB[k]) continue;
-          if (m.index > last) frag.appendChild(doc.createTextNode(text.slice(last, m.index)));
-          const span = doc.createElement("span");
-          span.className = "lore-kw";
-          span.setAttribute("data-kw", k);
-          span.title = "Open on Fandom Wiki ↗";
-          span.textContent = m[0];
-          frag.appendChild(span);
-          last = m.index + m[0].length;
-        }
-        if (last < text.length) frag.appendChild(doc.createTextNode(text.slice(last)));
-        node.parentNode?.replaceChild(frag, node);
-      });
-
-      // Click → open Fandom wiki in new tab
-      doc.addEventListener("click", (e) => {
-        const kw = e.target?.getAttribute?.("data-kw");
-        if (kw && LORE_DB[kw]) {
-          e.preventDefault();
-          e.stopPropagation();
-          contents.window.open(wikiUrl(kw), "_blank", "noopener");
-        }
-      });
+    }).catch(e => {
+      if (!cancelled) { setError(e?.message || "Failed to load epub.js"); setLoading(false); }
     });
-
-    const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
-    rend.display(savedCfi || undefined);
-
-    // Progress + chapter label on every page turn
-    rend.on("relocated", (loc) => {
-      if (cancelled) return;
-      const cfi = loc.start?.cfi;
-      const pct = loc.start?.percentage ?? 0;
-      if (cfi) cfiRef.current = cfi;
-      setProgress(Math.round(pct * 100));
-      setAtStart(!!loc.atStart);
-      setAtEnd(!!loc.atEnd);
-
-      // Match current spine href against TOC entries
-      if (tocRef.current.length > 0 && loc.start?.href) {
-        const base = decodeURIComponent(loc.start.href).split("#")[0].split("/").pop();
-        const found = tocRef.current.find(ch =>
-          ch.href && decodeURIComponent(ch.href).split("#")[0].split("/").pop() === base
-        );
-        setChLabel(found?.label?.trim() || "");
-      }
-
-      clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        if (cancelled || !cfi) return;
-        onProgress?.(pct);
-        localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
-        saveProgressToSupabase(userId, bookId, pct);
-      }, 1500);
-    });
-
-    // Text selection → dictionary
-    rend.on("selected", (_range, contents) => {
-      if (cancelled) return;
-      const text = contents?.window?.getSelection?.()?.toString()?.trim() ?? "";
-      const word = text.replace(/[^a-zA-Z'-]/g, "");
-      if (word.length >= 2 && word.length < 40) setDictWord(word);
-    });
-
-    // Tap inside iframe → reveal UI on touch
-    rend.on("click", () => revealUI());
-
-    book.ready
-      .then(() => {
-        if (cancelled) return;
-        setLoading(false);
-        return book.loaded.navigation;
-      })
-      .then(nav => {
-        if (cancelled || !nav) return;
-        const flat = flattenToc(nav.toc);
-        setToc(flat);
-        tocRef.current = flat;
-      })
-      .catch(e => {
-        if (!cancelled) { setError(e?.message || "Failed to load book"); setLoading(false); }
-      });
-
-    // Generate locations for progress %; navigate by initProgress if no saved CFI
-    book.locations.generate(1536).then(() => {
-      if (cancelled) return;
-      if (!savedCfi && (initProgress ?? 0) > 0) {
-        const cfi = book.locations.cfiFromPercentage(initProgress);
-        if (cfi) rend.display(cfi);
-      }
-    }).catch(() => {});
 
     return () => {
       cancelled = true;
       clearTimeout(saveTimer.current);
       clearTimeout(hideTimer.current);
-      try { book.destroy(); } catch {}
-      bookRef.current = null;
+      if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
     };
   // Re-create rendition only when URL or layout settings change
