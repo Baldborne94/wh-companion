@@ -1,0 +1,20 @@
+diff --git a/node_modules/epubjs/src/utils/path.js b/node_modules/epubjs/src/utils/path.js
+index 6a060cb..3162208 100644
+--- a/node_modules/epubjs/src/utils/path.js
++++ b/node_modules/epubjs/src/utils/path.js
+@@ -14,7 +14,14 @@ class Path {
+ 
+ 		protocol = pathString.indexOf("://");
+ 		if (protocol > -1) {
+-			pathString = new URL(pathString).pathname;
++			try {
++				pathString = new URL(pathString).pathname;
++			} catch(e) {
++				// Non-standard scheme (e.g. epub://) — extract the path portion manually
++				var rest = pathString.substring(protocol + 3);
++				var slashIdx = rest.indexOf("/");
++				pathString = slashIdx > -1 ? rest.substring(slashIdx) : "/" + rest;
++			}
+ 		}
+ 
+ 		parsed = this.parse(pathString);
