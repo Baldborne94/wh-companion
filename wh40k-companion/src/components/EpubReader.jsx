@@ -524,12 +524,15 @@ export default function EpubReader({
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
         rend.display(savedCfi || undefined);
 
+        // loc.start.percentage uses spine position (chapter index / total) before
+        // locations are generated — last chapter reads as ~100% regardless of actual
+        // content position. Only use percentageFromCfi() after generate() completes.
+        let locationsReady = false;
+
         rend.on("relocated", (loc) => {
           if (cancelled) return;
           const cfi = loc.start?.cfi;
-          const pct = loc.start?.percentage ?? 0;
           if (cfi) cfiRef.current = cfi;
-          setProgress(Math.round(pct * 100));
           setAtStart(!!loc.atStart);
           setAtEnd(!!loc.atEnd);
           if (tocRef.current.length > 0 && loc.start?.href) {
@@ -539,13 +542,24 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
-          clearTimeout(saveTimer.current);
-          saveTimer.current = setTimeout(() => {
-            if (cancelled || !cfi) return;
-            onProgress?.(pct);
-            localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
-            saveProgressToSupabase(userId, bookId, pct);
-          }, 1500);
+          if (locationsReady && cfi) {
+            const pct = book.locations.percentageFromCfi(cfi) ?? 0;
+            setProgress(Math.round(pct * 100));
+            clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              if (cancelled) return;
+              onProgress?.(pct);
+              localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
+              saveProgressToSupabase(userId, bookId, pct);
+            }, 1500);
+          } else if (cfi) {
+            // Locations not ready yet — persist CFI only, defer progress update
+            clearTimeout(saveTimer.current);
+            saveTimer.current = setTimeout(() => {
+              if (cancelled) return;
+              localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
+            }, 1500);
+          }
         });
 
         rend.on("selected", (_range, contents) => {
@@ -587,9 +601,13 @@ export default function EpubReader({
 
         book.locations.generate(1536).then(() => {
           if (cancelled) return;
-          // Update progress bar now that locations are fully generated
+          locationsReady = true;
           const pct = book.locations.percentageFromCfi(cfiRef.current);
-          if (pct != null) setProgress(Math.round(pct * 100));
+          if (pct != null) {
+            setProgress(Math.round(pct * 100));
+            onProgress?.(pct);
+            saveProgressToSupabase(userId, bookId, pct);
+          }
           if (!savedCfi && (initProgress ?? 0) > 0) {
             const cfi = book.locations.cfiFromPercentage(initProgress);
             if (cfi) rend.display(cfi);
