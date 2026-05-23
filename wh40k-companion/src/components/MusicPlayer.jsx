@@ -285,7 +285,7 @@ function SpotifySection({ onNowPlaying }) {
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.name}</div>
-                <div style={s.rowSub}>{pl.tracks?.total ?? "?"} brani</div>
+                {pl.tracks?.total != null && <div style={s.rowSub}>{pl.tracks.total} brani</div>}
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
