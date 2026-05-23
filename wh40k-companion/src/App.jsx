@@ -8,6 +8,7 @@ import PaintingTracker from "./components/PaintingTracker";
 import MusicPlayer from "./components/MusicPlayer";
 import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
+import { AoSHomePage, AoSLibrarySection, AoSCrusadeSection, AOS } from "./components/AoSApp";
 
 const EpubReader = lazy(() => import("./components/EpubReader"));
 const PdfReader  = lazy(() => import("./components/PdfReader"));
@@ -1650,6 +1651,7 @@ export default function App(){
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
   const selectUniverse=(u)=>{ localStorage.setItem('wh_universe',u); setUniverse(u); };
+  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); setUniverse(null); signOut(); };
 
   // If Spotify OAuth is returning, open Music section directly
   const [section,setSection]=useState(()=>{
@@ -1693,7 +1695,7 @@ export default function App(){
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
-        html,body{height:100%;background:${C.bg};color:${C.text};font-family:system-ui,-apple-system,sans-serif;}
+        html,body{height:100%;background:${universe==='aos'?AOS.bg:C.bg};color:${universe==='aos'?AOS.text:C.text};font-family:system-ui,-apple-system,sans-serif;}
         input,select,button{font-family:inherit;}
         ::-webkit-scrollbar{width:3px;height:3px;}
         ::-webkit-scrollbar-thumb{background:${C.dim};border-radius:2px;}
@@ -1703,27 +1705,40 @@ export default function App(){
         @keyframes slideLeft{from{transform:translateX(100%);}to{transform:translateX(0);}}
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
       `}</style>
-      <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:1100,margin:"0 auto",background:C.bg}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:1100,margin:"0 auto",background:universe==='aos'?AOS.bg:C.bg}}>
         {/* ── HEADER ── */}
-        <div style={{flexShrink:0,height:50,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
-          <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${C.red},transparent)`}}/>
-          {/* universe switch button */}
-          <button onClick={()=>selectUniverse(null)} title="Switch Universe" style={{background:"transparent",border:"none",cursor:"pointer",padding:"0 8px 0 0",color:C.muted,fontSize:18,lineHeight:1,flexShrink:0}}>‹</button>
-          {/* title */}
-          <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
-            <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:13,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1}}>{universe==='aos'?'AOS':'WH40K'}</div>
-            <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:C.goldDim,letterSpacing:4,textTransform:"uppercase"}}>Companion</div>
-          </button>
-          {/* section label center */}
-          <div style={{flex:1,textAlign:"center"}}>
-            {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNav?.label||""}</span>}
-          </div>
-          {/* auth right */}
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${C.gold}55`}}/>}
-            <button onClick={signOut} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:6,color:C.muted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
-          </div>
-        </div>
+        {(()=>{
+          const hBg=universe==='aos'?AOS.surface:C.surface;
+          const hBorder=universe==='aos'?AOS.border:C.border;
+          const hAccent=universe==='aos'?AOS.gold:C.red;
+          const hText=universe==='aos'?AOS.text:C.text;
+          const hGoldDim=universe==='aos'?AOS.goldDim:C.goldDim;
+          const hMuted=universe==='aos'?AOS.muted:C.muted;
+          const hDim=universe==='aos'?AOS.dim:C.dim;
+          const hGold=universe==='aos'?AOS.gold:C.gold;
+          const hLabel=universe==='aos'?"AGE OF SIGMAR":"WH40K";
+          return(
+            <div style={{flexShrink:0,height:50,background:hBg,borderBottom:`1px solid ${hBorder}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
+              <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${hAccent},transparent)`}}/>
+              {/* universe switch */}
+              <button onClick={()=>selectUniverse(null)} title="Switch Universe" style={{background:"transparent",border:"none",cursor:"pointer",padding:"0 8px 0 0",color:hMuted,fontSize:18,lineHeight:1,flexShrink:0}}>‹</button>
+              {/* title */}
+              <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
+                <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:universe==='aos'?10:13,fontWeight:900,color:hText,letterSpacing:2,lineHeight:1}}>{hLabel}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:hGoldDim,letterSpacing:4,textTransform:"uppercase"}}>Companion</div>
+              </button>
+              {/* section label center */}
+              <div style={{flex:1,textAlign:"center"}}>
+                {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNav?.label||""}</span>}
+              </div>
+              {/* auth right */}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
+                <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
+              </div>
+            </div>
+          );
+        })()}
         {/* ── CONTENT ── */}
         <div style={{flex:1,overflow:"hidden",position:"relative"}}>
           {/* MusicPlayer always in DOM — never unmounted, so iframe keeps playing even when reader opens */}
@@ -1743,11 +1758,14 @@ export default function App(){
           )}
           {/* Other sections on top (z-index 1) with solid background covering MusicPlayer beneath */}
           {!appReader&&section!=="music"&&(
-            <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:C.bg}}>
-              {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-              {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} universe={universe}/>}
+            <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
+              {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
+              {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection}/>}
+              {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
+              {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user}/>}
               {section==="lore"    &&<LoreSection universe={universe}/>}
-              {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
+              {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
+              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
             </div>
           )}
@@ -1774,9 +1792,18 @@ export default function App(){
           </div>
         ))}
         {/* ── BOTTOM NAV ── */}
-        <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:56}}>
-          {NAV.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?C.gold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:section===n.id?C.gold:C.muted,textTransform:"uppercase"}}>{n.label}</span></button>))}
-        </div>
+        {(()=>{
+          const nBg=universe==='aos'?AOS.surface:C.surface;
+          const nBorder=universe==='aos'?AOS.border:C.border;
+          const nGold=universe==='aos'?AOS.gold:C.gold;
+          const nMuted=universe==='aos'?AOS.muted:C.muted;
+          const navItems=NAV.map(n=>n.id==="reading"?{...n,label:universe==='aos'?"Path to Glory":"Crusade"}:n);
+          return(
+            <div style={{flexShrink:0,background:nBg,borderTop:`1px solid ${nBorder}`,display:"flex",height:56}}>
+              {navItems.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?nGold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:section===n.id?nGold:nMuted,textTransform:"uppercase"}}>{n.label}</span></button>))}
+            </div>
+          );
+        })()}
       </div>
     </>
   );
