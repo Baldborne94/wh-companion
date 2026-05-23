@@ -259,11 +259,11 @@ function SpotifySection({ onNowPlaying }) {
     try {
       const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
       if (r.status === 401) { disconnect(); return; }
-      if (r.status === 403) {
-        setError("Playlist non accessibile: Spotify blocca l'accesso ai brani delle playlist editoriali tramite API. Prova con una playlist creata da te.");
+      const d = await r.json();
+      if (r.status === 403 || d.error?.status === 403) {
+        setError("RECONNECT");
         return;
       }
-      const d = await r.json();
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
       const items = (d.items || []).filter(i => i.track?.id);
       setTracks(items);
@@ -341,7 +341,19 @@ function SpotifySection({ onNowPlaying }) {
       ) : (
         <>
           <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); setTracks([]); setError(null); }} />
-          {error && <div style={{ color: "#e05050", fontSize: 12, padding: "8px 0" }}>{error}</div>}
+          {error === "RECONNECT" ? (
+            <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ color: "#e05050", fontSize: 12 }}>
+                Permessi insufficienti per leggere questa playlist. Disconnetti e riconnetti il tuo account Spotify per aggiornare i permessi.
+              </div>
+              <button onClick={() => { disconnect(); connect(); }}
+                style={{ alignSelf: "flex-start", background: "#1DB954", color: "#000", border: "none", borderRadius: 20, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                Riconnetti Spotify
+              </button>
+            </div>
+          ) : error ? (
+            <div style={{ color: "#e05050", fontSize: 12, padding: "8px 0" }}>{error}</div>
+          ) : null}
           {tracks.map(({ track }) => {
             const active = currentTrack?.id === track.id;
             return (
