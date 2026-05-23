@@ -1399,10 +1399,6 @@ function NextUpCard({statuses,activeBooks,onOpenBook,setSection}){
           <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:C.text,marginBottom:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{suggestion.book.title}</div>
           <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>{suggestion.book.author}</div>
         </div>
-        <button onClick={handle} disabled={opening}
-          style={{flexShrink:0,padding:"8px 12px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer",fontWeight:700}}>
-          {opening?"…":"READ ›"}
-        </button>
       </div>
     </div>
   );
