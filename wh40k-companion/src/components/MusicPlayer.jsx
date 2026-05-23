@@ -178,15 +178,13 @@ async function pkce() {
 }
 
 function SpotifySection({ onNowPlaying }) {
-  const [token, setToken]               = useState(() => localStorage.getItem("sp_token") || null);
-  const [playlists, setPlaylists]       = useState([]);
-  const [selectedPl, setSelectedPl]     = useState(null);
-  const [tracks, setTracks]             = useState([]);
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [loading, setLoading]           = useState(false);
-  const [error, setError]               = useState(null);
-  const clientId                        = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const redirectUri                     = window.location.origin;
+  const [token, setToken]           = useState(() => localStorage.getItem("sp_token") || null);
+  const [playlists, setPlaylists]   = useState([]);
+  const [selectedPl, setSelectedPl] = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState(null);
+  const clientId                    = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const redirectUri                 = window.location.origin;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -253,34 +251,9 @@ function SpotifySection({ onNowPlaying }) {
     finally { setLoading(false); }
   };
 
-  const fetchTracks = async (plId) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100&market=IT`, { headers: { Authorization: `Bearer ${token}` } });
-      if (r.status === 401) { disconnect(); return; }
-      const d = await r.json();
-      if (r.status === 403 || d.error?.status === 403) {
-        setError(`403: ${d.error?.message || d.error?.reason || "Forbidden"}`);
-        return;
-      }
-      if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
-      const items = (d.items || []).filter(i => i.track?.id);
-      setTracks(items);
-      if (items.length === 0) setError("Nessun brano trovato in questa playlist.");
-    } catch (e) { setError(`Errore di rete: ${e.message}`); }
-    finally { setLoading(false); }
-  };
-
-  const playTrack = (track) => {
-    setCurrentTrack(track);
-    onNowPlaying({
-      type: "spotify",
-      title: track.name,
-      subtitle: track.artists?.map(a => a.name).join(", "),
-      albumArt: track.album?.images?.[2]?.url,
-      trackUrl: track.external_urls?.spotify,
-    });
+  const selectPlaylist = (pl) => {
+    setSelectedPl(pl);
+    onNowPlaying({ type: "spotify", title: pl.name, subtitle: "Spotify", albumArt: pl.images?.[0]?.url });
   };
 
   const disconnect = () => {
@@ -288,14 +261,7 @@ function SpotifySection({ onNowPlaying }) {
     localStorage.removeItem("sp_refresh");
     localStorage.removeItem("sp_verifier");
     setToken(null); setPlaylists([]); setSelectedPl(null);
-    setTracks([]); setCurrentTrack(null);
     onNowPlaying(null);
-  };
-
-  const fmtDuration = (ms) => {
-    const m = Math.floor(ms / 60000);
-    const sec = String(Math.floor((ms % 60000) / 1000)).padStart(2, "0");
-    return `${m}:${sec}`;
   };
 
   if (!clientId) return <Placeholder icon="♪" title="Spotify non configurato" sub="Aggiungi VITE_SPOTIFY_CLIENT_ID al file .env" />;
@@ -306,29 +272,16 @@ function SpotifySection({ onNowPlaying }) {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {currentTrack && (
-        <div style={{ background: C.card, border: `1px solid #1DB95444`, borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
-          <Thumb url={currentTrack.album?.images?.[2]?.url} w={44} h={44} radius={4} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...s.rowTitle, color: "#1DB954" }}>{currentTrack.name}</div>
-            <div style={s.rowSub}>{currentTrack.artists?.map(a => a.name).join(", ")}</div>
-          </div>
-          <a href={currentTrack.external_urls?.spotify} target="_blank" rel="noopener noreferrer"
-            style={{ flexShrink: 0, background: "#1DB954", color: "#000", borderRadius: 20, padding: "5px 12px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
-            APRI ↗
-          </a>
-        </div>
-      )}
-
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
       <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
       {loading && <Spinner />}
+      {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
       {!selectedPl ? (
         <>
           <SectionLabel>Le tue playlist</SectionLabel>
           {playlists.map(pl => (
-            <button key={pl.id} onClick={() => { setSelectedPl(pl); fetchTracks(pl.id); }} style={s.row}>
+            <button key={pl.id} onClick={() => selectPlaylist(pl)} style={s.row}>
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.name}</div>
@@ -340,34 +293,17 @@ function SpotifySection({ onNowPlaying }) {
         </>
       ) : (
         <>
-          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); setTracks([]); setError(null); }} />
-          {error === "RECONNECT" ? (
-            <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ color: "#e05050", fontSize: 12 }}>
-                Permessi insufficienti per leggere questa playlist. Disconnetti e riconnetti il tuo account Spotify per aggiornare i permessi.
-              </div>
-              <button onClick={() => { disconnect(); connect(); }}
-                style={{ alignSelf: "flex-start", background: "#1DB954", color: "#000", border: "none", borderRadius: 20, padding: "6px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                Riconnetti Spotify
-              </button>
-            </div>
-          ) : error ? (
-            <div style={{ color: "#e05050", fontSize: 12, padding: "8px 0" }}>{error}</div>
-          ) : null}
-          {tracks.map(({ track }) => {
-            const active = currentTrack?.id === track.id;
-            return (
-              <button key={track.id} onClick={() => playTrack(track)}
-                style={{ ...s.row, borderColor: active ? "#1DB954" : C.border, background: active ? C.surface : C.card }}>
-                <Thumb url={track.album?.images?.[2]?.url} w={44} h={44} radius={4} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...s.rowTitle, color: active ? "#1DB954" : C.text }}>{track.name}</div>
-                  <div style={s.rowSub}>{track.artists?.map(a => a.name).join(", ")}</div>
-                </div>
-                <span style={{ ...s.rowSub, flexShrink: 0 }}>{fmtDuration(track.duration_ms)}</span>
-              </button>
-            );
-          })}
+          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); onNowPlaying(null); }} />
+          <iframe
+            title={selectedPl.name}
+            src={`https://open.spotify.com/embed/playlist/${selectedPl.id}?utm_source=generator&theme=0`}
+            width="100%"
+            height="480"
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            style={{ borderRadius: 12, border: "none", marginTop: 8 }}
+          />
         </>
       )}
     </div>
