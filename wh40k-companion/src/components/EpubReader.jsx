@@ -353,7 +353,8 @@ export default function EpubReader({
   themeRef.current   = T;
   const swipeRef     = useRef({ x:0, y:0, active:false });
 
-  const uiVisible = !isTouch.current || showUI;
+  // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
+  const uiVisible = !isTouch.current || !settings.paginate || showUI;
 
   const revealUI = useCallback(() => {
     if (!isTouch.current) return;
@@ -767,13 +768,13 @@ export default function EpubReader({
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:54, left:0, right:0 }} />
 
-      {/* Swipe overlay — captures touch on top of epub iframes (which don't bubble events) */}
+      {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
       {isTouch.current && (
         <div
           onTouchStart={onSwipeStart}
           onTouchEnd={onSwipeEnd}
           style={{ position:"absolute", top:54, bottom:54, left:0, right:0, zIndex:10,
-                   pointerEvents: (showSettings || showToc || showBookmarks || dictWord) ? "none" : "auto" }}
+                   pointerEvents: (!settings.paginate || showSettings || showToc || showBookmarks || dictWord) ? "none" : "auto" }}
         />
       )}
 
@@ -824,10 +825,13 @@ export default function EpubReader({
             ‹
           </button>
         ) : (
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted,
-                         letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
+          <button onClick={prev} disabled={atStart}
+            style={{ background:"transparent", border:"none", cursor:atStart?"default":"pointer",
+                     color:atStart?T.muted:T.text, opacity:atStart?0.4:1,
+                     fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+                     flexShrink:0, padding:"5px 14px" }}>
             ← prev
-          </span>
+          </button>
         )}
 
         <div style={{ flex:1 }}>
@@ -855,10 +859,13 @@ export default function EpubReader({
             ›
           </button>
         ) : (
-          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted,
-                         letterSpacing:1, flexShrink:0, padding:"0 4px" }}>
+          <button onClick={next} disabled={atEnd}
+            style={{ background:"transparent", border:"none", cursor:atEnd?"default":"pointer",
+                     color:atEnd?T.muted:T.text, opacity:atEnd?0.4:1,
+                     fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+                     flexShrink:0, padding:"5px 14px" }}>
             next →
-          </span>
+          </button>
         )}
       </div>
 
