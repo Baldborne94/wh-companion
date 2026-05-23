@@ -641,6 +641,27 @@ export default function EpubReader({
     swipeRef.current.active = false;
     const dx = e.changedTouches[0].clientX - swipeRef.current.x;
     const dy = e.changedTouches[0].clientY - swipeRef.current.y;
+
+    // Pure tap — the overlay blocks touches from reaching epub iframes, so
+    // forward manually: find the element under the touch in the iframe doc
+    // and open the wiki if it's a lore keyword.
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+      const iframe = containerRef.current?.querySelector('iframe');
+      if (iframe?.contentDocument) {
+        const rect = iframe.getBoundingClientRect();
+        const el = iframe.contentDocument.elementFromPoint(
+          swipeRef.current.x - rect.left,
+          swipeRef.current.y - rect.top
+        );
+        const kw = el?.closest?.('[data-kw]')?.getAttribute?.('data-kw')
+                ?? el?.getAttribute?.('data-kw');
+        if (kw && LORE_DB[kw]) {
+          window.open(wikiUrl(kw), '_blank', 'noopener');
+        }
+      }
+      return;
+    }
+
     // Ignore if too short or more vertical than horizontal
     if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
     if (dx < 0) next(); else prev();
