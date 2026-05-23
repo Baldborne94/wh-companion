@@ -257,11 +257,11 @@ function SpotifySection({ onNowPlaying }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100&market=IT`, { headers: { Authorization: `Bearer ${token}` } });
       if (r.status === 401) { disconnect(); return; }
       const d = await r.json();
       if (r.status === 403 || d.error?.status === 403) {
-        setError("RECONNECT");
+        setError(`403: ${d.error?.message || d.error?.reason || "Forbidden"}`);
         return;
       }
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
