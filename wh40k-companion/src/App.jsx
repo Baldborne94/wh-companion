@@ -1676,7 +1676,7 @@ export default function App(){
           )}
         </div>
         {/* ── CONTENT ── */}
-        <div ref={mainRef} style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        <div style={{flex:1,overflow:"hidden",position:"relative"}}>
           {appReader?(
             <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
               {appReader.fileType==="pdf"
@@ -1686,17 +1686,20 @@ export default function App(){
             </Suspense>
           ):(
             <>
-              {/* MusicPlayer always mounted so audio keeps playing when switching section */}
-              <div style={{display:section==="music"?"flex":"none",flexDirection:"column",flex:1,overflow:"hidden"}}>
+              {/* MusicPlayer always position:absolute so iframe never gets display:none — audio keeps playing */}
+              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:section==="music"?2:0,pointerEvents:section==="music"?"auto":"none"}}>
                 <MusicPlayer onNowPlaying={setNowPlaying}/>
               </div>
-              <div style={{display:section!=="music"?"flex":"none",flexDirection:"column",flex:1,overflowY:"auto",overscrollBehavior:"contain"}}>
-                {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-                {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-                {section==="lore"    &&<LoreSection/>}
-                {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-                {section==="painting"&&<PaintingTracker user={user}/>}
-              </div>
+              {/* Other sections rendered on top with solid background to cover the player */}
+              {section!=="music"&&(
+                <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:C.bg}}>
+                  {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
+                  {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
+                  {section==="lore"    &&<LoreSection/>}
+                  {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
+                  {section==="painting"&&<PaintingTracker user={user}/>}
+                </div>
+              )}
             </>
           )}
         </div>
