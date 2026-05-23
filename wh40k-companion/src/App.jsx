@@ -1677,30 +1677,30 @@ export default function App(){
         </div>
         {/* ── CONTENT ── */}
         <div style={{flex:1,overflow:"hidden",position:"relative"}}>
-          {appReader?(
-            <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
-              {appReader.fileType==="pdf"
-                ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)}/>
-                :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)}/>
-              }
-            </Suspense>
-          ):(
-            <>
-              {/* MusicPlayer always position:absolute so iframe never gets display:none — audio keeps playing */}
-              <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:section==="music"?2:0,pointerEvents:section==="music"?"auto":"none"}}>
-                <MusicPlayer onNowPlaying={setNowPlaying}/>
-              </div>
-              {/* Other sections rendered on top with solid background to cover the player */}
-              {section!=="music"&&(
-                <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:C.bg}}>
-                  {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-                  {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-                  {section==="lore"    &&<LoreSection/>}
-                  {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-                  {section==="painting"&&<PaintingTracker user={user}/>}
-                </div>
-              )}
-            </>
+          {/* MusicPlayer always in DOM — never unmounted, so iframe keeps playing even when reader opens */}
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:section==="music"&&!appReader?2:0,pointerEvents:section==="music"&&!appReader?"auto":"none"}}>
+            <MusicPlayer onNowPlaying={setNowPlaying}/>
+          </div>
+          {/* Reader on top (z-index 3) when open */}
+          {appReader&&(
+            <div style={{position:"absolute",inset:0,zIndex:3}}>
+              <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
+                {appReader.fileType==="pdf"
+                  ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)}/>
+                  :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)}/>
+                }
+              </Suspense>
+            </div>
+          )}
+          {/* Other sections on top (z-index 1) with solid background covering MusicPlayer beneath */}
+          {!appReader&&section!=="music"&&(
+            <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:C.bg}}>
+              {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
+              {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
+              {section==="lore"    &&<LoreSection/>}
+              {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
+              {section==="painting"&&<PaintingTracker user={user}/>}
+            </div>
           )}
         </div>
         {/* ── MINI PLAYER ── */}
