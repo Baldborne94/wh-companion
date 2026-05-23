@@ -401,28 +401,12 @@ export default function EpubReader({
     (async () => {
       if (cancelled || !containerRef.current) return;
 
-      // Pre-fetch the EPUB so we can show clear HTTP error messages on failure,
-      // then wrap in a blob URL — epub.js resolves internal paths correctly from
-      // blob URLs on all browsers; raw ArrayBuffer input breaks URL resolution
-      // on desktop Chrome/Firefox (throws "Failed to construct 'URL': Invalid URL").
-      let blobUrl;
+      // Pass the signed URL directly to epub.js — it fetches and unzips internally.
+      // This is epub.js's native path and works correctly on all browsers/platforms.
+      // (Blob URLs and ArrayBuffers cause "Invalid URL" errors in epub.js's internal
+      //  path resolution on desktop Chrome/Firefox.)
       try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
-        const buf = await resp.arrayBuffer();
-        const blob = new Blob([buf], { type: "application/epub+zip" });
-        blobUrl = URL.createObjectURL(blob);
-        // Revoke any previous blob URL to avoid memory leaks
-        if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); }
-        blobUrlRef.current = blobUrl;
-      } catch (fetchErr) {
-        if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
-        return;
-      }
-      if (cancelled || !containerRef.current) return;
-
-      try {
-        const book = ePub(blobUrl);
+        const book = ePub(url);
         bookRef.current = book;
 
         const rend = book.renderTo(containerRef.current, {
@@ -572,7 +556,13 @@ export default function EpubReader({
           })
           .catch(e => {
             clearTimeout(readyTimeout);
-            if (!cancelled) { setError(e?.message || "Failed to load book"); setLoading(false); }
+            if (cancelled) return;
+            const msg = e?.message || "";
+            const friendly = msg.includes("403") ? "Download link expired — close and reopen the book."
+                           : msg.includes("404") ? "Book file not found — try re-uploading."
+                           : msg || "Failed to load book";
+            setError(friendly);
+            setLoading(false);
           });
 
         book.locations.generate(1536).then(() => {
@@ -594,7 +584,6 @@ export default function EpubReader({
       clearTimeout(hideTimer.current);
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
-      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     };
   // Re-create rendition only when URL or layout settings change
   // eslint-disable-next-line react-hooks/exhaustive-deps
