@@ -1392,11 +1392,11 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
   const readCount=Object.values(statuses).filter(s=>s.status==='read').length;
   const readingCount=Object.values(statuses).filter(s=>s.status==='reading').length;
 
-  // books to show on shelf: only uploaded, sorted by series then number
+  // books to show on shelf: uploaded OR marked as read, sorted by series then number
   const shelfBooks=useMemo(()=>{
-    return BOOKS.filter(b=>uploadedIds.has(b.id))
+    return BOOKS.filter(b=>uploadedIds.has(b.id)||statuses[b.id]?.status==='read')
       .sort((a,b)=>a.series.localeCompare(b.series)||(a.num-b.num));
-  },[uploadedIds]);
+  },[uploadedIds,statuses]);
 
   // group by series for display
   const shelfBySeries=useMemo(()=>{
