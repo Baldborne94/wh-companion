@@ -170,7 +170,7 @@ function SpotifySection() {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const clientId                        = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const redirectUri                     = window.location.origin + window.location.pathname;
+  const redirectUri                     = window.location.origin;
 
   // Handle OAuth callback
   useEffect(() => {
