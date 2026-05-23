@@ -6,6 +6,8 @@ import { BOOKS, ALL_SERIES, ALL_FACTIONS, ALL_TYPES, ALL_ERAS } from "./data/boo
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "./data/hhGuide";
 import PaintingTracker from "./components/PaintingTracker";
 import MusicPlayer from "./components/MusicPlayer";
+import LoginPage from "./components/LoginPage";
+import UniverseSelector from "./components/UniverseSelector";
 
 const EpubReader = lazy(() => import("./components/EpubReader"));
 const PdfReader  = lazy(() => import("./components/PdfReader"));
@@ -1203,18 +1205,34 @@ const FACTION_INFOBOXES={
   "adeptus-mechanicus":[{label:"Alleanza",value:"Imperium (partner semi-autonomo)"},{label:"Base",value:"Marte + centinaia di Forge Worlds"},{label:"Fondazione",value:"Pre-M30 (Mechanicum di Marte)"},{label:"Dio",value:"L'Omnissiah (identificato con l'Imperatore)"},{label:"Forze",value:"Skitarii, Titan Legions, Legio Cybernetica"},{label:"Comandante",value:"Fabricator-General di Marte"}],
 };
 
-function LoreSection(){
+function LoreSection({ universe }){
   const [wikiSearch,setWikiSearch]=useState("");
   // eslint-disable-next-line no-unused-vars
   const _unused=null; // FACTIONS_LORE/TIMELINE_LORE/PRIMARCHS_LORE kept for future use
 
+  const isAoS=universe==='aos';
+
   const openWikiSearch=()=>{
     const q=wikiSearch.trim();
     if(!q) return;
-    window.open(`https://warhammer40k.fandom.com/wiki/Special:Search?query=${encodeURIComponent(q)}`,'_blank','noopener');
+    if(isAoS) window.open(`https://ageofsigmar.lexicanum.com/wiki/Special:Search?search=${encodeURIComponent(q)}`,'_blank','noopener');
+    else window.open(`https://warhammer40k.fandom.com/wiki/Special:Search?query=${encodeURIComponent(q)}`,'_blank','noopener');
   };
 
-  const QUICK_LINKS=[
+  const QUICK_LINKS=isAoS?[
+    {label:"Stormcast Eternals", wiki:"Stormcast_Eternals",         icon:"⚡"},
+    {label:"Sigmar",             wiki:"Sigmar",                     icon:"🔱"},
+    {label:"Chaos",              wiki:"Chaos",                      icon:"⛧"},
+    {label:"Nagash",             wiki:"Nagash",                     icon:"💀"},
+    {label:"Destruction",        wiki:"Destruction_Grand_Alliance", icon:"💪"},
+    {label:"Sylvaneth",          wiki:"Sylvaneth",                  icon:"🌿"},
+    {label:"Skaven",             wiki:"Skaven",                     icon:"🐀"},
+    {label:"Mortal Realms",      wiki:"Mortal_Realms",              icon:"🌍"},
+    {label:"Ossiarch",           wiki:"Ossiarch_Bonereapers",       icon:"🦴"},
+    {label:"Fyreslayers",        wiki:"Fyreslayers",                icon:"🔥"},
+    {label:"Idoneth",            wiki:"Idoneth_Deepkin",            icon:"🌊"},
+    {label:"Lumineth",           wiki:"Lumineth_Realm-lords",       icon:"✨"},
+  ]:[
     {label:"Space Marines",   wiki:"Space_Marines",           icon:"⚔️"},
     {label:"Chaos",           wiki:"Chaos_(Warhammer)",       icon:"⛧"},
     {label:"Necrons",         wiki:"Necrons",                 icon:"💀"},
@@ -1250,19 +1268,19 @@ function LoreSection(){
     <div style={{paddingBottom:80}}>
       {/* header */}
       <div style={{padding:"22px 16px 16px",borderBottom:`1px solid ${C.border}`}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>Warhammer 40,000</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>{isAoS?"Warhammer: Age of Sigmar":"Warhammer 40,000"}</div>
         <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>Lore & Resources</h2>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>Direct access to the best online encyclopedias. WH40K lore is vast — let the experts handle it.</p>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?"Accesso diretto alle migliori enciclopedie online dei Mortal Realms.":"Direct access to the best online encyclopedias. WH40K lore is vast — let the experts handle it."}</p>
       </div>
 
       {/* search bar → apre wiki */}
       <div style={{padding:"16px 16px 0"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>Search on Fandom Wiki</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{isAoS?"Cerca su Lexicanum AoS":"Search on Fandom Wiki"}</div>
         <div style={{display:"flex",gap:8}}>
           <div style={{flex:1,position:"relative"}}>
             <input value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&openWikiSearch()}
-              placeholder="Space Marines, Horus, Aeldari…"
+              placeholder={isAoS?"Sigmar, Stormcast, Nagash…":"Space Marines, Horus, Aeldari…"}
               style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"11px 12px 11px 40px",fontSize:14,outline:"none"}}/>
             <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:16,pointerEvents:"none"}}>🔍</span>
           </div>
@@ -1274,22 +1292,45 @@ function LoreSection(){
       {/* main link cards */}
       <div style={{padding:"20px 16px 4px"}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Main Resources</div>
-        <LinkCard
-          title="Warhammer 40k Wiki"
-          icon="📖"
-          desc="The most complete wiki: factions, characters, events, battles, planets. Thousands of articles continuously updated by the community."
-          url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki"
-          color={C.gold}
-          badge="FANDOM"
-        />
-        <LinkCard
-          title="Lexicanum"
-          icon="📜"
-          desc="Encyclopedic and technical reference. Great for equipment details, units, dates and chronology."
-          url="https://wh40k.lexicanum.com"
-          color={C.blue}
-          badge="LEXICANUM"
-        />
+        {isAoS?(
+          <>
+            <LinkCard
+              title="Lexicanum AoS"
+              icon="📖"
+              desc="L'enciclopedia più completa per Age of Sigmar: fazioni, Mortal Realms, personaggi e storia. Aggiornata dalla community."
+              url="https://ageofsigmar.lexicanum.com/wiki/Main_Page"
+              color={C.gold}
+              badge="LEXICANUM"
+            />
+            <LinkCard
+              title="Sigmar Wiki"
+              icon="🔱"
+              desc="La storia di Sigmar Heldenhammer, dal guerriero mortale al dio-re dei Mortal Realms. Lore profondo su Fandom."
+              url="https://warhammerfantasy.fandom.com/wiki/Sigmar"
+              color="#4a7fb5"
+              badge="FANDOM"
+            />
+          </>
+        ):(
+          <>
+            <LinkCard
+              title="Warhammer 40k Wiki"
+              icon="📖"
+              desc="The most complete wiki: factions, characters, events, battles, planets. Thousands of articles continuously updated by the community."
+              url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki"
+              color={C.gold}
+              badge="FANDOM"
+            />
+            <LinkCard
+              title="Lexicanum"
+              icon="📜"
+              desc="Encyclopedic and technical reference. Great for equipment details, units, dates and chronology."
+              url="https://wh40k.lexicanum.com"
+              color={C.blue}
+              badge="LEXICANUM"
+            />
+          </>
+        )}
       </div>
 
       {/* quick links grid */}
@@ -1297,7 +1338,7 @@ function LoreSection(){
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Quick Access</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {QUICK_LINKS.map(q=>(
-            <a key={q.wiki} href={`https://warhammer40k.fandom.com/wiki/${q.wiki}`} target="_blank" rel="noopener noreferrer"
+            <a key={q.wiki} href={isAoS?`https://ageofsigmar.lexicanum.com/wiki/${q.wiki}`:`https://warhammer40k.fandom.com/wiki/${q.wiki}`} target="_blank" rel="noopener noreferrer"
               style={{display:"flex",alignItems:"center",gap:8,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",textDecoration:"none",cursor:"pointer"}}>
               <span style={{fontSize:18,flexShrink:0}}>{q.icon}</span>
               <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.text,letterSpacing:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{q.label}</span>
@@ -1607,6 +1648,9 @@ export default function App(){
     }
   },[user?.id]);
 
+  const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
+  const selectUniverse=(u)=>{ localStorage.setItem('wh_universe',u); setUniverse(u); };
+
   // If Spotify OAuth is returning, open Music section directly
   const [section,setSection]=useState(()=>{
     const p=new URLSearchParams(window.location.search);
@@ -1641,6 +1685,9 @@ export default function App(){
     setAppReader({book,url,fileType:meta.file_type||'epub',progress,chapterIndex,pageIndex});
     return true;
   },[user?.id]);
+  if(authLoading) return <LoginPage authLoading/>;
+  if(!user) return <LoginPage/>;
+  if(!universe) return <UniverseSelector onSelect={selectUniverse}/>;
   return(
     <>
       <style>{`
@@ -1660,9 +1707,11 @@ export default function App(){
         {/* ── HEADER ── */}
         <div style={{flexShrink:0,height:50,background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
           <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${C.red},transparent)`}}/>
+          {/* universe switch button */}
+          <button onClick={()=>selectUniverse(null)} title="Switch Universe" style={{background:"transparent",border:"none",cursor:"pointer",padding:"0 8px 0 0",color:C.muted,fontSize:18,lineHeight:1,flexShrink:0}}>‹</button>
           {/* title */}
           <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
-            <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:13,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1}}>WH40K</div>
+            <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:13,fontWeight:900,color:C.text,letterSpacing:2,lineHeight:1}}>{universe==='aos'?'AOS':'WH40K'}</div>
             <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:C.goldDim,letterSpacing:4,textTransform:"uppercase"}}>Companion</div>
           </button>
           {/* section label center */}
@@ -1670,14 +1719,10 @@ export default function App(){
             {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.goldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNav?.label||""}</span>}
           </div>
           {/* auth right */}
-          {user?(
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${C.gold}55`}}/>}
-              <button onClick={signOut} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:6,color:C.muted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
-            </div>
-          ):(
-            <button onClick={signInWithGoogle} style={{background:"transparent",border:`1px solid ${C.gold}`,borderRadius:8,color:C.gold,padding:"5px 12px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:2,cursor:"pointer"}}>LOGIN</button>
-          )}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${C.gold}55`}}/>}
+            <button onClick={signOut} style={{background:"transparent",border:`1px solid ${C.dim}`,borderRadius:6,color:C.muted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
+          </div>
         </div>
         {/* ── CONTENT ── */}
         <div style={{flex:1,overflow:"hidden",position:"relative"}}>
@@ -1700,8 +1745,8 @@ export default function App(){
           {!appReader&&section!=="music"&&(
             <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:C.bg}}>
               {section==="home"    &&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-              {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-              {section==="lore"    &&<LoreSection/>}
+              {section==="library" &&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} universe={universe}/>}
+              {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
             </div>
