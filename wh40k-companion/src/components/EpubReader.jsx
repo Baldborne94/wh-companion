@@ -30,7 +30,7 @@ async function saveProgressToSupabase(userId, bookId, pct) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, margin:28, paginate:true, twoPage:false };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:false };
 
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
@@ -87,7 +87,6 @@ function buildReaderCss(settings, T, fnt) {
       font-size: ${settings.fontSize}px !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
-      padding: 0 ${settings.margin}px !important;
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
@@ -282,12 +281,6 @@ function SettingsPanel({ settings, onChange, onClose }) {
         <Row label={`Line spacing — ${settings.lineHeight}×`}>
           {[1.5,1.7,1.9,2.1].map(v => (
             <Chip key={v} label={String(v)} active={settings.lineHeight===v} onClick={() => onChange("lineHeight",v)} />
-          ))}
-        </Row>
-
-        <Row label="Side margins">
-          {[{l:"Narrow",v:16},{l:"Normal",v:28},{l:"Wide",v:48}].map(m => (
-            <Chip key={m.v} label={m.l} active={settings.margin===m.v} onClick={() => onChange("margin",m.v)} />
           ))}
         </Row>
 
@@ -620,7 +613,7 @@ export default function EpubReader({
     if (!rendRef.current) return;
     applyTheme(rendRef.current, settings, T, fnt);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.margin]);
+  }, [settings.fontSize, settings.fontIndex, settings.lineHeight]);
 
   // ── Resize observer ───────────────────────────────────────────────────────
   useEffect(() => {
