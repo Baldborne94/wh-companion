@@ -237,12 +237,14 @@ function SpotifySection({ onNowPlaying }) {
 
   const fetchPlaylists = async (tok) => {
     setLoading(true);
+    setError(null);
     try {
       const r = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${tok}` } });
       if (r.status === 401) { disconnect(); return; }
       const d = await r.json();
+      if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
       setPlaylists(d.items || []);
-    } catch { setError("Errore caricamento playlist."); }
+    } catch (e) { setError(`Errore di rete: ${e.message}`); }
     finally { setLoading(false); }
   };
 
@@ -253,10 +255,11 @@ function SpotifySection({ onNowPlaying }) {
       const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
       if (r.status === 401) { disconnect(); return; }
       const d = await r.json();
+      if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
       const items = (d.items || []).filter(i => i.track?.id);
-      if (items.length === 0) setError("Nessun brano trovato in questa playlist.");
       setTracks(items);
-    } catch { setError("Errore caricamento brani."); }
+      if (items.length === 0) setError("Nessun brano trovato in questa playlist.");
+    } catch (e) { setError(`Errore di rete: ${e.message}`); }
     finally { setLoading(false); }
   };
 
@@ -328,7 +331,8 @@ function SpotifySection({ onNowPlaying }) {
         </>
       ) : (
         <>
-          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); setTracks([]); }} />
+          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); setTracks([]); setError(null); }} />
+          {error && <div style={{ color: "#e05050", fontSize: 12, padding: "8px 0" }}>{error}</div>}
           {tracks.map(({ track }) => {
             const active = currentTrack?.id === track.id;
             return (
