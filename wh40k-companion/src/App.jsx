@@ -5,6 +5,7 @@ import { C, FC, STATUS_CFG } from "./data/constants";
 import { BOOKS, ALL_SERIES, ALL_FACTIONS, ALL_TYPES, ALL_ERAS } from "./data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "./data/hhGuide";
 import PaintingTracker from "./components/PaintingTracker";
+import MusicPlayer from "./components/MusicPlayer";
 
 const EpubReader = lazy(() => import("./components/EpubReader"));
 const PdfReader  = lazy(() => import("./components/PdfReader"));
@@ -1555,7 +1556,7 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
   );
 }
 
-const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"}];
+const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"},{id:"music",icon:"🎵",label:"Music"}];
 
 export default function App(){
   const [user,setUser]=useState(null);
@@ -1689,6 +1690,7 @@ export default function App(){
               {section==="lore"    &&<LoreSection/>}
               {section==="reading" &&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
+              {section==="music"   &&<MusicPlayer/>}
             </>
           )}
         </div>
