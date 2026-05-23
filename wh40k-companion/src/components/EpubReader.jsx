@@ -857,13 +857,10 @@ export default function EpubReader({
             <div style={{ height:"100%", width:`${progress}%`, background:C.gold,
                           borderRadius:2, transition:"width .5s ease" }} />
           </div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ display:"flex", justifyContent:"center", alignItems:"center" }}>
             <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1,
-                           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"60%" }}>
+                           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {chLabel}
-            </span>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1, flexShrink:0 }}>
-              {progress}%
             </span>
           </div>
         </div>

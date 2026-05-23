@@ -1497,7 +1497,6 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
       {/* stats bar */}
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`}}>
         {[
-          {n:uploadedIds.size,l:"Ebook",c:C.gold},
           {n:readingCount,l:"Reading",c:C.blue},
           {n:readCount,l:"Read",c:C.green},
           {n:BOOKS.length,l:"Total",c:C.muted},
