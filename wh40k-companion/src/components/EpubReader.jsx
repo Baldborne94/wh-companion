@@ -401,15 +401,28 @@ export default function EpubReader({
     (async () => {
       if (cancelled || !containerRef.current) return;
 
-      // Pass the signed URL directly to epub.js — it fetches and unzips internally.
-      // This is epub.js's native path and works correctly on all browsers/platforms.
-      // (Blob URLs and ArrayBuffers cause "Invalid URL" errors in epub.js's internal
-      //  path resolution on desktop Chrome/Firefox.)
+      // Pre-fetch the epub binary for clear HTTP error messages, then hand a
+      // blob URL + openAs:'epub' to epub.js. This combination is needed because:
+      // - Direct HTTPS URL: epub.js's XHR loads the book but renders nothing (black page)
+      // - Raw ArrayBuffer: epub.js throws "Invalid URL" on desktop Chrome
+      // - Blob URL alone: epub.js can't detect type (no .epub extension), wrong loading path
+      // - Blob URL + openAs:'epub': forces epub.js to use its zip archive path correctly
+      let blobUrl;
       try {
-        // openAs:'epub' is required — Supabase signed URLs end with ?token=...
-        // so epub.js can't detect the file type from the extension and falls back
-        // to OPF mode, loading an empty book (black page).
-        const book = ePub(url, { openAs: "epub" });
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
+        const buf = await resp.arrayBuffer();
+        blobUrl = URL.createObjectURL(new Blob([buf], { type: "application/epub+zip" }));
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = blobUrl;
+      } catch (fetchErr) {
+        if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
+        return;
+      }
+      if (cancelled || !containerRef.current) return;
+
+      try {
+        const book = ePub(blobUrl, { openAs: "epub" });
         bookRef.current = book;
 
         const rend = book.renderTo(containerRef.current, {
@@ -587,6 +600,7 @@ export default function EpubReader({
       clearTimeout(hideTimer.current);
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
+      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     };
   // Re-create rendition only when URL or layout settings change
   // eslint-disable-next-line react-hooks/exhaustive-deps
