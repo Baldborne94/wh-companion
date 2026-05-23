@@ -254,6 +254,10 @@ function SpotifySection({ onNowPlaying }) {
     try {
       const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
       if (r.status === 401) { disconnect(); return; }
+      if (r.status === 403) {
+        setError("Playlist non accessibile: Spotify blocca l'accesso ai brani delle playlist editoriali tramite API. Prova con una playlist creata da te.");
+        return;
+      }
       const d = await r.json();
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
       const items = (d.items || []).filter(i => i.track?.id);
