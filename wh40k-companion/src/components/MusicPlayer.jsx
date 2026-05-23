@@ -248,10 +248,14 @@ function SpotifySection({ onNowPlaying }) {
 
   const fetchTracks = async (plId) => {
     setLoading(true);
+    setError(null);
     try {
-      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=50`, { headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=100`, { headers: { Authorization: `Bearer ${token}` } });
+      if (r.status === 401) { disconnect(); return; }
       const d = await r.json();
-      setTracks((d.items || []).filter(i => i.track?.id));
+      const items = (d.items || []).filter(i => i.track?.id);
+      if (items.length === 0) setError("Nessun brano trovato in questa playlist.");
+      setTracks(items);
     } catch { setError("Errore caricamento brani."); }
     finally { setLoading(false); }
   };
@@ -316,7 +320,7 @@ function SpotifySection({ onNowPlaying }) {
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.name}</div>
-                <div style={s.rowSub}>{pl.tracks?.total} brani</div>
+                <div style={s.rowSub}>{pl.tracks?.total ?? "?"} brani</div>
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
@@ -417,7 +421,11 @@ const TABS = [
 ];
 
 export default function MusicPlayer({ onNowPlaying = () => {} }) {
-  const [tab, setTab] = useState("youtube");
+  // Auto-switch to Spotify tab when returning from OAuth
+  const [tab, setTab] = useState(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("state") === "spotify_auth" ? "spotify" : "youtube";
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>

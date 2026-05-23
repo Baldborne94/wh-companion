@@ -1607,7 +1607,11 @@ export default function App(){
     }
   },[user?.id]);
 
-  const [section,setSection]=useState("home");
+  // If Spotify OAuth is returning, open Music section directly
+  const [section,setSection]=useState(()=>{
+    const p=new URLSearchParams(window.location.search);
+    return p.get("state")==="spotify_auth"?"music":"home";
+  });
   const [nowPlaying,setNowPlaying]=useState(null);
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
