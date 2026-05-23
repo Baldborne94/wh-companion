@@ -586,6 +586,9 @@ export default function EpubReader({
 
         book.locations.generate(1536).then(() => {
           if (cancelled) return;
+          // Update progress bar now that locations are fully generated
+          const pct = book.locations.percentageFromCfi(cfiRef.current);
+          if (pct != null) setProgress(Math.round(pct * 100));
           if (!savedCfi && (initProgress ?? 0) > 0) {
             const cfi = book.locations.cfiFromPercentage(initProgress);
             if (cfi) rend.display(cfi);
@@ -643,20 +646,40 @@ export default function EpubReader({
     const dy = e.changedTouches[0].clientY - swipeRef.current.y;
 
     // Pure tap — the overlay blocks touches from reaching epub iframes, so
-    // forward manually: find the element under the touch in the iframe doc
-    // and open the wiki if it's a lore keyword.
+    // forward manually: find the element under the touch in the iframe doc.
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
       const iframe = containerRef.current?.querySelector('iframe');
       if (iframe?.contentDocument) {
         const rect = iframe.getBoundingClientRect();
-        const el = iframe.contentDocument.elementFromPoint(
-          swipeRef.current.x - rect.left,
-          swipeRef.current.y - rect.top
-        );
+        const x = swipeRef.current.x - rect.left;
+        const y = swipeRef.current.y - rect.top;
+        const el = iframe.contentDocument.elementFromPoint(x, y);
+
+        // 1. Lore keyword → open wiki
         const kw = el?.closest?.('[data-kw]')?.getAttribute?.('data-kw')
                 ?? el?.getAttribute?.('data-kw');
         if (kw && LORE_DB[kw]) {
           window.open(wikiUrl(kw), '_blank', 'noopener');
+          return;
+        }
+
+        // 2. Any word → dictionary (use caretRangeFromPoint to get exact word)
+        const doc = iframe.contentDocument;
+        let node = null, off = 0;
+        if (doc.caretRangeFromPoint) {
+          const r = doc.caretRangeFromPoint(x, y);
+          if (r) { node = r.startContainer; off = r.startOffset; }
+        } else if (doc.caretPositionFromPoint) {
+          const p = doc.caretPositionFromPoint(x, y);
+          if (p) { node = p.offsetNode; off = p.offset; }
+        }
+        if (node?.nodeType === 3) {
+          const txt = node.textContent;
+          let s = off, e = off;
+          while (s > 0 && /[a-zA-Z'-]/.test(txt[s - 1])) s--;
+          while (e < txt.length && /[a-zA-Z'-]/.test(txt[e])) e++;
+          const word = txt.slice(s, e).replace(/[^a-zA-Z'-]/g, '');
+          if (word.length >= 2 && word.length < 40) setDictWord(word);
         }
       }
       return;
@@ -696,6 +719,12 @@ export default function EpubReader({
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bookmarks, userId, bookId]);
+
+  const deleteBookmark = useCallback((cfi) => {
+    const upd = bookmarks.filter(b => b.cfi !== cfi);
+    setBookmarks(upd);
+    localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
+  }, [bookmarks, userId, bookId]);
 
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) return (
@@ -802,9 +831,9 @@ export default function EpubReader({
         )}
 
         <div style={{ flex:1 }}>
-          <div style={{ height:2, background:T.border, borderRadius:1, overflow:"hidden", marginBottom:4 }}>
+          <div style={{ height:3, background:T.border, borderRadius:2, overflow:"hidden", marginBottom:4 }}>
             <div style={{ height:"100%", width:`${progress}%`, background:C.gold,
-                          borderRadius:1, transition:"width .4s ease" }} />
+                          borderRadius:2, transition:"width .5s ease" }} />
           </div>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1,
@@ -896,18 +925,28 @@ export default function EpubReader({
             ) : (
               <div style={{ overflowY:"auto", flex:1 }}>
                 {bookmarks.map((bm, i) => (
-                  <button key={i}
-                    onClick={() => { rendRef.current?.display(bm.cfi); setShowBookmarks(false); }}
-                    style={{ display:"block", width:"100%", textAlign:"left", background:"transparent",
-                             border:"none", borderBottom:`1px solid ${T.border}`,
-                             padding:"12px 16px", cursor:"pointer" }}>
-                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>
-                      {bm.label}
-                    </div>
-                    <div style={{ fontSize:10, color:T.muted }}>
-                      {bm.pct}% · {new Date(bm.createdAt).toLocaleDateString("en-US", { day:"numeric", month:"short" })}
-                    </div>
-                  </button>
+                  <div key={i} style={{ display:"flex", alignItems:"stretch",
+                                        borderBottom:`1px solid ${T.border}` }}>
+                    <button
+                      onClick={() => { rendRef.current?.display(bm.cfi); setShowBookmarks(false); }}
+                      style={{ flex:1, textAlign:"left", background:"transparent",
+                               border:"none", padding:"12px 16px", cursor:"pointer" }}>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>
+                        {bm.label}
+                      </div>
+                      <div style={{ fontSize:10, color:T.muted }}>
+                        {bm.pct}% · {new Date(bm.createdAt).toLocaleDateString("en-US", { day:"numeric", month:"short" })}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => deleteBookmark(bm.cfi)}
+                      title="Delete bookmark"
+                      style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
+                               color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
+                               flexShrink:0, display:"flex", alignItems:"center" }}>
+                      ✕
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
