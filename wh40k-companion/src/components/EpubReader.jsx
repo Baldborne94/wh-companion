@@ -71,28 +71,25 @@ function useReaderStyles() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme CSS injected into epub.js iframes
 // ─────────────────────────────────────────────────────────────────────────────
-let _themeN = 0;
-
-function applyTheme(rend, settings, T, fnt) {
+// Build the complete CSS to inject into epub iframes.
+// Called both from the content hook (on each page load) and from applyTheme (on live settings change).
+function buildReaderCss(settings, T, fnt) {
   const googleImport = fnt.import
     ? `@import url('https://fonts.googleapis.com/css2?family=${fnt.import}&display=swap');\n`
     : "";
-  const name = `t${++_themeN}`;
-  rend.themes.register(name, googleImport + `
-    /* Custom properties so hook-injected rules auto-update on theme change */
-    :root { --rdr-text: ${T.text}; --rdr-bg: ${T.bg}; }
+  return googleImport + `
     *, *::before, *::after { box-sizing: border-box; }
     html { background: ${T.bg} !important; }
+    html, body { background: ${T.bg} !important; color: ${T.text} !important; }
+    html body * { color: ${T.text} !important; background-color: transparent !important; }
     body {
-      background: ${T.bg} !important;
-      color: ${T.text} !important;
       font-family: ${fnt.value} !important;
       font-size: ${settings.fontSize}px !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
       padding: 0 ${settings.margin}px !important;
     }
-    a { color: #4a8adc !important; }
+    html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
       margin: 0 !important; padding: 0 !important;
       text-indent: 1.5em !important;
@@ -110,12 +107,25 @@ function applyTheme(rend, settings, T, fnt) {
     hr { border: none !important; text-align: center !important; margin: 0.3em 0 !important; }
     hr::after { content: "· · ·" !important; opacity: 0.4 !important; }
     img { max-width: 100% !important; height: auto !important; display: block !important; margin: 1em auto !important; }
-    a { color: #4a8adc !important; text-decoration: none !important; }
     blockquote { border-left: 3px solid #c9a84c55 !important; padding-left: 1em !important; margin: 0.5em 0 !important; }
     table { max-width: 100% !important; border-collapse: collapse !important; }
     td, th { padding: 0.3em 0.6em !important; }
-  `);
-  rend.themes.select(name);
+    .lore-kw {
+      display: inline !important; position: static !important; float: none !important;
+      vertical-align: baseline !important; color: #4a8adc !important; cursor: pointer !important;
+      border-bottom: 1px solid #4a8adc55 !important;
+      font-style: normal !important; font-weight: inherit !important;
+    }
+    .lore-kw:hover { border-bottom-color: #4a8adc !important; }
+  `;
+}
+
+// Update all currently loaded epub iframes with the latest CSS.
+// epub.js's Contents.addStylesheetCss() finds/creates a keyed <style> element so
+// repeated calls overwrite rather than stack.
+function applyTheme(rend, settings, T, fnt) {
+  const css = buildReaderCss(settings, T, fnt);
+  rend.getContents().forEach(c => c.addStylesheetCss(css, 'wh40k-reader'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -351,6 +361,8 @@ export default function EpubReader({
   const isTouch      = useRef(window.matchMedia("(pointer:coarse)").matches);
   const themeRef     = useRef(T);
   themeRef.current   = T;
+  const settingsRef  = useRef(settings);
+  settingsRef.current = settings;
   const swipeRef     = useRef({ x:0, y:0, active:false });
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
@@ -444,40 +456,13 @@ export default function EpubReader({
         // Capture outer window so we can open URLs from inside the epub iframe
         const appWindow = window;
 
-        // Inject lore-keyword highlighting into every rendered chapter iframe
+        // Inject reader CSS + lore-keyword highlighting into every rendered chapter iframe
         rend.hooks.content.register((contents) => {
           const doc = contents.document;
           if (!doc?.body) return;
-          // Read current theme at hook-fire time (themeRef is always up to date)
-          const cT = themeRef.current;
-          const st = doc.createElement("style");
-          // This style is appended LAST to <head>, after all epub stylesheets.
-          // Same-specificity !important rules use cascade order → we win.
-          // html+body prefix raises specificity to 0-0-2, beating single-element epub rules.
-          st.textContent = `
-            html, body {
-              background: ${cT.bg} !important;
-              color: ${cT.text} !important;
-            }
-            html body * {
-              color: ${cT.text} !important;
-              background-color: transparent !important;
-            }
-            html body a { color: #4a8adc !important; }
-            .lore-kw {
-              display: inline !important;
-              position: static !important;
-              float: none !important;
-              vertical-align: baseline !important;
-              color: #4a8adc !important;
-              cursor: pointer !important;
-              border-bottom: 1px solid #4a8adc55 !important;
-              font-style: normal !important;
-              font-weight: inherit !important;
-            }
-            .lore-kw:hover { border-bottom-color: #4a8adc !important; }
-          `;
-          doc.head?.appendChild(st);
+          // Read current settings/theme via refs so hook always uses the latest values
+          const s = settingsRef.current;
+          contents.addStylesheetCss(buildReaderCss(s, themeRef.current, FONTS[s.fontIndex]), 'wh40k-reader');
           const walker = doc.createTreeWalker(doc.body, 4, null);
           const textNodes = [];
           let tw;
