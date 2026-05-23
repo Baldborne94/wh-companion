@@ -400,22 +400,24 @@ export default function EpubReader({
     (async () => {
       if (cancelled || !containerRef.current) return;
 
-      // Validate the URL is reachable (gives clear HTTP error messages).
-      // Then pass the HTTPS signed URL directly to epub.js.
+      // Pre-fetch to ArrayBuffer for clear HTTP error messages, then pass the
+      // buffer directly to ePub() WITHOUT openAs.
       //
-      // Why NOT blob URL: epub.js's Path utilities call new URL(relative, base) where
-      // base is the book path. Blob URLs (blob:https://…/<uuid>) fail URL resolution
-      // → "Failed to construct 'URL': Invalid URL". HTTPS URLs work correctly.
+      // epub.js's Path constructor strips any URL to just its pathname:
+      //   pathString = new URL(pathString).pathname  // loses origin → "Invalid URL" later
+      // This breaks both HTTPS and blob URLs passed as the book path.
       //
-      // Why NOT raw ArrayBuffer: epub.js calls toString() on non-string inputs before
-      // type detection, so it tries fetch("[object ArrayBuffer]") → 404.
+      // With openAs:'epub' + ArrayBuffer: epub.js treats the ArrayBuffer as a URL
+      // string (toString() → "[object ArrayBuffer]"), tries to fetch that → 404.
       //
-      // The "black page" seen before with direct HTTPS was without openAs:'epub'.
-      // With openAs:'epub', epub.js uses its archive mode and creates its own blob
-      // URLs for each extracted chapter/resource, which load fine in iframes.
+      // WITHOUT openAs: epub.js detects a non-string input → uses INPUT_TYPE.BINARY
+      // mode, sets path to "/" and reads all files directly from the JSZip archive.
+      // This is the officially documented way to load epub from binary in 0.3.x.
+      let epubBuf;
       try {
-        const resp = await fetch(url, { method: "HEAD" });
+        const resp = await fetch(url);
         if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
+        epubBuf = await resp.arrayBuffer();
       } catch (fetchErr) {
         if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
         return;
@@ -423,7 +425,7 @@ export default function EpubReader({
       if (cancelled || !containerRef.current) return;
 
       try {
-        const book = ePub(url, { openAs: "epub" });
+        const book = ePub(epubBuf);
         bookRef.current = book;
 
         const rend = book.renderTo(containerRef.current, {
