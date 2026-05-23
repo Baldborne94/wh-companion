@@ -1,18 +1,38 @@
 import { useState, useEffect, useRef } from "react";
 import { C } from "../data/constants";
 
+// ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
+
+function saveYtToken(token) {
+  localStorage.setItem("yt_token", JSON.stringify({ token, expiresAt: Date.now() + 3500 * 1000 }));
+}
+function loadYtToken() {
+  try {
+    const d = JSON.parse(localStorage.getItem("yt_token") || "null");
+    if (d && Date.now() < d.expiresAt) return d.token;
+  } catch {}
+  return null;
+}
+function clearYtToken() { localStorage.removeItem("yt_token"); }
+
 // ─── YOUTUBE ─────────────────────────────────────────────────────────────────
 
-function YouTubeSection() {
-  const [token, setToken]               = useState(null);
+function YouTubeSection({ onNowPlaying }) {
+  const [token, setToken]               = useState(() => loadYtToken());
   const [playlists, setPlaylists]       = useState([]);
   const [selectedPl, setSelectedPl]     = useState(null);
   const [videos, setVideos]             = useState([]);
   const [currentVideo, setCurrentVideo] = useState(null);
+  const [currentTitle, setCurrentTitle] = useState(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const tokenClientRef                  = useRef(null);
   const clientId                        = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  // Restore playlists if token already saved
+  useEffect(() => {
+    if (token) fetchPlaylists(token);
+  }, []);
 
   useEffect(() => {
     if (!clientId) return;
@@ -22,6 +42,7 @@ function YouTubeSection() {
         scope: "https://www.googleapis.com/auth/youtube.readonly",
         callback: (resp) => {
           if (resp.access_token) {
+            saveYtToken(resp.access_token);
             setToken(resp.access_token);
             fetchPlaylists(resp.access_token);
           } else {
@@ -41,10 +62,7 @@ function YouTubeSection() {
     document.head.appendChild(s);
   }, [clientId]);
 
-  const connect = () => {
-    setError(null);
-    tokenClientRef.current?.requestAccessToken();
-  };
+  const connect = () => { setError(null); tokenClientRef.current?.requestAccessToken(); };
 
   const fetchPlaylists = async (tok) => {
     setLoading(true);
@@ -54,10 +72,11 @@ function YouTubeSection() {
         { headers: { Authorization: `Bearer ${tok}` } }
       );
       const d = await r.json();
-      if (d.error) { setError(d.error.message); setLoading(false); return; }
+      if (d.error?.code === 401) { disconnect(); return; }
+      if (d.error) { setError(d.error.message); return; }
       setPlaylists(d.items || []);
     } catch { setError("Errore di rete."); }
-    setLoading(false);
+    finally { setLoading(false); }
   };
 
   const fetchVideos = async (plId) => {
@@ -70,46 +89,41 @@ function YouTubeSection() {
       const d = await r.json();
       setVideos((d.items || []).filter(v => v.snippet?.resourceId?.videoId));
     } catch { setError("Errore caricamento video."); }
-    setLoading(false);
+    finally { setLoading(false); }
   };
 
-  const disconnect = () => { setToken(null); setPlaylists([]); setSelectedPl(null); setVideos([]); setCurrentVideo(null); };
+  const playVideo = (vid, title) => {
+    setCurrentVideo(vid);
+    setCurrentTitle(title);
+    onNowPlaying({ type: "youtube", title, videoId: vid });
+  };
 
-  if (!clientId) return (
-    <Placeholder icon="▶" title="YouTube non configurato" sub="Aggiungi VITE_GOOGLE_CLIENT_ID al file .env" />
-  );
+  const disconnect = () => {
+    clearYtToken();
+    setToken(null); setPlaylists([]); setSelectedPl(null);
+    setVideos([]); setCurrentVideo(null); setCurrentTitle(null);
+    onNowPlaying(null);
+  };
+
+  if (!clientId) return <Placeholder icon="▶" title="YouTube non configurato" sub="Aggiungi VITE_GOOGLE_CLIENT_ID al file .env" />;
 
   if (!token) return (
-    <ConnectScreen
-      icon="▶"
-      title="YouTube"
-      sub="Connetti il tuo account per accedere alle tue playlist"
-      btnLabel="Connetti YouTube"
-      btnBg="#FF0000"
-      btnColor="#fff"
-      onClick={connect}
-      error={error}
-    />
+    <ConnectScreen icon="▶" title="YouTube" sub="Connetti il tuo account per accedere alle tue playlist"
+      btnLabel="Connetti YouTube" btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
   );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Player */}
       {currentVideo && (
         <div style={{ aspectRatio: "16/9", borderRadius: 8, overflow: "hidden", background: "#000" }}>
-          <iframe
-            width="100%" height="100%"
+          <iframe width="100%" height="100%"
             src={`https://www.youtube.com/embed/${currentVideo}?autoplay=1`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ border: "none" }}
-          />
+            allowFullScreen style={{ border: "none" }} />
         </div>
       )}
 
-      {/* Disconnect */}
       <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
-
       {loading && <Spinner />}
 
       {!selectedPl ? (
@@ -128,15 +142,17 @@ function YouTubeSection() {
         </>
       ) : (
         <>
-          <BackBtn label={selectedPl.snippet?.title} onClick={() => { setSelectedPl(null); setVideos([]); setCurrentVideo(null); }} />
+          <BackBtn label={selectedPl.snippet?.title} onClick={() => { setSelectedPl(null); setVideos([]); setCurrentVideo(null); onNowPlaying(null); }} />
           {videos.map(v => {
-            const vid = v.snippet.resourceId.videoId;
+            const vid   = v.snippet.resourceId.videoId;
+            const title = v.snippet?.title;
             const active = currentVideo === vid;
             return (
-              <button key={v.id} onClick={() => setCurrentVideo(vid)} style={{ ...s.row, borderColor: active ? "#FF0000" : C.border, background: active ? C.surface : C.card }}>
+              <button key={v.id} onClick={() => playVideo(vid, title)}
+                style={{ ...s.row, borderColor: active ? "#FF0000" : C.border, background: active ? C.surface : C.card }}>
                 <Thumb url={v.snippet?.thumbnails?.medium?.url} w={80} h={50} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ ...s.rowTitle, color: active ? "#FF4444" : C.text }}>{v.snippet?.title}</div>
+                  <div style={{ ...s.rowTitle, color: active ? "#FF4444" : C.text }}>{title}</div>
                 </div>
               </button>
             );
@@ -161,7 +177,7 @@ async function pkce() {
   return { verifier, challenge: base64url(digest) };
 }
 
-function SpotifySection() {
+function SpotifySection({ onNowPlaying }) {
   const [token, setToken]               = useState(() => localStorage.getItem("sp_token") || null);
   const [playlists, setPlaylists]       = useState([]);
   const [selectedPl, setSelectedPl]     = useState(null);
@@ -172,7 +188,6 @@ function SpotifySection() {
   const clientId                        = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirectUri                     = window.location.origin;
 
-  // Handle OAuth callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code   = params.get("code");
@@ -191,13 +206,8 @@ function SpotifySection() {
     const { verifier, challenge } = await pkce();
     localStorage.setItem("sp_verifier", verifier);
     const p = new URLSearchParams({
-      client_id: clientId,
-      response_type: "code",
-      redirect_uri: redirectUri,
-      code_challenge_method: "S256",
-      code_challenge: challenge,
-      scope: SP_SCOPES,
-      state: "spotify_auth",
+      client_id: clientId, response_type: "code", redirect_uri: redirectUri,
+      code_challenge_method: "S256", code_challenge: challenge, scope: SP_SCOPES, state: "spotify_auth",
     });
     window.location.href = `https://accounts.spotify.com/authorize?${p}`;
   };
@@ -209,11 +219,8 @@ function SpotifySection() {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: clientId,
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: redirectUri,
-          code_verifier: verifier,
+          client_id: clientId, grant_type: "authorization_code",
+          code, redirect_uri: redirectUri, code_verifier: verifier,
         }),
       });
       const d = await r.json();
@@ -231,26 +238,33 @@ function SpotifySection() {
   const fetchPlaylists = async (tok) => {
     setLoading(true);
     try {
-      const r = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", {
-        headers: { Authorization: `Bearer ${tok}` },
-      });
-      if (r.status === 401) { disconnect(); setLoading(false); return; }
+      const r = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${tok}` } });
+      if (r.status === 401) { disconnect(); return; }
       const d = await r.json();
       setPlaylists(d.items || []);
     } catch { setError("Errore caricamento playlist."); }
-    setLoading(false);
+    finally { setLoading(false); }
   };
 
   const fetchTracks = async (plId) => {
     setLoading(true);
     try {
-      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=50`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const r = await fetch(`https://api.spotify.com/v1/playlists/${plId}/tracks?limit=50`, { headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       setTracks((d.items || []).filter(i => i.track?.id));
     } catch { setError("Errore caricamento brani."); }
-    setLoading(false);
+    finally { setLoading(false); }
+  };
+
+  const playTrack = (track) => {
+    setCurrentTrack(track);
+    onNowPlaying({
+      type: "spotify",
+      title: track.name,
+      subtitle: track.artists?.map(a => a.name).join(", "),
+      albumArt: track.album?.images?.[2]?.url,
+      trackUrl: track.external_urls?.spotify,
+    });
   };
 
   const disconnect = () => {
@@ -259,34 +273,24 @@ function SpotifySection() {
     localStorage.removeItem("sp_verifier");
     setToken(null); setPlaylists([]); setSelectedPl(null);
     setTracks([]); setCurrentTrack(null);
+    onNowPlaying(null);
   };
 
   const fmtDuration = (ms) => {
     const m = Math.floor(ms / 60000);
-    const s = String(Math.floor((ms % 60000) / 1000)).padStart(2, "0");
-    return `${m}:${s}`;
+    const sec = String(Math.floor((ms % 60000) / 1000)).padStart(2, "0");
+    return `${m}:${sec}`;
   };
 
-  if (!clientId) return (
-    <Placeholder icon="♪" title="Spotify non configurato" sub="Aggiungi VITE_SPOTIFY_CLIENT_ID al file .env" />
-  );
+  if (!clientId) return <Placeholder icon="♪" title="Spotify non configurato" sub="Aggiungi VITE_SPOTIFY_CLIENT_ID al file .env" />;
 
   if (!token) return (
-    <ConnectScreen
-      icon="♪"
-      title="Spotify"
-      sub="Connetti il tuo account per accedere alle tue playlist"
-      btnLabel="Connetti Spotify"
-      btnBg="#1DB954"
-      btnColor="#000"
-      onClick={connect}
-      error={error}
-    />
+    <ConnectScreen icon="♪" title="Spotify" sub="Connetti il tuo account per accedere alle tue playlist"
+      btnLabel="Connetti Spotify" btnBg="#1DB954" btnColor="#000" onClick={connect} error={error} />
   );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Now playing bar */}
       {currentTrack && (
         <div style={{ background: C.card, border: `1px solid #1DB95444`, borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
           <Thumb url={currentTrack.album?.images?.[2]?.url} w={44} h={44} radius={4} />
@@ -302,7 +306,6 @@ function SpotifySection() {
       )}
 
       <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
-
       {loading && <Spinner />}
 
       {!selectedPl ? (
@@ -325,7 +328,7 @@ function SpotifySection() {
           {tracks.map(({ track }) => {
             const active = currentTrack?.id === track.id;
             return (
-              <button key={track.id} onClick={() => setCurrentTrack(track)}
+              <button key={track.id} onClick={() => playTrack(track)}
                 style={{ ...s.row, borderColor: active ? "#1DB954" : C.border, background: active ? C.surface : C.card }}>
                 <Thumb url={track.album?.images?.[2]?.url} w={44} h={44} radius={4} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -391,46 +394,18 @@ function Thumb({ url, w, h, radius = 6 }) {
   return <img src={url} width={w} height={h} style={{ borderRadius: radius, objectFit: "cover", flexShrink: 0 }} />;
 }
 
-// shared styles
 const s = {
   row: {
-    background: C.card,
-    border: `1px solid ${C.border}`,
-    borderRadius: 10,
-    padding: "10px 12px",
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    cursor: "pointer",
-    textAlign: "left",
-    width: "100%",
+    background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
+    padding: "10px 12px", display: "flex", alignItems: "center",
+    gap: 12, cursor: "pointer", textAlign: "left", width: "100%",
   },
-  rowTitle: {
-    color: C.text,
-    fontSize: 13,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    marginBottom: 2,
-  },
-  rowSub: {
-    color: C.muted,
-    fontSize: 11,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
+  rowTitle: { color: C.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 },
+  rowSub:   { color: C.muted, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   disconnectBtn: {
-    background: "none",
-    border: `1px solid ${C.dim}`,
-    borderRadius: 6,
-    color: C.muted,
-    padding: "4px 10px",
-    fontSize: 11,
-    cursor: "pointer",
-    alignSelf: "flex-end",
-    fontFamily: "'Cinzel',serif",
-    letterSpacing: 1,
+    background: "none", border: `1px solid ${C.dim}`, borderRadius: 6,
+    color: C.muted, padding: "4px 10px", fontSize: 11, cursor: "pointer",
+    alignSelf: "flex-end", fontFamily: "'Cinzel',serif", letterSpacing: 1,
   },
 };
 
@@ -441,42 +416,28 @@ const TABS = [
   { id: "spotify", label: "Spotify",  icon: "♪", activeColor: "#1DB954" },
 ];
 
-export default function MusicPlayer() {
+export default function MusicPlayer({ onNowPlaying = () => {} }) {
   const [tab, setTab] = useState("youtube");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Header */}
       <div style={{ padding: "18px 16px 0", borderBottom: `1px solid ${C.border}` }}>
         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>
           Warhammer 40,000
         </div>
-        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text, marginBottom: 14 }}>
-          Music
-        </h2>
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 0 }}>
+        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text, marginBottom: 14 }}>Music</h2>
+        <div style={{ display: "flex" }}>
           {TABS.map(t => {
             const active = tab === t.id;
             return (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                style={{
-                  flex: 1,
-                  background: "none",
-                  border: "none",
-                  borderBottom: `2px solid ${active ? t.activeColor : "transparent"}`,
-                  color: active ? t.activeColor : C.muted,
-                  padding: "10px 0",
-                  fontSize: 13,
-                  fontWeight: active ? 700 : 400,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  marginBottom: -1,
-                  transition: "all 0.15s",
-                }}>
+              <button key={t.id} onClick={() => setTab(t.id)} style={{
+                flex: 1, background: "none", border: "none",
+                borderBottom: `2px solid ${active ? t.activeColor : "transparent"}`,
+                color: active ? t.activeColor : C.muted,
+                padding: "10px 0", fontSize: 13, fontWeight: active ? 700 : 400,
+                cursor: "pointer", display: "flex", alignItems: "center",
+                justifyContent: "center", gap: 6, marginBottom: -1, transition: "all 0.15s",
+              }}>
                 <span style={{ fontSize: 16 }}>{t.icon}</span>
                 <span style={{ fontFamily: "'Cinzel',serif", letterSpacing: 1, fontSize: 11 }}>{t.label}</span>
               </button>
@@ -484,11 +445,9 @@ export default function MusicPlayer() {
           })}
         </div>
       </div>
-
-      {/* Content */}
       <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-        {tab === "youtube" && <YouTubeSection />}
-        {tab === "spotify" && <SpotifySection />}
+        {tab === "youtube" && <YouTubeSection onNowPlaying={onNowPlaying} />}
+        {tab === "spotify" && <SpotifySection onNowPlaying={onNowPlaying} />}
       </div>
     </div>
   );
