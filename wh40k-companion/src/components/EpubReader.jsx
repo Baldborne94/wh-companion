@@ -600,7 +600,6 @@ export default function EpubReader({
       clearTimeout(hideTimer.current);
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
-      if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
     };
   // Re-create rendition only when URL or layout settings change
   // eslint-disable-next-line react-hooks/exhaustive-deps
