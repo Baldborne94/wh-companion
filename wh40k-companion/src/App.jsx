@@ -1703,9 +1703,18 @@ export default function App(){
             </>
           )}
         </div>
-        {/* ── MINI PLAYER ── always on top, even over the reader */}
-        {nowPlaying&&section!=="music"&&(
-          <div onClick={()=>{setAppReader(null);setSection("music");}} style={{position:"fixed",bottom:56,left:0,right:0,zIndex:9999,maxWidth:1100,margin:"0 auto",background:C.surface,borderTop:`2px solid ${nowPlaying.type==="youtube"?"#FF000066":"#1DB95466"}`,display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",boxShadow:"0 -2px 12px rgba(0,0,0,0.6)"}}>
+        {/* ── MINI PLAYER ── */}
+        {nowPlaying&&section!=="music"&&(appReader?(
+          /* Reading mode: tiny pill in bottom-right corner, non-intrusive */
+          <div onClick={()=>{setAppReader(null);setSection("music");}}
+            style={{position:"fixed",bottom:16,right:16,zIndex:9999,background:"rgba(10,9,5,0.75)",backdropFilter:"blur(6px)",border:`1px solid ${nowPlaying.type==="youtube"?"#FF000055":"#1DB95455"}`,borderRadius:20,display:"flex",alignItems:"center",gap:6,padding:"5px 10px 5px 8px",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>
+            <span style={{fontSize:13,color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954"}}>♪</span>
+            <span style={{fontSize:11,color:"rgba(212,203,184,0.7)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.title}</span>
+          </div>
+        ):(
+          /* Normal mode: full bar above nav */
+          <div onClick={()=>setSection("music")}
+            style={{position:"fixed",bottom:56,left:0,right:0,zIndex:9999,maxWidth:1100,margin:"0 auto",background:C.surface,borderTop:`2px solid ${nowPlaying.type==="youtube"?"#FF000066":"#1DB95466"}`,display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",boxShadow:"0 -2px 12px rgba(0,0,0,0.6)"}}>
             {nowPlaying.type==="spotify"&&nowPlaying.albumArt&&<img src={nowPlaying.albumArt} width={36} height={36} style={{borderRadius:4,flexShrink:0}}/>}
             {nowPlaying.type==="youtube"&&<span style={{fontSize:18,flexShrink:0,color:"#FF0000"}}>▶</span>}
             <div style={{flex:1,minWidth:0}}>
@@ -1714,7 +1723,7 @@ export default function App(){
             </div>
             <span style={{fontSize:11,color:nowPlaying.type==="youtube"?"#FF0000":"#1DB954",flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>🎵</span>
           </div>
-        )}
+        ))}
         {/* ── BOTTOM NAV ── */}
         <div style={{flexShrink:0,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",height:56}}>
           {NAV.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?C.gold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:section===n.id?C.gold:C.muted,textTransform:"uppercase"}}>{n.label}</span></button>))}
