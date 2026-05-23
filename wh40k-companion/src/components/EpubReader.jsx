@@ -406,7 +406,10 @@ export default function EpubReader({
       // (Blob URLs and ArrayBuffers cause "Invalid URL" errors in epub.js's internal
       //  path resolution on desktop Chrome/Firefox.)
       try {
-        const book = ePub(url);
+        // openAs:'epub' is required — Supabase signed URLs end with ?token=...
+        // so epub.js can't detect the file type from the extension and falls back
+        // to OPF mode, loading an empty book (black page).
+        const book = ePub(url, { openAs: "epub" });
         bookRef.current = book;
 
         const rend = book.renderTo(containerRef.current, {
