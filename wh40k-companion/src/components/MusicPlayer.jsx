@@ -239,11 +239,16 @@ function SpotifySection({ onNowPlaying }) {
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${tok}` } });
-      if (r.status === 401) { disconnect(); return; }
-      const d = await r.json();
+      const [meRes, plRes] = await Promise.all([
+        fetch("https://api.spotify.com/v1/me", { headers: { Authorization: `Bearer ${tok}` } }),
+        fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${tok}` } }),
+      ]);
+      if (meRes.status === 401 || plRes.status === 401) { disconnect(); return; }
+      const me = await meRes.json();
+      const d  = await plRes.json();
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
-      setPlaylists(d.items || []);
+      const owned = (d.items || []).filter(pl => pl.owner?.id === me.id);
+      setPlaylists(owned);
     } catch (e) { setError(`Errore di rete: ${e.message}`); }
     finally { setLoading(false); }
   };
