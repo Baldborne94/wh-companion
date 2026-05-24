@@ -168,7 +168,7 @@ export const AOS_BOOKS = [
   { id:"aos63",  title:"Oaths and Conquests",                       author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos64",  title:"Thunderstrike & Other Stories",            author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos65",  title:"Untamed Realms",                            author:"Various",                series:"", num:0, type:"Anthology" },
-  { id:"aos81",  title:"Hammerhal & Other Stories",                 author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos81",  title:"Hammerhal & Other Stories",                 author:"Various",                series:"", num:0, type:"Anthology", isbn:"9781784967505" },
   { id:"aos82",  title:"Call of Chaos",                             author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos83",  title:"Champions of the Mortal Realms",            author:"Various",                series:"", num:0, type:"Anthology", isbn:"9781781939581" },
   { id:"aos84",  title:"Conquest Unbound",                          author:"Various",                series:"", num:0, type:"Anthology" },
