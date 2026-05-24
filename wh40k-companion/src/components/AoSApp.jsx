@@ -1284,12 +1284,14 @@ const REALMS = [
   { name:"Hysh",   sub:"Realm of Light",   color:"#aaa060", icon:"✨" },
 ];
 
-export function AoSCrusadeSection({ user }) {
-  const [tab,      setTab]      = useState('overview');
-  const [statuses, setStatuses] = useState({});
-  const [expanded, setExpanded] = useState(null);
+export function AoSCrusadeSection({ user, statuses: propStatuses }) {
+  const [tab,            setTab]          = useState('overview');
+  const [localStatuses,  setLocalStatuses] = useState({});
+  const [expanded,       setExpanded]     = useState(null);
+  const statuses = propStatuses ?? localStatuses;
 
   useEffect(() => {
+    if (propStatuses !== undefined) return;
     const uid = user?.id || 'anon';
     const prefix = `wh40k_status_${uid}_`;
     const out = {};
@@ -1300,8 +1302,8 @@ export function AoSCrusadeSection({ user }) {
         if (id.startsWith('aos')) try { out[id] = JSON.parse(localStorage.getItem(k)); } catch {}
       }
     }
-    setStatuses(out);
-  }, [user?.id]);
+    setLocalStatuses(out);
+  }, [user?.id, propStatuses]);
 
   const nonCodex = useMemo(() => AOS_BOOKS.filter(b => b.type !== 'Codex'), []);
   const readCount    = useMemo(() => nonCodex.filter(b => statuses[b.id]?.status === 'read').length,    [statuses, nonCodex]);
