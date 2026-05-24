@@ -34,9 +34,11 @@ const SC = {
   "Callis and Toll":                "#607080",
   "Blacktalon":                     "#3a8a6a",
   "Drekki Flynt":                   "#5a708a",
+  "Neferata":                       "#8a3070",
   "Warcry":                         "#8B2020",
   "Warhammer Underworlds":          "#4a4a8a",
   "BL Novella Series":              "#6a5040",
+  "Warhammer Horror":               "#2a1040",
   "Battletome":                     "#2a3850",
 };
 const spineColor = (b) => SC[b.series] || "#4a6a8a";
@@ -74,6 +76,7 @@ export const AOS_BOOKS = [
   { id:"aos22",  title:"Gitslayer",                                 author:"Darius Hinks",                                         series:"Gotrek Gurnisson",   num:4,  type:"Novel"       },
   { id:"aos23",  title:"Soulslayer",                                author:"Darius Hinks",                                         series:"Gotrek Gurnisson",   num:5,  type:"Novel"       },
   { id:"aos24",  title:"Blightslayer",                              author:"Richard Strachan",                                     series:"Gotrek Gurnisson",   num:6,  type:"Novel"       },
+  { id:"aos67",  title:"Realmslayer: Legend of the Doomseeker",    author:"David Guymer",                                         series:"Gotrek Gurnisson",   num:7,  type:"Audio Drama"  },
 
   // ── HAMILCAR ──────────────────────────────────────────────────────────────
   { id:"aos25",  title:"Hamilcar: Champion of the Gods",            author:"David Guymer",                                         series:"Hamilcar",           num:1,  type:"Novel"       },
@@ -91,6 +94,7 @@ export const AOS_BOOKS = [
   // ── DREKKI FLYNT ──────────────────────────────────────────────────────────
   { id:"aos32",  title:"The Arkanaut's Oath",                       author:"Guy Haley",                                            series:"Drekki Flynt",       num:1,  type:"Novel"       },
   { id:"aos33",  title:"The Ghosts of Barak-Minoz",                 author:"Guy Haley",                                            series:"Drekki Flynt",       num:2,  type:"Novel"       },
+  { id:"aos66",  title:"Profit's Ruin",                             author:"Josh Reynolds",                                        series:"Drekki Flynt",       num:3,  type:"Novel"       },
 
   // ── WARCRY ────────────────────────────────────────────────────────────────
   { id:"aos34",  title:"Warcry: The Anthology",                     author:"Various",                                              series:"Warcry",             num:1,  type:"Anthology"   },
@@ -106,8 +110,8 @@ export const AOS_BOOKS = [
   // ── STANDALONE NOVELS ─────────────────────────────────────────────────────
   { id:"aos41",  title:"Nagash: The Undying King",                  author:"Josh Reynolds",          series:"", num:0, type:"Novel"   },
   { id:"aos42",  title:"Soul Wars",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novel"   },
-  { id:"aos43",  title:"Neferata: Mortarch of Blood",               author:"David Annandale",        series:"", num:0, type:"Novel"   },
-  { id:"aos44",  title:"Neferata: The Dominion of Bones",           author:"David Annandale",        series:"", num:0, type:"Novel"   },
+  { id:"aos43",  title:"Neferata: Mortarch of Blood",               author:"David Annandale",        series:"Neferata",   num:1, type:"Novel"   },
+  { id:"aos44",  title:"Neferata: The Dominion of Bones",           author:"David Annandale",        series:"Neferata",   num:2, type:"Novel"   },
   { id:"aos45",  title:"Gloomspite",                                author:"Andy Clark",             series:"", num:0, type:"Novel"   },
   { id:"aos46",  title:"Realm-Lords",                               author:"Dale Lucas",             series:"", num:0, type:"Novel"   },
   { id:"aos47",  title:"Lady of Sorrows",                           author:"C L Werner",             series:"", num:0, type:"Novel"   },
@@ -120,11 +124,24 @@ export const AOS_BOOKS = [
   { id:"aos54",  title:"Harrowed Ground",                           author:"Richard Strachan",       series:"", num:0, type:"Novel"   },
   { id:"aos55",  title:"Skaventide",                                author:"Gary Kloster",           series:"", num:0, type:"Novel"   },
   { id:"aos56",  title:"Starseer's Ruin",                           author:"Adrian Tchaikovsky",     series:"", num:0, type:"Novel"   },
+  { id:"aos68",  title:"Hammerhal",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novella" },
+  { id:"aos69",  title:"The Red Feast",                             author:"Gav Thorpe",             series:"", num:0, type:"Novel"   },
+  { id:"aos70",  title:"Dark Harvest",                              author:"Josh Reynolds",          series:"Warhammer Horror",    num:1, type:"Novel"   },
+  { id:"aos71",  title:"Gothghul Hollow",                           author:"Anna Stephens",          series:"Warhammer Horror",    num:2, type:"Novel"   },
+  { id:"aos72",  title:"Godeater's Son",                            author:"Noah Van Nguyen",        series:"", num:0, type:"Novel"   },
+  { id:"aos73",  title:"The Last Volari",                           author:"Gary Kloster",           series:"", num:0, type:"Novel"   },
+  { id:"aos74",  title:"Kragnos: Avatar of Destruction",            author:"David Guymer",           series:"", num:0, type:"Novel"   },
+  { id:"aos75",  title:"Yndrasta: The Celestial Spear",             author:"Noah Van Nguyen",        series:"", num:0, type:"Novel"   },
+  { id:"aos76",  title:"A Dynasty of Monsters",                     author:"Richard Strachan",       series:"", num:0, type:"Novel"   },
+  { id:"aos77",  title:"Hammers of Sigmar: First Forged",           author:"Richard Strachan",       series:"", num:0, type:"Novel"   },
+  { id:"aos78",  title:"Bad Loon Rising",                           author:"Jordan Saia",            series:"", num:0, type:"Novel"   },
+  { id:"aos79",  title:"Godsbane",                                  author:"Dale Lucas",             series:"", num:0, type:"Novel"   },
 
   // ── BL NOVELLA SERIES ─────────────────────────────────────────────────────
   { id:"aos57",  title:"Warqueen",                                  author:"Darius Hinks",           series:"BL Novella Series", num:1, type:"Novella" },
   { id:"aos58",  title:"Heart of Winter",                           author:"Nick Horth",             series:"BL Novella Series", num:2, type:"Novella" },
   { id:"aos59",  title:"Overlords of the Iron Dragon",              author:"C L Werner",             series:"BL Novella Series", num:3, type:"Novella" },
+  { id:"aos80",  title:"The Bone Desert",                           author:"Robbie MacNiven",        series:"BL Novella Series", num:4, type:"Novella" },
 
   // ── ANTHOLOGIES ───────────────────────────────────────────────────────────
   { id:"aos60",  title:"Myths & Revenants",                         author:"Various",                series:"", num:0, type:"Anthology" },
@@ -133,6 +150,16 @@ export const AOS_BOOKS = [
   { id:"aos63",  title:"Oaths and Conquests",                       author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos64",  title:"Thunderstrike & Other Stories",            author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos65",  title:"Untamed Realms",                            author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos81",  title:"Hammerhal & Other Stories",                 author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos82",  title:"Call of Chaos",                             author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos83",  title:"Champions of the Mortal Realms",            author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos84",  title:"Conquest Unbound",                          author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos85",  title:"Grombrindal: Chronicles of the Wanderer",   author:"Various",                series:"", num:0, type:"Anthology" },
+
+  // ── OMNIBUSES
+  { id:"aos86",  title:"Legends of the Age of Sigmar: Fyreslayers", author:"Various",                series:"", num:0, type:"Omnibus"   },
+  { id:"aos87",  title:"Legends of the Age of Sigmar: Skaven Pestilens", author:"Various",           series:"", num:0, type:"Omnibus"   },
+  { id:"aos88",  title:"Legends of the Age of Sigmar: Sylvaneth",   author:"Various",                series:"", num:0, type:"Omnibus"   },
 
   // ── BATTLETOMES ───────────────────────────────────────────────────────────
   { id:"aosbt1",  title:"Battletome: Stormcast Eternals",          author:"Games Workshop",  series:"Battletome", num:0, type:"Codex" },
@@ -179,25 +206,28 @@ function setAoSBookStatusLS(uid, bid, s) {
 
 // ─── NEXT-BOOK SUGGESTION ────────────────────────────────────────────────────
 function getAoSNextSuggestion(statuses) {
-  const seriesList = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
-  for (const s of seriesList) {
+  const seriesNames = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
+  const candidates = seriesNames.map(s => {
     const books = AOS_BOOKS.filter(b => b.series === s && b.num > 0).sort((a,b) => a.num - b.num);
-    const hasStarted = books.some(b => statuses[b.id]?.status === 'read' || statuses[b.id]?.status === 'reading');
-    if (!hasStarted) continue;
-    const next = books.find(b => !statuses[b.id] || statuses[b.id].status === 'none' || statuses[b.id].status === 'want');
-    if (next) {
-      const readCount = books.filter(b => statuses[b.id]?.status === 'read').length;
-      return { book:next, reason:`Next in ${s}`, seriesProgress:`${readCount}/${books.length} read` };
-    }
-  }
-  const featured = ['aos42','aos14','aos19','aos41','aos51','aos17'];
-  for (const id of featured) {
-    const book = AOS_BOOKS.find(b => b.id === id);
-    if (book && (!statuses[id] || statuses[id].status === 'none')) {
-      return { book, reason: 'Featured Read', seriesProgress: null };
-    }
-  }
-  return null;
+    const isReading = books.some(b => statuses[b.id]?.status === 'reading');
+    const readCount = books.filter(b => statuses[b.id]?.status === 'read').length;
+    if (!isReading && readCount === 0) return null;
+    const next = books.find(b => { const st = statuses[b.id]?.status; return !st || st === 'none' || st === 'want'; });
+    if (!next) return null;
+    return { name:s, books, isReading, readCount, next };
+  }).filter(Boolean);
+
+  if (!candidates.length) return null;
+
+  // Currently reading takes priority, then most books read
+  candidates.sort((a,b) => {
+    if (a.isReading && !b.isReading) return -1;
+    if (b.isReading && !a.isReading) return 1;
+    return b.readCount - a.readCount;
+  });
+
+  const best = candidates[0];
+  return { book:best.next, reason:`Next in ${best.name}`, seriesProgress:`${best.readCount}/${best.books.length} read` };
 }
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
@@ -1054,62 +1084,78 @@ function findAoSBook(entry) {
 
 const AOS_STARTER_GUIDE = [
   {
-    id:"s1", step:"Step 1", title:"Perfect Entry Point",
-    note:"City of Secrets follows ordinary mortals in Hammerhal — best for a grounded start. Soul Wars dives straight into the cosmic conflict between the God-King and the God of Death.",
-    pickOne:true,
-    options:[
-      { label:"Grounded Start", color:"#5a8fc5", note:"Ordinary mortals in a free city. No prior knowledge needed — the most recommended starting point.", books:[
-        { t:"City of Secrets", a:"Nick Horth", type:"novel", aos_id:"aos27" },
-      ]},
-      { label:"Epic Start", color:"#C9A227", note:"The big AoS event novel. Start here if you want to dive straight into the cosmic scale.", books:[
-        { t:"Soul Wars", a:"Josh Reynolds", type:"novel", aos_id:"aos42" },
-      ]},
+    id:"s1", step:"Step 1", title:"The Essential Introduction",
+    note:"Hammerhal is a short novella by Josh Reynolds that was specifically designed to introduce readers to both Warhammer Age of Sigmar and Black Library fiction. It's the #1 recommended entry point — also available in the Hammerhal & Other Stories anthology.",
+    books:[
+      { t:"Hammerhal", a:"Josh Reynolds", type:"novella", aos_id:"aos68" },
     ],
   },
   {
-    id:"s2", step:"Step 2", title:"Modern Age of Sigmar",
-    note:"Dominion is the novelisation of the AoS 3.0 launch — Stormcast Eternals clash with the Kruleboyz orruks. Excellent grounding in the current state of the Mortal Realms.",
-    books:[{ t:"Dominion", a:"Darius Hinks", type:"novel", aos_id:"aos51" }],
-  },
-  {
-    id:"s3", step:"Step 3", title:"Choose Your Path",
+    id:"s2", step:"Step 2", title:"Deepen the World",
+    note:"Both are ideal second reads, each showing a different face of the Mortal Realms. City of Secrets grounds you in ordinary mortal life. Spear of Shadows is an epic multi-faction quest — described by David Guymer as 'the complete starter text for any Age of Sigmar fan'.",
     pickOne:true,
     options:[
-      { label:"Stormcast Eternals", color:"#5a8fc5",
-        note:"Sigmar's golden warriors, reforged from worthy mortal souls. The definitive Stormcast novel series.",
+      { label:"Mortals & Mystery", color:"#607080",
+        note:"Follows ordinary humans in Hammerhal, a free city of the Mortal Realms. No cosmic knowledge needed — the most grounded entry point.",
         books:[
-          { t:"Hallowed Knights: Plague Garden", a:"Josh Reynolds", type:"novel", aos_id:"aos14" },
-          { t:"Hallowed Knights: Black Pyramid",  a:"Josh Reynolds", type:"novel", aos_id:"aos15" },
+          { t:"City of Secrets", a:"Nick Horth", type:"novel", aos_id:"aos27" },
         ]},
-      { label:"Gotrek Gurnisson", color:"#a07838",
-        note:"The legendary Slayer from Warhammer Fantasy, lost and furious in a new world. No prior WFB knowledge needed.",
-        books:[
-          { t:"Ghoulslayer", a:"Darius Hinks", type:"novel", aos_id:"aos21" },
-          { t:"Gitslayer",   a:"Darius Hinks", type:"novel", aos_id:"aos22" },
-          { t:"Soulslayer",  a:"Darius Hinks", type:"novel", aos_id:"aos23" },
-        ]},
-      { label:"Intrigue & Mystery", color:"#607080",
-        note:"Callis and Toll — a witch hunter and a rogue adventurer. Detective noir in the Mortal Realms.",
-        books:[
-          { t:"City of Secrets",                  a:"Nick Horth", type:"novel", aos_id:"aos27" },
-          { t:"Callis and Toll: The Silver Shard", a:"Nick Horth", type:"novel", aos_id:"aos28" },
-          { t:"Callis and Toll",                   a:"Nick Horth", type:"novel", aos_id:"aos29" },
-        ]},
-      { label:"Grand Adventure", color:"#7a5aaa",
-        note:"Eight Lamentations — a multi-faction quest across multiple realms to find legendary weapons.",
+      { label:"Epic Quest", color:"#7a5aaa",
+        note:"A multi-faction adventure across the Mortal Realms hunting legendary weapons. Perfect for readers who want the big fantasy-quest feel immediately.",
         books:[
           { t:"Eight Lamentations: Spear of Shadows", a:"Josh Reynolds", type:"novel", aos_id:"aos17" },
         ]},
     ],
   },
   {
-    id:"s4", step:"Further Reading", title:"Explore the Realms",
-    note:"Once you have a feel for the setting, these standalone books expand into other factions and corners of the Mortal Realms.",
+    id:"s3", step:"Step 3", title:"The Grand Narrative",
+    note:"Soul Wars is the launch novel for Age of Sigmar 2nd edition — the Necroquake reshapes the Mortal Realms and Nagash's power surges. Essential for understanding the current shape of the setting.",
     books:[
-      { t:"Hamilcar: Champion of the Gods", a:"David Guymer",  type:"novel", aos_id:"aos25", opt:true },
-      { t:"Blacktalon: First Mark",          a:"Andy Clark",    type:"novel", aos_id:"aos30", opt:true },
-      { t:"The Arkanaut's Oath",             a:"Guy Haley",     type:"novel", aos_id:"aos32", opt:true },
-      { t:"Nagash: The Undying King",        a:"Josh Reynolds", type:"novel", aos_id:"aos41", opt:true },
+      { t:"Soul Wars", a:"Josh Reynolds", type:"novel", aos_id:"aos42" },
+    ],
+  },
+  {
+    id:"s4", step:"Step 4", title:"Choose Your Path",
+    note:"Now dive deep into whichever faction or style of story speaks to you.",
+    pickOne:true,
+    options:[
+      { label:"Stormcast Eternals", color:"#5a8fc5",
+        note:"Sigmar's reforged warriors of lightning — the heart of the AoS setting. The Hallowed Knights are the definitive Stormcast series.",
+        books:[
+          { t:"Hallowed Knights: Plague Garden", a:"Josh Reynolds", type:"novel", aos_id:"aos14" },
+          { t:"Hallowed Knights: Black Pyramid",  a:"Josh Reynolds", type:"novel", aos_id:"aos15" },
+        ]},
+      { label:"Gotrek Gurnisson", color:"#a07838",
+        note:"The legendary Slayer from the Old World, lost and furious in the Mortal Realms. Start with Ghoulslayer — no Warhammer Fantasy knowledge needed.",
+        books:[
+          { t:"Ghoulslayer", a:"Darius Hinks", type:"novel", aos_id:"aos21" },
+          { t:"Gitslayer",   a:"Darius Hinks", type:"novel", aos_id:"aos22" },
+          { t:"Soulslayer",  a:"Darius Hinks", type:"novel", aos_id:"aos23" },
+        ]},
+      { label:"Callis & Toll", color:"#607080",
+        note:"Continuing from City of Secrets — a witch hunter and a disgraced soldier chase mystery and intrigue across the free cities.",
+        books:[
+          { t:"Callis and Toll: The Silver Shard", a:"Nick Horth", type:"novel", aos_id:"aos28" },
+          { t:"Callis and Toll",                   a:"Nick Horth", type:"novel", aos_id:"aos29" },
+        ]},
+      { label:"Kharadron Overlords", color:"#5a708a",
+        note:"Sky-pirates, duardin engineers and aether-gold. The Drekki Flynt series brings swashbuckling adventure to the Mortal Realms.",
+        books:[
+          { t:"The Arkanaut's Oath",       a:"Guy Haley",      type:"novel", aos_id:"aos32" },
+          { t:"The Ghosts of Barak-Minoz", a:"Guy Haley",      type:"novel", aos_id:"aos33" },
+          { t:"Profit's Ruin",             a:"Josh Reynolds",  type:"novel", aos_id:"aos66" },
+        ]},
+    ],
+  },
+  {
+    id:"s5", step:"Further Reading", title:"Explore the Mortal Realms",
+    note:"Once you know the setting well, these expand into other factions and darker corners of the Mortal Realms.",
+    books:[
+      { t:"Dominion",                   a:"Darius Hinks",   type:"novel",   aos_id:"aos51", opt:true },
+      { t:"Hamilcar: Champion of the Gods", a:"David Guymer", type:"novel", aos_id:"aos25", opt:true },
+      { t:"Blacktalon: First Mark",     a:"Andy Clark",     type:"novel",   aos_id:"aos30", opt:true },
+      { t:"Nagash: The Undying King",   a:"Josh Reynolds",  type:"novel",   aos_id:"aos41", opt:true },
+      { t:"Godeater's Son",             a:"Noah Van Nguyen", type:"novel",  aos_id:"aos72", opt:true },
     ],
   },
 ];
