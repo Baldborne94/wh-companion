@@ -16,13 +16,55 @@ async function _authHeaders() {
   return { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
 }
 
-async function saveProgressToSupabase(userId, bookId, pct) {
+async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   if (!userId || !bookId) return;
   try {
     await fetch(`${SB_URL}/rest/v1/reading_progress?on_conflict=user_id,book_id`, {
       method: "POST",
       headers: { ...await _authHeaders(), Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString() }),
+      body: JSON.stringify({ user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) }),
+    });
+  } catch {}
+}
+
+async function loadCfiFromDB(userId, bookId) {
+  if (!userId || !bookId) return null;
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/reading_progress?user_id=eq.${userId}&book_id=eq.${bookId}&select=epub_cfi&limit=1`, { headers: await _authHeaders() });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data?.[0]?.epub_cfi ?? null;
+  } catch { return null; }
+}
+
+async function loadBookmarksFromDB(userId, bookId) {
+  if (!userId || !bookId) return [];
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=not.is.null&order=created_at.desc`, { headers: await _authHeaders() });
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
+  } catch { return []; }
+}
+
+async function saveBookmarkToDB(userId, bookId, bm) {
+  if (!userId || !bookId || !bm.cfi) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/bookmarks`, {
+      method: "POST",
+      headers: { ...await _authHeaders(), Prefer: "return=minimal" },
+      body: JSON.stringify({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 }),
+    });
+  } catch {}
+}
+
+async function deleteBookmarkFromDB(userId, bookId, cfi) {
+  if (!userId || !bookId || !cfi) return;
+  try {
+    const enc = encodeURIComponent(cfi);
+    await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
+      method: "DELETE",
+      headers: await _authHeaders(),
     });
   } catch {}
 }
@@ -343,6 +385,32 @@ export default function EpubReader({
     try { return JSON.parse(localStorage.getItem(`wh40k_bm_${userId}_${bookId}`) || "[]"); } catch { return []; }
   });
 
+  // Pre-load CFI from DB if not in localStorage (new device)
+  useEffect(() => {
+    const key = `wh40k_cfi_${userId}_${bookId}`;
+    if (!userId || !bookId || localStorage.getItem(key)) return;
+    loadCfiFromDB(userId, bookId).then(cfi => {
+      if (!cfi) return;
+      localStorage.setItem(key, cfi);
+      cfiRef.current = cfi;
+      if (rendRef.current) rendRef.current.display(cfi);
+    });
+  }, [userId, bookId]);
+
+  // Merge bookmarks from DB on mount
+  useEffect(() => {
+    if (!userId || !bookId) return;
+    loadBookmarksFromDB(userId, bookId).then(dbBms => {
+      if (!dbBms.length) return;
+      setBookmarks(prev => {
+        const localCfis = new Set(prev.map(b => b.cfi));
+        const merged = [...prev, ...dbBms.filter(b => !localCfis.has(b.cfi))];
+        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
+        return merged;
+      });
+    });
+  }, [userId, bookId]);
+
   // ── Refs ───────────────────────────────────────────────────────────────────
   const containerRef = useRef(null);
   const bookRef      = useRef(null);
@@ -528,7 +596,7 @@ export default function EpubReader({
               if (cancelled) return;
               onProgress?.(pct);
               localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
-              saveProgressToSupabase(userId, bookId, pct);
+              saveProgressToSupabase(userId, bookId, pct, cfi);
             }, 1500);
           } else if (cfi) {
             // Locations not ready yet — persist CFI only, defer progress update
@@ -536,6 +604,7 @@ export default function EpubReader({
             saveTimer.current = setTimeout(() => {
               if (cancelled) return;
               localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
+              saveProgressToSupabase(userId, bookId, null, cfi);
             }, 1500);
           }
         });
@@ -713,6 +782,7 @@ export default function EpubReader({
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
+    saveBookmarkToDB(userId, bookId, bm);
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bookmarks, userId, bookId]);
@@ -721,6 +791,7 @@ export default function EpubReader({
     const upd = bookmarks.filter(b => b.cfi !== cfi);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
+    deleteBookmarkFromDB(userId, bookId, cfi);
   }, [bookmarks, userId, bookId]);
 
   // ── Error screen ──────────────────────────────────────────────────────────

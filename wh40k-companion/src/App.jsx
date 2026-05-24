@@ -894,6 +894,24 @@ function ReadingSection({user, statuses={}, onOpenBook, setSection}){
   },[statuses]);
 
   const [hhMode,setHhMode]=useState(()=>localStorage.getItem('wh40k_hh_mode')||'full');
+
+  // Sync HH mode from DB on first load (new device)
+  useEffect(()=>{
+    if(!user?.id) return;
+    sb.get("user_settings",`user_id=eq.${user.id}&select=hh_mode`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      const m=rows[0]?.hh_mode;
+      if(m&&m!==hhMode){ localStorage.setItem('wh40k_hh_mode',m); setHhMode(m); }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[user?.id]);
+
+  const setHhModeSync=(m)=>{
+    localStorage.setItem('wh40k_hh_mode',m);
+    setHhMode(m);
+    if(user?.id) sb.upsert("user_settings",{user_id:user.id,hh_mode:m,updated_at:new Date().toISOString()},"user_id");
+  };
+
   const suggestion = useMemo(()=>getNextSuggestion(statuses,hhMode),[statuses,hhMode]);
   const [opening,setOpening] = useState(false);
 
@@ -1299,12 +1317,24 @@ function LoreSection({ universe }){
 function ComingSoon({icon,title,sub}){return(<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,padding:32,textAlign:"center"}}><div style={{fontSize:60,animation:"float 3s ease-in-out infinite"}}>{icon}</div><div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.gold}}>{title}</div><div style={{color:C.muted,fontStyle:"italic",maxWidth:300,lineHeight:1.6,fontSize:14}}>{sub}</div><div style={{border:`1px solid ${C.gold}44`,borderRadius:20,padding:"8px 22px",color:`${C.gold}88`,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:3,textTransform:"uppercase"}}>Coming Next Phase</div></div>);}
 
 // ─── HOME PAGE (bookshelf) ─────────────────────────────────────────────────────
-function NextUpCard({statuses,activeBooks,onOpenBook,setSection}){
+function NextUpCard({statuses,activeBooks,onOpenBook,setSection,userId}){
   const [hhMode,setHhMode]=useState(()=>localStorage.getItem('wh40k_hh_mode')||'full');
+
+  useEffect(()=>{
+    if(!userId) return;
+    sb.get("user_settings",`user_id=eq.${userId}&select=hh_mode`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      const m=rows[0]?.hh_mode;
+      if(m&&m!==hhMode){ localStorage.setItem('wh40k_hh_mode',m); setHhMode(m); }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[userId]);
+
   const toggleHhMode=()=>{
     const next=hhMode==='full'?'essential':'full';
     setHhMode(next);
     localStorage.setItem('wh40k_hh_mode',next);
+    if(userId) sb.upsert("user_settings",{user_id:userId,hh_mode:next,updated_at:new Date().toISOString()},"user_id");
   };
   const suggestion=useMemo(()=>getNextSuggestion(statuses,hhMode),[statuses,hhMode]);
   const [opening,setOpening]=useState(false);
@@ -1511,7 +1541,7 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
       )}
 
       {/* ── Next Up suggestion ── */}
-      <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection}/>
+      <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection} userId={user?.id}/>
 
       {/* bookshelf */}
       <div style={{padding:"16px 0 0"}}>
@@ -1626,7 +1656,22 @@ export default function App(){
   const startApp=useCallback(()=>{ sessionStorage.setItem('wh_started','1'); localStorage.removeItem('wh_universe'); setUniverse(null); setAppStarted(true); },[]);
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
-  const selectUniverse=(u)=>{ localStorage.setItem('wh_universe',u); setUniverse(u); };
+
+  // Load universe from DB when no local preference exists (e.g. new device)
+  useEffect(()=>{
+    if(!user?.id||localStorage.getItem('wh_universe')) return;
+    sb.get("user_settings",`user_id=eq.${user.id}&select=universe`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      const u=rows[0]?.universe;
+      if(u){ localStorage.setItem('wh_universe',u); setUniverse(u); }
+    });
+  },[user?.id]);
+
+  const selectUniverse=(u)=>{
+    localStorage.setItem('wh_universe',u);
+    setUniverse(u);
+    if(user?.id) sb.upsert("user_settings",{user_id:user.id,universe:u,updated_at:new Date().toISOString()},"user_id");
+  };
   const handleLogout=()=>{ localStorage.removeItem('wh_universe'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
   // If Spotify OAuth is returning, open Music section directly

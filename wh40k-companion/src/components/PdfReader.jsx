@@ -41,6 +41,43 @@ const bmKey = (uid, bid) => `wh40k_bm_${uid || "anon"}_${bid}`;
 const loadBm = (uid, bid) => { try { return JSON.parse(localStorage.getItem(bmKey(uid, bid)) || "[]"); } catch { return []; } };
 const saveBm = (uid, bid, bms) => localStorage.setItem(bmKey(uid, bid), JSON.stringify(bms));
 
+async function _authHeadersPdf() {
+  const { data:{ session } } = await supabase.auth.getSession();
+  const tok = session?.access_token ?? SB_KEY;
+  return { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
+}
+
+async function loadPdfBookmarksFromDB(userId, bookId) {
+  if (!userId || !bookId) return [];
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&page_num=not.is.null&order=page_num.asc`, { headers: await _authHeadersPdf() });
+    if (!r.ok) return [];
+    const data = await r.json();
+    return data.map(b => ({ page: b.page_num, addedAt: b.created_at }));
+  } catch { return []; }
+}
+
+async function savePdfBookmarkToDB(userId, bookId, page) {
+  if (!userId || !bookId) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/bookmarks`, {
+      method: "POST",
+      headers: { ...await _authHeadersPdf(), Prefer: "return=minimal" },
+      body: JSON.stringify({ user_id:userId, book_id:bookId, page_num:page }),
+    });
+  } catch {}
+}
+
+async function deletePdfBookmarkFromDB(userId, bookId, page) {
+  if (!userId || !bookId) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&page_num=eq.${page}`, {
+      method: "DELETE",
+      headers: await _authHeadersPdf(),
+    });
+  } catch {}
+}
+
 // Render one page onto a canvas, fit to available space × zoom
 async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
   if (!doc || !canvas || num < 1 || num > doc.numPages) return;
@@ -88,6 +125,20 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
   const [showNav,   setShowNav]  = useState(true);
   const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
   const [showBm,    setShowBm]   = useState(false);
+
+  // Merge bookmarks from DB on mount (new device)
+  useEffect(() => {
+    if (!userId || !bookId) return;
+    loadPdfBookmarksFromDB(userId, bookId).then(dbBms => {
+      if (!dbBms.length) return;
+      setBookmarks(prev => {
+        const localPages = new Set(prev.map(b => b.page));
+        const merged = [...prev, ...dbBms.filter(b => !localPages.has(b.page))].sort((a,b) => a.page - b.page);
+        saveBm(userId, bookId, merged);
+        return merged;
+      });
+    });
+  }, [userId, bookId]);
 
   // ── refs ─────────────────────────────────────────────────────────────────
   const canvasRef  = useRef(null);
@@ -311,6 +362,8 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
       : [...bookmarks, { page, addedAt: new Date().toISOString() }].sort((a, b) => a.page - b.page);
     setBookmarks(next);
     saveBm(userId, bookId, next);
+    if (isBookmarked) deletePdfBookmarkFromDB(userId, bookId, page);
+    else savePdfBookmarkToDB(userId, bookId, page);
   };
 
   // ── toolbar button ────────────────────────────────────────────────────────
