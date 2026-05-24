@@ -1719,7 +1719,7 @@ export default function App(){
               {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
               {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}
-              {section==="painting"&&<PaintingTracker user={user}/>}
+              {section==="painting"&&<PaintingTracker user={user} universe={universe}/>}
             </div>
           )}
         </div>
