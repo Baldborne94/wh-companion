@@ -179,25 +179,28 @@ function setAoSBookStatusLS(uid, bid, s) {
 
 // ─── NEXT-BOOK SUGGESTION ────────────────────────────────────────────────────
 function getAoSNextSuggestion(statuses) {
-  const seriesList = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
-  for (const s of seriesList) {
+  const seriesNames = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
+  const candidates = seriesNames.map(s => {
     const books = AOS_BOOKS.filter(b => b.series === s && b.num > 0).sort((a,b) => a.num - b.num);
-    const hasStarted = books.some(b => statuses[b.id]?.status === 'read' || statuses[b.id]?.status === 'reading');
-    if (!hasStarted) continue;
-    const next = books.find(b => !statuses[b.id] || statuses[b.id].status === 'none' || statuses[b.id].status === 'want');
-    if (next) {
-      const readCount = books.filter(b => statuses[b.id]?.status === 'read').length;
-      return { book:next, reason:`Next in ${s}`, seriesProgress:`${readCount}/${books.length} read` };
-    }
-  }
-  const featured = ['aos42','aos14','aos19','aos41','aos51','aos17'];
-  for (const id of featured) {
-    const book = AOS_BOOKS.find(b => b.id === id);
-    if (book && (!statuses[id] || statuses[id].status === 'none')) {
-      return { book, reason: 'Featured Read', seriesProgress: null };
-    }
-  }
-  return null;
+    const isReading = books.some(b => statuses[b.id]?.status === 'reading');
+    const readCount = books.filter(b => statuses[b.id]?.status === 'read').length;
+    if (!isReading && readCount === 0) return null;
+    const next = books.find(b => { const st = statuses[b.id]?.status; return !st || st === 'none' || st === 'want'; });
+    if (!next) return null;
+    return { name:s, books, isReading, readCount, next };
+  }).filter(Boolean);
+
+  if (!candidates.length) return null;
+
+  // Currently reading takes priority, then most books read
+  candidates.sort((a,b) => {
+    if (a.isReading && !b.isReading) return -1;
+    if (b.isReading && !a.isReading) return 1;
+    return b.readCount - a.readCount;
+  });
+
+  const best = candidates[0];
+  return { book:best.next, reason:`Next in ${best.name}`, seriesProgress:`${best.readCount}/${best.books.length} read` };
 }
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
