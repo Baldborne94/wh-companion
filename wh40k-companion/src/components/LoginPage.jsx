@@ -1,22 +1,24 @@
 import { signInWithGoogle } from "../lib/supabase";
-import { C } from "../data/constants";
 
-// onEnter: provided → "welcome/splash" mode (show before auth)
-// user:    provided → user is already logged in
+const SILVER = "#c8c4bc";
+const SILVER_DIM = "#706c64";
+const RED = "#C0392B";
+const BLUE = "#4a7cb5";
+const AOS_GOLD = "#C9A227";
+
 export default function LoginPage({ authLoading, onEnter, user }) {
   const handleSignIn = () => {
-    if (onEnter) onEnter(); // persist "started" in sessionStorage before redirect
+    if (onEnter) onEnter();
     signInWithGoogle();
   };
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
-      // Mix 40K (dark red) and AoS (deep blue-gold) in the background
       background: [
-        "radial-gradient(ellipse at 15% 85%, #1a050522 0%, transparent 55%)",
-        "radial-gradient(ellipse at 85% 15%, #05101a22 0%, transparent 55%)",
-        "radial-gradient(ellipse at 50% 42%, #14110a 0%, #090806 45%, #050302 80%, #000000 100%)",
+        "radial-gradient(ellipse at 20% 55%, rgba(192,57,43,0.09) 0%, transparent 48%)",
+        "radial-gradient(ellipse at 80% 45%, rgba(74,124,181,0.09) 0%, transparent 48%)",
+        "radial-gradient(ellipse at 50% 44%, #111009 0%, #080706 50%, #040302 80%, #000 100%)",
       ].join(", "),
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       overflow: "hidden",
@@ -24,23 +26,22 @@ export default function LoginPage({ authLoading, onEnter, user }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&display=swap');
 
-        @keyframes ringPulse  { 0%,100%{opacity:0.07;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.16;transform:translate(-50%,-50%) scale(1.04);} }
-        @keyframes ringPulse2 { 0%,100%{opacity:0.04;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.11;transform:translate(-50%,-50%) scale(1.06);} }
-        @keyframes ringPulse3 { 0%,100%{opacity:0.025;transform:translate(-50%,-50%) scale(1);}  50%{opacity:0.08;transform:translate(-50%,-50%) scale(1.08);} }
-        @keyframes goldShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
-        @keyframes logoGlow    { 0%,100%{filter:drop-shadow(0 0 10px #C9A85055) brightness(0.95);} 50%{filter:drop-shadow(0 0 28px #C9A850aa) brightness(1.05);} }
-        @keyframes loginGlow   { 0%,100%{box-shadow:0 0 12px rgba(201,168,80,.18),0 0 30px rgba(201,168,80,.05);} 50%{box-shadow:0 0 22px rgba(201,168,80,.35),0 0 50px rgba(201,168,80,.12);} }
-        @keyframes loginBtnHov { 0%,100%{box-shadow:0 0 18px rgba(201,168,80,.3);} 50%{box-shadow:0 0 32px rgba(201,168,80,.55);} }
-        @keyframes fadeInUp    { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes cornerGlowGold { 0%,100%{opacity:0.3;} 50%{opacity:0.55;} }
-        @keyframes cornerGlowRed  { 0%,100%{opacity:0.15;} 50%{opacity:0.35;} }
-        @keyframes spin        { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+        @keyframes ring40k   { 0%,100%{opacity:0.09;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.22;transform:translate(-50%,-50%) scale(1.04);} }
+        @keyframes ringAoS   { 0%,100%{opacity:0.06;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.16;transform:translate(-50%,-50%) scale(1.06);} }
+        @keyframes ringOuter { 0%,100%{opacity:0.03;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.09;transform:translate(-50%,-50%) scale(1.08);} }
+        @keyframes silverShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
+        @keyframes logoFloat { 0%,100%{filter:brightness(2.2) contrast(3) drop-shadow(0 0 16px rgba(255,255,255,0.08));} 50%{filter:brightness(2.4) contrast(3) drop-shadow(0 0 36px rgba(255,255,255,0.22));} }
+        @keyframes loginGlow { 0%,100%{box-shadow:0 0 10px rgba(200,196,188,.1),0 0 28px rgba(200,196,188,.03);} 50%{box-shadow:0 0 20px rgba(200,196,188,.22),0 0 44px rgba(200,196,188,.07);} }
+        @keyframes loginBtnHov { 0%,100%{box-shadow:0 0 16px rgba(200,196,188,.18);} 50%{box-shadow:0 0 30px rgba(200,196,188,.38);} }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes cornerPulse { 0%,100%{opacity:0.35;} 50%{opacity:0.6;} }
+        @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 
         .login-btn {
           background: transparent;
-          border: 1px solid ${C.gold};
-          border-radius: 3px;
-          color: ${C.text};
+          border: 1px solid rgba(200,196,188,0.5);
+          border-radius: 2px;
+          color: ${SILVER};
           padding: 13px 34px;
           font-family: 'Cinzel', serif;
           font-size: 11px;
@@ -53,40 +54,47 @@ export default function LoginPage({ authLoading, onEnter, user }) {
           animation: loginGlow 3.5s ease-in-out infinite;
           text-transform: uppercase;
         }
-        .login-btn:hover  { background:rgba(201,168,80,0.08); animation:loginBtnHov 1.5s ease-in-out infinite; }
-        .login-btn:active { background:rgba(201,168,80,0.15); }
+        .login-btn:hover  { background:rgba(200,196,188,0.06); animation:loginBtnHov 1.5s ease-in-out infinite; }
+        .login-btn:active { background:rgba(200,196,188,0.12); }
       `}</style>
 
-      {/* Pulsing rings — gold outer, subtle red/blue inner mix */}
+      {/* Pulsing rings: red (40K inner), blue (AoS mid), silver (outer) */}
       {[
-        { size:300, delay:"0s",   anim:"ringPulse",  color:C.gold },
-        { size:470, delay:"0.9s", anim:"ringPulse2", color:"#C0392B" },
-        { size:660, delay:"1.8s", anim:"ringPulse3", color:C.gold },
-      ].map((r,i) => (
+        { size:310, delay:"0s",   anim:"ring40k",   color:RED  },
+        { size:500, delay:"1.1s", anim:"ringAoS",   color:BLUE },
+        { size:710, delay:"2.2s", anim:"ringOuter", color:SILVER },
+      ].map((r, i) => (
         <div key={i} style={{
           position:"absolute", left:"50%", top:"44%",
           width:r.size, height:r.size, borderRadius:"50%",
           border:`1px solid ${r.color}`,
-          animation:`${r.anim} 4.5s ease-in-out infinite ${r.delay}`,
+          animation:`${r.anim} 5s ease-in-out infinite ${r.delay}`,
           transform:"translate(-50%,-50%)",
           pointerEvents:"none",
         }}/>
       ))}
 
-      {/* Corner frames — gold top-right (40K) & bottom-left (AoS), subtle red accent */}
+      {/* Corner accents: top-left 40K red, top-right silver, bottom-left silver, bottom-right AoS blue */}
       {[
-        { top:20,    left:20,  borderTop:`2px solid ${C.gold}`,    borderLeft:`2px solid ${C.gold}`,  anim:"cornerGlowGold" },
-        { top:20,    right:20, borderTop:`2px solid #C0392B`,      borderRight:`2px solid #C0392B`,   anim:"cornerGlowRed" },
-        { bottom:20, left:20,  borderBottom:`2px solid #C9A227`,   borderLeft:`2px solid #C9A227`,    anim:"cornerGlowRed" },
-        { bottom:20, right:20, borderBottom:`2px solid ${C.gold}`, borderRight:`2px solid ${C.gold}`, anim:"cornerGlowGold" },
-      ].map(({anim,...s},i) => (
+        { top:20,    left:20,    borderTop:`1px solid ${RED}`,  borderLeft:`1px solid ${RED}`,  delay:"0s"   },
+        { top:20,    right:20,   borderTop:`1px solid ${SILVER}`, borderRight:`1px solid ${SILVER}`, delay:"0.3s" },
+        { bottom:20, left:20,    borderBottom:`1px solid ${SILVER}`, borderLeft:`1px solid ${SILVER}`, delay:"0.6s" },
+        { bottom:20, right:20,   borderBottom:`1px solid ${BLUE}`, borderRight:`1px solid ${BLUE}`, delay:"0.9s" },
+      ].map(({ delay, ...s }, i) => (
         <div key={i} style={{
           position:"absolute", ...s,
           width:44, height:44,
-          animation:`${anim} 3s ease-in-out infinite ${i*0.4}s`,
+          animation:`cornerPulse 3.5s ease-in-out infinite ${delay}`,
           pointerEvents:"none",
         }}/>
       ))}
+
+      {/* Subtle horizontal dividing light — separates logo area from text */}
+      <div style={{
+        position:"absolute", top:"42%", left:0, right:0, height:1,
+        background:"linear-gradient(to right,transparent,rgba(192,57,43,0.15) 30%,rgba(74,124,181,0.15) 70%,transparent)",
+        pointerEvents:"none",
+      }}/>
 
       {/* Main content */}
       <div style={{
@@ -94,16 +102,20 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         position:"relative", zIndex:1,
         animation:"fadeInUp 0.9s ease-out both",
       }}>
-        {/* Logo — real Warhammer brand image */}
-        <div style={{ marginBottom:20, animation:"logoGlow 4s ease-in-out infinite" }}>
+
+        {/* Logo — brightness+contrast filter burns out the dark gradient background */}
+        <div style={{ marginBottom:12, animation:"logoFloat 4.5s ease-in-out infinite" }}>
           <img
             src="/the-new-warhammer-brand-logo.png"
             alt="Warhammer"
             style={{
-              width: 160,
-              height: 160,
+              width: 300,
+              height: "auto",
+              maxWidth: "80vw",
               objectFit: "contain",
               mixBlendMode: "screen",
+              filter: "brightness(2.2) contrast(3)",
+              display: "block",
             }}
           />
         </div>
@@ -111,90 +123,84 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         {/* Title */}
         <h1 style={{
           fontFamily:"'Cinzel Decorative', serif",
-          fontSize:"clamp(28px,8vw,54px)",
+          fontSize:"clamp(28px,8vw,52px)",
           fontWeight:900,
-          letterSpacing:"0.1em",
+          letterSpacing:"0.12em",
           margin:0,
-          background:`linear-gradient(90deg,${C.goldDim} 0%,${C.gold} 30%,#f0d080 50%,${C.gold} 70%,${C.goldDim} 100%)`,
+          background:`linear-gradient(90deg,${SILVER_DIM} 0%,${SILVER} 25%,#ffffff 50%,${SILVER} 75%,${SILVER_DIM} 100%)`,
           backgroundSize:"200% auto",
           WebkitBackgroundClip:"text",
           WebkitTextFillColor:"transparent",
           backgroundClip:"text",
-          animation:"goldShimmer 4.5s linear infinite",
+          animation:"silverShimmer 5s linear infinite",
         }}>
           WARHAMMER
         </h1>
 
         <div style={{
           fontFamily:"'Cinzel', serif",
-          fontSize:"clamp(8px,1.8vw,12px)",
-          letterSpacing:"0.55em",
-          color:C.goldDim,
+          fontSize:"clamp(8px,1.8vw,11px)",
+          letterSpacing:"0.6em",
+          color:SILVER_DIM,
           textTransform:"uppercase",
-          marginTop:6,
-          marginBottom:24,
+          marginTop:5,
+          marginBottom:22,
         }}>
           COMPANION
         </div>
 
-        {/* Divider */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
-          <div style={{ width:56, height:1, background:`linear-gradient(to right,transparent,${C.goldDim})` }}/>
-          <div style={{ width:7, height:7, background:C.gold, transform:"rotate(45deg)", flexShrink:0 }}/>
-          <div style={{ width:56, height:1, background:`linear-gradient(to left,transparent,${C.goldDim})` }}/>
+        {/* Divider — red left, silver diamond, blue right */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
+          <div style={{ width:52, height:1, background:`linear-gradient(to right,transparent,${RED}88)` }}/>
+          <div style={{ width:6, height:6, background:SILVER, transform:"rotate(45deg)", flexShrink:0 }}/>
+          <div style={{ width:52, height:1, background:`linear-gradient(to left,transparent,${BLUE}88)` }}/>
+        </div>
+
+        {/* Universe badge pills */}
+        <div style={{ display:"flex", gap:10, marginBottom:20 }}>
+          <span style={{
+            fontFamily:"'Cinzel', serif", fontSize:8, letterSpacing:"0.35em",
+            color:RED, border:`1px solid ${RED}55`, borderRadius:2,
+            padding:"4px 10px", textTransform:"uppercase",
+          }}>40,000</span>
+          <span style={{
+            fontFamily:"'Cinzel', serif", fontSize:8, letterSpacing:"0.35em",
+            color:AOS_GOLD, border:`1px solid ${AOS_GOLD}55`, borderRadius:2,
+            padding:"4px 10px", textTransform:"uppercase",
+          }}>Age of Sigmar</span>
         </div>
 
         {/* Tagline */}
         <p style={{
           fontFamily:"'Cinzel', serif",
           fontSize:"clamp(9px,2vw,11px)",
-          color:C.muted,
+          color:"rgba(200,196,188,0.5)",
           textAlign:"center",
-          maxWidth:300,
+          maxWidth:280,
           lineHeight:1.9,
-          marginBottom:8,
+          margin:"0 0 32px",
           padding:"0 20px",
-          letterSpacing:"0.05em",
+          letterSpacing:"0.04em",
         }}>
-          Two universes. Infinite stories.
-        </p>
-        <p style={{
-          fontFamily:"system-ui, sans-serif",
-          fontSize:"clamp(10px,2vw,12px)",
-          color:"rgba(150,135,110,0.6)",
-          textAlign:"center",
-          maxWidth:320,
-          lineHeight:1.7,
-          marginBottom:36,
-          padding:"0 20px",
-        }}>
-          Explore the 41st Millennium of Warhammer 40,000<br/>
-          and the Mortal Realms of Age of Sigmar.<br/>
           Library, campaigns and progress — all synced.
         </p>
 
-        {/* CTA button — changes based on mode and auth state */}
+        {/* CTA */}
         {!authLoading && (
           onEnter
             ? user
-              ? <button className="login-btn" onClick={onEnter}>
-                  ENTER THE UNIVERSE
-                </button>
-              : <button className="login-btn" onClick={handleSignIn}>
-                  <GoogleIcon/> SIGN IN WITH GOOGLE
-                </button>
-            : <button className="login-btn" onClick={signInWithGoogle}>
-                <GoogleIcon/> SIGN IN WITH GOOGLE
-              </button>
+              ? <button className="login-btn" onClick={onEnter}>ENTER THE UNIVERSE</button>
+              : <button className="login-btn" onClick={handleSignIn}><GoogleIcon/> SIGN IN WITH GOOGLE</button>
+            : <button className="login-btn" onClick={signInWithGoogle}><GoogleIcon/> SIGN IN WITH GOOGLE</button>
         )}
       </div>
 
-      {/* Faint footer */}
+      {/* Footer */}
       <div style={{
-        position:"absolute", bottom:28,
+        position:"absolute", bottom:24,
         fontFamily:"'Cinzel', serif",
-        fontSize:9, letterSpacing:"0.45em",
-        color:"rgba(201,168,76,0.07)",
+        fontSize:8, letterSpacing:"0.5em",
+        color:"rgba(200,196,188,0.06)",
         textTransform:"uppercase",
         userSelect:"none", pointerEvents:"none",
       }}>
@@ -204,18 +210,18 @@ export default function LoginPage({ authLoading, onEnter, user }) {
       {/* Auth loading overlay */}
       {authLoading && (
         <div style={{
-          position:"absolute", inset:0, background:"rgba(5,3,2,0.75)",
+          position:"absolute", inset:0, background:"rgba(4,3,2,0.8)",
           display:"flex", flexDirection:"column",
           alignItems:"center", justifyContent:"center",
           gap:16, zIndex:10,
         }}>
           <div style={{
             width:40, height:40, borderRadius:"50%",
-            border:`2px solid ${C.border}`,
-            borderTopColor:C.gold,
+            border:`2px solid rgba(200,196,188,0.15)`,
+            borderTopColor:SILVER,
             animation:"spin 1s linear infinite",
           }}/>
-          <div style={{ fontFamily:"'Cinzel', serif", fontSize:11, letterSpacing:3, color:C.goldDim }}>
+          <div style={{ fontFamily:"'Cinzel', serif", fontSize:11, letterSpacing:3, color:SILVER_DIM }}>
             Loading...
           </div>
         </div>
@@ -234,4 +240,3 @@ function GoogleIcon() {
     </svg>
   );
 }
-
