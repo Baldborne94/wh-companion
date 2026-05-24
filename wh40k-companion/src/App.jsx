@@ -1645,9 +1645,14 @@ export default function App(){
     }
   },[user?.id]);
 
+  // Landing page: always shown first on each fresh session.
+  // sessionStorage persists across Google OAuth redirects but resets on tab close.
+  const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
+  const startApp=useCallback(()=>{ sessionStorage.setItem('wh_started','1'); setAppStarted(true); },[]);
+
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
   const selectUniverse=(u)=>{ localStorage.setItem('wh_universe',u); setUniverse(u); };
-  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); setUniverse(null); signOut(); };
+  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
   // If Spotify OAuth is returning, open Music section directly
   const [section,setSection]=useState(()=>{
@@ -1683,8 +1688,13 @@ export default function App(){
     setAppReader({book,url,fileType:meta.file_type||'epub',progress,chapterIndex,pageIndex});
     return true;
   },[user?.id]);
+  // Step 1: always show the landing/welcome page first
+  if(!appStarted) return <LoginPage onEnter={startApp} user={user} authLoading={authLoading}/>;
+  // Step 2: if auth is still loading (post-OAuth redirect) show spinner
   if(authLoading) return <LoginPage authLoading/>;
+  // Step 3: if not logged in (cancelled OAuth), show login page
   if(!user) return <LoginPage/>;
+  // Step 4: choose universe
   if(!universe) return <UniverseSelector onSelect={selectUniverse}/>;
   return(
     <>
