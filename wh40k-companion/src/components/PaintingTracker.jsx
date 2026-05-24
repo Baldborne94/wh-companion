@@ -117,6 +117,12 @@ const CITADEL_PAINTS = [
 const PAINT_RANGES = ["Base","Shade","Layer","Dry","Contrast","Technical"];
 const USAGE_TYPES  = ["base","layer","shade","highlight","drybrush","technical","contrast"];
 
+// ─── PINTEREST ────────────────────────────────────────────────────────────
+function pinterestUrl(faction, unit) {
+  const q = encodeURIComponent(`${unit || faction} warhammer 40k miniature painting`);
+  return `https://it.pinterest.com/search/pins/?q=${q}`;
+}
+
 // ─── WH40K FACTIONS & UNITS ───────────────────────────────────────────────
 
 const FACTIONS = {
@@ -324,9 +330,36 @@ function PaintRow({ paint, onRemove }) {
   );
 }
 
+// ─── PHOTO LIGHTBOX ───────────────────────────────────────────────────────
+
+function Lightbox({ src, alt, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+  return (
+    <div onClick={onClose}
+      style={{ position:"fixed", inset:0, zIndex:1200, background:"rgba(0,0,0,0.92)",
+               display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <img src={src} alt={alt}
+        style={{ maxWidth:"100%", maxHeight:"90vh", objectFit:"contain",
+                 borderRadius:8, boxShadow:"0 8px 40px rgba(0,0,0,0.8)" }}
+        onClick={e => e.stopPropagation()}/>
+      <button onClick={onClose}
+        style={{ position:"absolute", top:16, right:16, background:"rgba(0,0,0,0.6)",
+                 border:`1px solid ${C.border}`, borderRadius:"50%", color:"#fff",
+                 width:36, height:36, fontSize:18, cursor:"pointer",
+                 display:"flex", alignItems:"center", justifyContent:"center" }}>
+        ✕
+      </button>
+    </div>
+  );
+}
+
 // ─── MINI CARD ────────────────────────────────────────────────────────────
 
-function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
+function MiniCard({ mini, paints = [], isOwner, onEdit, onClick, onLightbox }) {
   const st       = STATUS.find((s) => s.id === mini.status) || STATUS[0];
   const faction  = mini.faction || "";
 
@@ -343,7 +376,8 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
                     overflow:"hidden" }}>
         {mini.photo_url ? (
           <img src={mini.photo_url} alt={mini.name}
-            style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
+            onClick={e => { e.stopPropagation(); onLightbox?.(mini.photo_url, mini.name); }}
+            style={{ width:"100%", height:"100%", objectFit:"cover", cursor:"zoom-in" }}/>
         ) : (
           <div style={{ fontSize:40, opacity:0.2 }}>⚙</div>
         )}
@@ -383,7 +417,7 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
         )}
         {/* Color swatches */}
         {paints.length > 0 && (
-          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
             {paints.slice(0,8).map((p, i) => (
               <div key={i}
                 title={`${p.paint_name} (${p.part_name || p.usage_type})`}
@@ -398,6 +432,17 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
               </div>
             )}
           </div>
+        )}
+        {/* Pinterest link */}
+        {faction && (
+          <a href={pinterestUrl(faction, mini.unit_type)} target="_blank" rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            style={{ display:"inline-flex", alignItems:"center", gap:4, textDecoration:"none",
+                     background:"#e6000022", border:"1px solid #e6000055", borderRadius:6,
+                     padding:"3px 8px", fontSize:9, color:"#e06060",
+                     fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+            📌 Pinterest
+          </a>
         )}
       </div>
     </div>
@@ -718,6 +763,20 @@ function MiniModal({ mini, userId, onSave, onClose }) {
             </div>
           </div>
 
+          {/* Pinterest inspiration link */}
+          {form.faction && (
+            <a href={pinterestUrl(form.faction, form.unit_type)} target="_blank" rel="noopener noreferrer"
+              style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none",
+                       background:"#e6000015", border:"1px solid #e6000044", borderRadius:8,
+                       padding:"10px 14px", marginTop:8, color:"#e07070",
+                       fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1 }}>
+              📌 Cerca ispirazione su Pinterest →
+              <span style={{ fontSize:10, color:"#e07070aa", marginLeft:"auto" }}>
+                {form.unit_type || form.faction}
+              </span>
+            </a>
+          )}
+
           {/* Status */}
           <Label>Stato di avanzamento</Label>
           <StatusStepper value={form.status}
@@ -1006,12 +1065,13 @@ function BattleLog({userId}){
 }
 
 export default function PaintingTracker({ user }) {
-  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
-  const [minis,    setMinis]    = useState([]);
-  const [paints,   setPaintsMap]= useState({});       // miniatureId → paint[]
-  const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState(null);     // null | "add" | {mini object}
-  const [filter,   setFilter]   = useState("All");
+  const [tab,       setTab]      = useState("gallery"); // "gallery" | "collection"
+  const [minis,     setMinis]    = useState([]);
+  const [paints,    setPaintsMap]= useState({});        // miniatureId → paint[]
+  const [loading,   setLoading]  = useState(true);
+  const [modal,     setModal]    = useState(null);      // null | "add" | {mini object}
+  const [filter,    setFilter]   = useState("All");
+  const [lightbox,  setLightbox] = useState(null);      // null | { src, alt }
 
   // ─── Load minis ──────────────────────────────────────────────────────────
 
@@ -1150,6 +1210,7 @@ export default function PaintingTracker({ user }) {
                 isOwner={user?.id === m.user_id}
                 onEdit={() => setModal(m)}
                 onClick={() => setModal(m)}
+                onLightbox={(src, alt) => setLightbox({ src, alt })}
               />
             ))}
           </div>
@@ -1180,6 +1241,11 @@ export default function PaintingTracker({ user }) {
           onSave={() => { setModal(null); loadMinis(); }}
           onClose={() => setModal(null)}
         />
+      )}
+
+      {/* ── LIGHTBOX ──────────────────────────────────────────────── */}
+      {lightbox && (
+        <Lightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)}/>
       )}
 
       {/* ── NOT LOGGED IN CTA (collection tab) ───────────────────── */}
