@@ -117,9 +117,9 @@ const CITADEL_PAINTS = [
 const PAINT_RANGES = ["Base","Shade","Layer","Dry","Contrast","Technical"];
 const USAGE_TYPES  = ["base","layer","shade","highlight","drybrush","technical","contrast"];
 
-// ─── WH40K FACTIONS & UNITS ───────────────────────────────────────────────
+// ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
-const FACTIONS = {
+const FACTIONS_40K = {
   "Space Marines":        ["Intercessors","Hellblasters","Aggressors","Terminators","Assault Marines","Devastators","Chaplain","Librarian","Captain","Ancient","Redemptor Dreadnought"],
   "Blood Angels":         ["Death Company","Sanguinary Guard","Sanguinary Priest","Mephiston","Dante","Lemartes"],
   "Dark Angels":          ["Deathwing Terminators","Ravenwing Black Knights","Interrogator-Chaplain","Azrael","Belial"],
@@ -147,14 +147,47 @@ const FACTIONS = {
   "Genestealer Cults":    ["Neophyte Hybrids","Acolyte Hybrids","Aberrants","Patriarch"],
 };
 
+const FACTIONS_AOS = {
+  // ── Order ──────────────────────────────────────────────────────────────
+  "Stormcast Eternals":    ["Liberators","Judicators","Sequitors","Evocators","Paladins","Praetors","Knight-Incantor","Lord-Arcanum","Yndrasta","Celestant-Prime","Vandus Hammerhand"],
+  "Cities of Sigmar":      ["Freeguild Guard","Freeguild Steelhelms","Irondrakes","Darkshards","Freeguild Cavaliers","Cogsmith","Tahlia Vedra"],
+  "Sylvaneth":             ["Dryads","Tree-Revenants","Spite-Revenants","Kurnoth Hunters","Arch-Revenant","Drycha Hamadreth","Alarielle the Everqueen"],
+  "Fyreslayers":           ["Vulkite Berzerkers","Hearthguard Berzerkers","Auric Runemaster","Auric Runesmiter","Doomseeker","Magmadroth","Runesons"],
+  "Kharadron Overlords":   ["Arkanaut Company","Grundstok Thunderers","Grundstok Gunhauler","Arkanaut Frigate","Ironclad","Endrinmaster","Aether-Khemist"],
+  "Seraphon":              ["Saurus Warriors","Saurus Knights","Saurus Guard","Skinks","Kroxigor","Terradon Riders","Slann Starmaster","Lord Kroak","Engine of the Gods"],
+  "Lumineth Realm-lords":  ["Vanari Auralan Wardens","Vanari Dawnriders","Vanari Bladelords","Alarith Stoneguard","Alarith Spirit of the Mountain","Teclis","Tyrion"],
+  "Daughters of Khaine":   ["Witch Aelves","Blood Sisters","Blood Stalkers","Melusai Ironscale","Hag Queen","Morathi-Khaine","The Shadow Queen"],
+  "Idoneth Deepkin":       ["Namarti Thralls","Namarti Reavers","Akhelian Guard","Akhelian Allopex","Akhelian Leviadon","Volturnos","Isharann Soulscryer"],
+  // ── Chaos ──────────────────────────────────────────────────────────────
+  "Slaves to Darkness":    ["Chaos Warriors","Chaos Knights","Chaos Marauders","Varanguard","Darkoath Marauders","Eternus","Chaos Lord","Daemon Prince"],
+  "Blades of Khorne":      ["Bloodreavers","Blood Warriors","Bloodletters","Mighty Skullcrushers","Skullreapers","Skarbrand","Slaughterpriest","Exalted Greater Daemon"],
+  "Disciples of Tzeentch": ["Tzaangors","Tzaangor Enlightened","Pink Horrors","Blue Horrors","Flamers","Screamers","Kairos Fateweaver","Lord of Change","Gaunt Summoner"],
+  "Maggotkin of Nurgle":   ["Plaguebearers","Putrid Blightkings","Nurglings","Sloppity Bilepiper","Spoilpox Scrivener","Rotigus","Glottkin","Great Unclean One"],
+  "Hedonites of Slaanesh": ["Blissbarb Archers","Myrmidesh Painbringers","Slaangor Fiendbloods","Symbaresh Twinsouls","Keeper of Secrets","Sigvald","Glutos Orscollion"],
+  "Skaven":                ["Clanrats","Stormvermin","Plague Monks","Rat Ogors","Warplock Jezzails","Hell Pit Abomination","Grey Seer","Thanquol & Boneripper"],
+  "Beasts of Chaos":       ["Gors","Ungors","Bestigors","Bullgors","Centigors","Doombull","Ghorgon","Jabberslythe"],
+  // ── Death ──────────────────────────────────────────────────────────────
+  "Nighthaunt":            ["Chainrasps","Grimghast Reapers","Bladegheist Revenants","Hexwraiths","Dreadblade Harrows","Knight of Shrouds","Lady Olynder","Kurdoss Valentian"],
+  "Ossiarch Bonereapers":  ["Mortek Guard","Kavalos Deathriders","Gothizzar Harvester","Morghast Archai","Morghast Harbingers","Katakros","Nagash"],
+  "Flesh-eater Courts":    ["Crypt Ghouls","Crypt Flayers","Crypt Horrors","Varghulf Courtier","Abhorrant Archregent","Abhorrant Ghoul King","Ushoran"],
+  "Soulblight Gravelords": ["Deadwalker Zombies","Deathrattle Skeletons","Black Knights","Blood Knights","Fell Bats","Mannfred von Carstein","Lauka Vai","Radukar the Beast"],
+  // ── Destruction ────────────────────────────────────────────────────────
+  "Orruk Warclans":        ["Ardboyz","Brutes","Gore-gruntas","Savage Orruks","Weirdnob Shaman","Megaboss on Maw-krusha","Gordrakk","Gutrippaz","Killaboss"],
+  "Gloomspite Gitz":       ["Stabbas","Shootas","Boingrot Bounderz","Squig Herd","Squig Hoppers","Rockgut Troggoths","Dankhold Troggoth","Loonboss","Skragrott"],
+  "Ogor Mawtribes":        ["Gluttons","Ironguts","Leadbelchers","Mournfang Pack","Stonehorn","Thundertusk","Frostlord","Butcher"],
+  "Sons of Behemat":       ["Mancrusher Gargants","Warstomper Megagargant","Gatebreaker Megagargant","Kraken-eater Megagargant"],
+  "Kruleboyz":             ["Gutrippaz","Hobgrot Slittaz","Man-skewer Boltboyz","Murknob with Belcha-banna","Swampcalla Shaman","Killaboss on Corpse-rippa Vulcha"],
+};
+
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit) {
-  const prompt = `Sei un esperto di pittura di miniature Warhammer 40K. 
-Fornisci uno schema colori Citadel per ${unit} della fazione ${faction}.
-Rispondi SOLO con un JSON array, nessun markdown o testo extra.
-Formato: [{"part":"nome parte","steps":[{"type":"base|shade|layer|highlight","paint":"nome colore Citadel","hex":"#hexcode"}]}]
-Usa colori Citadel reali. Max 4-5 parti, 2-4 step per parte.`;
+async function getAiRecommendations(faction, unit, universe) {
+  const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
+  const prompt = `You are an expert ${game} miniature painter.
+Provide a Citadel colour scheme for ${unit} from the ${faction} faction.
+Reply ONLY with a JSON array, no markdown or extra text.
+Format: [{"part":"part name","steps":[{"type":"base|shade|layer|highlight","paint":"Citadel colour name","hex":"#hexcode"}]}]
+Use real Citadel colours. Max 4-5 parts, 2-4 steps per part.`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -238,7 +271,7 @@ function PaintPicker({ onSelect, onClose }) {
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cerca colore Citadel…"
+          placeholder="Search Citadel colour…"
           style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                    padding:"10px 14px", color:C.text, fontFamily:"'Cinzel',serif",
                    fontSize:13, width:"100%", boxSizing:"border-box", marginBottom:10 }}
@@ -262,7 +295,7 @@ function PaintPicker({ onSelect, onClose }) {
         <div style={{ overflowY:"auto", flex:1 }}>
           {filtered.length === 0 && (
             <div style={{ color:C.muted, fontSize:13, textAlign:"center", padding:24 }}>
-              Nessun colore trovato
+              No colours found
             </div>
           )}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
@@ -291,6 +324,40 @@ function PaintPicker({ onSelect, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── PINTEREST SEARCH ─────────────────────────────────────────────────────
+
+function pinterestUrl(faction, unit, name) {
+  const parts = [faction, unit || name, "warhammer", "miniature", "painting"].filter(Boolean);
+  return `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(parts.join(" "))}`;
+}
+
+function PinterestButton({ faction, unit, name, style = {} }) {
+  const url = pinterestUrl(faction, unit, name);
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 6,
+        border: `1px solid #e60023aa`,
+        background: "transparent",
+        color: "#e60023",
+        fontFamily: "'Cinzel',serif", fontSize: 9,
+        letterSpacing: 1, textDecoration: "none",
+        cursor: "pointer", transition: "background 0.15s",
+        ...style,
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = "#e6002322"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+    >
+      ⊕ Pinterest
+    </a>
   );
 }
 
@@ -383,7 +450,7 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
         )}
         {/* Color swatches */}
         {paints.length > 0 && (
-          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
             {paints.slice(0,8).map((p, i) => (
               <div key={i}
                 title={`${p.paint_name} (${p.part_name || p.usage_type})`}
@@ -399,6 +466,10 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
             )}
           </div>
         )}
+        {/* Pinterest link */}
+        {(faction || mini.name) && (
+          <PinterestButton faction={faction} unit={mini.unit_type} name={mini.name}/>
+        )}
       </div>
     </div>
   );
@@ -406,19 +477,19 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
 
 // ─── AI RECOMMENDATIONS PANEL ─────────────────────────────────────────────
 
-function AiRecommendations({ faction, unit, onApply }) {
+function AiRecommendations({ faction, unit, onApply, universe }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
   const load = async () => {
-    if (!faction) { setError("Seleziona una fazione prima"); return; }
+    if (!faction) { setError("Select a faction first"); return; }
     setLoading(true); setError(null);
     try {
-      const result = await getAiRecommendations(faction, unit || faction);
+      const result = await getAiRecommendations(faction, unit || faction, universe);
       setData(result);
     } catch (e) {
-      setError("Errore nella chiamata AI. Controlla la console.");
+      setError("AI error. Check the console.");
       console.error(e);
     } finally {
       setLoading(false);
@@ -442,7 +513,7 @@ function AiRecommendations({ faction, unit, onApply }) {
             ⚡ AI Color Advisor
           </div>
           <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>
-            Schema colori Citadel generato da Claude
+            Citadel colour scheme generated by Claude
           </div>
         </div>
         <button onClick={load} disabled={loading}
@@ -451,7 +522,7 @@ function AiRecommendations({ faction, unit, onApply }) {
                    color:C.gold, padding:"8px 14px", fontFamily:"'Cinzel',serif",
                    fontSize:11, letterSpacing:1, cursor:loading ? "default" : "pointer",
                    opacity:loading ? 0.6 : 1 }}>
-          {loading ? "⚙ Calcolo…" : data ? "⟳ Rigenera" : "✦ Genera Schema"}
+          {loading ? "⚙ Calculating…" : data ? "⟳ Regenerate" : "✦ Generate Scheme"}
         </button>
       </div>
 
@@ -489,7 +560,7 @@ function AiRecommendations({ faction, unit, onApply }) {
                         </span>
                       </div>
                       <button
-                        title="Aggiungi al mio schema"
+                        title="Add to my scheme"
                         onClick={() => onApply({
                           paint_name: step.paint,
                           paint_hex:  hex,
@@ -519,7 +590,7 @@ function AiRecommendations({ faction, unit, onApply }) {
 // ─── MINI MODAL (Add / Edit) ───────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
 
-function MiniModal({ mini, userId, onSave, onClose }) {
+function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const isEdit = !!mini;
   const photoInput = useRef(null);
 
@@ -548,6 +619,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
       .then(setPaints);
   }, [mini?.id]);
 
+  const FACTIONS = universe === 'aos' ? FACTIONS_AOS : FACTIONS_40K;
   const units = FACTIONS[form.faction] ?? [];
 
   const handlePhoto = async (e) => {
@@ -560,7 +632,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
       const url = storage.url("miniatures", path);
       setForm((f) => ({ ...f, photo_url: url }));
     } catch (err) {
-      alert("Errore upload foto: " + err.message);
+      alert("Photo upload error: " + err.message);
     } finally {
       setPhotoLoading(false);
     }
@@ -605,7 +677,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert("Nome obbligatorio!"); return; }
+    if (!form.name.trim()) { alert("Name is required!"); return; }
     setLoading(true);
     try {
       let miniId = mini?.id;
@@ -636,7 +708,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
 
       onSave();
     } catch (err) {
-      alert("Errore nel salvataggio: " + err.message);
+      alert("Save error: " + err.message);
       console.error(err);
     } finally {
       setLoading(false);
@@ -673,7 +745,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                       padding:"16px 20px", display:"flex",
                       justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:16, color:C.text }}>
-            {isEdit ? "Modifica Miniatura" : "Aggiungi Miniatura"}
+            {isEdit ? "Edit Miniature" : "Add Miniature"}
           </span>
           <button onClick={onClose}
             style={{ background:"transparent", border:`1px solid ${C.dim}`,
@@ -685,26 +757,26 @@ function MiniModal({ mini, userId, onSave, onClose }) {
 
         <div style={{ padding:"16px 20px 24px" }}>
           {/* Name */}
-          <Label>Nome Miniatura</Label>
+          <Label>Miniature Name</Label>
           <Input value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="es. Space Marine Sergeant"/>
+            placeholder="e.g. Space Marine Sergeant"/>
 
           {/* Faction + Unit */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
             <div>
-              <Label>Fazione</Label>
+              <Label>Faction</Label>
               <select value={form.faction}
                 onChange={(e) => setForm((f) => ({ ...f, faction:e.target.value, unit_type:"" }))}
                 style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                          padding:"10px 14px", color:form.faction ? C.text : C.muted,
                          fontSize:13, width:"100%", boxSizing:"border-box" }}>
-                <option value="">— Fazione —</option>
+                <option value="">— Faction —</option>
                 {Object.keys(FACTIONS).map((f) => <option key={f}>{f}</option>)}
               </select>
             </div>
             <div>
-              <Label>Unità / Tipo</Label>
+              <Label>Unit / Type</Label>
               <select value={form.unit_type}
                 onChange={(e) => setForm((f) => ({ ...f, unit_type:e.target.value }))}
                 disabled={!units.length}
@@ -712,19 +784,19 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                          padding:"10px 14px", color:form.unit_type ? C.text : C.muted,
                          fontSize:13, width:"100%", boxSizing:"border-box",
                          opacity:units.length ? 1 : 0.5 }}>
-                <option value="">— Unità —</option>
+                <option value="">— Unit —</option>
                 {units.map((u) => <option key={u}>{u}</option>)}
               </select>
             </div>
           </div>
 
           {/* Status */}
-          <Label>Stato di avanzamento</Label>
+          <Label>Progress</Label>
           <StatusStepper value={form.status}
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
           {/* Photo */}
-          <Label>Foto</Label>
+          <Label>Photo</Label>
           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
             {form.photo_url && (
               <img src={form.photo_url} alt="preview"
@@ -737,20 +809,20 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                        color:C.gold, fontFamily:"'Cinzel',serif", fontSize:11,
                        letterSpacing:2, cursor:"pointer",
                        opacity:photoLoading ? 0.5 : 1 }}>
-              {photoLoading ? "⚙ Upload…" : "📷 Carica Foto"}
+              {photoLoading ? "⚙ Uploading…" : "📷 Upload Photo"}
             </button>
             <input ref={photoInput} type="file" accept="image/*"
               style={{ display:"none" }} onChange={handlePhoto}/>
           </div>
 
           {/* Notes */}
-          <Label>Note generali</Label>
+          <Label>General Notes</Label>
           <Input multiline value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes:e.target.value }))}
-            placeholder="Ispirazione, base, conversioni…"/>
+            placeholder="Inspiration, basing, conversions…"/>
 
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
-          <Label>Schema Colori</Label>
+          <Label>Colour Scheme</Label>
 
           {/* Existing paints */}
           {paints.length > 0 && (
@@ -782,17 +854,17 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                             marginBottom:10 }}>
                 <div>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.muted,
-                                letterSpacing:1, marginBottom:4 }}>PARTE</div>
+                                letterSpacing:1, marginBottom:4 }}>PART</div>
                   <input value={partInput}
                     onChange={(e) => setPartInput(e.target.value)}
-                    placeholder="es. Armatura, Pelle…"
+                    placeholder="e.g. Armour, Skin…"
                     style={{ background:C.surface, border:`1px solid ${C.border}`,
                              borderRadius:6, padding:"8px 10px", color:C.text,
                              fontSize:12, width:"100%", boxSizing:"border-box" }}/>
                 </div>
                 <div>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.muted,
-                                letterSpacing:1, marginBottom:4 }}>USO</div>
+                                letterSpacing:1, marginBottom:4 }}>USE</div>
                   <select value={usageInput}
                     onChange={(e) => setUsageInput(e.target.value)}
                     style={{ background:C.surface, border:`1px solid ${C.border}`,
@@ -808,7 +880,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                            background:`${C.gold}22`, border:`1px solid ${C.gold}`,
                            color:C.gold, fontFamily:"'Cinzel',serif",
                            fontSize:11, letterSpacing:2, cursor:"pointer" }}>
-                  ✓ Aggiungi Colore
+                  ✓ Add Colour
                 </button>
                 <button onClick={() => setPendingPaint(null)}
                   style={{ padding:"10px 14px", borderRadius:8, background:"transparent",
@@ -826,7 +898,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                        background:"transparent", border:`1px dashed ${C.goldDim}`,
                        color:C.goldDim, fontFamily:"'Cinzel',serif",
                        fontSize:12, letterSpacing:2, cursor:"pointer", marginBottom:10 }}>
-              + Aggiungi Colore Citadel
+              + Add Citadel Colour
             </button>
           )}
 
@@ -836,14 +908,27 @@ function MiniModal({ mini, userId, onSave, onClose }) {
               faction={form.faction}
               unit={form.unit_type || form.faction}
               onApply={handleApplyAi}
+              universe={universe}
             />
           )}
 
+          {/* Pinterest search */}
+          {(form.faction || form.name) && (
+            <div style={{ marginTop:10 }}>
+              <PinterestButton
+                faction={form.faction}
+                unit={form.unit_type}
+                name={form.name}
+                style={{ width:"100%", justifyContent:"center", padding:"10px" }}
+              />
+            </div>
+          )}
+
           {/* Color scheme notes */}
-          <Label>Note schema colori</Label>
+          <Label>Colour Scheme Notes</Label>
           <Input multiline value={form.color_scheme_notes}
             onChange={(e) => setForm((f) => ({ ...f, color_scheme_notes:e.target.value }))}
-            placeholder="Note libere sullo schema, tecniche usate, ispirazione…"/>
+            placeholder="Free notes on the scheme, techniques used, inspiration…"/>
 
           {/* Public toggle */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -852,10 +937,10 @@ function MiniModal({ mini, userId, onSave, onClose }) {
             <div>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.text,
                             letterSpacing:1 }}>
-                Pubblica nella Gallery
+                Publish to Gallery
               </div>
               <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>
-                Visibile a tutti gli utenti
+                Visible to all users
               </div>
             </div>
             <button onClick={() => setForm((f) => ({ ...f, is_public:!f.is_public }))}
@@ -880,7 +965,7 @@ function MiniModal({ mini, userId, onSave, onClose }) {
                      fontSize:15, letterSpacing:3, textTransform:"uppercase",
                      fontWeight:700, cursor:loading ? "default" : "pointer",
                      opacity:loading ? 0.7 : 1 }}>
-            {loading ? "⚙ Salvataggio…" : isEdit ? "💾 Salva Modifiche" : "✦ Aggiungi Miniatura"}
+            {loading ? "⚙ Saving…" : isEdit ? "💾 Save Changes" : "✦ Add Miniature"}
           </button>
         </div>
       </div>
@@ -901,9 +986,9 @@ function MiniModal({ mini, userId, onSave, onClose }) {
 
 // ─── BATTLE LOG ───────────────────────────────────────────────────────────────
 const BATTLE_RESULTS=[
-  {id:"W",label:"Vittoria",icon:"⚔️",color:"#4aaa6a"},
-  {id:"L",label:"Sconfitta",icon:"💀",color:"#b03030"},
-  {id:"D",label:"Pareggio", icon:"⚖️",color:"#c9a84c"},
+  {id:"W",label:"Victory",icon:"⚔️",color:"#4aaa6a"},
+  {id:"L",label:"Defeat", icon:"💀",color:"#b03030"},
+  {id:"D",label:"Draw",   icon:"⚖️",color:"#c9a84c"},
 ];
 
 function BattleLog({userId}){
@@ -928,7 +1013,7 @@ function BattleLog({userId}){
 
   const inp=(placeholder,field,type="text")=>(
     <input type={type} value={form[field]} onChange={e=>setForm(f=>({...f,[field]:e.target.value}))} placeholder={placeholder}
-      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:13,width:"100%",boxSizing:"border-box"}}/>
+      style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:13,width:"100%",boxSizing:"border-box",colorScheme:"dark"}}/>
   );
 
   return(
@@ -936,7 +1021,7 @@ function BattleLog({userId}){
       {/* Stats */}
       {battles.length>0&&(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-          {[{l:"Vittorie",v:W,c:"#4aaa6a"},{l:"Sconfitte",v:L,c:"#b03030"},{l:"Pareggi",v:D,c:"#c9a84c"}].map(s=>(
+          {[{l:"Victories",v:W,c:"#4aaa6a"},{l:"Defeats",v:L,c:"#b03030"},{l:"Draws",v:D,c:"#c9a84c"}].map(s=>(
             <div key={s.l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"12px",textAlign:"center"}}>
               <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:22,color:s.c}}>{s.v}</div>
               <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase"}}>{s.l}</div>
@@ -948,14 +1033,14 @@ function BattleLog({userId}){
       {/* Add battle */}
       {!showAdd?(
         <button onClick={()=>setShowAdd(true)} style={{width:"100%",padding:"14px",borderRadius:10,background:`${C.gold}22`,border:`1px solid ${C.gold}`,color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",marginBottom:16}}>
-          + Registra Battaglia
+          + Log Battle
         </button>
       ):(
         <div style={{background:C.card,border:`1px solid ${C.gold}55`,borderRadius:12,padding:"16px",marginBottom:16,display:"flex",flexDirection:"column",gap:10}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.gold,letterSpacing:2,marginBottom:4}}>NUOVA BATTAGLIA</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:C.gold,letterSpacing:2,marginBottom:4}}>NEW BATTLE</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            {inp("Il mio esercito","myArmy")}
-            {inp("Esercito avversario","oppArmy")}
+            {inp("My Army","myArmy")}
+            {inp("Opponent's Army","oppArmy")}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
             {inp("Data","date","date")}
@@ -970,10 +1055,10 @@ function BattleLog({userId}){
               </button>
             ))}
           </div>
-          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Note (tattiche, punti chiave…)" rows={2}
+          <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes (tactics, key moments…)" rows={2}
             style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",color:C.text,fontSize:12,resize:"vertical"}}/>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={save} style={{flex:1,padding:"12px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer"}}>✓ Salva</button>
+            <button onClick={save} style={{flex:1,padding:"12px",borderRadius:8,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer"}}>✓ Save</button>
             <button onClick={()=>setShowAdd(false)} style={{padding:"12px 16px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,cursor:"pointer"}}>✕</button>
           </div>
         </div>
@@ -982,7 +1067,7 @@ function BattleLog({userId}){
       {/* Battle history */}
       {battles.length===0?(
         <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:1}}>
-          Nessuna battaglia registrata. Per l'Imperatore!
+          No battles logged. For the Emperor!
         </div>
       ):(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -1005,7 +1090,7 @@ function BattleLog({userId}){
   );
 }
 
-export default function PaintingTracker({ user }) {
+export default function PaintingTracker({ user, universe }) {
   const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
   const [minis,    setMinis]    = useState([]);
   const [paints,   setPaintsMap]= useState({});       // miniatureId → paint[]
@@ -1117,7 +1202,7 @@ export default function PaintingTracker({ user }) {
         {loading ? (
           <div style={{ textAlign:"center", padding:60, color:C.muted,
                         fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:2 }}>
-            ⚙ Caricamento…
+            ⚙ Loading…
           </div>
         ) : displayed.length === 0 ? (
           <div style={{ textAlign:"center", padding:60 }}>
@@ -1125,8 +1210,8 @@ export default function PaintingTracker({ user }) {
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:C.muted,
                           letterSpacing:2 }}>
               {tab === "collection"
-                ? "Nessuna miniatura nella collezione"
-                : "Nessuna miniatura in gallery"}
+                ? "No miniatures in your collection"
+                : "No miniatures in the gallery"}
             </div>
             {tab === "collection" && user && (
               <button onClick={() => setModal("add")}
@@ -1134,7 +1219,7 @@ export default function PaintingTracker({ user }) {
                          background:`${C.gold}22`, border:`1px solid ${C.gold}`,
                          color:C.gold, fontFamily:"'Cinzel',serif", fontSize:12,
                          letterSpacing:2, cursor:"pointer" }}>
-                + Aggiungi la Prima
+                + Add your First
               </button>
             )}
           </div>
@@ -1177,6 +1262,7 @@ export default function PaintingTracker({ user }) {
         <MiniModal
           mini={modal === "add" ? null : modal}
           userId={user.id}
+          universe={universe}
           onSave={() => { setModal(null); loadMinis(); }}
           onClose={() => setModal(null)}
         />
@@ -1187,7 +1273,7 @@ export default function PaintingTracker({ user }) {
         <div style={{ padding:40, textAlign:"center" }}>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:C.muted,
                         letterSpacing:1, lineHeight:2 }}>
-            Accedi con Google per gestire la tua collezione
+            Sign in with Google to manage your collection
           </div>
         </div>
       )}
