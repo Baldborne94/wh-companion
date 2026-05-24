@@ -1,39 +1,6 @@
 import { signInWithGoogle } from "../lib/supabase";
 import { C } from "../data/constants";
 
-// Official-style Warhammer W+axe logo — bold W with axe blade, square frame
-function WarhammerSymbolSVG({ size = 130, color = "#C9A850" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      {/* Outer square frame */}
-      <rect x="2" y="2" width="96" height="96" stroke={color} strokeWidth="3" fill="none"/>
-      {/* Inner frame line */}
-      <rect x="6" y="6" width="88" height="88" stroke={color} strokeWidth="0.8" fill="none" opacity="0.45"/>
-      {/* Corner accents */}
-      <rect x="2" y="2" width="10" height="3" fill={color}/>
-      <rect x="88" y="2" width="10" height="3" fill={color}/>
-      <rect x="2" y="95" width="10" height="3" fill={color}/>
-      <rect x="88" y="95" width="10" height="3" fill={color}/>
-      <rect x="2" y="2" width="3" height="10" fill={color}/>
-      <rect x="95" y="2" width="3" height="10" fill={color}/>
-      <rect x="2" y="88" width="3" height="10" fill={color}/>
-      <rect x="95" y="88" width="3" height="10" fill={color}/>
-      {/* Bold W shape — two overlapping V strokes */}
-      {/* Left V */}
-      <polygon points="10,18 22,18 32,68 34,68 22,24 34,68 42,18 50,18 36,78 28,78" fill={color}/>
-      {/* Right V */}
-      <polygon points="50,18 58,18 64,78 56,78 50,24 62,68 64,68 74,18 86,18 72,78 64,78" fill={color}/>
-      {/* Center cap block */}
-      <rect x="43" y="8" width="14" height="10" fill={color}/>
-      {/* Bottom base bar */}
-      <rect x="8" y="82" width="84" height="7" fill={color}/>
-      {/* Axe blade on the right side of W */}
-      <polygon points="80,36 92,28 96,40 92,52 80,44 84,40" fill={color} opacity="0.9"/>
-      <rect x="77" y="38" width="6" height="4" fill={color}/>
-    </svg>
-  );
-}
-
 // onEnter: provided → "welcome/splash" mode (show before auth)
 // user:    provided → user is already logged in
 export default function LoginPage({ authLoading, onEnter, user }) {
@@ -45,7 +12,12 @@ export default function LoginPage({ authLoading, onEnter, user }) {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
-      background: "radial-gradient(ellipse at 50% 40%, #12100a 0%, #090806 45%, #050302 80%, #000000 100%)",
+      // Mix 40K (dark red) and AoS (deep blue-gold) in the background
+      background: [
+        "radial-gradient(ellipse at 15% 85%, #1a050522 0%, transparent 55%)",
+        "radial-gradient(ellipse at 85% 15%, #05101a22 0%, transparent 55%)",
+        "radial-gradient(ellipse at 50% 42%, #14110a 0%, #090806 45%, #050302 80%, #000000 100%)",
+      ].join(", "),
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       overflow: "hidden",
     }}>
@@ -56,11 +28,12 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         @keyframes ringPulse2 { 0%,100%{opacity:0.04;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.11;transform:translate(-50%,-50%) scale(1.06);} }
         @keyframes ringPulse3 { 0%,100%{opacity:0.025;transform:translate(-50%,-50%) scale(1);}  50%{opacity:0.08;transform:translate(-50%,-50%) scale(1.08);} }
         @keyframes goldShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
-        @keyframes logoGlow    { 0%,100%{filter:drop-shadow(0 0 8px #C9A85044);} 50%{filter:drop-shadow(0 0 24px #C9A85088);} }
+        @keyframes logoGlow    { 0%,100%{filter:drop-shadow(0 0 10px #C9A85055) brightness(0.95);} 50%{filter:drop-shadow(0 0 28px #C9A850aa) brightness(1.05);} }
         @keyframes loginGlow   { 0%,100%{box-shadow:0 0 12px rgba(201,168,80,.18),0 0 30px rgba(201,168,80,.05);} 50%{box-shadow:0 0 22px rgba(201,168,80,.35),0 0 50px rgba(201,168,80,.12);} }
         @keyframes loginBtnHov { 0%,100%{box-shadow:0 0 18px rgba(201,168,80,.3);} 50%{box-shadow:0 0 32px rgba(201,168,80,.55);} }
         @keyframes fadeInUp    { from{opacity:0;transform:translateY(22px);} to{opacity:1;transform:translateY(0);} }
-        @keyframes cornerGlow  { 0%,100%{opacity:0.3;} 50%{opacity:0.55;} }
+        @keyframes cornerGlowGold { 0%,100%{opacity:0.3;} 50%{opacity:0.55;} }
+        @keyframes cornerGlowRed  { 0%,100%{opacity:0.15;} 50%{opacity:0.35;} }
         @keyframes spin        { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 
         .login-btn {
@@ -84,33 +57,33 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         .login-btn:active { background:rgba(201,168,80,0.15); }
       `}</style>
 
-      {/* Pulsing rings */}
+      {/* Pulsing rings — gold outer, subtle red/blue inner mix */}
       {[
-        { size:300, delay:"0s",   anim:"ringPulse" },
-        { size:470, delay:"0.9s", anim:"ringPulse2" },
-        { size:660, delay:"1.8s", anim:"ringPulse3" },
+        { size:300, delay:"0s",   anim:"ringPulse",  color:C.gold },
+        { size:470, delay:"0.9s", anim:"ringPulse2", color:"#C0392B" },
+        { size:660, delay:"1.8s", anim:"ringPulse3", color:C.gold },
       ].map((r,i) => (
         <div key={i} style={{
           position:"absolute", left:"50%", top:"44%",
           width:r.size, height:r.size, borderRadius:"50%",
-          border:`1px solid ${C.gold}`,
+          border:`1px solid ${r.color}`,
           animation:`${r.anim} 4.5s ease-in-out infinite ${r.delay}`,
           transform:"translate(-50%,-50%)",
           pointerEvents:"none",
         }}/>
       ))}
 
-      {/* Corner frames */}
+      {/* Corner frames — gold top-right (40K) & bottom-left (AoS), subtle red accent */}
       {[
-        { top:20,    left:20,  borderTop:`2px solid ${C.gold}`,    borderLeft:`2px solid ${C.gold}` },
-        { top:20,    right:20, borderTop:`2px solid ${C.gold}`,    borderRight:`2px solid ${C.gold}` },
-        { bottom:20, left:20,  borderBottom:`2px solid ${C.gold}`, borderLeft:`2px solid ${C.gold}` },
-        { bottom:20, right:20, borderBottom:`2px solid ${C.gold}`, borderRight:`2px solid ${C.gold}` },
-      ].map((s,i) => (
+        { top:20,    left:20,  borderTop:`2px solid ${C.gold}`,    borderLeft:`2px solid ${C.gold}`,  anim:"cornerGlowGold" },
+        { top:20,    right:20, borderTop:`2px solid #C0392B`,      borderRight:`2px solid #C0392B`,   anim:"cornerGlowRed" },
+        { bottom:20, left:20,  borderBottom:`2px solid #C9A227`,   borderLeft:`2px solid #C9A227`,    anim:"cornerGlowRed" },
+        { bottom:20, right:20, borderBottom:`2px solid ${C.gold}`, borderRight:`2px solid ${C.gold}`, anim:"cornerGlowGold" },
+      ].map(({anim,...s},i) => (
         <div key={i} style={{
           position:"absolute", ...s,
           width:44, height:44,
-          animation:`cornerGlow 3s ease-in-out infinite ${i*0.4}s`,
+          animation:`${anim} 3s ease-in-out infinite ${i*0.4}s`,
           pointerEvents:"none",
         }}/>
       ))}
@@ -121,9 +94,18 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         position:"relative", zIndex:1,
         animation:"fadeInUp 0.9s ease-out both",
       }}>
-        {/* Logo */}
+        {/* Logo — real Warhammer brand image */}
         <div style={{ marginBottom:20, animation:"logoGlow 4s ease-in-out infinite" }}>
-          <WarhammerSymbolSVG size={130} color={C.gold}/>
+          <img
+            src="/the-new-warhammer-brand-logo.png"
+            alt="Warhammer"
+            style={{
+              width: 160,
+              height: 160,
+              objectFit: "contain",
+              mixBlendMode: "screen",
+            }}
+          />
         </div>
 
         {/* Title */}
@@ -195,15 +177,12 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         {!authLoading && (
           onEnter
             ? user
-              /* welcome mode + already logged in → ENTER */
               ? <button className="login-btn" onClick={onEnter}>
                   ENTER THE UNIVERSE
                 </button>
-              /* welcome mode + not logged in → Google sign in (sets started first) */
               : <button className="login-btn" onClick={handleSignIn}>
                   <GoogleIcon/> SIGN IN WITH GOOGLE
                 </button>
-            /* standard login mode (post-redirect fallback) */
             : <button className="login-btn" onClick={signInWithGoogle}>
                 <GoogleIcon/> SIGN IN WITH GOOGLE
               </button>
@@ -255,3 +234,4 @@ function GoogleIcon() {
     </svg>
   );
 }
+
