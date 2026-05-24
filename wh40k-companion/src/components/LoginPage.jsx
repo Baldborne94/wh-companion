@@ -30,8 +30,7 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         @keyframes ringAoS   { 0%,100%{opacity:0.06;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.16;transform:translate(-50%,-50%) scale(1.06);} }
         @keyframes ringOuter { 0%,100%{opacity:0.03;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.09;transform:translate(-50%,-50%) scale(1.08);} }
         @keyframes silverShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
-        @keyframes logoFloat { 0%,100%{filter:brightness(2.2) contrast(3) drop-shadow(0 0 16px rgba(255,255,255,0.08));} 50%{filter:brightness(2.4) contrast(3) drop-shadow(0 0 36px rgba(255,255,255,0.22));} }
-        @keyframes loginGlow { 0%,100%{box-shadow:0 0 10px rgba(200,196,188,.1),0 0 28px rgba(200,196,188,.03);} 50%{box-shadow:0 0 20px rgba(200,196,188,.22),0 0 44px rgba(200,196,188,.07);} }
+@keyframes loginGlow { 0%,100%{box-shadow:0 0 10px rgba(200,196,188,.1),0 0 28px rgba(200,196,188,.03);} 50%{box-shadow:0 0 20px rgba(200,196,188,.22),0 0 44px rgba(200,196,188,.07);} }
         @keyframes loginBtnHov { 0%,100%{box-shadow:0 0 16px rgba(200,196,188,.18);} 50%{box-shadow:0 0 30px rgba(200,196,188,.38);} }
         @keyframes fadeInUp { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
         @keyframes cornerPulse { 0%,100%{opacity:0.35;} 50%{opacity:0.6;} }
@@ -102,23 +101,6 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         position:"relative", zIndex:1,
         animation:"fadeInUp 0.9s ease-out both",
       }}>
-
-        {/* Logo — brightness+contrast filter burns out the dark gradient background */}
-        <div style={{ marginBottom:12, animation:"logoFloat 4.5s ease-in-out infinite" }}>
-          <img
-            src="/the-new-warhammer-brand-logo.png"
-            alt="Warhammer"
-            style={{
-              width: 300,
-              height: "auto",
-              maxWidth: "80vw",
-              objectFit: "contain",
-              mixBlendMode: "screen",
-              filter: "brightness(2.2) contrast(3)",
-              display: "block",
-            }}
-          />
-        </div>
 
         {/* Title */}
         <h1 style={{
