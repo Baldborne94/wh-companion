@@ -327,6 +327,40 @@ function PaintPicker({ onSelect, onClose }) {
   );
 }
 
+// ─── PINTEREST SEARCH ─────────────────────────────────────────────────────
+
+function pinterestUrl(faction, unit, name) {
+  const parts = [faction, unit || name, "warhammer", "miniature", "painting"].filter(Boolean);
+  return `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(parts.join(" "))}`;
+}
+
+function PinterestButton({ faction, unit, name, style = {} }) {
+  const url = pinterestUrl(faction, unit, name);
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 6,
+        border: `1px solid #e60023aa`,
+        background: "transparent",
+        color: "#e60023",
+        fontFamily: "'Cinzel',serif", fontSize: 9,
+        letterSpacing: 1, textDecoration: "none",
+        cursor: "pointer", transition: "background 0.15s",
+        ...style,
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.background = "#e6002322"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+    >
+      ⊕ Pinterest
+    </a>
+  );
+}
+
 // ─── PAINT ROW (colore aggiunto alla mini) ────────────────────────────────
 
 function PaintRow({ paint, onRemove }) {
@@ -416,7 +450,7 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
         )}
         {/* Color swatches */}
         {paints.length > 0 && (
-          <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
             {paints.slice(0,8).map((p, i) => (
               <div key={i}
                 title={`${p.paint_name} (${p.part_name || p.usage_type})`}
@@ -431,6 +465,10 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
               </div>
             )}
           </div>
+        )}
+        {/* Pinterest link */}
+        {(faction || mini.name) && (
+          <PinterestButton faction={faction} unit={mini.unit_type} name={mini.name}/>
         )}
       </div>
     </div>
@@ -872,6 +910,18 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               onApply={handleApplyAi}
               universe={universe}
             />
+          )}
+
+          {/* Pinterest search */}
+          {(form.faction || form.name) && (
+            <div style={{ marginTop:10 }}>
+              <PinterestButton
+                faction={form.faction}
+                unit={form.unit_type}
+                name={form.name}
+                style={{ width:"100%", justifyContent:"center", padding:"10px" }}
+              />
+            </div>
           )}
 
           {/* Color scheme notes */}
