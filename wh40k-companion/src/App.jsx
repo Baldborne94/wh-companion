@@ -34,6 +34,14 @@ function loadAllStatuses(uid){
   }
   return out;
 }
+function loadAoSStatuses(uid){
+  const out={},prefix=`wh40k_status_${uid||'anon'}_`;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k?.startsWith(prefix)){const id=k.slice(prefix.length);if(id.startsWith('aos'))try{out[id]=JSON.parse(localStorage.getItem(k));}catch{}}
+  }
+  return out;
+}
 
 // ─── BOOK DETAIL ──────────────────────────────────────────────────────────────
 function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
@@ -1539,6 +1547,8 @@ export default function App(){
 
   // ── Global statuses — single source of truth ──────────────────────────────
   const [statuses,setStatuses]=useState({});
+  const [aosStatuses,setAosStatuses]=useState({});
+  useEffect(()=>{ setAosStatuses(loadAoSStatuses(user?.id)); },[user?.id]);
   useEffect(()=>{
     const uid=user?.id;
     // Load immediately from localStorage (instant UI)
@@ -1573,6 +1583,12 @@ export default function App(){
         ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
       },"user_id,book_id");
     }
+  },[user?.id]);
+
+  const updateAoSStatus=useCallback((bookId,newStatus)=>{
+    const uid=user?.id;
+    const updated=setBookStatusLS(uid,bookId,newStatus);
+    setAosStatuses(prev=>({...prev,[bookId]:updated}));
   },[user?.id]);
 
   // Landing page: always shown first on each fresh session.
@@ -1696,12 +1712,12 @@ export default function App(){
           {!appReader&&section!=="music"&&(
             <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
               {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-              {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection}/>}
+              {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook}/>}
               {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-              {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user}/>}
+              {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus}/>}
               {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user}/>}
+              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
             </div>
           )}
