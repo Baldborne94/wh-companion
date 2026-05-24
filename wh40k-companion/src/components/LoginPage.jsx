@@ -76,10 +76,10 @@ export default function LoginPage({ authLoading, onEnter, user }) {
 
       {/* Corner accents: top-left 40K red, top-right silver, bottom-left silver, bottom-right AoS blue */}
       {[
-        { top:20,    left:20,    borderTop:`1px solid ${RED}`,  borderLeft:`1px solid ${RED}`,  delay:"0s"   },
+        { top:20,    left:20,    borderTop:`1px solid ${RED}`,    borderLeft:`1px solid ${RED}`,    delay:"0s"   },
         { top:20,    right:20,   borderTop:`1px solid ${SILVER}`, borderRight:`1px solid ${SILVER}`, delay:"0.3s" },
         { bottom:20, left:20,    borderBottom:`1px solid ${SILVER}`, borderLeft:`1px solid ${SILVER}`, delay:"0.6s" },
-        { bottom:20, right:20,   borderBottom:`1px solid ${BLUE}`, borderRight:`1px solid ${BLUE}`, delay:"0.9s" },
+        { bottom:20, right:20,   borderBottom:`1px solid ${BLUE}`,   borderRight:`1px solid ${BLUE}`,  delay:"0.9s" },
       ].map(({ delay, ...s }, i) => (
         <div key={i} style={{
           position:"absolute", ...s,
@@ -89,7 +89,7 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         }}/>
       ))}
 
-      {/* Subtle horizontal dividing light — separates logo area from text */}
+      {/* Subtle horizontal split light */}
       <div style={{
         position:"absolute", top:"42%", left:0, right:0, height:1,
         background:"linear-gradient(to right,transparent,rgba(192,57,43,0.15) 30%,rgba(74,124,181,0.15) 70%,transparent)",
