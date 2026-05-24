@@ -1648,7 +1648,7 @@ export default function App(){
   // Landing page: always shown first on each fresh session.
   // sessionStorage persists across Google OAuth redirects but resets on tab close.
   const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
-  const startApp=useCallback(()=>{ sessionStorage.setItem('wh_started','1'); setAppStarted(true); },[]);
+  const startApp=useCallback(()=>{ sessionStorage.setItem('wh_started','1'); localStorage.removeItem('wh_universe'); setUniverse(null); setAppStarted(true); },[]);
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
   const selectUniverse=(u)=>{ localStorage.setItem('wh_universe',u); setUniverse(u); };

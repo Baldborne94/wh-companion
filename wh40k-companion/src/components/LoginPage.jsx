@@ -1,17 +1,35 @@
 import { signInWithGoogle } from "../lib/supabase";
 import { C } from "../data/constants";
 
-// Generic Warhammer W+hammer symbol SVG
+// Official-style Warhammer W+axe logo — bold W with axe blade, square frame
 function WarhammerSymbolSVG({ size = 130, color = "#C9A850" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2.5" y="2.5" width="95" height="95" stroke={color} strokeWidth="2.5" fill="none"/>
-      <rect x="5.5" y="5.5" width="89" height="89" stroke={color} strokeWidth="0.6" fill="none" opacity="0.4"/>
-      <polyline
-        points="7,84 11,28 19,10 27,28 35,62 43,30 50,15 57,30 65,62 73,28 81,10 89,28 93,84"
-        stroke={color} strokeWidth="11" strokeLinecap="square" strokeLinejoin="miter" fill="none"/>
-      <rect x="43" y="5.5" width="14" height="13" fill={color}/>
-      <rect x="5" y="82" width="90" height="5.5" fill={color}/>
+      {/* Outer square frame */}
+      <rect x="2" y="2" width="96" height="96" stroke={color} strokeWidth="3" fill="none"/>
+      {/* Inner frame line */}
+      <rect x="6" y="6" width="88" height="88" stroke={color} strokeWidth="0.8" fill="none" opacity="0.45"/>
+      {/* Corner accents */}
+      <rect x="2" y="2" width="10" height="3" fill={color}/>
+      <rect x="88" y="2" width="10" height="3" fill={color}/>
+      <rect x="2" y="95" width="10" height="3" fill={color}/>
+      <rect x="88" y="95" width="10" height="3" fill={color}/>
+      <rect x="2" y="2" width="3" height="10" fill={color}/>
+      <rect x="95" y="2" width="3" height="10" fill={color}/>
+      <rect x="2" y="88" width="3" height="10" fill={color}/>
+      <rect x="95" y="88" width="3" height="10" fill={color}/>
+      {/* Bold W shape — two overlapping V strokes */}
+      {/* Left V */}
+      <polygon points="10,18 22,18 32,68 34,68 22,24 34,68 42,18 50,18 36,78 28,78" fill={color}/>
+      {/* Right V */}
+      <polygon points="50,18 58,18 64,78 56,78 50,24 62,68 64,68 74,18 86,18 72,78 64,78" fill={color}/>
+      {/* Center cap block */}
+      <rect x="43" y="8" width="14" height="10" fill={color}/>
+      {/* Bottom base bar */}
+      <rect x="8" y="82" width="84" height="7" fill={color}/>
+      {/* Axe blade on the right side of W */}
+      <polygon points="80,36 92,28 96,40 92,52 80,44 84,40" fill={color} opacity="0.9"/>
+      <rect x="77" y="38" width="6" height="4" fill={color}/>
     </svg>
   );
 }
