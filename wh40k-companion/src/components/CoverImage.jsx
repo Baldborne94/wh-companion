@@ -1,18 +1,34 @@
 import { useState, useEffect, useRef } from "react";
 
 // ─── COVER IMAGE ──────────────────────────────────────────────────────────────
-export const COVER_CACHE_PREFIX = "wh40k_cover_";
+// v2 bumped to bust cached "not found" results from before the Various-author fix
+export const COVER_CACHE_PREFIX = "wh40k_cover_v2_";
 
 export async function fetchBookCover(book) {
   const key = COVER_CACHE_PREFIX + book.id;
   const cached = localStorage.getItem(key);
   if(cached !== null) return cached; // "" = confirmed not found; url = cover
 
+  const various = !book.author || /^various$/i.test(book.author.trim());
+
+  // 0. Open Library ISBN endpoint — most reliable when we have a known ISBN
+  if(book.isbn){
+    try{
+      const probe = await fetch(`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg?default=false`,{method:'HEAD'});
+      if(probe.ok){
+        const url = `https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`;
+        localStorage.setItem(key, url);
+        return url;
+      }
+    }catch{}
+  }
+
   // 1. Try Open Library (better Black Library coverage, free, no key)
   try{
     const t = encodeURIComponent(book.title);
-    const a = encodeURIComponent(book.author);
-    const r = await fetch(`https://openlibrary.org/search.json?title=${t}&author=${a}&limit=1&fields=cover_i`);
+    let olUrl = `https://openlibrary.org/search.json?title=${t}&limit=1&fields=cover_i`;
+    if(!various) olUrl += `&author=${encodeURIComponent(book.author)}`;
+    const r = await fetch(olUrl);
     if(r.ok){
       const d = await r.json();
       const coverId = d.docs?.[0]?.cover_i;
@@ -26,7 +42,10 @@ export async function fetchBookCover(book) {
 
   // 2. Fallback: Google Books
   try{
-    const q = encodeURIComponent(`"${book.title}" ${book.author}`);
+    // For anthologies with no single author, use intitle: to avoid false positives
+    const q = various
+      ? encodeURIComponent(`intitle:"${book.title}"`)
+      : encodeURIComponent(`"${book.title}" ${book.author}`);
     const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
     if(!r.ok){ return r.status>=500 ? null : (localStorage.setItem(key,""), ""); }
     const d = await r.json();
