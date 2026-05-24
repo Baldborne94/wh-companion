@@ -1360,7 +1360,8 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
     sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id`).then(files=>{
       if(files?.length&&!files._error){
         // DB is source of truth — use DB only, discard stale localStorage counts
-        setUploadedIds(new Set(files.map(f=>f.book_id)));
+        // book_id is stored as text in DB; parse to int for 40K books so Set.has() works with numeric b.id
+        setUploadedIds(new Set(files.map(f=>{ const n=parseInt(f.book_id,10); return isNaN(n)?f.book_id:n; })));
       }
       // If DB returns empty/error we keep the localStorage-seeded initial state
     });
