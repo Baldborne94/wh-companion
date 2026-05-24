@@ -1549,7 +1549,27 @@ export default function App(){
   // ── Global statuses — single source of truth ──────────────────────────────
   const [statuses,setStatuses]=useState({});
   const [aosStatuses,setAosStatuses]=useState({});
-  useEffect(()=>{ setAosStatuses(loadAoSStatuses(user?.id)); },[user?.id]);
+  useEffect(()=>{
+    const uid=user?.id;
+    setAosStatuses(loadAoSStatuses(uid));
+    if(!uid) return;
+    sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      const aosRows=rows.filter(r=>String(r.book_id).startsWith('aos'));
+      if(!aosRows.length) return;
+      setAosStatuses(prev=>{
+        const merged={...prev};
+        aosRows.forEach(r=>{
+          const ls=merged[r.book_id];
+          if(!ls||!ls.updatedAt||new Date(r.updated_at)>new Date(ls.updatedAt)){
+            merged[r.book_id]=r;
+            localStorage.setItem(`wh40k_status_${uid}_${r.book_id}`,JSON.stringify(r));
+          }
+        });
+        return merged;
+      });
+    });
+  },[user?.id]);
   useEffect(()=>{
     const uid=user?.id;
     // Load immediately from localStorage (instant UI)
@@ -1590,6 +1610,14 @@ export default function App(){
     const uid=user?.id;
     const updated=setBookStatusLS(uid,bookId,newStatus);
     setAosStatuses(prev=>({...prev,[bookId]:updated}));
+    if(uid){
+      sb.upsert("reading_status",{
+        user_id:uid,book_id:bookId,status:newStatus,
+        updated_at:new Date().toISOString(),
+        ...(newStatus==='reading'&&!updated.startedAt?{started_at:new Date().toISOString()}:{}),
+        ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
+      },"user_id,book_id");
+    }
   },[user?.id]);
 
   // Landing page: always shown first on each fresh session.
