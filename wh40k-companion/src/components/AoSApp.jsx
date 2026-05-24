@@ -1046,46 +1046,327 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
   );
 }
 
+// ─── AoS GETTING STARTED GUIDE ────────────────────────────────────────────────
+function findAoSBook(entry) {
+  if (entry.aos_id) return AOS_BOOKS.find(b => b.id === entry.aos_id);
+  return AOS_BOOKS.find(b => b.title.toLowerCase() === entry.t.toLowerCase());
+}
+
+const AOS_STARTER_GUIDE = [
+  {
+    id:"s1", step:"Step 1", title:"Perfect Entry Point",
+    note:"City of Secrets follows ordinary mortals in Hammerhal — best for a grounded start. Soul Wars dives straight into the cosmic conflict between the God-King and the God of Death.",
+    pickOne:true,
+    options:[
+      { label:"Grounded Start", color:"#5a8fc5", note:"Ordinary mortals in a free city. No prior knowledge needed — the most recommended starting point.", books:[
+        { t:"City of Secrets", a:"Nick Horth", type:"novel", aos_id:"aos27" },
+      ]},
+      { label:"Epic Start", color:"#C9A227", note:"The big AoS event novel. Start here if you want to dive straight into the cosmic scale.", books:[
+        { t:"Soul Wars", a:"Josh Reynolds", type:"novel", aos_id:"aos42" },
+      ]},
+    ],
+  },
+  {
+    id:"s2", step:"Step 2", title:"Modern Age of Sigmar",
+    note:"Dominion is the novelisation of the AoS 3.0 launch — Stormcast Eternals clash with the Kruleboyz orruks. Excellent grounding in the current state of the Mortal Realms.",
+    books:[{ t:"Dominion", a:"Darius Hinks", type:"novel", aos_id:"aos51" }],
+  },
+  {
+    id:"s3", step:"Step 3", title:"Choose Your Path",
+    pickOne:true,
+    options:[
+      { label:"Stormcast Eternals", color:"#5a8fc5",
+        note:"Sigmar's golden warriors, reforged from worthy mortal souls. The definitive Stormcast novel series.",
+        books:[
+          { t:"Hallowed Knights: Plague Garden", a:"Josh Reynolds", type:"novel", aos_id:"aos14" },
+          { t:"Hallowed Knights: Black Pyramid",  a:"Josh Reynolds", type:"novel", aos_id:"aos15" },
+        ]},
+      { label:"Gotrek Gurnisson", color:"#a07838",
+        note:"The legendary Slayer from Warhammer Fantasy, lost and furious in a new world. No prior WFB knowledge needed.",
+        books:[
+          { t:"Ghoulslayer", a:"Darius Hinks", type:"novel", aos_id:"aos21" },
+          { t:"Gitslayer",   a:"Darius Hinks", type:"novel", aos_id:"aos22" },
+          { t:"Soulslayer",  a:"Darius Hinks", type:"novel", aos_id:"aos23" },
+        ]},
+      { label:"Intrigue & Mystery", color:"#607080",
+        note:"Callis and Toll — a witch hunter and a rogue adventurer. Detective noir in the Mortal Realms.",
+        books:[
+          { t:"City of Secrets",                  a:"Nick Horth", type:"novel", aos_id:"aos27" },
+          { t:"Callis and Toll: The Silver Shard", a:"Nick Horth", type:"novel", aos_id:"aos28" },
+          { t:"Callis and Toll",                   a:"Nick Horth", type:"novel", aos_id:"aos29" },
+        ]},
+      { label:"Grand Adventure", color:"#7a5aaa",
+        note:"Eight Lamentations — a multi-faction quest across multiple realms to find legendary weapons.",
+        books:[
+          { t:"Eight Lamentations: Spear of Shadows", a:"Josh Reynolds", type:"novel", aos_id:"aos17" },
+        ]},
+    ],
+  },
+  {
+    id:"s4", step:"Further Reading", title:"Explore the Realms",
+    note:"Once you have a feel for the setting, these standalone books expand into other factions and corners of the Mortal Realms.",
+    books:[
+      { t:"Hamilcar: Champion of the Gods", a:"David Guymer",  type:"novel", aos_id:"aos25", opt:true },
+      { t:"Blacktalon: First Mark",          a:"Andy Clark",    type:"novel", aos_id:"aos30", opt:true },
+      { t:"The Arkanaut's Oath",             a:"Guy Haley",     type:"novel", aos_id:"aos32", opt:true },
+      { t:"Nagash: The Undying King",        a:"Josh Reynolds", type:"novel", aos_id:"aos41", opt:true },
+    ],
+  },
+];
+
+function AoSBookRow({ entry, statuses, isLast }) {
+  const book = findAoSBook(entry);
+  const status = book ? statuses[book.id]?.status || 'none' : null;
+  const stCfg = status && status !== 'none' ? STATUS_CFG[status] : null;
+  const type = entry.type || 'novel';
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", borderBottom:isLast?"none":`1px solid ${AOS.border}22`, opacity:type==='audio'?0.72:1 }}>
+      <span style={{ fontSize:11, flexShrink:0, width:18, textAlign:"center" }}>
+        {type==='audio'?'🎧':type==='novella'?'📑':'📖'}
+      </span>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:12, color:entry.opt?AOS.muted:AOS.text, fontStyle:entry.opt?"italic":"normal", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'Cinzel',serif" }}>
+          {entry.t}
+          {entry.opt && <span style={{ fontSize:9, color:AOS.muted, marginLeft:4 }}>(optional)</span>}
+        </div>
+        <div style={{ fontSize:10, color:AOS.muted }}>{entry.a}</div>
+      </div>
+      {stCfg && <span style={{ fontSize:13, flexShrink:0 }}>{stCfg.icon}</span>}
+    </div>
+  );
+}
+
+function AoSGetStartedSection({ statuses }) {
+  const [open, setOpen] = useState(new Set(['s1']));
+  const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const StepCard = ({ step }) => {
+    const isOpen = open.has(step.id);
+    const allBooks = step.pickOne ? (step.options||[]).flatMap(o => o.books||[]) : (step.books||[]);
+    const matched = allBooks.map(e => findAoSBook(e)).filter(Boolean);
+    const readCount = matched.filter(b => statuses[b.id]?.status === 'read').length;
+    const allRead = matched.length > 0 && readCount === matched.length;
+    return (
+      <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderLeft:`3px solid ${allRead?AOS.green:AOS.dim}`, borderRadius:10, overflow:"hidden" }}>
+        <div onClick={() => toggle(step.id)} style={{ padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:3 }}>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{step.step}</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{step.title}</span>
+            </div>
+            <div style={{ fontSize:10, color:AOS.muted }}>
+              {step.pickOne ? "Pick one path" : `${allBooks.length} book${allBooks.length!==1?"s":""}`}
+              {matched.length>0&&readCount>0&&<span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{matched.length} read</span>}
+            </div>
+          </div>
+          <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isOpen?"rotate(90deg)":"none" }}>›</span>
+        </div>
+        {isOpen && (
+          <div style={{ borderTop:`1px solid ${AOS.border}`, padding:"10px 14px 12px" }}>
+            {step.note && (
+              <div style={{ fontSize:11, color:AOS.gold, fontStyle:"italic", marginBottom:10, padding:"6px 10px", background:`${AOS.gold}0a`, borderRadius:6, borderLeft:`2px solid ${AOS.gold}44` }}>
+                {step.note}
+              </div>
+            )}
+            {step.pickOne ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {(step.options||[]).map((opt,oi) => (
+                  <div key={oi} style={{ background:AOS.surface, border:`1px solid ${AOS.border}`, borderLeft:`3px solid ${opt.color||AOS.gold}`, borderRadius:8, padding:"8px 10px" }}>
+                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:opt.color||AOS.gold, letterSpacing:2, marginBottom:opt.note?4:6 }}>{opt.label.toUpperCase()}</div>
+                    {opt.note && <div style={{ fontSize:10, color:AOS.muted, fontStyle:"italic", marginBottom:6 }}>💡 {opt.note}</div>}
+                    {(opt.books||[]).map((e,i) => <AoSBookRow key={i} entry={e} statuses={statuses} isLast={i===opt.books.length-1}/>)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              (step.books||[]).map((e,i) => <AoSBookRow key={i} entry={e} statuses={statuses} isLast={i===step.books.length-1}/>)
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>Getting Started Guide</div>
+        <div style={{ fontSize:11, color:AOS.muted, marginBottom:6 }}>
+          A curated path into the Mortal Realms, based on{' '}
+          <a href="https://www.trackofwords.com/2018/09/12/getting-started-with-black-library-age-of-sigmar/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline", textDecorationColor:`${AOS.blue}66` }}>Track of Words</a>
+        </div>
+      </div>
+      <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
+        {AOS_STARTER_GUIDE.map(step => <StepCard key={step.id} step={step}/>)}
+        <div style={{ marginTop:8, padding:"10px 12px", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:8, fontSize:10, color:AOS.muted, lineHeight:1.6, textAlign:"center" }}>
+          Guide based on recommendations by{' '}
+          <a href="https://www.trackofwords.com/tag/where-to-start-with-black-library/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline" }}>Track of Words</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── AoS PATH TO GLORY ────────────────────────────────────────────────────────
-export function AoSCrusadeSection() {
-  const REALMS = [
-    { name:"Aqshy",  sub:"Realm of Fire",    color:"#C0392B", icon:"🔥" },
-    { name:"Ghyran", sub:"Realm of Life",    color:"#4aaa6a", icon:"🌿" },
-    { name:"Shyish", sub:"Realm of Death",   color:"#7a5aaa", icon:"💀" },
-    { name:"Azyr",   sub:"Realm of Heavens", color:"#5a8fc5", icon:"⭐" },
-    { name:"Chamon", sub:"Realm of Metal",   color:"#8a8a4a", icon:"⚙️" },
-    { name:"Ghur",   sub:"Realm of Beasts",  color:"#8a5a2a", icon:"🦴" },
-    { name:"Ulgu",   sub:"Realm of Shadow",  color:"#4a4a6a", icon:"🌑" },
-    { name:"Hysh",   sub:"Realm of Light",   color:"#aaa060", icon:"✨" },
-  ];
+const REALMS = [
+  { name:"Aqshy",  sub:"Realm of Fire",    color:"#C0392B", icon:"🔥" },
+  { name:"Ghyran", sub:"Realm of Life",    color:"#4aaa6a", icon:"🌿" },
+  { name:"Shyish", sub:"Realm of Death",   color:"#7a5aaa", icon:"💀" },
+  { name:"Azyr",   sub:"Realm of Heavens", color:"#5a8fc5", icon:"⭐" },
+  { name:"Chamon", sub:"Realm of Metal",   color:"#8a8a4a", icon:"⚙️" },
+  { name:"Ghur",   sub:"Realm of Beasts",  color:"#8a5a2a", icon:"🦴" },
+  { name:"Ulgu",   sub:"Realm of Shadow",  color:"#4a4a6a", icon:"🌑" },
+  { name:"Hysh",   sub:"Realm of Light",   color:"#aaa060", icon:"✨" },
+];
+
+export function AoSCrusadeSection({ user }) {
+  const [tab,      setTab]      = useState('overview');
+  const [statuses, setStatuses] = useState({});
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    const uid = user?.id || 'anon';
+    const prefix = `wh40k_status_${uid}_`;
+    const out = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(prefix)) {
+        const id = k.slice(prefix.length);
+        if (id.startsWith('aos')) try { out[id] = JSON.parse(localStorage.getItem(k)); } catch {}
+      }
+    }
+    setStatuses(out);
+  }, [user?.id]);
+
+  const nonCodex = useMemo(() => AOS_BOOKS.filter(b => b.type !== 'Codex'), []);
+  const readCount    = useMemo(() => nonCodex.filter(b => statuses[b.id]?.status === 'read').length,    [statuses, nonCodex]);
+  const readingCount = useMemo(() => nonCodex.filter(b => statuses[b.id]?.status === 'reading').length, [statuses, nonCodex]);
+  const wantCount    = useMemo(() => nonCodex.filter(b => statuses[b.id]?.status === 'want').length,    [statuses, nonCodex]);
+  const total        = nonCodex.length;
+
+  const seriesList = useMemo(() => {
+    const map = {};
+    nonCodex.filter(b => b.series).forEach(b => { if (!map[b.series]) map[b.series] = []; map[b.series].push(b); });
+    return Object.entries(map).map(([name, books]) => {
+      const sorted = [...books].sort((a,b) => a.num - b.num);
+      const rc = sorted.filter(b => statuses[b.id]?.status === 'read').length;
+      const nc = sorted.filter(b => statuses[b.id]?.status === 'reading').length;
+      return { name, books:sorted, total:sorted.length, readCount:rc, readingCount:nc };
+    }).sort((a,b) => {
+      if (a.readingCount>0&&!b.readingCount) return -1;
+      if (b.readingCount>0&&!a.readingCount) return 1;
+      if (b.readCount!==a.readCount) return b.readCount-a.readCount;
+      return b.total-a.total;
+    });
+  }, [statuses, nonCodex]);
+
   return (
     <div style={{ paddingBottom:80, minHeight:"100%", background:AOS.bg }}>
-      <div style={{ padding:"22px 16px 20px", borderBottom:`1px solid ${AOS.border}` }}>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>Narrative Play</div>
-        <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:6 }}>Path to Glory</h2>
-        <p style={{ fontSize:12, color:AOS.muted, lineHeight:1.7 }}>Track your narrative campaigns across the Mortal Realms.</p>
+      {/* Tab bar */}
+      <div style={{ display:"flex", borderBottom:`1px solid ${AOS.border}`, background:AOS.surface, position:"sticky", top:0, zIndex:5 }}>
+        {[{ id:"overview", label:"Overview" }, { id:"guide", label:"🌟 Getting Started" }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex:1, padding:"12px 4px", background:"transparent", border:"none",
+            borderBottom:`2px solid ${tab===t.id?AOS.gold:"transparent"}`,
+            color:tab===t.id?AOS.gold:AOS.muted,
+            fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+            cursor:"pointer", textTransform:"uppercase", transition:"color 0.15s",
+          }}>{t.label}</button>
+        ))}
       </div>
-      <div style={{ margin:"20px 16px 0", background:`linear-gradient(135deg,${AOS.gold}10,${AOS.card})`, border:`1px solid ${AOS.gold}44`, borderRadius:12, padding:"20px 18px", textAlign:"center" }}>
-        <div style={{ fontSize:40, marginBottom:12 }}>🛡️</div>
-        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:16, color:AOS.text, marginBottom:8 }}>Coming Soon</div>
-        <div style={{ fontSize:12, color:AOS.muted, lineHeight:1.7, maxWidth:300, margin:"0 auto" }}>
-          The Path to Glory campaign tracker — warband management, victories and narrative progression — is in development.
-        </div>
-      </div>
-      <div style={{ padding:"20px 16px" }}>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>The Mortal Realms</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-          {REALMS.map(r => (
-            <div key={r.name} style={{ background:`linear-gradient(135deg,${r.color}18,${AOS.card})`, border:`1px solid ${r.color}44`, borderLeft:`3px solid ${r.color}`, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
-              <span style={{ fontSize:22 }}>{r.icon}</span>
-              <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, color:AOS.text }}>{r.name}</div>
-                <div style={{ fontSize:10, color:r.color, letterSpacing:0.5 }}>{r.sub}</div>
+
+      {tab==="guide" && <AoSGetStartedSection statuses={statuses}/>}
+
+      {tab==="overview" && <>
+        {/* Header + stats */}
+        <div style={{ padding:"22px 16px 12px", borderBottom:`1px solid ${AOS.border}` }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>Black Library</div>
+          <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:14 }}>Path to Glory</h2>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
+            {[
+              { label:"Read",    count:readCount,    color:AOS.green },
+              { label:"Reading", count:readingCount, color:AOS.blue  },
+              { label:"To Read", count:wantCount,    color:AOS.gold  },
+              { label:"Total",   count:total,        color:AOS.muted },
+            ].map(s => (
+              <div key={s.label} style={{ flex:"1 1 60px", background:AOS.card, border:`1px solid ${s.color}44`, borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
+                <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:20, color:s.color, lineHeight:1 }}>{s.count}</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:2, marginTop:4 }}>{s.label}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div style={{ height:6, background:AOS.dim, borderRadius:3, overflow:"hidden" }}>
+            <div style={{ height:"100%", width:`${total>0?(readCount/total)*100:0}%`, background:`linear-gradient(to right,${AOS.green},${AOS.gold})`, borderRadius:3, transition:"width 0.5s ease" }}/>
+          </div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, marginTop:6, textAlign:"right" }}>
+            {total>0?Math.round((readCount/total)*100):0}% COMPLETE
+          </div>
         </div>
-      </div>
+
+        {/* Series list */}
+        <div style={{ padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
+          {seriesList.map(serie => {
+            const pct = serie.total>0?(serie.readCount/serie.total)*100:0;
+            const isExp = expanded===serie.name;
+            return (
+              <div key={serie.name} style={{ background:AOS.card, border:`1px solid ${serie.readingCount>0?AOS.blue:AOS.border}`, borderLeft:`3px solid ${serie.readingCount>0?AOS.blue:serie.readCount===serie.total&&serie.total>0?AOS.green:AOS.dim}`, borderRadius:10, overflow:"hidden" }}>
+                <div onClick={() => setExpanded(isExp?null:serie.name)} style={{ padding:"12px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, fontWeight:700, color:AOS.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{serie.name}</div>
+                    <div style={{ height:4, background:AOS.dim, borderRadius:2, overflow:"hidden", marginTop:6 }}>
+                      <div style={{ height:"100%", width:`${pct}%`, background:pct>=100?AOS.green:AOS.gold, borderRadius:2 }}/>
+                    </div>
+                    <div style={{ display:"flex", gap:10, marginTop:5 }}>
+                      {serie.readCount>0&&<span style={{ fontSize:10, color:AOS.green }}>✅ {serie.readCount}</span>}
+                      {serie.readingCount>0&&<span style={{ fontSize:10, color:AOS.blue }}>📖 {serie.readingCount}</span>}
+                      <span style={{ fontSize:10, color:AOS.muted }}>{serie.total} books</span>
+                    </div>
+                  </div>
+                  <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isExp?"rotate(90deg)":"none" }}>›</span>
+                </div>
+                {isExp && (
+                  <div style={{ borderTop:`1px solid ${AOS.border}`, padding:"8px 14px 10px", display:"flex", flexDirection:"column", gap:4 }}>
+                    {serie.books.map((b,bi) => {
+                      const st = statuses[b.id]?.status||'none';
+                      const stCfg = st!=='none'?STATUS_CFG[st]:null;
+                      return (
+                        <div key={b.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0", borderBottom:bi<serie.books.length-1?`1px solid ${AOS.border}22`:"none" }}>
+                          <span style={{ fontSize:11, flexShrink:0, width:18, textAlign:"center" }}>
+                            {b.type==='Audio Drama'?'🎧':b.type==='Anthology'?'📚':b.type==='Novella'?'📑':'📖'}
+                          </span>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:12, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'Cinzel',serif" }}>
+                              {b.title}{b.num>0&&<span style={{ fontSize:9, color:AOS.goldDim, marginLeft:4 }}>#{b.num}</span>}
+                            </div>
+                            <div style={{ fontSize:10, color:AOS.muted }}>{b.author}</div>
+                          </div>
+                          {stCfg&&<span style={{ fontSize:13, flexShrink:0 }}>{stCfg.icon}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mortal Realms grid */}
+        <div style={{ padding:"0 16px 16px" }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>The Mortal Realms</div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            {REALMS.map(r => (
+              <div key={r.name} style={{ background:`linear-gradient(135deg,${r.color}18,${AOS.card})`, border:`1px solid ${r.color}44`, borderLeft:`3px solid ${r.color}`, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                <span style={{ fontSize:22 }}>{r.icon}</span>
+                <div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, color:AOS.text }}>{r.name}</div>
+                  <div style={{ fontSize:10, color:r.color, letterSpacing:0.5 }}>{r.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>}
     </div>
   );
 }

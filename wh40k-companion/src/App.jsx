@@ -1701,7 +1701,7 @@ export default function App(){
               {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user}/>}
               {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection/>}
+              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user}/>}
               {section==="painting"&&<PaintingTracker user={user}/>}
             </div>
           )}
