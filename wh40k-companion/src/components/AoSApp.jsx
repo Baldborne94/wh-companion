@@ -320,7 +320,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
       localStorage.setItem(`wh40k_ebook_${user.id}_${book.id}`, JSON.stringify(meta));
       setEbookMeta(meta);
       if (dbResult?._error) {
-        setUploadMsg(`⚠️ File saved but DB error: ${dbResult._body?.slice(0,80)}`);
+        setUploadMsg(`⚠️ File saved but DB error ${dbResult._error}: ${dbResult._body?.slice(0,80)}`);
       } else {
         setUploadMsg("✅ Uploaded & synced!");
       }
