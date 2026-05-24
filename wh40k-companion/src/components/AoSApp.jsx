@@ -61,12 +61,12 @@ export const AOS_BOOKS = [
   { id:"aos13",  title:"The Realmgate Wars: Volume 2",              author:"Various",                                              series:"The Realmgate Wars", num:13, type:"Omnibus"     },
 
   // ── HALLOWED KNIGHTS ───────────────────────────────────────────────────────
-  { id:"aos14",  title:"Hallowed Knights: Plague Garden",           author:"Josh Reynolds",                                        series:"Hallowed Knights",   num:1,  type:"Novel"       },
-  { id:"aos15",  title:"Hallowed Knights: Black Pyramid",           author:"Josh Reynolds",                                        series:"Hallowed Knights",   num:2,  type:"Novel"       },
+  { id:"aos14",  title:"Hallowed Knights: Plague Garden",           author:"Josh Reynolds",                                        series:"Hallowed Knights",   num:1,  type:"Novel",       isbn:"9781784966218" },
+  { id:"aos15",  title:"Hallowed Knights: Black Pyramid",           author:"Josh Reynolds",                                        series:"Hallowed Knights",   num:2,  type:"Novel",       isbn:"9781784969301" },
   { id:"aos16",  title:"Hallowed Knights: The Denied",              author:"Josh Reynolds",                                        series:"Hallowed Knights",   num:3,  type:"Audio Drama" },
 
   // ── EIGHT LAMENTATIONS ────────────────────────────────────────────────────
-  { id:"aos17",  title:"Eight Lamentations: Spear of Shadows",      author:"Josh Reynolds",                                        series:"Eight Lamentations", num:1,  type:"Novel"       },
+  { id:"aos17",  title:"Eight Lamentations: Spear of Shadows",      author:"Josh Reynolds",                                        series:"Eight Lamentations", num:1,  type:"Novel",       isbn:"9781784966676" },
   { id:"aos18",  title:"Eight Lamentations: War-Claw",              author:"Josh Reynolds",                                        series:"Eight Lamentations", num:2,  type:"Audio Drama" },
 
   // ── GOTREK AND FELIX ──────────────────────────────────────────────────────
@@ -90,10 +90,10 @@ export const AOS_BOOKS = [
   // — Age of Sigmar continuation
   { id:"aos19",  title:"Realmslayer",                              author:"David Guymer",     series:"Gotrek and Felix", num:17, type:"Audio Drama" },
   { id:"aos20",  title:"Realmslayer: Blood of the Old World",      author:"David Guymer",     series:"Gotrek and Felix", num:18, type:"Audio Drama" },
-  { id:"aos21",  title:"Ghoulslayer",                              author:"Darius Hinks",     series:"Gotrek and Felix", num:19, type:"Novel"      },
-  { id:"aos22",  title:"Gitslayer",                                author:"Darius Hinks",     series:"Gotrek and Felix", num:20, type:"Novel"      },
-  { id:"aos23",  title:"Soulslayer",                               author:"Darius Hinks",     series:"Gotrek and Felix", num:21, type:"Novel"      },
-  { id:"aos24",  title:"Blightslayer",                             author:"Richard Strachan", series:"Gotrek and Felix", num:22, type:"Novel"      },
+  { id:"aos21",  title:"Ghoulslayer",                              author:"Darius Hinks",     series:"Gotrek and Felix", num:19, type:"Novel",      isbn:"9781789990553" },
+  { id:"aos22",  title:"Gitslayer",                                author:"Darius Hinks",     series:"Gotrek and Felix", num:20, type:"Novel",      isbn:"9781800261044" },
+  { id:"aos23",  title:"Soulslayer",                               author:"Darius Hinks",     series:"Gotrek and Felix", num:21, type:"Novel",      isbn:"9781800262478" },
+  { id:"aos24",  title:"Blightslayer",                             author:"Richard Strachan", series:"Gotrek and Felix", num:22, type:"Novel",      isbn:"9781804073551" },
   { id:"aos67",  title:"Realmslayer: Legend of the Doomseeker",   author:"David Guymer",     series:"Gotrek and Felix", num:23, type:"Audio Drama" },
 
   // ── HAMILCAR ──────────────────────────────────────────────────────────────
@@ -101,16 +101,16 @@ export const AOS_BOOKS = [
   { id:"aos26",  title:"Hamilcar: Champion of Chaos",               author:"David Guymer",                                         series:"Hamilcar",           num:2,  type:"Audio Drama" },
 
   // ── CALLIS AND TOLL ───────────────────────────────────────────────────────
-  { id:"aos27",  title:"City of Secrets",                           author:"Nick Horth",                                           series:"Callis and Toll",    num:1,  type:"Novel"       },
-  { id:"aos28",  title:"Callis and Toll: The Silver Shard",         author:"Nick Horth",                                           series:"Callis and Toll",    num:2,  type:"Novel"       },
+  { id:"aos27",  title:"City of Secrets",                           author:"Nick Horth",                                           series:"Callis and Toll",    num:1,  type:"Novel",       isbn:"9781784967512" },
+  { id:"aos28",  title:"Callis and Toll: The Silver Shard",         author:"Nick Horth",                                           series:"Callis and Toll",    num:2,  type:"Novel",       isbn:"9781784968564" },
   { id:"aos29",  title:"Callis and Toll",                           author:"Nick Horth",                                           series:"Callis and Toll",    num:3,  type:"Novel"       },
 
   // ── BLACKTALON ────────────────────────────────────────────────────────────
-  { id:"aos30",  title:"Blacktalon: First Mark",                    author:"Andy Clark",                                           series:"Blacktalon",         num:1,  type:"Novel"       },
+  { id:"aos30",  title:"Blacktalon: First Mark",                    author:"Andy Clark",                                           series:"Blacktalon",         num:1,  type:"Novel",       isbn:"9781784969042" },
   { id:"aos31",  title:"Blacktalon",                                author:"Liane Merciel",                                        series:"Blacktalon",         num:2,  type:"Novel"       },
 
   // ── DREKKI FLYNT ──────────────────────────────────────────────────────────
-  { id:"aos32",  title:"The Arkanaut's Oath",                       author:"Guy Haley",                                            series:"Drekki Flynt",       num:1,  type:"Novel"       },
+  { id:"aos32",  title:"The Arkanaut's Oath",                       author:"Guy Haley",                                            series:"Drekki Flynt",       num:1,  type:"Novel",       isbn:"9781789994766" },
   { id:"aos33",  title:"The Ghosts of Barak-Minoz",                 author:"Guy Haley",                                            series:"Drekki Flynt",       num:2,  type:"Novel"       },
   { id:"aos66",  title:"Profit's Ruin",                             author:"Josh Reynolds",                                        series:"Drekki Flynt",       num:3,  type:"Novel"       },
 
@@ -127,7 +127,7 @@ export const AOS_BOOKS = [
 
   // ── STANDALONE NOVELS ─────────────────────────────────────────────────────
   { id:"aos41",  title:"Nagash: The Undying King",                  author:"Josh Reynolds",          series:"", num:0, type:"Novel"   },
-  { id:"aos42",  title:"Soul Wars",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novel"   },
+  { id:"aos42",  title:"Soul Wars",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novel",   isbn:"9781784969899" },
   { id:"aos43",  title:"Neferata: Mortarch of Blood",               author:"David Annandale",        series:"Neferata",   num:1, type:"Novel"   },
   { id:"aos44",  title:"Neferata: The Dominion of Bones",           author:"David Annandale",        series:"Neferata",   num:2, type:"Novel"   },
   { id:"aos45",  title:"Gloomspite",                                author:"Andy Clark",             series:"", num:0, type:"Novel"   },
@@ -136,17 +136,17 @@ export const AOS_BOOKS = [
   { id:"aos48",  title:"Stormvault",                                author:"Andy Clark",             series:"", num:0, type:"Novel"   },
   { id:"aos49",  title:"Bonereapers",                               author:"David Guymer",           series:"", num:0, type:"Novella" },
   { id:"aos50",  title:"The End of Enlightenment",                  author:"Richard Strachan",       series:"", num:0, type:"Novel"   },
-  { id:"aos51",  title:"Dominion",                                  author:"Darius Hinks",           series:"", num:0, type:"Novel"   },
+  { id:"aos51",  title:"Dominion",                                  author:"Darius Hinks",           series:"", num:0, type:"Novel",   isbn:"9781789999556" },
   { id:"aos52",  title:"Cursed City",                               author:"C L Werner",             series:"", num:0, type:"Novel"   },
   { id:"aos53",  title:"The Hollow King",                           author:"John French",            series:"", num:0, type:"Novel"   },
   { id:"aos54",  title:"Harrowed Ground",                           author:"Richard Strachan",       series:"", num:0, type:"Novel"   },
   { id:"aos55",  title:"Skaventide",                                author:"Gary Kloster",           series:"", num:0, type:"Novel"   },
   { id:"aos56",  title:"Starseer's Ruin",                           author:"Adrian Tchaikovsky",     series:"", num:0, type:"Novel"   },
-  { id:"aos68",  title:"Hammerhal",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novella" },
+  { id:"aos68",  title:"Hammerhal",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novella", isbn:"9781784967505" },
   { id:"aos69",  title:"The Red Feast",                             author:"Gav Thorpe",             series:"", num:0, type:"Novel"   },
   { id:"aos70",  title:"Dark Harvest",                              author:"Josh Reynolds",          series:"Warhammer Horror",    num:1, type:"Novel"   },
   { id:"aos71",  title:"Gothghul Hollow",                           author:"Anna Stephens",          series:"Warhammer Horror",    num:2, type:"Novel"   },
-  { id:"aos72",  title:"Godeater's Son",                            author:"Noah Van Nguyen",        series:"", num:0, type:"Novel"   },
+  { id:"aos72",  title:"Godeater's Son",                            author:"Noah Van Nguyen",        series:"", num:0, type:"Novel",   isbn:"9781800262836" },
   { id:"aos73",  title:"The Last Volari",                           author:"Gary Kloster",           series:"", num:0, type:"Novel"   },
   { id:"aos74",  title:"Kragnos: Avatar of Destruction",            author:"David Guymer",           series:"", num:0, type:"Novel"   },
   { id:"aos75",  title:"Yndrasta: The Celestial Spear",             author:"Noah Van Nguyen",        series:"", num:0, type:"Novel"   },
@@ -170,7 +170,7 @@ export const AOS_BOOKS = [
   { id:"aos65",  title:"Untamed Realms",                            author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos81",  title:"Hammerhal & Other Stories",                 author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos82",  title:"Call of Chaos",                             author:"Various",                series:"", num:0, type:"Anthology" },
-  { id:"aos83",  title:"Champions of the Mortal Realms",            author:"Various",                series:"", num:0, type:"Anthology" },
+  { id:"aos83",  title:"Champions of the Mortal Realms",            author:"Various",                series:"", num:0, type:"Anthology", isbn:"9781781939581" },
   { id:"aos84",  title:"Conquest Unbound",                          author:"Various",                series:"", num:0, type:"Anthology" },
   { id:"aos85",  title:"Grombrindal: Chronicles of the Wanderer",   author:"Various",                series:"", num:0, type:"Anthology" },
 

@@ -11,6 +11,18 @@ export async function fetchBookCover(book) {
 
   const various = !book.author || /^various$/i.test(book.author.trim());
 
+  // 0. Open Library ISBN endpoint — most reliable when we have a known ISBN
+  if(book.isbn){
+    try{
+      const probe = await fetch(`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg?default=false`,{method:'HEAD'});
+      if(probe.ok){
+        const url = `https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`;
+        localStorage.setItem(key, url);
+        return url;
+      }
+    }catch{}
+  }
+
   // 1. Try Open Library (better Black Library coverage, free, no key)
   try{
     const t = encodeURIComponent(book.title);
