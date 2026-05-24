@@ -10,7 +10,7 @@ create extension if not exists "uuid-ossp";
 create table if not exists ebook_files (
   id         uuid primary key default uuid_generate_v4(),
   user_id    uuid references auth.users(id) on delete cascade,
-  book_id    int  not null,
+  book_id    text not null,
   file_name  text not null,
   file_path  text not null,
   file_type  text not null check (file_type in ('epub','pdf')),
@@ -22,7 +22,7 @@ create table if not exists ebook_files (
 create table if not exists reading_progress (
   id             uuid primary key default uuid_generate_v4(),
   user_id        uuid references auth.users(id) on delete cascade,
-  book_id        int  not null,
+  book_id        text not null,
   chapter_index  int  not null default 0,
   page_index     int  not null default 0,   -- page within chapter (paginated mode)
   progress_pct   float not null default 0,  -- 0-1 overall percentage
