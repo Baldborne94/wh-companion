@@ -4,28 +4,75 @@ import { useState } from "react";
 function SigmarHammerSVG({ size = 120, color = "#C9A227" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Hammer head */}
       <rect x="28" y="12" width="44" height="20" rx="4" fill={color} opacity="0.95"/>
-      {/* Hammer handle */}
       <rect x="45" y="32" width="10" height="52" rx="3" fill={color} opacity="0.85"/>
-      {/* Cross-guard */}
       <rect x="32" y="36" width="36" height="6" rx="2" fill={color} opacity="0.7"/>
-      {/* Grip wrap */}
       <rect x="46" y="44" width="8" height="3" rx="1" fill={color} opacity="0.4"/>
       <rect x="46" y="52" width="8" height="3" rx="1" fill={color} opacity="0.4"/>
       <rect x="46" y="60" width="8" height="3" rx="1" fill={color} opacity="0.4"/>
-      {/* Pommel */}
       <circle cx="50" cy="88" r="6" fill={color} opacity="0.8"/>
-      {/* Stars/comet sparks */}
       <circle cx="18" cy="22" r="2.5" fill={color} opacity="0.6"/>
       <circle cx="82" cy="18" r="2" fill={color} opacity="0.5"/>
       <circle cx="14" cy="50" r="1.5" fill={color} opacity="0.35"/>
       <circle cx="86" cy="55" r="1.5" fill={color} opacity="0.35"/>
       <circle cx="22" cy="75" r="1" fill={color} opacity="0.25"/>
       <circle cx="78" cy="78" r="1" fill={color} opacity="0.25"/>
-      {/* Lightning bolts */}
       <path d="M22 35 L30 50 L24 50 L34 68" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" fill="none"/>
       <path d="M78 35 L70 50 L76 50 L66 68" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" fill="none"/>
+    </svg>
+  );
+}
+
+// SVG Imperial Aquila — double-headed eagle for the 40K panel
+function AquilaSVG({ size = 130, color = "#C0392B", glow = false }) {
+  return (
+    <svg width={size} height={size * 0.65} viewBox="0 0 200 130" fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ filter: glow ? `drop-shadow(0 0 14px ${color}99)` : `drop-shadow(0 0 5px ${color}55)` }}>
+      {/* Body */}
+      <ellipse cx="100" cy="72" rx="14" ry="22" fill={color} opacity="0.95"/>
+      {/* Left wing */}
+      <path d="M88 68 Q60 40 10 28 Q22 52 42 66 Q62 80 86 78 Z" fill={color} opacity="0.9"/>
+      <path d="M86 75 Q50 62 14 52 Q28 72 54 80 Q72 86 87 82 Z" fill={color} opacity="0.7"/>
+      <path d="M10 28 Q2 34 4 44 Q12 40 22 44 Q14 36 10 28 Z" fill={color} opacity="0.85"/>
+      <path d="M14 42 Q6 50 8 60 Q16 54 26 58 Q18 50 14 42 Z" fill={color} opacity="0.75"/>
+      <path d="M86 78 Q64 58 18 34" stroke={color} strokeWidth="1" opacity="0.4" fill="none"/>
+      <path d="M87 82 Q58 66 20 50" stroke={color} strokeWidth="1" opacity="0.35" fill="none"/>
+      {/* Right wing */}
+      <path d="M112 68 Q140 40 190 28 Q178 52 158 66 Q138 80 114 78 Z" fill={color} opacity="0.9"/>
+      <path d="M114 75 Q150 62 186 52 Q172 72 146 80 Q128 86 113 82 Z" fill={color} opacity="0.7"/>
+      <path d="M190 28 Q198 34 196 44 Q188 40 178 44 Q186 36 190 28 Z" fill={color} opacity="0.85"/>
+      <path d="M186 42 Q194 50 192 60 Q184 54 174 58 Q182 50 186 42 Z" fill={color} opacity="0.75"/>
+      <path d="M114 78 Q136 58 182 34" stroke={color} strokeWidth="1" opacity="0.4" fill="none"/>
+      <path d="M113 82 Q142 66 180 50" stroke={color} strokeWidth="1" opacity="0.35" fill="none"/>
+      {/* Left head */}
+      <ellipse cx="82" cy="38" rx="10" ry="11" fill={color} opacity="0.95"/>
+      <path d="M74 40 L63 43 L74 46 Z" fill={color} opacity="0.9"/>
+      <path d="M80 28 L76 17 L85 26 Z" fill={color} opacity="0.8"/>
+      <path d="M85 27 L84 15 L91 25 Z" fill={color} opacity="0.7"/>
+      <path d="M89 28 L92 17 L95 27 Z" fill={color} opacity="0.65"/>
+      <circle cx="78" cy="38" r="2.5" fill="#000" opacity="0.7"/>
+      <circle cx="78" cy="38" r="1.2" fill={color} opacity="0.5"/>
+      {/* Right head */}
+      <ellipse cx="118" cy="38" rx="10" ry="11" fill={color} opacity="0.95"/>
+      <path d="M126 40 L137 43 L126 46 Z" fill={color} opacity="0.9"/>
+      <path d="M120 28 L124 17 L115 26 Z" fill={color} opacity="0.8"/>
+      <path d="M115 27 L116 15 L109 25 Z" fill={color} opacity="0.7"/>
+      <path d="M111 28 L108 17 L105 27 Z" fill={color} opacity="0.65"/>
+      <circle cx="122" cy="38" r="2.5" fill="#000" opacity="0.7"/>
+      <circle cx="122" cy="38" r="1.2" fill={color} opacity="0.5"/>
+      {/* Neck */}
+      <path d="M88 50 Q86 56 88 64" stroke={color} strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.9"/>
+      <path d="M112 50 Q114 56 112 64" stroke={color} strokeWidth="8" strokeLinecap="round" fill="none" opacity="0.9"/>
+      {/* Chest sigil */}
+      <circle cx="100" cy="68" r="8" fill={color} opacity="0.35"/>
+      <circle cx="100" cy="68" r="5" fill="none" stroke={color} strokeWidth="1.5" opacity="0.7"/>
+      <circle cx="100" cy="68" r="2" fill={color} opacity="0.8"/>
+      {/* Talons */}
+      <path d="M92 90 Q88 96 82 98 M92 90 Q90 98 86 103 M92 90 Q93 99 90 104" stroke={color} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+      <path d="M108 90 Q112 96 118 98 M108 90 Q110 98 114 103 M108 90 Q107 99 110 104" stroke={color} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+      <ellipse cx="91" cy="90" rx="5" ry="3" fill={color} opacity="0.7"/>
+      <ellipse cx="109" cy="90" rx="5" ry="3" fill={color} opacity="0.7"/>
     </svg>
   );
 }
@@ -39,7 +86,6 @@ const UNIVERSES = [
     accentSoft: "#8B0000",
     bg: "linear-gradient(160deg, #1a0505 0%, #0f0e09 100%)",
     flavorText: "In the grim darkness of the far future, there is only war.",
-    useImg: true,
   },
   {
     id: "aos",
@@ -49,7 +95,6 @@ const UNIVERSES = [
     accentSoft: "#7a6015",
     bg: "linear-gradient(160deg, #060c1a 0%, #090c0f 100%)",
     flavorText: "A new age dawns — forged in the fires of the Mortal Realms.",
-    useImg: false,
   },
 ];
 
@@ -95,7 +140,7 @@ export default function UniverseSelector({ onSelect }) {
           CHOOSE YOUR REALM
         </div>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:"clamp(14px,4vw,20px)", color:"#d4cbb8", fontWeight:700 }}>
-          Seleziona il tuo Universo
+          Select Your Universe
         </div>
       </div>
 
@@ -126,31 +171,16 @@ export default function UniverseSelector({ onSelect }) {
                 opacity: isHov ? 1 : 0, transition:"opacity 0.5s",
               }}/>
 
-              {/* Logo image or SVG */}
+              {/* Logo */}
               <div style={{
                 marginBottom: 24,
-                transition: "transform 0.4s, filter 0.4s",
+                transition: "transform 0.4s",
                 transform: isHov ? "scale(1.08)" : "scale(1)",
-                filter: isHov
-                  ? `drop-shadow(0 0 18px ${u.accent}99) drop-shadow(0 0 40px ${u.accent}44)`
-                  : `drop-shadow(0 0 6px ${u.accent}44)`,
               }}>
-                {u.useImg ? (
-                  <img
-                    src="/aquila.png"
-                    alt="Warhammer 40K Aquila"
-                    style={{
-                      width: isHov ? 120 : 96,
-                      height: isHov ? 120 : 96,
-                      objectFit: "contain",
-                      transition: "width 0.4s, height 0.4s",
-                      filter: `brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(320deg)`,
-                      opacity: isHov ? 0.95 : 0.6,
-                    }}
-                  />
-                ) : (
-                  <SigmarHammerSVG size={isHov ? 120 : 96} color={u.accent} />
-                )}
+                {u.id === "40k"
+                  ? <AquilaSVG size={isHov ? 170 : 140} color={u.accent} glow={isHov}/>
+                  : <SigmarHammerSVG size={isHov ? 120 : 96} color={u.accent}/>
+                }
               </div>
 
               {/* Universe name */}
