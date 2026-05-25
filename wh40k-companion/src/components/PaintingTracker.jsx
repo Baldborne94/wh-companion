@@ -484,7 +484,7 @@ function PaintPicker({ onSelect, onClose }) {
 
 // ─── LEXICANUM SEARCH ─────────────────────────────────────────────────────
 
-function LexicanumSearch({ faction, universe, onSelect }) {
+function LexicanumSearch({ faction, unit, universe, onSelect }) {
   const [open,    setOpen]    = useState(false);
   const [query,   setQuery]   = useState("");
   const [results, setResults] = useState([]);
@@ -495,7 +495,8 @@ function LexicanumSearch({ faction, universe, onSelect }) {
   const base = universe === 'aos'
     ? "https://ageofsigmar.lexicanum.com"
     : "https://wh40k.lexicanum.com";
-  const wikiUrl = `${base}/wiki/${encodeURIComponent((faction || "").replace(/ /g, "_"))}`;
+  const wikiTarget = (unit || faction || "").trim();
+  const wikiUrl = `${base}/wiki/${encodeURIComponent(wikiTarget.replace(/ /g, "_"))}`;
   const apiBase = `${base}/mediawiki/api.php`;
 
   const doSearch = async (q) => {
@@ -1352,6 +1353,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                          width:"100%", boxSizing:"border-box" }}/>
               <LexicanumSearch
                 faction={form.faction}
+                unit={form.unit_type}
                 universe={universe}
                 onSelect={name => setForm(f => ({ ...f, unit_type: name }))}
               />
