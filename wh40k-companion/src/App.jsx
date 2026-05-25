@@ -1579,48 +1579,56 @@ export default function App(){
   // ── Global statuses — single source of truth ──────────────────────────────
   const [statuses,setStatuses]=useState({});
   const [aosStatuses,setAosStatuses]=useState({});
+
+  // Bidirectional sync helper: merges local + DB (newest wins), pushes local-only entries up
+  const syncStatuses = useCallback(async (uid, localMap, isAoS) => {
+    const rows = await sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`);
+    const dbMap = {};
+    if(rows && !rows._error && rows.length) {
+      rows.forEach(r => { dbMap[r.book_id] = r; });
+    }
+    // Merge: DB wins if newer, local wins otherwise
+    const merged = {...localMap};
+    Object.entries(dbMap).forEach(([bid, dbRow]) => {
+      const local = merged[bid];
+      if(!local || !local.updatedAt || new Date(dbRow.updated_at) > new Date(local.updatedAt)) {
+        merged[bid] = { status:dbRow.status, updatedAt:dbRow.updated_at, startedAt:dbRow.started_at, completedAt:dbRow.completed_at };
+        localStorage.setItem(`wh40k_status_${uid}_${bid}`, JSON.stringify(merged[bid]));
+      }
+    });
+    // Push local entries not in DB or where local is newer
+    const toSync = Object.entries(localMap).filter(([bid, local]) => {
+      if(!local?.status || local.status === 'none') return false;
+      if(isAoS && !String(bid).startsWith('aos')) return false;
+      if(!isAoS && String(bid).startsWith('aos')) return false;
+      const db = dbMap[bid];
+      if(!db) return true;
+      if(!local.updatedAt) return false;
+      return new Date(local.updatedAt) > new Date(db.updated_at);
+    });
+    toSync.forEach(([bookId, st]) => sb.upsert("reading_status", {
+      user_id:uid, book_id:bookId, status:st.status,
+      updated_at: st.updatedAt || new Date().toISOString(),
+      ...(st.startedAt ? {started_at:st.startedAt} : {}),
+      ...(st.completedAt ? {completed_at:st.completedAt} : {}),
+    }, "user_id,book_id"));
+    return merged;
+  }, []);
+
   useEffect(()=>{
     const uid=user?.id;
-    setAosStatuses(loadAoSStatuses(uid));
+    const local = loadAoSStatuses(uid);
+    setAosStatuses(local);
     if(!uid) return;
-    sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`).then(rows=>{
-      if(!rows?.length||rows._error) return;
-      const aosRows=rows.filter(r=>String(r.book_id).startsWith('aos'));
-      if(!aosRows.length) return;
-      setAosStatuses(prev=>{
-        const merged={...prev};
-        aosRows.forEach(r=>{
-          const ls=merged[r.book_id];
-          if(!ls||!ls.updatedAt||new Date(r.updated_at)>new Date(ls.updatedAt)){
-            merged[r.book_id]=r;
-            localStorage.setItem(`wh40k_status_${uid}_${r.book_id}`,JSON.stringify(r));
-          }
-        });
-        return merged;
-      });
-    });
-  },[user?.id]);
+    syncStatuses(uid, local, true).then(merged => setAosStatuses(merged));
+  },[user?.id, syncStatuses]);
   useEffect(()=>{
     const uid=user?.id;
-    // Load immediately from localStorage (instant UI)
-    setStatuses(loadAllStatuses(uid));
+    const local = loadAllStatuses(uid);
+    setStatuses(local);
     if(!uid) return;
-    // Then sync from Supabase (merges newer DB data)
-    sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`).then(rows=>{
-      if(!rows?.length||rows._error) return;
-      setStatuses(prev=>{
-        const merged={...prev};
-        rows.forEach(r=>{
-          const ls=merged[r.book_id];
-          if(!ls||!ls.updatedAt||new Date(r.updated_at)>new Date(ls.updatedAt)){
-            merged[r.book_id]=r;
-            localStorage.setItem(`wh40k_status_${uid}_${r.book_id}`,JSON.stringify(r));
-          }
-        });
-        return merged;
-      });
-    });
-  },[user?.id]);
+    syncStatuses(uid, local, false).then(merged => setStatuses(merged));
+  },[user?.id, syncStatuses]);
 
   const updateStatus=useCallback((bookId,newStatus)=>{
     const uid=user?.id;
