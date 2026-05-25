@@ -8,8 +8,16 @@
       function applyTabletZoom() {
         if (navigator.maxTouchPoints < 1) return; // desktop, skip
         var w = window.innerWidth || screen.width;
-        if (w <= 520) { document.documentElement.style.zoom = ''; return; }
-        document.documentElement.style.zoom = Math.min(1.9, w / 430).toFixed(4);
+        var el = document.documentElement;
+        if (w <= 520) {
+          el.style.zoom = '';
+          el.style.height = '';
+          return;
+        }
+        var scale = Math.min(1.9, w / 430);
+        el.style.zoom = scale.toFixed(4);
+        /* Compensate html height so 100% children don't exceed the viewport */
+        el.style.height = 'calc(100dvh / ' + scale.toFixed(4) + ')';
       }
       applyTabletZoom();
       window.addEventListener('orientationchange', function () { setTimeout(applyTabletZoom, 300); });
