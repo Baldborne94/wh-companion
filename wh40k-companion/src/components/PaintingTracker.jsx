@@ -272,8 +272,13 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   ].filter(Boolean).join("\n");
 
   const photoNote = hasPhotos
-    ? `Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess: the current primer colour, any base colours already applied, the painting state, and the specific physical parts/areas visible on this model (e.g. armour panels, flesh, weapons, base). Use this visual detail to inform realistic colour scheme suggestions. The miniature IDENTITY above is fixed — do NOT change the faction, model name, or game based on the photos.`
-    : `(No photos attached — work from the miniature information above.)`;
+    ? `You have ${photoUrls.length} photo${photoUrls.length > 1 ? "s (multiple angles)" : ""} of this miniature. Analyse them carefully to:
+1. List every distinct physical component you can see (e.g. squig body, goblin skin, clothing, mushroom, weapon, base terrain — whatever is actually present on THIS model).
+2. Note the current primer colour and any paint already applied.
+3. Use what you see to define the "parts" in your colour scheme — each visible component should become its own part section with appropriate paint steps.
+
+The IDENTITY above (faction, model, game) is fixed ground truth — do NOT change it based on the photos. Use the photos to understand the model's physical details, not to guess what it is.`
+    : `(No photos — derive parts from your knowledge of ${unit || faction} miniature components.)`;
 
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
 
@@ -308,7 +313,7 @@ Reply ONLY with valid JSON — no markdown, no extra text:
     }
   ]
 }
-Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · only use paints from: ${brandsStr}.`;
+Rules: max 3 schemes · max 6 parts per scheme (cover every visible component) · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real products that exist in those ranges.`;
 
   const imageBlocks = hasPhotos
     ? photoUrls.map(url => ({ type: "image", source: { type: "url", url } }))
