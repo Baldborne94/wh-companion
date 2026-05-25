@@ -723,7 +723,7 @@ const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:
 const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
-function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls, miniId }) {
+function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls, miniId, onDataChange }) {
   const lsKey = miniId ? `wh40k_ai_${miniId}` : null;
 
   const [data,          setData]          = useState(() => {
@@ -747,6 +747,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
     try {
       const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
       setData(result);
+      onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
     } catch (e) {
       if (e.message === "NO_API_KEY") {
@@ -1027,6 +1028,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const [partInput,     setPartInput]     = useState("");
   const [usageInput,    setUsageInput]    = useState("base");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const aiDataRef = useRef(null); // keep latest AI result so we can persist it on save
 
   // Load existing paints if editing
   useEffect(() => {
@@ -1122,6 +1124,11 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           const { id: _id, _new, ...rest } = p;
           await db.insert("miniature_paints", { ...rest, miniature_id: miniId });
         }
+      }
+
+      // Persist AI suggestions now that we have a stable miniId
+      if (miniId && aiDataRef.current) {
+        localStorage.setItem(`wh40k_ai_${miniId}`, JSON.stringify(aiDataRef.current));
       }
 
       onSave();
@@ -1409,6 +1416,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               universe={universe}
               photoUrls={photoUrls}
               miniId={mini?.id}
+              onDataChange={d => { aiDataRef.current = d; }}
             />
           )}
 
