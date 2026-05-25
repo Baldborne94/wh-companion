@@ -4,23 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <script>
-      /* Tablet zoom scaling — zoom on html scales everything (incl. position:fixed) uniformly */
-      function applyTabletZoom() {
-        if (navigator.maxTouchPoints < 1) return; // desktop, skip
-        var w = window.innerWidth || screen.width;
-        var el = document.documentElement;
-        if (w <= 520) {
-          el.style.zoom = '';
-          el.style.height = '';
-          return;
+      /* Tablet zoom: applied to body so html stays normal → device rotation works.
+         position:fixed elements (reader, mini player) are unaffected by body zoom
+         and remain at full native resolution, which is correct for a tablet. */
+      (function () {
+        var styleEl = document.createElement('style');
+        document.head.appendChild(styleEl);
+        function applyTabletZoom() {
+          if (navigator.maxTouchPoints < 1) return;
+          var w = window.innerWidth || screen.width;
+          var html = document.documentElement;
+          if (w <= 520) {
+            styleEl.textContent = '';
+            html.style.removeProperty('--nav-h');
+            return;
+          }
+          var sc = Math.min(1.9, w / 430);
+          /* body zoom scales all regular content; height compensates so body fits viewport */
+          styleEl.textContent =
+            'body{zoom:' + sc.toFixed(4) + ';height:' + (100 / sc).toFixed(4) + 'dvh!important}' +
+            'html{overflow:clip}';
+          /* nav bar is 56px layout → 56*sc visual; mini player must clear it */
+          html.style.setProperty('--nav-h', (56 * sc).toFixed(1) + 'px');
         }
-        var scale = Math.min(1.9, w / 430);
-        el.style.zoom = scale.toFixed(4);
-        /* Compensate html height so 100% children don't exceed the viewport */
-        el.style.height = 'calc(100dvh / ' + scale.toFixed(4) + ')';
-      }
-      applyTabletZoom();
-      window.addEventListener('orientationchange', function () { setTimeout(applyTabletZoom, 300); });
+        applyTabletZoom();
+        window.addEventListener('orientationchange', function () { setTimeout(applyTabletZoom, 300); });
+      })();
     </script>
     <meta name="theme-color" content="#0a0905" />
     <meta name="description" content="Warhammer 40,000 Companion — Library, Factions, Reading Order, Painting and AI Oracle" />
