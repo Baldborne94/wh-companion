@@ -263,20 +263,24 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
   const brandsStr = brands.join(", ");
 
-  // Build a precise description of what the miniature is
-  const parts = [];
-  if (miniName && miniName !== unit) parts.push(`named "${miniName}"`);
-  if (unit) parts.push(unit);
-  if (faction) parts.push(`from ${faction}`);
-  parts.push(`(${game})`);
-  const modelDesc = parts.join(", ");
+  // Build structured identity block — each field on its own line so Claude can't miss any
+  const identityLines = [
+    `Game      : ${game}`,
+    faction ? `Faction   : ${faction}` : null,
+    unit    ? `Model     : ${unit}`    : null,
+    (miniName && miniName !== unit) ? `User label: ${miniName}` : null,
+  ].filter(Boolean).join("\n");
+
+  const photoNote = hasPhotos
+    ? `Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} only to assess: current primer colour, painting state already applied, and any visible base colours. Do NOT override or re-interpret the miniature identity above — trust it exactly as written.`
+    : `(No photos attached — work from the miniature information above.)`;
 
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
-${hasPhotos && (faction || unit)
-  ? `The miniature is: ${modelDesc}. Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess its current painting state, primer colour, and any base colours already applied. Do NOT try to re-identify the model — trust the information above.`
-  : hasPhotos
-    ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
-    : `The miniature is: ${modelDesc}.`}
+
+MINIATURE INFORMATION — treat this as ground truth:
+${identityLines}
+
+${photoNote}
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
