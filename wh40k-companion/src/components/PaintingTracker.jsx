@@ -288,15 +288,28 @@ Always reply ONLY with valid JSON — no markdown, no extra text:
 }
 Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real existing products.`;
 
-  // User message: images first, then a short focused question
+  // Convert photo URLs to base64 so Anthropic doesn't need to fetch them externally
+  const toBase64 = async (url) => {
+    const r = await fetch(url);
+    const blob = await r.blob();
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res({ b64: reader.result.split(",")[1], mime: blob.type || "image/jpeg" });
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // User message: base64 images first, then a short focused question
   let userMessage;
   if (hasPhotos) {
-    const paletteHint = (faction || unit)
-      ? ` Palette hint (lore accuracy only — do NOT invent parts not visible in photos): ${[unit, faction && `(${faction})`].filter(Boolean).join(" ")}.`
-      : "";
+    const encoded = await Promise.all(photoUrls.map(toBase64));
     userMessage = [
-      ...photoUrls.map(url => ({ type: "image", source: { type: "url", url } })),
-      { type: "text", text: `What ${game} miniature is this? Identify every distinct physical component you can see, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${paletteHint}` },
+      ...encoded.map(({ b64, mime }) => ({
+        type: "image",
+        source: { type: "base64", media_type: mime, data: b64 },
+      })),
+      { type: "text", text: `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${faction ? ` This model belongs to the ${faction} faction — use this only to inform lore-accurate colour choices, not to add parts that are not visible.` : ""}` },
     ];
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
