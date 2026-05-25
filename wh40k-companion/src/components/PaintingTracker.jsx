@@ -986,11 +986,15 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     setLoading(true);
     try {
       await sb.del("miniature_paints", `miniature_id=eq.${mini.id}`);
-      const ok = await sb.del("miniatures", `id=eq.${mini.id}&user_id=eq.${userId}`);
-      if (!ok) throw new Error("Delete failed — check RLS policies");
+      await sb.del("miniatures", `id=eq.${mini.id}`);
+      // Verify the row is actually gone (sb.del returns ok=true even for 0-row deletes)
+      const check = await sb.get("miniatures", `id=eq.${mini.id}&select=id`);
+      if (Array.isArray(check) && check.length > 0) {
+        throw new Error("Non sei il proprietario di questa miniatura o la sessione è scaduta.");
+      }
       onSave();
     } catch (err) {
-      alert("Delete error: " + err.message);
+      alert("Errore cancellazione: " + err.message);
       setLoading(false);
     }
   };
