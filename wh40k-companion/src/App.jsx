@@ -1338,7 +1338,7 @@ function LoreSection({ universe }){
       {/* reader hint */}
       <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?"Durante la lettura, i termini AoS appaiono":"While reading, WH40K terms appear"} <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>{isAoS?"sottolineati in blu":"underlined in blue"}</span>. {isAoS?"Toccali per aprire la pagina wiki direttamente.":"Tap them to open the Fandom Wiki page directly."}</p>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, {isAoS?"AoS":"WH40K"} terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the wiki page directly.</p>
       </div>
     </div>
   );
