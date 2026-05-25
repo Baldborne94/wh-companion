@@ -348,7 +348,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 export default function EpubReader({
   url, title, bookId, userId,
   initProgress, initChapterIndex, initPageIndex,
-  onProgress, onClose,
+  onProgress, onClose, nowPlaying, onMusicClick,
 }) {
   useReaderViewport();
   useReaderStyles();
@@ -867,6 +867,18 @@ export default function EpubReader({
         </span>
 
         <div style={{ display:"flex", alignItems:"center" }}>
+          {nowPlaying && (
+            <button onClick={onMusicClick} title={nowPlaying.title}
+              style={{ background:"transparent", border:"none", cursor:"pointer",
+                       padding:"6px 6px 6px 4px", display:"flex", alignItems:"center", gap:3,
+                       maxWidth:84, overflow:"hidden", flexShrink:0 }}>
+              <span style={{ fontSize:12, color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954", flexShrink:0 }}>♪</span>
+              <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
+                             textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {nowPlaying.title}
+              </span>
+            </button>
+          )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
           <IBtn onClick={saveBookmark}                     color={bmSaved?C.gold:T.muted} title="Bookmark">🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>

@@ -99,7 +99,7 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function PdfReader({ url, title, bookId, userId, onClose }) {
+export default function PdfReader({ url, title, bookId, userId, onClose, nowPlaying, onMusicClick }) {
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
@@ -431,6 +431,20 @@ export default function PdfReader({ url, title, bookId, userId, onClose }) {
         {/* Bookmarks */}
         <Btn label="🔖" onClick={e => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title="Bookmarks" />
         <Btn label={isBookmarked ? "★" : "☆"} onClick={e => { e.stopPropagation(); toggleBm(); }} active={isBookmarked} title={isBookmarked ? "Remove bookmark" : "Add bookmark"} />
+
+        {/* Music indicator */}
+        {nowPlaying && (
+          <button onClick={e => { e.stopPropagation(); onMusicClick?.(); }} title={nowPlaying.title}
+            style={{ background:"transparent", border:"none", cursor:"pointer",
+                     padding:"4px 6px 4px 4px", display:"flex", alignItems:"center", gap:3,
+                     maxWidth:84, overflow:"hidden", flexShrink:0 }}>
+            <span style={{ fontSize:12, color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954", flexShrink:0 }}>♪</span>
+            <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
+                           textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {nowPlaying.title}
+            </span>
+          </button>
+        )}
 
         {/* Zoom — desktop only */}
         {isDesktop && (<>
