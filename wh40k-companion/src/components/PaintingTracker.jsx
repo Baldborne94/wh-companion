@@ -524,7 +524,7 @@ function LexicanumSearch({ faction, universe, onSelect }) {
 
   const toggle = () => {
     setOpen(o => !o);
-    if (!open) { setQuery(faction || ""); setTimeout(() => doSearch(faction || ""), 10); }
+    if (!open) { setQuery(""); setResults([]); }
   };
 
   return (
@@ -842,8 +842,13 @@ const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:
 const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
-function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls }) {
-  const [data,          setData]          = useState(null);
+function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls, miniId }) {
+  const lsKey = miniId ? `wh40k_ai_${miniId}` : null;
+
+  const [data,          setData]          = useState(() => {
+    if (!lsKey) return null;
+    try { return JSON.parse(localStorage.getItem(lsKey)) || null; } catch { return null; }
+  });
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState(null);
   const [activeScheme,  setActiveScheme]  = useState(0);
@@ -861,6 +866,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
     try {
       const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
       setData(result);
+      if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
     } catch (e) {
       if (e.message === "NO_API_KEY") {
         setError("Add VITE_ANTHROPIC_API_KEY to your Vercel environment variables to enable AI suggestions.");
@@ -889,9 +895,11 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
             ⚡ AI Color Advisor
           </div>
           <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>
-            {hasPhotos
-              ? `📷 ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""} · Claude will analyse your miniature`
-              : "Claude suggests colour schemes · techniques · tips"}
+            {data && lsKey
+              ? "💾 Saved suggestions — click ⟳ to regenerate"
+              : hasPhotos
+                ? `📷 ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""} · Claude will analyse your miniature`
+                : "Claude suggests colour schemes · techniques · tips"}
           </div>
         </div>
         <button onClick={load} disabled={loading}
@@ -1514,6 +1522,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               onApply={handleApplyAi}
               universe={universe}
               photoUrls={photoUrls}
+              miniId={mini?.id}
             />
           )}
 
