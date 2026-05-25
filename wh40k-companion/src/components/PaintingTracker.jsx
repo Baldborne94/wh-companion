@@ -117,6 +117,79 @@ const CITADEL_PAINTS = [
 const PAINT_RANGES = ["Base","Shade","Layer","Dry","Contrast","Technical"];
 const USAGE_TYPES  = ["base","layer","shade","highlight","drybrush","technical","contrast"];
 
+// ─── AK INTERACTIVE PAINTS ────────────────────────────────────────────────
+const AK_PAINTS = [
+  { name:"AK White",            hex:"#F0EDE8", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Ivory",            hex:"#E8D8A8", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Sand",             hex:"#C8A860", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Ochre",            hex:"#C09030", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Yellow",      hex:"#9A7820", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Leather Brown",    hex:"#784830", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Red",         hex:"#A01818", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Red",         hex:"#6A0E0E", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Blue",        hex:"#1A3A7A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Medium Blue",      hex:"#2A5A9A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Green",       hex:"#1A4A1A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Olive Drab",       hex:"#5A6A2A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Field Grey",       hex:"#5A6050", range:"Base",      brand:"AK Interactive" },
+  { name:"AK German Grey",      hex:"#3A3828", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Black",       hex:"#141414", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Bone",             hex:"#D4C090", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Purple",           hex:"#5A1A7A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Orange",           hex:"#C06020", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Silver",           hex:"#B8B8B8", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Gold",             hex:"#C8A040", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Gunmetal",         hex:"#5A5A68", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Bronze",           hex:"#8A6030", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Rust",             hex:"#8A3A10", range:"Effects",   brand:"AK Interactive" },
+  { name:"AK Dark Wash",        hex:"#0A0A14", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Brown Wash",       hex:"#5A3A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Sepia Wash",       hex:"#6A4A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Green Wash",       hex:"#1A3A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Blue Wash",        hex:"#1A1A4A", range:"Wash",      brand:"AK Interactive" },
+];
+
+// ─── ARMY PAINTER PAINTS ──────────────────────────────────────────────────
+const AP_PAINTS = [
+  { name:"AP Matt White",         hex:"#F5F5F0", range:"Base",       brand:"Army Painter" },
+  { name:"AP Skeleton Bone",      hex:"#D4C090", range:"Base",       brand:"Army Painter" },
+  { name:"AP Uniform Grey",       hex:"#6A7078", range:"Base",       brand:"Army Painter" },
+  { name:"AP Matt Black",         hex:"#181818", range:"Base",       brand:"Army Painter" },
+  { name:"AP Pure Red",           hex:"#D02020", range:"Base",       brand:"Army Painter" },
+  { name:"AP Dragon Red",         hex:"#AA1A1A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Daemonic Yellow",    hex:"#E8C020", range:"Base",       brand:"Army Painter" },
+  { name:"AP Crystal Blue",       hex:"#2A6AAA", range:"Base",       brand:"Army Painter" },
+  { name:"AP Goblin Green",       hex:"#2A7A1A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Barbarian Flesh",    hex:"#D07858", range:"Base",       brand:"Army Painter" },
+  { name:"AP Leather Brown",      hex:"#7A4A28", range:"Base",       brand:"Army Painter" },
+  { name:"AP Oak Brown",          hex:"#5A3A18", range:"Base",       brand:"Army Painter" },
+  { name:"AP Desert Yellow",      hex:"#C8A060", range:"Base",       brand:"Army Painter" },
+  { name:"AP Necrotic Flesh",     hex:"#A8B870", range:"Base",       brand:"Army Painter" },
+  { name:"AP Alien Purple",       hex:"#6A2A8A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Ash Grey",           hex:"#9A9A9A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Orange Fire",        hex:"#C85820", range:"Base",       brand:"Army Painter" },
+  { name:"AP Ice Blue",           hex:"#7AA8C8", range:"Layer",      brand:"Army Painter" },
+  { name:"AP Bright Gold",        hex:"#D0B050", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Gunmetal",           hex:"#606878", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Shining Silver",     hex:"#C0C4C8", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Weapon Bronze",      hex:"#9A7040", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Dark Tone",          hex:"#0A0A14", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Soft Tone",          hex:"#5A3A18", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Strong Tone",        hex:"#3A2010", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Red Tone",           hex:"#6A1010", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Green Tone",         hex:"#1A3A1A", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Blue Tone",          hex:"#1A1A4A", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Dry Rust Brown",     hex:"#8A4A20", range:"Dry",        brand:"Army Painter" },
+  { name:"AP Dry Ash Grey",       hex:"#A8A8A8", range:"Dry",        brand:"Army Painter" },
+];
+
+const ALL_PAINTS = [
+  ...CITADEL_PAINTS.map(p => ({ ...p, brand:"Citadel" })),
+  ...AK_PAINTS,
+  ...AP_PAINTS,
+];
+const BRANDS = ["Citadel", "AK Interactive", "Army Painter"];
+
 // ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
 const FACTIONS_40K = {
@@ -182,6 +255,8 @@ const FACTIONS_AOS = {
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
 async function getAiRecommendations(faction, unit, universe) {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
   const prompt = `You are an expert ${game} miniature painter.
 Provide a Citadel colour scheme for ${unit} from the ${faction} faction.
@@ -191,13 +266,22 @@ Use real Citadel colours. Max 4-5 parts, 2-4 steps per part.`;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     }),
   });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
   const data = await resp.json();
   const text = data.content?.map((i) => i.text || "").join("") ?? "";
   return JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -246,10 +330,14 @@ function StatusStepper({ value, onChange }) {
 // ─── PAINT PICKER ─────────────────────────────────────────────────────────
 
 function PaintPicker({ onSelect, onClose }) {
-  const [search, setSearch]   = useState("");
-  const [range,  setRange]    = useState("All");
+  const [search, setSearch] = useState("");
+  const [brand,  setBrand]  = useState("Citadel");
+  const [range,  setRange]  = useState("All");
 
-  const filtered = CITADEL_PAINTS.filter((p) => {
+  const brandPaints = ALL_PAINTS.filter(p => p.brand === brand);
+  const brandRanges = [...new Set(brandPaints.map(p => p.range))];
+
+  const filtered = brandPaints.filter((p) => {
     const matchRange  = range === "All" || p.range === range;
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     return matchRange && matchSearch;
@@ -263,15 +351,29 @@ function PaintPicker({ onSelect, onClose }) {
         style={{ background:C.surface, border:`1px solid ${C.border}`,
                  borderTop:`2px solid ${C.gold}`, borderRadius:"16px 16px 0 0",
                  padding:"16px 16px 40px", width:"100%", maxWidth:600,
-                 maxHeight:"70vh", display:"flex", flexDirection:"column" }}>
+                 maxHeight:"75vh", display:"flex", flexDirection:"column" }}>
         <div style={{ width:36, height:4, background:C.border, borderRadius:2, margin:"0 auto 12px" }}/>
+
+        {/* Brand tabs */}
+        <div style={{ display:"flex", gap:0, marginBottom:10, background:C.card,
+                      borderRadius:8, padding:3, border:`1px solid ${C.border}` }}>
+          {BRANDS.map(b => (
+            <button key={b} onClick={() => { setBrand(b); setRange("All"); }}
+              style={{ flex:1, padding:"6px 4px", borderRadius:6,
+                       background: brand===b ? `${C.gold}33` : "transparent",
+                       border:"none", color: brand===b ? C.gold : C.muted,
+                       fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                       cursor:"pointer", transition:"all 0.15s", textAlign:"center" }}>
+              {b}
+            </button>
+          ))}
+        </div>
 
         {/* Search */}
         <input
-          autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search Citadel colour…"
+          placeholder={`Search ${brand} paint…`}
           style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                    padding:"10px 14px", color:C.text, fontFamily:"'Cinzel',serif",
                    fontSize:13, width:"100%", boxSizing:"border-box", marginBottom:10 }}
@@ -279,7 +381,7 @@ function PaintPicker({ onSelect, onClose }) {
 
         {/* Range filter */}
         <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:10 }}>
-          {["All",...PAINT_RANGES].map((r) => (
+          {["All",...brandRanges].map((r) => (
             <button key={r} onClick={() => setRange(r)}
               style={{ flexShrink:0, padding:"4px 10px", borderRadius:20,
                        border:`1px solid ${range===r ? C.gold : C.border}`,
@@ -489,7 +591,11 @@ function AiRecommendations({ faction, unit, onApply, universe }) {
       const result = await getAiRecommendations(faction, unit || faction, universe);
       setData(result);
     } catch (e) {
-      setError("AI error. Check the console.");
+      if (e.message === "NO_API_KEY") {
+        setError("Add VITE_ANTHROPIC_API_KEY to your Vercel environment variables to enable AI suggestions.");
+      } else {
+        setError("AI error: " + (e.message || "check console"));
+      }
       console.error(e);
     } finally {
       setLoading(false);
@@ -586,6 +692,28 @@ function AiRecommendations({ faction, unit, onApply, universe }) {
   );
 }
 
+// ─── FORM HELPERS (outside MiniModal to prevent re-mount on each keystroke) ──
+
+function FormLabel({ children }) {
+  return (
+    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
+                  letterSpacing:3, textTransform:"uppercase", marginBottom:6, marginTop:14 }}>
+      {children}
+    </div>
+  );
+}
+
+function FormInput({ value, onChange, placeholder, multiline }) {
+  const s = {
+    background: C.card, border:`1px solid ${C.border}`, borderRadius:8,
+    padding:"10px 14px", color:C.text, fontSize:13, width:"100%",
+    boxSizing:"border-box", fontFamily:"inherit", resize:"vertical",
+  };
+  return multiline
+    ? <textarea rows={3} value={value} onChange={onChange} placeholder={placeholder} style={s}/>
+    : <input value={value} onChange={onChange} placeholder={placeholder} style={s}/>;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ─── MINI MODAL (Add / Edit) ───────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════
@@ -604,13 +732,14 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     photo_url:          mini?.photo_url ?? "",
     is_public:          mini?.is_public ?? true,
   });
-  const [paints,      setPaints]      = useState([]);
-  const [loading,     setLoading]     = useState(false);
-  const [photoLoading,setPhotoLoading]= useState(false);
-  const [showPicker,  setShowPicker]  = useState(false);
-  const [pendingPaint,setPendingPaint]= useState(null); // paint selected but not yet part-annotated
-  const [partInput,   setPartInput]   = useState("");
-  const [usageInput,  setUsageInput]  = useState("base");
+  const [paints,        setPaints]        = useState([]);
+  const [loading,       setLoading]       = useState(false);
+  const [photoLoading,  setPhotoLoading]  = useState(false);
+  const [showPicker,    setShowPicker]    = useState(false);
+  const [pendingPaint,  setPendingPaint]  = useState(null);
+  const [partInput,     setPartInput]     = useState("");
+  const [usageInput,    setUsageInput]    = useState("base");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   // Load existing paints if editing
   useEffect(() => {
@@ -715,22 +844,22 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     }
   };
 
-  const Label = ({ children }) => (
-    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
-                  letterSpacing:3, textTransform:"uppercase", marginBottom:6, marginTop:14 }}>
-      {children}
-    </div>
-  );
-
-  const Input = ({ value, onChange, placeholder, multiline }) => {
-    const s = {
-      background: C.card, border:`1px solid ${C.border}`, borderRadius:8,
-      padding:"10px 14px", color:C.text, fontSize:13, width:"100%",
-      boxSizing:"border-box", fontFamily:"inherit", resize:"vertical",
-    };
-    return multiline
-      ? <textarea rows={3} value={value} onChange={onChange} placeholder={placeholder} style={s}/>
-      : <input value={value} onChange={onChange} placeholder={placeholder} style={s}/>;
+  const handleDelete = async () => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      setTimeout(() => setDeleteConfirm(false), 3500);
+      return;
+    }
+    setLoading(true);
+    try {
+      const existing = await db.get("miniature_paints", `miniature_id=eq.${mini.id}`);
+      for (const p of existing) await db.delete("miniature_paints", p.id);
+      await db.delete("miniatures", mini.id);
+      onSave();
+    } catch (err) {
+      alert("Delete error: " + err.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -743,29 +872,42 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
         {/* Header */}
         <div style={{ background:C.card, borderBottom:`1px solid ${C.border}`,
                       padding:"16px 20px", display:"flex",
-                      justifyContent:"space-between", alignItems:"center" }}>
+                      justifyContent:"space-between", alignItems:"center", gap:10 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:16, color:C.text }}>
             {isEdit ? "Edit Miniature" : "Add Miniature"}
           </span>
-          <button onClick={onClose}
-            style={{ background:"transparent", border:`1px solid ${C.dim}`,
-                     borderRadius:6, color:C.muted, width:32, height:32,
-                     cursor:"pointer", fontSize:16 }}>
-            ✕
-          </button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {isEdit && (
+              <button onClick={handleDelete} disabled={loading}
+                style={{ background: deleteConfirm ? `${C.red}22` : "transparent",
+                         border:`1px solid ${deleteConfirm ? C.red : C.dim}`,
+                         borderRadius:6, color: deleteConfirm ? C.red : C.muted,
+                         padding:"6px 12px", cursor:"pointer",
+                         fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1,
+                         transition:"all 0.2s" }}>
+                {deleteConfirm ? "⚠ Confirm Delete" : "🗑 Delete"}
+              </button>
+            )}
+            <button onClick={onClose}
+              style={{ background:"transparent", border:`1px solid ${C.dim}`,
+                       borderRadius:6, color:C.muted, width:32, height:32,
+                       cursor:"pointer", fontSize:16 }}>
+              ✕
+            </button>
+          </div>
         </div>
 
         <div style={{ padding:"16px 20px 24px" }}>
           {/* Name */}
-          <Label>Miniature Name</Label>
-          <Input value={form.name}
+          <FormLabel>Miniature Name</FormLabel>
+          <FormInput value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="e.g. Space Marine Sergeant"/>
+            placeholder="Miniature name"/>
 
           {/* Faction + Unit */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
             <div>
-              <Label>Faction</Label>
+              <FormLabel>Faction</FormLabel>
               <select value={form.faction}
                 onChange={(e) => setForm((f) => ({ ...f, faction:e.target.value, unit_type:"" }))}
                 style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
@@ -776,7 +918,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               </select>
             </div>
             <div>
-              <Label>Unit / Type</Label>
+              <FormLabel>Unit / Type</FormLabel>
               <select value={form.unit_type}
                 onChange={(e) => setForm((f) => ({ ...f, unit_type:e.target.value }))}
                 disabled={!units.length}
@@ -791,12 +933,12 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           </div>
 
           {/* Status */}
-          <Label>Progress</Label>
+          <FormLabel>Progress</FormLabel>
           <StatusStepper value={form.status}
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
           {/* Photo */}
-          <Label>Photo</Label>
+          <FormLabel>Photo</FormLabel>
           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
             {form.photo_url && (
               <img src={form.photo_url} alt="preview"
@@ -816,13 +958,13 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           </div>
 
           {/* Notes */}
-          <Label>General Notes</Label>
-          <Input multiline value={form.notes}
+          <FormLabel>General Notes</FormLabel>
+          <FormInput multiline value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes:e.target.value }))}
             placeholder="Inspiration, basing, conversions…"/>
 
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
-          <Label>Colour Scheme</Label>
+          <FormLabel>Colour Scheme</FormLabel>
 
           {/* Existing paints */}
           {paints.length > 0 && (
@@ -898,7 +1040,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                        background:"transparent", border:`1px dashed ${C.goldDim}`,
                        color:C.goldDim, fontFamily:"'Cinzel',serif",
                        fontSize:12, letterSpacing:2, cursor:"pointer", marginBottom:10 }}>
-              + Add Citadel Colour
+              + Add Paint (Citadel · AK · Army Painter)
             </button>
           )}
 
@@ -925,8 +1067,8 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           )}
 
           {/* Color scheme notes */}
-          <Label>Colour Scheme Notes</Label>
-          <Input multiline value={form.color_scheme_notes}
+          <FormLabel>Colour Scheme Notes</FormLabel>
+          <FormInput multiline value={form.color_scheme_notes}
             onChange={(e) => setForm((f) => ({ ...f, color_scheme_notes:e.target.value }))}
             placeholder="Free notes on the scheme, techniques used, inspiration…"/>
 
@@ -1043,10 +1185,10 @@ function BattleLog({userId}){
             {inp("Opponent's Army","oppArmy")}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
-            {inp("Data","date","date")}
-            {inp("Punti","points")}
+            {inp("Date","date","date")}
+            {inp("Points","points")}
           </div>
-          {/* Risultato */}
+          {/* Result */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             {BATTLE_RESULTS.map(r=>(
               <button key={r.id} onClick={()=>setForm(f=>({...f,result:r.id}))}
