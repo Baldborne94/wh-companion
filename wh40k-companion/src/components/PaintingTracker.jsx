@@ -264,9 +264,11 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brandsStr = brands.join(", ");
 
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
-${hasPhotos
-  ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
-  : `The miniature is: ${unit} from ${faction} (${game}).`}
+${hasPhotos && faction
+  ? `The miniature is: ${unit} from ${faction} (${game}). Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess its current painting state, primer colour, and any base colours already applied.`
+  : hasPhotos
+    ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
+    : `The miniature is: ${unit} from ${faction} (${game}).`}
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
@@ -732,7 +734,7 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
       {data && schemes.length > 0 && (
         <div>
           {/* Miniature identification (when photo was used) */}
-          {data.miniature && hasPhotos && (
+          {data.miniature && hasPhotos && !faction && (
             <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
                           fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
               Identified: <span style={{ color:C.text }}>{data.miniature}</span>
