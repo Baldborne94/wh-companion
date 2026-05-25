@@ -13,13 +13,18 @@
         function applyTabletZoom() {
           if (navigator.maxTouchPoints < 1) return;
           var w = window.innerWidth || screen.width;
+          var h = window.innerHeight || screen.height;
           var html = document.documentElement;
           if (w <= 520) {
             styleEl.textContent = '';
             html.style.removeProperty('--nav-h');
             return;
           }
-          var sc = Math.min(1.9, w / 430);
+          /* Landscape: less zoom so more content fits; Portrait: moderate zoom for readability */
+          var isLandscape = w > h;
+          var sc = isLandscape
+            ? Math.min(1.35, w / 430)
+            : Math.min(1.75, w / 430);
           /* body zoom scales all regular content; height compensates so body fits viewport */
           styleEl.textContent =
             'body{zoom:' + sc.toFixed(4) + ';height:' + (100 / sc).toFixed(4) + 'dvh!important}';
