@@ -1162,6 +1162,17 @@ const FACTION_INFOBOXES={
   "adeptus-mechanicus":[{label:"Alleanza",value:"Imperium (partner semi-autonomo)"},{label:"Base",value:"Marte + centinaia di Forge Worlds"},{label:"Fondazione",value:"Pre-M30 (Mechanicum di Marte)"},{label:"Dio",value:"L'Omnissiah (identificato con l'Imperatore)"},{label:"Forze",value:"Skitarii, Titan Legions, Legio Cybernetica"},{label:"Comandante",value:"Fabricator-General di Marte"}],
 };
 
+const AOS_REALMS=[
+  {name:"Aqshy", sub:"Realm of Fire",    color:"#C0392B",icon:"🔥"},
+  {name:"Ghyran",sub:"Realm of Life",    color:"#4aaa6a",icon:"🌿"},
+  {name:"Shyish",sub:"Realm of Death",   color:"#7a5aaa",icon:"💀"},
+  {name:"Azyr",  sub:"Realm of Heavens", color:"#5a8fc5",icon:"⭐"},
+  {name:"Chamon",sub:"Realm of Metal",   color:"#8a8a4a",icon:"⚙️"},
+  {name:"Ghur",  sub:"Realm of Beasts",  color:"#8a5a2a",icon:"🦴"},
+  {name:"Ulgu",  sub:"Realm of Shadow",  color:"#4a4a6a",icon:"🌑"},
+  {name:"Hysh",  sub:"Realm of Light",   color:"#aaa060",icon:"✨"},
+];
+
 function LoreSection({ universe }){
   const [wikiSearch,setWikiSearch]=useState("");
   // eslint-disable-next-line no-unused-vars
@@ -1305,11 +1316,32 @@ function LoreSection({ universe }){
         </div>
       </div>
 
-      {/* reader hint */}
-      <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, WH40K terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the Fandom Wiki page directly.</p>
-      </div>
+      {/* Mortal Realms grid — AoS only */}
+      {isAoS&&(
+        <div style={{padding:"8px 16px 16px"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>The Mortal Realms</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {AOS_REALMS.map(r=>(
+              <div key={r.name} onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name,'_blank')}
+                style={{background:`linear-gradient(135deg,${r.color}18,${C.card})`,border:`1px solid ${r.color}44`,borderLeft:`3px solid ${r.color}`,borderRadius:10,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                <span style={{fontSize:22}}>{r.icon}</span>
+                <div>
+                  <div style={{fontFamily:"'Cinzel',serif",fontSize:12,color:C.text}}>{r.name}</div>
+                  <div style={{fontSize:10,color:r.color,letterSpacing:0.5}}>{r.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* reader hint — WH40K only */}
+      {!isAoS&&(
+        <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
+          <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, WH40K terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the Fandom Wiki page directly.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -1691,6 +1723,7 @@ export default function App(){
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
+  const curNavLabel=curNav?(curNav.id==="reading"&&universe==='aos'?"Path to Glory":curNav.label):"";
 
   // ── App-level reader (opened from Home page) ──────────────────────────────
   const [appReader,setAppReader]=useState(null);
@@ -1763,7 +1796,7 @@ export default function App(){
               </button>
               {/* section label center */}
               <div style={{flex:1,textAlign:"center"}}>
-                {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNav?.label||""}</span>}
+                {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
               </div>
               {/* auth right */}
               <div style={{display:"flex",alignItems:"center",gap:8}}>

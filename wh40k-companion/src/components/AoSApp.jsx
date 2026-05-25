@@ -1273,17 +1273,6 @@ function AoSGetStartedSection({ statuses }) {
 }
 
 // ─── AoS PATH TO GLORY ────────────────────────────────────────────────────────
-const REALMS = [
-  { name:"Aqshy",  sub:"Realm of Fire",    color:"#C0392B", icon:"🔥" },
-  { name:"Ghyran", sub:"Realm of Life",    color:"#4aaa6a", icon:"🌿" },
-  { name:"Shyish", sub:"Realm of Death",   color:"#7a5aaa", icon:"💀" },
-  { name:"Azyr",   sub:"Realm of Heavens", color:"#5a8fc5", icon:"⭐" },
-  { name:"Chamon", sub:"Realm of Metal",   color:"#8a8a4a", icon:"⚙️" },
-  { name:"Ghur",   sub:"Realm of Beasts",  color:"#8a5a2a", icon:"🦴" },
-  { name:"Ulgu",   sub:"Realm of Shadow",  color:"#4a4a6a", icon:"🌑" },
-  { name:"Hysh",   sub:"Realm of Light",   color:"#aaa060", icon:"✨" },
-];
-
 export function AoSCrusadeSection({ user, statuses: propStatuses }) {
   const [tab,            setTab]          = useState('overview');
   const [localStatuses,  setLocalStatuses] = useState({});
@@ -1418,21 +1407,6 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
           })}
         </div>
 
-        {/* Mortal Realms grid */}
-        <div style={{ padding:"0 16px 16px" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>The Mortal Realms</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            {REALMS.map(r => (
-              <div key={r.name} style={{ background:`linear-gradient(135deg,${r.color}18,${AOS.card})`, border:`1px solid ${r.color}44`, borderLeft:`3px solid ${r.color}`, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
-                <span style={{ fontSize:22 }}>{r.icon}</span>
-                <div>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, color:AOS.text }}>{r.name}</div>
-                  <div style={{ fontSize:10, color:r.color, letterSpacing:0.5 }}>{r.sub}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </>}
     </div>
   );
