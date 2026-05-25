@@ -269,7 +269,7 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
     (miniName && miniName !== unit) ? `Label   : ${miniName}` : null,
   ].filter(Boolean).join("\n");
 
-  const instructions = hasPhotos
+  const introSection = hasPhotos
     ? `You are an expert ${game} miniature painter and hobby coach.
 
 You have ${photoUrls.length} photo${photoUrls.length > 1 ? "s (multiple angles)" : ""} of a miniature. The photos are your PRIMARY source of truth — analyse them carefully to:
@@ -285,6 +285,8 @@ Build your colour scheme parts around what is ACTUALLY VISIBLE in the photos.`
 
 Miniature: ${[unit, faction ? `(${faction})` : null].filter(Boolean).join(" ")} — ${game}.
 Suggest colour schemes based on your knowledge of this unit's typical components.`;
+
+  const instructions = `${introSection}
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
