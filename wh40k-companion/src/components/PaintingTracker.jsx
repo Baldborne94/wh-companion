@@ -117,6 +117,79 @@ const CITADEL_PAINTS = [
 const PAINT_RANGES = ["Base","Shade","Layer","Dry","Contrast","Technical"];
 const USAGE_TYPES  = ["base","layer","shade","highlight","drybrush","technical","contrast"];
 
+// ─── AK INTERACTIVE PAINTS ────────────────────────────────────────────────
+const AK_PAINTS = [
+  { name:"AK White",            hex:"#F0EDE8", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Ivory",            hex:"#E8D8A8", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Sand",             hex:"#C8A860", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Ochre",            hex:"#C09030", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Yellow",      hex:"#9A7820", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Leather Brown",    hex:"#784830", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Red",         hex:"#A01818", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Red",         hex:"#6A0E0E", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Blue",        hex:"#1A3A7A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Medium Blue",      hex:"#2A5A9A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Dark Green",       hex:"#1A4A1A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Olive Drab",       hex:"#5A6A2A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Field Grey",       hex:"#5A6050", range:"Base",      brand:"AK Interactive" },
+  { name:"AK German Grey",      hex:"#3A3828", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Flat Black",       hex:"#141414", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Bone",             hex:"#D4C090", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Purple",           hex:"#5A1A7A", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Orange",           hex:"#C06020", range:"Base",      brand:"AK Interactive" },
+  { name:"AK Silver",           hex:"#B8B8B8", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Gold",             hex:"#C8A040", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Gunmetal",         hex:"#5A5A68", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Bronze",           hex:"#8A6030", range:"Metallic",  brand:"AK Interactive" },
+  { name:"AK Rust",             hex:"#8A3A10", range:"Effects",   brand:"AK Interactive" },
+  { name:"AK Dark Wash",        hex:"#0A0A14", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Brown Wash",       hex:"#5A3A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Sepia Wash",       hex:"#6A4A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Green Wash",       hex:"#1A3A18", range:"Wash",      brand:"AK Interactive" },
+  { name:"AK Blue Wash",        hex:"#1A1A4A", range:"Wash",      brand:"AK Interactive" },
+];
+
+// ─── ARMY PAINTER PAINTS ──────────────────────────────────────────────────
+const AP_PAINTS = [
+  { name:"AP Matt White",         hex:"#F5F5F0", range:"Base",       brand:"Army Painter" },
+  { name:"AP Skeleton Bone",      hex:"#D4C090", range:"Base",       brand:"Army Painter" },
+  { name:"AP Uniform Grey",       hex:"#6A7078", range:"Base",       brand:"Army Painter" },
+  { name:"AP Matt Black",         hex:"#181818", range:"Base",       brand:"Army Painter" },
+  { name:"AP Pure Red",           hex:"#D02020", range:"Base",       brand:"Army Painter" },
+  { name:"AP Dragon Red",         hex:"#AA1A1A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Daemonic Yellow",    hex:"#E8C020", range:"Base",       brand:"Army Painter" },
+  { name:"AP Crystal Blue",       hex:"#2A6AAA", range:"Base",       brand:"Army Painter" },
+  { name:"AP Goblin Green",       hex:"#2A7A1A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Barbarian Flesh",    hex:"#D07858", range:"Base",       brand:"Army Painter" },
+  { name:"AP Leather Brown",      hex:"#7A4A28", range:"Base",       brand:"Army Painter" },
+  { name:"AP Oak Brown",          hex:"#5A3A18", range:"Base",       brand:"Army Painter" },
+  { name:"AP Desert Yellow",      hex:"#C8A060", range:"Base",       brand:"Army Painter" },
+  { name:"AP Necrotic Flesh",     hex:"#A8B870", range:"Base",       brand:"Army Painter" },
+  { name:"AP Alien Purple",       hex:"#6A2A8A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Ash Grey",           hex:"#9A9A9A", range:"Base",       brand:"Army Painter" },
+  { name:"AP Orange Fire",        hex:"#C85820", range:"Base",       brand:"Army Painter" },
+  { name:"AP Ice Blue",           hex:"#7AA8C8", range:"Layer",      brand:"Army Painter" },
+  { name:"AP Bright Gold",        hex:"#D0B050", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Gunmetal",           hex:"#606878", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Shining Silver",     hex:"#C0C4C8", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Weapon Bronze",      hex:"#9A7040", range:"Metallic",   brand:"Army Painter" },
+  { name:"AP Dark Tone",          hex:"#0A0A14", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Soft Tone",          hex:"#5A3A18", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Strong Tone",        hex:"#3A2010", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Red Tone",           hex:"#6A1010", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Green Tone",         hex:"#1A3A1A", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Blue Tone",          hex:"#1A1A4A", range:"Quickshade", brand:"Army Painter" },
+  { name:"AP Dry Rust Brown",     hex:"#8A4A20", range:"Dry",        brand:"Army Painter" },
+  { name:"AP Dry Ash Grey",       hex:"#A8A8A8", range:"Dry",        brand:"Army Painter" },
+];
+
+const ALL_PAINTS = [
+  ...CITADEL_PAINTS.map(p => ({ ...p, brand:"Citadel" })),
+  ...AK_PAINTS,
+  ...AP_PAINTS,
+];
+const BRANDS = ["Citadel", "AK Interactive", "Army Painter"];
+
 // ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
 const FACTIONS_40K = {
@@ -181,23 +254,67 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe) {
+async function getAiRecommendations(faction, unit, universe, photoUrl) {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
-  const prompt = `You are an expert ${game} miniature painter.
-Provide a Citadel colour scheme for ${unit} from the ${faction} faction.
-Reply ONLY with a JSON array, no markdown or extra text.
-Format: [{"part":"part name","steps":[{"type":"base|shade|layer|highlight","paint":"Citadel colour name","hex":"#hexcode"}]}]
-Use real Citadel colours. Max 4-5 parts, 2-4 steps per part.`;
+
+  const instructions = `You are an expert ${game} miniature painter and hobby coach.
+${photoUrl
+  ? `Analyse the miniature in the attached image. Identify what it is, its current state, and any base colours already present.`
+  : `The miniature is: ${unit} from ${faction} (${game}).`}
+
+Suggest exactly 2-3 distinct painting schemes. Vary style: e.g. "Classic", "Battle-worn / Grimdark", "Display / Competition".
+For each scheme provide realistic Citadel paint steps AND actionable technique advice.
+
+Reply ONLY with valid JSON — no markdown, no extra text:
+{
+  "miniature": "brief identification",
+  "schemes": [
+    {
+      "name": "scheme name",
+      "difficulty": "Beginner|Intermediate|Advanced",
+      "style": "one-sentence visual description",
+      "techniques": ["technique1","technique2","technique3"],
+      "tip": "one key piece of advice specific to this unit",
+      "parts": [
+        {
+          "part": "part name",
+          "steps": [
+            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"Citadel paint name","hex":"#hexcode","note":"optional short tip"}
+          ]
+        }
+      ]
+    }
+  ]
+}
+Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · use real Citadel colours.`;
+
+  const userContent = photoUrl
+    ? [
+        { type: "image", source: { type: "url", url: photoUrl } },
+        { type: "text", text: instructions },
+      ]
+    : instructions;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
+      model: photoUrl ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
+      max_tokens: 2000,
+      messages: [{ role: "user", content: userContent }],
     }),
   });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+  }
   const data = await resp.json();
   const text = data.content?.map((i) => i.text || "").join("") ?? "";
   return JSON.parse(text.replace(/```json|```/g, "").trim());
@@ -246,10 +363,14 @@ function StatusStepper({ value, onChange }) {
 // ─── PAINT PICKER ─────────────────────────────────────────────────────────
 
 function PaintPicker({ onSelect, onClose }) {
-  const [search, setSearch]   = useState("");
-  const [range,  setRange]    = useState("All");
+  const [search, setSearch] = useState("");
+  const [brand,  setBrand]  = useState("Citadel");
+  const [range,  setRange]  = useState("All");
 
-  const filtered = CITADEL_PAINTS.filter((p) => {
+  const brandPaints = ALL_PAINTS.filter(p => p.brand === brand);
+  const brandRanges = [...new Set(brandPaints.map(p => p.range))];
+
+  const filtered = brandPaints.filter((p) => {
     const matchRange  = range === "All" || p.range === range;
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     return matchRange && matchSearch;
@@ -263,15 +384,29 @@ function PaintPicker({ onSelect, onClose }) {
         style={{ background:C.surface, border:`1px solid ${C.border}`,
                  borderTop:`2px solid ${C.gold}`, borderRadius:"16px 16px 0 0",
                  padding:"16px 16px 40px", width:"100%", maxWidth:600,
-                 maxHeight:"70vh", display:"flex", flexDirection:"column" }}>
+                 maxHeight:"75vh", display:"flex", flexDirection:"column" }}>
         <div style={{ width:36, height:4, background:C.border, borderRadius:2, margin:"0 auto 12px" }}/>
+
+        {/* Brand tabs */}
+        <div style={{ display:"flex", gap:0, marginBottom:10, background:C.card,
+                      borderRadius:8, padding:3, border:`1px solid ${C.border}` }}>
+          {BRANDS.map(b => (
+            <button key={b} onClick={() => { setBrand(b); setRange("All"); }}
+              style={{ flex:1, padding:"6px 4px", borderRadius:6,
+                       background: brand===b ? `${C.gold}33` : "transparent",
+                       border:"none", color: brand===b ? C.gold : C.muted,
+                       fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                       cursor:"pointer", transition:"all 0.15s", textAlign:"center" }}>
+              {b}
+            </button>
+          ))}
+        </div>
 
         {/* Search */}
         <input
-          autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search Citadel colour…"
+          placeholder={`Search ${brand} paint…`}
           style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                    padding:"10px 14px", color:C.text, fontFamily:"'Cinzel',serif",
                    fontSize:13, width:"100%", boxSizing:"border-box", marginBottom:10 }}
@@ -279,7 +414,7 @@ function PaintPicker({ onSelect, onClose }) {
 
         {/* Range filter */}
         <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:8, marginBottom:10 }}>
-          {["All",...PAINT_RANGES].map((r) => (
+          {["All",...brandRanges].map((r) => (
             <button key={r} onClick={() => setRange(r)}
               style={{ flexShrink:0, padding:"4px 10px", borderRadius:20,
                        border:`1px solid ${range===r ? C.gold : C.border}`,
@@ -477,113 +612,242 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
 
 // ─── AI RECOMMENDATIONS PANEL ─────────────────────────────────────────────
 
-function AiRecommendations({ faction, unit, onApply, universe }) {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:"#b03030" };
+const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
+                     highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
+
+function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState(null);
+  const [activeScheme, setActiveScheme] = useState(0);
+
+  const hasPhoto = !!photoUrl;
 
   const load = async () => {
-    if (!faction) { setError("Select a faction first"); return; }
-    setLoading(true); setError(null);
+    if (!faction && !hasPhoto) { setError("Select a faction first"); return; }
+    setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrl);
       setData(result);
     } catch (e) {
-      setError("AI error. Check the console.");
+      if (e.message === "NO_API_KEY") {
+        setError("Add VITE_ANTHROPIC_API_KEY to your Vercel environment variables to enable AI suggestions.");
+      } else {
+        setError("AI error: " + (e.message || "check console"));
+      }
       console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const USAGE_COLOR = {
-    base:"#4a4a4a", shade:"#1a2a5a", layer:"#7a5a10",
-    highlight:"#c9a84c", drybrush:"#5a3a1a",
-  };
+  const schemes = data?.schemes ?? [];
+  const scheme  = schemes[activeScheme];
 
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.gold}44`,
                   borderRadius:12, overflow:"hidden" }}>
+
+      {/* ── Header ── */}
       <div style={{ background:`${C.gold}11`, borderBottom:`1px solid ${C.gold}33`,
                     padding:"12px 16px", display:"flex", alignItems:"center",
-                    justifyContent:"space-between" }}>
-        <div>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.gold,
-                        letterSpacing:2 }}>
+                    justifyContent:"space-between", gap:10 }}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.gold, letterSpacing:2 }}>
             ⚡ AI Color Advisor
           </div>
-          <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>
-            Citadel colour scheme generated by Claude
+          <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>
+            {hasPhoto
+              ? "📷 Claude will analyse your miniature photo"
+              : "Claude suggests colour schemes · techniques · tips"}
           </div>
         </div>
         <button onClick={load} disabled={loading}
-          style={{ background:loading ? C.dim : `${C.gold}22`,
+          style={{ flexShrink:0, background:loading ? C.dim : `${C.gold}22`,
                    border:`1px solid ${C.gold}`, borderRadius:8,
                    color:C.gold, padding:"8px 14px", fontFamily:"'Cinzel',serif",
                    fontSize:11, letterSpacing:1, cursor:loading ? "default" : "pointer",
                    opacity:loading ? 0.6 : 1 }}>
-          {loading ? "⚙ Calculating…" : data ? "⟳ Regenerate" : "✦ Generate Scheme"}
+          {loading ? "⚙ Analysing…" : data ? "⟳ New Ideas" : "✦ Inspire Me"}
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding:"12px 16px", color:C.red, fontSize:12 }}>{error}</div>
+      {/* ── Loading ── */}
+      {loading && (
+        <div style={{ padding:"20px 16px", textAlign:"center", color:C.muted, fontSize:12 }}>
+          {hasPhoto
+            ? "🔍 Analysing your miniature photo…"
+            : "🎨 Generating schemes…"}
+        </div>
       )}
 
-      {data && (
-        <div style={{ padding:"12px 16px" }}>
-          {data.map((part, pi) => (
-            <div key={pi} style={{ marginBottom:14 }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:C.gold,
-                            letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>
-                {part.part}
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {part.steps?.map((step, si) => {
-                  const citadel = CITADEL_PAINTS.find(
-                    (p) => p.name.toLowerCase() === step.paint?.toLowerCase()
-                  );
-                  const hex = citadel?.hex || step.hex || "#555";
-                  return (
-                    <div key={si}
-                      style={{ display:"flex", alignItems:"center", gap:8,
-                               background:C.card, borderRadius:6, padding:"6px 10px" }}>
-                      <div style={{ width:18, height:18, borderRadius:3, background:hex,
-                                    border:"1px solid rgba(255,255,255,0.1)", flexShrink:0 }}/>
-                      <div style={{ flex:1 }}>
-                        <span style={{ color:C.text, fontSize:12 }}>{step.paint}</span>
-                        <span style={{ background:`${USAGE_COLOR[step.type] || "#333"}55`,
-                                       borderRadius:4, padding:"1px 6px", fontSize:9,
-                                       color:"#ccc", marginLeft:8,
-                                       fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-                          {step.type}
-                        </span>
-                      </div>
-                      <button
-                        title="Add to my scheme"
-                        onClick={() => onApply({
-                          paint_name: step.paint,
-                          paint_hex:  hex,
-                          paint_range: citadel?.range || "",
-                          part_name:  part.part,
-                          usage_type: step.type,
-                          paint_brand:"Citadel",
-                        })}
-                        style={{ background:"transparent", border:`1px solid ${C.gold}55`,
-                                 borderRadius:4, color:C.gold, cursor:"pointer",
-                                 fontSize:11, padding:"2px 8px" }}>
-                        +
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+      {/* ── Error ── */}
+      {error && (
+        <div style={{ padding:"12px 16px", color:C.red, fontSize:12, lineHeight:1.6 }}>
+          {error}
+        </div>
+      )}
+
+      {/* ── Results ── */}
+      {data && schemes.length > 0 && (
+        <div>
+          {/* Miniature identification (when photo was used) */}
+          {data.miniature && hasPhoto && (
+            <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
+                          fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
+              Identified: <span style={{ color:C.text }}>{data.miniature}</span>
             </div>
-          ))}
+          )}
+
+          {/* Scheme tabs */}
+          <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`,
+                        overflowX:"auto" }}>
+            {schemes.map((s, i) => (
+              <button key={i} onClick={() => setActiveScheme(i)}
+                style={{ flex:"1 1 auto", padding:"10px 6px", background:"transparent",
+                         border:"none", borderBottom:`2px solid ${activeScheme===i ? C.gold : "transparent"}`,
+                         color: activeScheme===i ? C.gold : C.muted,
+                         fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                         cursor:"pointer", whiteSpace:"nowrap", transition:"color 0.15s" }}>
+                {s.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Active scheme */}
+          {scheme && (
+            <div style={{ padding:"12px 16px" }}>
+
+              {/* Difficulty + style */}
+              <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:10, flexWrap:"wrap" }}>
+                <span style={{ background:`${DIFFICULTY_COLOR[scheme.difficulty] || "#555"}22`,
+                               border:`1px solid ${DIFFICULTY_COLOR[scheme.difficulty] || "#555"}`,
+                               borderRadius:20, padding:"2px 10px",
+                               fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                               color: DIFFICULTY_COLOR[scheme.difficulty] || C.muted,
+                               flexShrink:0 }}>
+                  {scheme.difficulty}
+                </span>
+                <span style={{ fontSize:11, color:C.muted, lineHeight:1.5, flex:1 }}>
+                  {scheme.style}
+                </span>
+              </div>
+
+              {/* Techniques */}
+              {scheme.techniques?.length > 0 && (
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
+                                letterSpacing:3, textTransform:"uppercase", marginBottom:5 }}>
+                    Techniques
+                  </div>
+                  <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                    {scheme.techniques.map((t, i) => (
+                      <span key={i}
+                        style={{ background:C.card, border:`1px solid ${C.border}`,
+                                 borderRadius:20, padding:"3px 9px",
+                                 fontSize:10, color:C.text }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tip */}
+              {scheme.tip && (
+                <div style={{ marginBottom:12, padding:"8px 12px",
+                              background:`${C.gold}0a`, border:`1px solid ${C.gold}33`,
+                              borderLeft:`3px solid ${C.gold}`, borderRadius:"0 6px 6px 0",
+                              fontSize:11, color:C.text, lineHeight:1.6 }}>
+                  💡 {scheme.tip}
+                </div>
+              )}
+
+              {/* Paint steps by part */}
+              {scheme.parts?.map((part, pi) => (
+                <div key={pi} style={{ marginBottom:14 }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.gold,
+                                letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>
+                    {part.part}
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    {part.steps?.map((step, si) => {
+                      const citadel = CITADEL_PAINTS.find(
+                        p => p.name.toLowerCase() === step.paint?.toLowerCase()
+                      );
+                      const hex = citadel?.hex || step.hex || "#555";
+                      return (
+                        <div key={si}
+                          style={{ display:"flex", alignItems:"center", gap:8,
+                                   background:C.card, borderRadius:6, padding:"7px 10px" }}>
+                          <div style={{ width:20, height:20, borderRadius:4, background:hex,
+                                        border:"1px solid rgba(255,255,255,0.12)", flexShrink:0 }}/>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                              <span style={{ color:C.text, fontSize:12 }}>{step.paint}</span>
+                              <span style={{ background:`${STEP_COLOR[step.type] || "#333"}`,
+                                             borderRadius:4, padding:"1px 6px", fontSize:8,
+                                             color:"#ccc", fontFamily:"'Cinzel',serif",
+                                             letterSpacing:1, flexShrink:0 }}>
+                                {step.type}
+                              </span>
+                            </div>
+                            {step.note && (
+                              <div style={{ fontSize:10, color:C.muted, marginTop:2,
+                                            lineHeight:1.4, fontStyle:"italic" }}>
+                                {step.note}
+                              </div>
+                            )}
+                          </div>
+                          <button title="Add to my scheme"
+                            onClick={() => onApply({
+                              paint_name:  step.paint,
+                              paint_hex:   hex,
+                              paint_range: citadel?.range || "",
+                              part_name:   part.part,
+                              usage_type:  step.type,
+                              paint_brand: "Citadel",
+                            })}
+                            style={{ background:"transparent", border:`1px solid ${C.gold}55`,
+                                     borderRadius:4, color:C.gold, cursor:"pointer",
+                                     fontSize:11, padding:"2px 8px", flexShrink:0 }}>
+                            +
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
+}
+
+// ─── FORM HELPERS (outside MiniModal to prevent re-mount on each keystroke) ──
+
+function FormLabel({ children }) {
+  return (
+    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
+                  letterSpacing:3, textTransform:"uppercase", marginBottom:6, marginTop:14 }}>
+      {children}
+    </div>
+  );
+}
+
+function FormInput({ value, onChange, placeholder, multiline }) {
+  const s = {
+    background: C.card, border:`1px solid ${C.border}`, borderRadius:8,
+    padding:"10px 14px", color:C.text, fontSize:13, width:"100%",
+    boxSizing:"border-box", fontFamily:"inherit", resize:"vertical",
+  };
+  return multiline
+    ? <textarea rows={3} value={value} onChange={onChange} placeholder={placeholder} style={s}/>
+    : <input value={value} onChange={onChange} placeholder={placeholder} style={s}/>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -604,13 +868,14 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     photo_url:          mini?.photo_url ?? "",
     is_public:          mini?.is_public ?? true,
   });
-  const [paints,      setPaints]      = useState([]);
-  const [loading,     setLoading]     = useState(false);
-  const [photoLoading,setPhotoLoading]= useState(false);
-  const [showPicker,  setShowPicker]  = useState(false);
-  const [pendingPaint,setPendingPaint]= useState(null); // paint selected but not yet part-annotated
-  const [partInput,   setPartInput]   = useState("");
-  const [usageInput,  setUsageInput]  = useState("base");
+  const [paints,        setPaints]        = useState([]);
+  const [loading,       setLoading]       = useState(false);
+  const [photoLoading,  setPhotoLoading]  = useState(false);
+  const [showPicker,    setShowPicker]    = useState(false);
+  const [pendingPaint,  setPendingPaint]  = useState(null);
+  const [partInput,     setPartInput]     = useState("");
+  const [usageInput,    setUsageInput]    = useState("base");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   // Load existing paints if editing
   useEffect(() => {
@@ -715,22 +980,22 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     }
   };
 
-  const Label = ({ children }) => (
-    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
-                  letterSpacing:3, textTransform:"uppercase", marginBottom:6, marginTop:14 }}>
-      {children}
-    </div>
-  );
-
-  const Input = ({ value, onChange, placeholder, multiline }) => {
-    const s = {
-      background: C.card, border:`1px solid ${C.border}`, borderRadius:8,
-      padding:"10px 14px", color:C.text, fontSize:13, width:"100%",
-      boxSizing:"border-box", fontFamily:"inherit", resize:"vertical",
-    };
-    return multiline
-      ? <textarea rows={3} value={value} onChange={onChange} placeholder={placeholder} style={s}/>
-      : <input value={value} onChange={onChange} placeholder={placeholder} style={s}/>;
+  const handleDelete = async () => {
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      setTimeout(() => setDeleteConfirm(false), 3500);
+      return;
+    }
+    setLoading(true);
+    try {
+      const existing = await db.get("miniature_paints", `miniature_id=eq.${mini.id}`);
+      for (const p of existing) await db.delete("miniature_paints", p.id);
+      await db.delete("miniatures", mini.id);
+      onSave();
+    } catch (err) {
+      alert("Delete error: " + err.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -743,29 +1008,42 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
         {/* Header */}
         <div style={{ background:C.card, borderBottom:`1px solid ${C.border}`,
                       padding:"16px 20px", display:"flex",
-                      justifyContent:"space-between", alignItems:"center" }}>
+                      justifyContent:"space-between", alignItems:"center", gap:10 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:16, color:C.text }}>
             {isEdit ? "Edit Miniature" : "Add Miniature"}
           </span>
-          <button onClick={onClose}
-            style={{ background:"transparent", border:`1px solid ${C.dim}`,
-                     borderRadius:6, color:C.muted, width:32, height:32,
-                     cursor:"pointer", fontSize:16 }}>
-            ✕
-          </button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {isEdit && (
+              <button onClick={handleDelete} disabled={loading}
+                style={{ background: deleteConfirm ? `${C.red}22` : "transparent",
+                         border:`1px solid ${deleteConfirm ? C.red : C.dim}`,
+                         borderRadius:6, color: deleteConfirm ? C.red : C.muted,
+                         padding:"6px 12px", cursor:"pointer",
+                         fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1,
+                         transition:"all 0.2s" }}>
+                {deleteConfirm ? "⚠ Confirm Delete" : "🗑 Delete"}
+              </button>
+            )}
+            <button onClick={onClose}
+              style={{ background:"transparent", border:`1px solid ${C.dim}`,
+                       borderRadius:6, color:C.muted, width:32, height:32,
+                       cursor:"pointer", fontSize:16 }}>
+              ✕
+            </button>
+          </div>
         </div>
 
         <div style={{ padding:"16px 20px 24px" }}>
           {/* Name */}
-          <Label>Miniature Name</Label>
-          <Input value={form.name}
+          <FormLabel>Miniature Name</FormLabel>
+          <FormInput value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="e.g. Space Marine Sergeant"/>
+            placeholder="Miniature name"/>
 
           {/* Faction + Unit */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
             <div>
-              <Label>Faction</Label>
+              <FormLabel>Faction</FormLabel>
               <select value={form.faction}
                 onChange={(e) => setForm((f) => ({ ...f, faction:e.target.value, unit_type:"" }))}
                 style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
@@ -776,7 +1054,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               </select>
             </div>
             <div>
-              <Label>Unit / Type</Label>
+              <FormLabel>Unit / Type</FormLabel>
               <select value={form.unit_type}
                 onChange={(e) => setForm((f) => ({ ...f, unit_type:e.target.value }))}
                 disabled={!units.length}
@@ -791,12 +1069,12 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           </div>
 
           {/* Status */}
-          <Label>Progress</Label>
+          <FormLabel>Progress</FormLabel>
           <StatusStepper value={form.status}
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
           {/* Photo */}
-          <Label>Photo</Label>
+          <FormLabel>Photo</FormLabel>
           <div style={{ display:"flex", gap:10, alignItems:"center" }}>
             {form.photo_url && (
               <img src={form.photo_url} alt="preview"
@@ -816,13 +1094,13 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           </div>
 
           {/* Notes */}
-          <Label>General Notes</Label>
-          <Input multiline value={form.notes}
+          <FormLabel>General Notes</FormLabel>
+          <FormInput multiline value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes:e.target.value }))}
             placeholder="Inspiration, basing, conversions…"/>
 
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
-          <Label>Colour Scheme</Label>
+          <FormLabel>Colour Scheme</FormLabel>
 
           {/* Existing paints */}
           {paints.length > 0 && (
@@ -898,17 +1176,18 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                        background:"transparent", border:`1px dashed ${C.goldDim}`,
                        color:C.goldDim, fontFamily:"'Cinzel',serif",
                        fontSize:12, letterSpacing:2, cursor:"pointer", marginBottom:10 }}>
-              + Add Citadel Colour
+              + Add Paint (Citadel · AK · Army Painter)
             </button>
           )}
 
           {/* AI Recommendations */}
-          {(form.faction || form.unit_type) && (
+          {(form.faction || form.unit_type || form.photo_url) && (
             <AiRecommendations
               faction={form.faction}
               unit={form.unit_type || form.faction}
               onApply={handleApplyAi}
               universe={universe}
+              photoUrl={form.photo_url || null}
             />
           )}
 
@@ -925,8 +1204,8 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           )}
 
           {/* Color scheme notes */}
-          <Label>Colour Scheme Notes</Label>
-          <Input multiline value={form.color_scheme_notes}
+          <FormLabel>Colour Scheme Notes</FormLabel>
+          <FormInput multiline value={form.color_scheme_notes}
             onChange={(e) => setForm((f) => ({ ...f, color_scheme_notes:e.target.value }))}
             placeholder="Free notes on the scheme, techniques used, inspiration…"/>
 
@@ -1043,10 +1322,10 @@ function BattleLog({userId}){
             {inp("Opponent's Army","oppArmy")}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8}}>
-            {inp("Data","date","date")}
-            {inp("Punti","points")}
+            {inp("Date","date","date")}
+            {inp("Points","points")}
           </div>
-          {/* Risultato */}
+          {/* Result */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             {BATTLE_RESULTS.map(r=>(
               <button key={r.id} onClick={()=>setForm(f=>({...f,result:r.id}))}
