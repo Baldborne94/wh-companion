@@ -1163,14 +1163,14 @@ const FACTION_INFOBOXES={
 };
 
 const AOS_REALMS=[
-  {name:"Aqshy", sub:"Realm of Fire",    color:"#C0392B",icon:"🔥"},
-  {name:"Ghyran",sub:"Realm of Life",    color:"#4aaa6a",icon:"🌿"},
-  {name:"Shyish",sub:"Realm of Death",   color:"#7a5aaa",icon:"💀"},
-  {name:"Azyr",  sub:"Realm of Heavens", color:"#5a8fc5",icon:"⭐"},
-  {name:"Chamon",sub:"Realm of Metal",   color:"#8a8a4a",icon:"⚙️"},
-  {name:"Ghur",  sub:"Realm of Beasts",  color:"#8a5a2a",icon:"🦴"},
-  {name:"Ulgu",  sub:"Realm of Shadow",  color:"#4a4a6a",icon:"🌑"},
-  {name:"Hysh",  sub:"Realm of Light",   color:"#aaa060",icon:"✨"},
+  {name:"Realm of Aqshy", sub:"Fire",    color:"#C0392B",icon:"🔥"},
+  {name:"Realm of Ghyran",sub:"Life",    color:"#4aaa6a",icon:"🌿"},
+  {name:"Realm of Shyish",sub:"Death",   color:"#7a5aaa",icon:"💀"},
+  {name:"Realm of Azyr",  sub:"Heavens", color:"#5a8fc5",icon:"⭐"},
+  {name:"Realm of Chamon",sub:"Metal",   color:"#8a8a4a",icon:"⚙️"},
+  {name:"Realm of Ghur",  sub:"Beasts",  color:"#8a5a2a",icon:"🦴"},
+  {name:"Realm of Ulgu",  sub:"Shadow",  color:"#4a4a6a",icon:"🌑"},
+  {name:"Realm of Hysh",  sub:"Light",   color:"#aaa060",icon:"✨"},
 ];
 
 function LoreSection({ universe }){
@@ -1322,7 +1322,7 @@ function LoreSection({ universe }){
           <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>The Mortal Realms</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {AOS_REALMS.map(r=>(
-              <div key={r.name} onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name,'_blank')}
+              <div key={r.name} onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name.replace(/ /g,'_'),'_blank')}
                 style={{background:`linear-gradient(135deg,${r.color}18,${C.card})`,border:`1px solid ${r.color}44`,borderLeft:`3px solid ${r.color}`,borderRadius:10,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
                 <span style={{fontSize:22}}>{r.icon}</span>
                 <div>
@@ -1335,13 +1335,11 @@ function LoreSection({ universe }){
         </div>
       )}
 
-      {/* reader hint — WH40K only */}
-      {!isAoS&&(
-        <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
-          <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, WH40K terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the Fandom Wiki page directly.</p>
-        </div>
-      )}
+      {/* reader hint */}
+      <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?"Durante la lettura, i termini AoS appaiono":"While reading, WH40K terms appear"} <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>{isAoS?"sottolineati in blu":"underlined in blue"}</span>. {isAoS?"Toccali per aprire la pagina wiki direttamente.":"Tap them to open the Fandom Wiki page directly."}</p>
+      </div>
     </div>
   );
 }
