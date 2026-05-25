@@ -381,6 +381,28 @@ export default function EpubReader({
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
   const [bmSaved,       setBmSaved]       = useState(false);
+  const [isFullscreen,  setIsFullscreen]  = useState(false);
+
+  const toggleFullscreen = useCallback(() => {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) {
+      (el.requestFullscreen?.() || el.webkitRequestFullscreen?.())
+        ?.catch(() => {});
+    } else {
+      (document.exitFullscreen?.() || document.webkitExitFullscreen?.())
+        ?.catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
   const [bookmarks,     setBookmarks]     = useState(() => {
     try { return JSON.parse(localStorage.getItem(`wh40k_bm_${userId}_${bookId}`) || "[]"); } catch { return []; }
   });
@@ -883,6 +905,11 @@ export default function EpubReader({
           <IBtn onClick={saveBookmark}                     color={bmSaved?C.gold:T.muted} title="Bookmark">🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
+          {document.fullscreenEnabled && (
+            <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?"Exit fullscreen":"Fullscreen"}>
+              {isFullscreen ? "⊡" : "⛶"}
+            </IBtn>
+          )}
         </div>
       </div>
 
