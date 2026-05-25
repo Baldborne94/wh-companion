@@ -742,8 +742,6 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
     </div>
   );
 }
-  );
-}
 
 // ─── MINI CARD ────────────────────────────────────────────────────────────
 
