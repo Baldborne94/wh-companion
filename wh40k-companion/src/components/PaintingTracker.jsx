@@ -254,15 +254,48 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe) {
+async function getAiRecommendations(faction, unit, universe, photoUrl) {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
-  const prompt = `You are an expert ${game} miniature painter.
-Provide a Citadel colour scheme for ${unit} from the ${faction} faction.
-Reply ONLY with a JSON array, no markdown or extra text.
-Format: [{"part":"part name","steps":[{"type":"base|shade|layer|highlight","paint":"Citadel colour name","hex":"#hexcode"}]}]
-Use real Citadel colours. Max 4-5 parts, 2-4 steps per part.`;
+
+  const instructions = `You are an expert ${game} miniature painter and hobby coach.
+${photoUrl
+  ? `Analyse the miniature in the attached image. Identify what it is, its current state, and any base colours already present.`
+  : `The miniature is: ${unit} from ${faction} (${game}).`}
+
+Suggest exactly 2-3 distinct painting schemes. Vary style: e.g. "Classic", "Battle-worn / Grimdark", "Display / Competition".
+For each scheme provide realistic Citadel paint steps AND actionable technique advice.
+
+Reply ONLY with valid JSON — no markdown, no extra text:
+{
+  "miniature": "brief identification",
+  "schemes": [
+    {
+      "name": "scheme name",
+      "difficulty": "Beginner|Intermediate|Advanced",
+      "style": "one-sentence visual description",
+      "techniques": ["technique1","technique2","technique3"],
+      "tip": "one key piece of advice specific to this unit",
+      "parts": [
+        {
+          "part": "part name",
+          "steps": [
+            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"Citadel paint name","hex":"#hexcode","note":"optional short tip"}
+          ]
+        }
+      ]
+    }
+  ]
+}
+Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · use real Citadel colours.`;
+
+  const userContent = photoUrl
+    ? [
+        { type: "image", source: { type: "url", url: photoUrl } },
+        { type: "text", text: instructions },
+      ]
+    : instructions;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -273,9 +306,9 @@ Use real Citadel colours. Max 4-5 parts, 2-4 steps per part.`;
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1000,
-      messages: [{ role: "user", content: prompt }],
+      model: photoUrl ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
+      max_tokens: 2000,
+      messages: [{ role: "user", content: userContent }],
     }),
   });
   if (!resp.ok) {
@@ -579,16 +612,23 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
 
 // ─── AI RECOMMENDATIONS PANEL ─────────────────────────────────────────────
 
-function AiRecommendations({ faction, unit, onApply, universe }) {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:"#b03030" };
+const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
+                     highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
+
+function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
+  const [data,       setData]       = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState(null);
+  const [activeScheme, setActiveScheme] = useState(0);
+
+  const hasPhoto = !!photoUrl;
 
   const load = async () => {
-    if (!faction) { setError("Select a faction first"); return; }
-    setLoading(true); setError(null);
+    if (!faction && !hasPhoto) { setError("Select a faction first"); return; }
+    setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrl);
       setData(result);
     } catch (e) {
       if (e.message === "NO_API_KEY") {
@@ -602,90 +642,186 @@ function AiRecommendations({ faction, unit, onApply, universe }) {
     }
   };
 
-  const USAGE_COLOR = {
-    base:"#4a4a4a", shade:"#1a2a5a", layer:"#7a5a10",
-    highlight:"#c9a84c", drybrush:"#5a3a1a",
-  };
+  const schemes = data?.schemes ?? [];
+  const scheme  = schemes[activeScheme];
 
   return (
     <div style={{ background:C.surface, border:`1px solid ${C.gold}44`,
                   borderRadius:12, overflow:"hidden" }}>
+
+      {/* ── Header ── */}
       <div style={{ background:`${C.gold}11`, borderBottom:`1px solid ${C.gold}33`,
                     padding:"12px 16px", display:"flex", alignItems:"center",
-                    justifyContent:"space-between" }}>
-        <div>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.gold,
-                        letterSpacing:2 }}>
+                    justifyContent:"space-between", gap:10 }}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.gold, letterSpacing:2 }}>
             ⚡ AI Color Advisor
           </div>
-          <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>
-            Citadel colour scheme generated by Claude
+          <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>
+            {hasPhoto
+              ? "📷 Claude will analyse your miniature photo"
+              : "Claude suggests colour schemes · techniques · tips"}
           </div>
         </div>
         <button onClick={load} disabled={loading}
-          style={{ background:loading ? C.dim : `${C.gold}22`,
+          style={{ flexShrink:0, background:loading ? C.dim : `${C.gold}22`,
                    border:`1px solid ${C.gold}`, borderRadius:8,
                    color:C.gold, padding:"8px 14px", fontFamily:"'Cinzel',serif",
                    fontSize:11, letterSpacing:1, cursor:loading ? "default" : "pointer",
                    opacity:loading ? 0.6 : 1 }}>
-          {loading ? "⚙ Calculating…" : data ? "⟳ Regenerate" : "✦ Generate Scheme"}
+          {loading ? "⚙ Analysing…" : data ? "⟳ New Ideas" : "✦ Inspire Me"}
         </button>
       </div>
 
-      {error && (
-        <div style={{ padding:"12px 16px", color:C.red, fontSize:12 }}>{error}</div>
+      {/* ── Loading ── */}
+      {loading && (
+        <div style={{ padding:"20px 16px", textAlign:"center", color:C.muted, fontSize:12 }}>
+          {hasPhoto
+            ? "🔍 Analysing your miniature photo…"
+            : "🎨 Generating schemes…"}
+        </div>
       )}
 
-      {data && (
-        <div style={{ padding:"12px 16px" }}>
-          {data.map((part, pi) => (
-            <div key={pi} style={{ marginBottom:14 }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:C.gold,
-                            letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>
-                {part.part}
-              </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-                {part.steps?.map((step, si) => {
-                  const citadel = CITADEL_PAINTS.find(
-                    (p) => p.name.toLowerCase() === step.paint?.toLowerCase()
-                  );
-                  const hex = citadel?.hex || step.hex || "#555";
-                  return (
-                    <div key={si}
-                      style={{ display:"flex", alignItems:"center", gap:8,
-                               background:C.card, borderRadius:6, padding:"6px 10px" }}>
-                      <div style={{ width:18, height:18, borderRadius:3, background:hex,
-                                    border:"1px solid rgba(255,255,255,0.1)", flexShrink:0 }}/>
-                      <div style={{ flex:1 }}>
-                        <span style={{ color:C.text, fontSize:12 }}>{step.paint}</span>
-                        <span style={{ background:`${USAGE_COLOR[step.type] || "#333"}55`,
-                                       borderRadius:4, padding:"1px 6px", fontSize:9,
-                                       color:"#ccc", marginLeft:8,
-                                       fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-                          {step.type}
-                        </span>
-                      </div>
-                      <button
-                        title="Add to my scheme"
-                        onClick={() => onApply({
-                          paint_name: step.paint,
-                          paint_hex:  hex,
-                          paint_range: citadel?.range || "",
-                          part_name:  part.part,
-                          usage_type: step.type,
-                          paint_brand:"Citadel",
-                        })}
-                        style={{ background:"transparent", border:`1px solid ${C.gold}55`,
-                                 borderRadius:4, color:C.gold, cursor:"pointer",
-                                 fontSize:11, padding:"2px 8px" }}>
-                        +
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+      {/* ── Error ── */}
+      {error && (
+        <div style={{ padding:"12px 16px", color:C.red, fontSize:12, lineHeight:1.6 }}>
+          {error}
+        </div>
+      )}
+
+      {/* ── Results ── */}
+      {data && schemes.length > 0 && (
+        <div>
+          {/* Miniature identification (when photo was used) */}
+          {data.miniature && hasPhoto && (
+            <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
+                          fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
+              Identified: <span style={{ color:C.text }}>{data.miniature}</span>
             </div>
-          ))}
+          )}
+
+          {/* Scheme tabs */}
+          <div style={{ display:"flex", gap:0, borderBottom:`1px solid ${C.border}`,
+                        overflowX:"auto" }}>
+            {schemes.map((s, i) => (
+              <button key={i} onClick={() => setActiveScheme(i)}
+                style={{ flex:"1 1 auto", padding:"10px 6px", background:"transparent",
+                         border:"none", borderBottom:`2px solid ${activeScheme===i ? C.gold : "transparent"}`,
+                         color: activeScheme===i ? C.gold : C.muted,
+                         fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                         cursor:"pointer", whiteSpace:"nowrap", transition:"color 0.15s" }}>
+                {s.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Active scheme */}
+          {scheme && (
+            <div style={{ padding:"12px 16px" }}>
+
+              {/* Difficulty + style */}
+              <div style={{ display:"flex", alignItems:"flex-start", gap:8, marginBottom:10, flexWrap:"wrap" }}>
+                <span style={{ background:`${DIFFICULTY_COLOR[scheme.difficulty] || "#555"}22`,
+                               border:`1px solid ${DIFFICULTY_COLOR[scheme.difficulty] || "#555"}`,
+                               borderRadius:20, padding:"2px 10px",
+                               fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                               color: DIFFICULTY_COLOR[scheme.difficulty] || C.muted,
+                               flexShrink:0 }}>
+                  {scheme.difficulty}
+                </span>
+                <span style={{ fontSize:11, color:C.muted, lineHeight:1.5, flex:1 }}>
+                  {scheme.style}
+                </span>
+              </div>
+
+              {/* Techniques */}
+              {scheme.techniques?.length > 0 && (
+                <div style={{ marginBottom:10 }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
+                                letterSpacing:3, textTransform:"uppercase", marginBottom:5 }}>
+                    Techniques
+                  </div>
+                  <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                    {scheme.techniques.map((t, i) => (
+                      <span key={i}
+                        style={{ background:C.card, border:`1px solid ${C.border}`,
+                                 borderRadius:20, padding:"3px 9px",
+                                 fontSize:10, color:C.text }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tip */}
+              {scheme.tip && (
+                <div style={{ marginBottom:12, padding:"8px 12px",
+                              background:`${C.gold}0a`, border:`1px solid ${C.gold}33`,
+                              borderLeft:`3px solid ${C.gold}`, borderRadius:"0 6px 6px 0",
+                              fontSize:11, color:C.text, lineHeight:1.6 }}>
+                  💡 {scheme.tip}
+                </div>
+              )}
+
+              {/* Paint steps by part */}
+              {scheme.parts?.map((part, pi) => (
+                <div key={pi} style={{ marginBottom:14 }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.gold,
+                                letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>
+                    {part.part}
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                    {part.steps?.map((step, si) => {
+                      const citadel = CITADEL_PAINTS.find(
+                        p => p.name.toLowerCase() === step.paint?.toLowerCase()
+                      );
+                      const hex = citadel?.hex || step.hex || "#555";
+                      return (
+                        <div key={si}
+                          style={{ display:"flex", alignItems:"center", gap:8,
+                                   background:C.card, borderRadius:6, padding:"7px 10px" }}>
+                          <div style={{ width:20, height:20, borderRadius:4, background:hex,
+                                        border:"1px solid rgba(255,255,255,0.12)", flexShrink:0 }}/>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+                              <span style={{ color:C.text, fontSize:12 }}>{step.paint}</span>
+                              <span style={{ background:`${STEP_COLOR[step.type] || "#333"}`,
+                                             borderRadius:4, padding:"1px 6px", fontSize:8,
+                                             color:"#ccc", fontFamily:"'Cinzel',serif",
+                                             letterSpacing:1, flexShrink:0 }}>
+                                {step.type}
+                              </span>
+                            </div>
+                            {step.note && (
+                              <div style={{ fontSize:10, color:C.muted, marginTop:2,
+                                            lineHeight:1.4, fontStyle:"italic" }}>
+                                {step.note}
+                              </div>
+                            )}
+                          </div>
+                          <button title="Add to my scheme"
+                            onClick={() => onApply({
+                              paint_name:  step.paint,
+                              paint_hex:   hex,
+                              paint_range: citadel?.range || "",
+                              part_name:   part.part,
+                              usage_type:  step.type,
+                              paint_brand: "Citadel",
+                            })}
+                            style={{ background:"transparent", border:`1px solid ${C.gold}55`,
+                                     borderRadius:4, color:C.gold, cursor:"pointer",
+                                     fontSize:11, padding:"2px 8px", flexShrink:0 }}>
+                            +
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1045,12 +1181,13 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           )}
 
           {/* AI Recommendations */}
-          {(form.faction || form.unit_type) && (
+          {(form.faction || form.unit_type || form.photo_url) && (
             <AiRecommendations
               faction={form.faction}
               unit={form.unit_type || form.faction}
               onApply={handleApplyAi}
               universe={universe}
+              photoUrl={form.photo_url || null}
             />
           )}
 
