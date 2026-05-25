@@ -482,126 +482,6 @@ function PaintPicker({ onSelect, onClose }) {
   );
 }
 
-// ─── LEXICANUM SEARCH ─────────────────────────────────────────────────────
-
-function LexicanumSearch({ faction, unit, universe, onSelect }) {
-  const [open,    setOpen]    = useState(false);
-  const [query,   setQuery]   = useState("");
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [apiOk,   setApiOk]   = useState(true);
-  const timer = useRef(null);
-
-  const base = universe === 'aos'
-    ? "https://ageofsigmar.lexicanum.com"
-    : "https://wh40k.lexicanum.com";
-  const wikiTarget = (unit || faction || "").trim();
-  const wikiUrl = `${base}/wiki/${encodeURIComponent(wikiTarget.replace(/ /g, "_"))}`;
-  const apiBase = `${base}/mediawiki/api.php`;
-
-  const doSearch = async (q) => {
-    if (!q.trim()) { setResults([]); return; }
-    setLoading(true);
-    try {
-      const url = `${apiBase}?action=opensearch&search=${encodeURIComponent(q)}&limit=12&namespace=0&format=json&origin=*`;
-      const r = await fetch(url);
-      const [, titles] = await r.json();
-      setResults(titles || []);
-      setApiOk(true);
-    } catch {
-      setApiOk(false);
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onInput = (e) => {
-    const v = e.target.value;
-    setQuery(v);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => doSearch(v), 380);
-  };
-
-  const toggle = () => {
-    setOpen(o => !o);
-    if (!open) { setQuery(""); setResults([]); }
-  };
-
-  return (
-    <div style={{ marginTop:6 }}>
-      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-        <button onClick={toggle}
-          style={{ padding:"4px 10px", borderRadius:6, cursor:"pointer",
-                   background: open ? `${C.gold}15` : "transparent",
-                   border:`1px solid ${open ? C.gold+"66" : C.border}`,
-                   color: open ? C.gold : C.muted,
-                   fontFamily:"'Cinzel',serif", fontSize:9,
-                   letterSpacing:1, transition:"all 0.15s" }}>
-          🔍 Search Lexicanum
-        </button>
-        {faction && (
-          <a href={wikiUrl} target="_blank" rel="noopener noreferrer"
-            style={{ color:C.goldDim, fontSize:9, fontFamily:"'Cinzel',serif",
-                     letterSpacing:1, textDecoration:"none" }}>
-            ↗ Open wiki
-          </a>
-        )}
-      </div>
-
-      {open && (
-        <div style={{ marginTop:6, background:C.card, border:`1px solid ${C.border}`,
-                      borderRadius:8, padding:"10px 12px" }}>
-          <input value={query} onChange={onInput} autoFocus
-            placeholder="Search model name on Lexicanum…"
-            style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
-                     padding:"8px 10px", color:C.text, fontSize:12,
-                     width:"100%", boxSizing:"border-box", marginBottom:6 }}/>
-
-          {loading && (
-            <div style={{ color:C.muted, fontSize:11, padding:"4px 0" }}>Searching…</div>
-          )}
-
-          {!apiOk && (
-            <div style={{ fontSize:11, color:C.muted, lineHeight:1.6 }}>
-              API non raggiungibile —{" "}
-              <a href={wikiUrl} target="_blank" rel="noopener noreferrer"
-                style={{ color:C.gold }}>apri il wiki Lexicanum</a>{" "}
-              e copia il nome esatto del modello.
-            </div>
-          )}
-
-          {results.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:220, overflowY:"auto" }}>
-              {results.map(r => (
-                <button key={r}
-                  onClick={() => { onSelect(r); setOpen(false); setQuery(""); setResults([]); }}
-                  style={{ textAlign:"left", padding:"7px 10px", borderRadius:6,
-                           background:C.surface, border:`1px solid ${C.border}`,
-                           color:C.text, fontSize:12, cursor:"pointer",
-                           transition:"border-color 0.1s" }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!loading && !results.length && query.trim() && apiOk && (
-            <div style={{ fontSize:11, color:C.muted }}>
-              Nessun risultato —{" "}
-              <a href={`${base}/wiki/Special:Search?search=${encodeURIComponent(query)}`}
-                target="_blank" rel="noopener noreferrer"
-                style={{ color:C.gold }}>cerca sul wiki</a>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── PINTEREST SEARCH ─────────────────────────────────────────────────────
 
 function pinterestUrl(faction, unit, name) {
@@ -1351,12 +1231,16 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                          borderRadius: units.length ? "0 0 8px 8px" : 8,
                          padding:"10px 14px", color:C.text, fontSize:13,
                          width:"100%", boxSizing:"border-box" }}/>
-              <LexicanumSearch
-                faction={form.faction}
-                unit={form.unit_type}
-                universe={universe}
-                onSelect={name => setForm(f => ({ ...f, unit_type: name }))}
-              />
+              {form.faction && (
+                <a
+                  href={`${universe === 'aos' ? 'https://ageofsigmar.lexicanum.com' : 'https://wh40k.lexicanum.com'}/wiki/Category:${encodeURIComponent(form.faction.replace(/ /g, '_'))}_miniatures`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display:"inline-block", marginTop:5, color:C.goldDim,
+                           fontSize:10, fontFamily:"'Cinzel',serif", letterSpacing:1,
+                           textDecoration:"none" }}>
+                  ↗ Browse {form.faction} miniatures on Lexicanum
+                </a>
+              )}
             </div>
           </div>
 
