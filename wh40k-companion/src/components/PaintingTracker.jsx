@@ -309,7 +309,7 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
         type: "image",
         source: { type: "base64", media_type: mime, data: b64 },
       })),
-      { type: "text", text: `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.` },
+      { type: "text", text: `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${faction ? ` This model belongs to the ${faction} faction — use this only to inform lore-accurate colour choices, not to add parts that are not visible.` : ""}` },
     ];
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
