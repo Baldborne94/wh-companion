@@ -1739,7 +1739,7 @@ export default function App(){
         @keyframes slideLeft{from{transform:translateX(100%);}to{transform:translateX(0);}}
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
       `}</style>
-      <div style={{display:"flex",flexDirection:"column",height:"100svh",maxWidth:1100,margin:"0 auto",background:universe==='aos'?AOS.bg:C.bg}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100%",maxWidth:1100,margin:"0 auto",background:universe==='aos'?AOS.bg:C.bg}}>
         {/* ── HEADER ── */}
         {(()=>{
           const hBg=universe==='aos'?AOS.surface:C.surface;
