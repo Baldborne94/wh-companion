@@ -255,18 +255,23 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrl) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands) {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
+  const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
+  const brands = availableBrands?.length ? availableBrands : ["Citadel"];
+  const brandsStr = brands.join(", ");
 
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
-${photoUrl
-  ? `Analyse the miniature in the attached image. Identify what it is, its current state, and any base colours already present.`
+${hasPhotos
+  ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
   : `The miniature is: ${unit} from ${faction} (${game}).`}
 
+Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
+
 Suggest exactly 2-3 distinct painting schemes. Vary style: e.g. "Classic", "Battle-worn / Grimdark", "Display / Competition".
-For each scheme provide realistic Citadel paint steps AND actionable technique advice.
+For each scheme provide realistic paint steps AND actionable technique advice.
 
 Reply ONLY with valid JSON — no markdown, no extra text:
 {
@@ -282,20 +287,20 @@ Reply ONLY with valid JSON — no markdown, no extra text:
         {
           "part": "part name",
           "steps": [
-            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"Citadel paint name","hex":"#hexcode","note":"optional short tip"}
+            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"paint name","hex":"#hexcode","note":"optional short tip"}
           ]
         }
       ]
     }
   ]
 }
-Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · use real Citadel colours.`;
+Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · only use paints from: ${brandsStr}.`;
 
-  const userContent = photoUrl
-    ? [
-        { type: "image", source: { type: "url", url: photoUrl } },
-        { type: "text", text: instructions },
-      ]
+  const imageBlocks = hasPhotos
+    ? photoUrls.map(url => ({ type: "image", source: { type: "url", url } }))
+    : [];
+  const userContent = hasPhotos
+    ? [...imageBlocks, { type: "text", text: instructions }]
     : instructions;
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -307,7 +312,7 @@ Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · use re
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: photoUrl ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
+      model: hasPhotos ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
       max_tokens: 4000,
       messages: [{ role: "user", content: userContent }],
     }),
@@ -532,6 +537,11 @@ function PaintRow({ paint, onRemove }) {
 function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
   const st       = STATUS.find((s) => s.id === mini.status) || STATUS[0];
   const faction  = mini.faction || "";
+  const coverUrl = (() => {
+    try { if (mini.photo_url?.startsWith("[")) return JSON.parse(mini.photo_url)[0]; }
+    catch {}
+    return mini.photo_url || "";
+  })();
 
   return (
     <div onClick={onClick}
@@ -544,8 +554,8 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
       <div style={{ height:140, background:`${C.surface}`, position:"relative",
                     display:"flex", alignItems:"center", justifyContent:"center",
                     overflow:"hidden" }}>
-        {mini.photo_url ? (
-          <img src={mini.photo_url} alt={mini.name}
+        {coverUrl ? (
+          <img src={coverUrl} alt={mini.name}
             style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
         ) : (
           <div style={{ fontSize:40, opacity:0.2 }}>⚙</div>
@@ -617,19 +627,24 @@ const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:
 const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
-function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
-  const [data,       setData]       = useState(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState(null);
-  const [activeScheme, setActiveScheme] = useState(0);
+function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
+  const [data,          setData]          = useState(null);
+  const [loading,       setLoading]       = useState(false);
+  const [error,         setError]         = useState(null);
+  const [activeScheme,  setActiveScheme]  = useState(0);
+  const [selBrands,     setSelBrands]     = useState(["Citadel", "AK Interactive", "Army Painter"]);
 
-  const hasPhoto = !!photoUrl;
+  const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
+
+  const toggleBrand = (b) =>
+    setSelBrands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
 
   const load = async () => {
-    if (!faction && !hasPhoto) { setError("Select a faction first"); return; }
+    if (!faction && !hasPhotos) { setError("Select a faction first"); return; }
+    if (!selBrands.length) { setError("Select at least one paint brand"); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrl);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands);
       setData(result);
     } catch (e) {
       if (e.message === "NO_API_KEY") {
@@ -659,8 +674,8 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
             ⚡ AI Color Advisor
           </div>
           <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>
-            {hasPhoto
-              ? "📷 Claude will analyse your miniature photo"
+            {hasPhotos
+              ? `📷 ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""} · Claude will analyse your miniature`
               : "Claude suggests colour schemes · techniques · tips"}
           </div>
         </div>
@@ -674,10 +689,33 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
         </button>
       </div>
 
+      {/* ── Brand filter ── */}
+      <div style={{ padding:"8px 16px", borderBottom:`1px solid ${C.border}`,
+                    display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+        <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
+                       letterSpacing:2, textTransform:"uppercase", flexShrink:0 }}>
+          My brands:
+        </span>
+        {BRANDS.map(b => {
+          const on = selBrands.includes(b);
+          return (
+            <button key={b} onClick={() => toggleBrand(b)}
+              style={{ padding:"3px 10px", borderRadius:20, cursor:"pointer",
+                       border:`1px solid ${on ? C.gold : C.border}`,
+                       background: on ? `${C.gold}22` : "transparent",
+                       color: on ? C.gold : C.muted,
+                       fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                       transition:"all 0.15s" }}>
+              {b}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Loading ── */}
       {loading && (
         <div style={{ padding:"20px 16px", textAlign:"center", color:C.muted, fontSize:12 }}>
-          {hasPhoto
+          {hasPhotos
             ? "🔍 Analysing your miniature photo…"
             : "🎨 Generating schemes…"}
         </div>
@@ -694,7 +732,7 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrl }) {
       {data && schemes.length > 0 && (
         <div>
           {/* Miniature identification (when photo was used) */}
-          {data.miniature && hasPhoto && (
+          {data.miniature && hasPhotos && (
             <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
                           fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
               Identified: <span style={{ color:C.text }}>{data.miniature}</span>
@@ -859,6 +897,14 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const isEdit = !!mini;
   const photoInput = useRef(null);
 
+  // Parse saved photo_url: may be a JSON array (multiple photos) or a plain URL
+  const initPhotoUrls = () => {
+    const raw = mini?.photo_url ?? "";
+    if (!raw) return [];
+    try { if (raw.startsWith("[")) return JSON.parse(raw); } catch {}
+    return [raw];
+  };
+
   const [form, setForm]       = useState({
     name:               mini?.name ?? "",
     faction:            mini?.faction ?? "",
@@ -866,9 +912,9 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     status:             mini?.status ?? "owned",
     notes:              mini?.notes ?? "",
     color_scheme_notes: mini?.color_scheme_notes ?? "",
-    photo_url:          mini?.photo_url ?? "",
     is_public:          mini?.is_public ?? true,
   });
+  const [photoUrls,     setPhotoUrls]     = useState(initPhotoUrls);
   const [paints,        setPaints]        = useState([]);
   const [loading,       setLoading]       = useState(false);
   const [photoLoading,  setPhotoLoading]  = useState(false);
@@ -889,18 +935,24 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const units = FACTIONS[form.faction] ?? [];
 
   const handlePhoto = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const slots = 4 - photoUrls.length;
+    if (slots <= 0) { alert("Maximum 4 photos"); return; }
     setPhotoLoading(true);
     try {
-      const path = `${userId}/${Date.now()}_${file.name}`;
-      await storage.upload("miniatures", path, file);
-      const url = storage.url("miniatures", path);
-      setForm((f) => ({ ...f, photo_url: url }));
+      const newUrls = [];
+      for (const file of files.slice(0, slots)) {
+        const path = `${userId}/${Date.now()}_${file.name}`;
+        await storage.upload("miniatures", path, file);
+        newUrls.push(storage.url("miniatures", path));
+      }
+      setPhotoUrls(prev => [...prev, ...newUrls]);
     } catch (err) {
       alert("Photo upload error: " + err.message);
     } finally {
       setPhotoLoading(false);
+      e.target.value = "";
     }
   };
 
@@ -947,7 +999,10 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     setLoading(true);
     try {
       let miniId = mini?.id;
-      const payload = { ...form, user_id: userId };
+      const serializedPhoto = photoUrls.length === 0 ? ""
+        : photoUrls.length === 1 ? photoUrls[0]
+        : JSON.stringify(photoUrls);
+      const payload = { ...form, photo_url: serializedPhoto, user_id: userId };
 
       if (isEdit) {
         await db.update("miniatures", miniId, payload);
@@ -1074,23 +1129,46 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           <StatusStepper value={form.status}
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
-          {/* Photo */}
-          <FormLabel>Photo</FormLabel>
-          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-            {form.photo_url && (
-              <img src={form.photo_url} alt="preview"
-                style={{ width:80, height:80, objectFit:"cover",
-                         borderRadius:8, border:`1px solid ${C.border}` }}/>
+          {/* Photos (up to 4) */}
+          <FormLabel>Photos ({photoUrls.length}/4)</FormLabel>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-start" }}>
+            {photoUrls.map((url, i) => (
+              <div key={i} style={{ position:"relative", flexShrink:0 }}>
+                <img src={url} alt={`photo ${i+1}`}
+                  style={{ width:80, height:80, objectFit:"cover",
+                           borderRadius:8, border:`1px solid ${i===0 ? C.gold : C.border}`,
+                           display:"block" }}/>
+                {i === 0 && (
+                  <div style={{ position:"absolute", bottom:3, left:3,
+                                background:"rgba(0,0,0,0.7)", borderRadius:3,
+                                padding:"1px 4px", fontSize:8,
+                                fontFamily:"'Cinzel',serif", color:C.gold }}>
+                    cover
+                  </div>
+                )}
+                <button onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
+                  style={{ position:"absolute", top:-6, right:-6, width:18, height:18,
+                           borderRadius:"50%", background:C.red, border:"none",
+                           color:"#fff", fontSize:11, cursor:"pointer",
+                           display:"flex", alignItems:"center", justifyContent:"center",
+                           lineHeight:1, padding:0 }}>
+                  ×
+                </button>
+              </div>
+            ))}
+            {photoUrls.length < 4 && (
+              <button onClick={() => photoInput.current.click()} disabled={photoLoading}
+                style={{ width:80, height:80, borderRadius:8, flexShrink:0,
+                         background:"transparent", border:`2px dashed ${C.goldDim}`,
+                         color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
+                         letterSpacing:1, cursor:"pointer",
+                         opacity:photoLoading ? 0.5 : 1,
+                         display:"flex", flexDirection:"column",
+                         alignItems:"center", justifyContent:"center", gap:4 }}>
+                {photoLoading ? "⚙" : <>📷<span>Add</span></>}
+              </button>
             )}
-            <button onClick={() => photoInput.current.click()} disabled={photoLoading}
-              style={{ flex:1, padding:"12px", borderRadius:8,
-                       background:"transparent", border:`2px dashed ${C.goldDim}`,
-                       color:C.gold, fontFamily:"'Cinzel',serif", fontSize:11,
-                       letterSpacing:2, cursor:"pointer",
-                       opacity:photoLoading ? 0.5 : 1 }}>
-              {photoLoading ? "⚙ Uploading…" : "📷 Upload Photo"}
-            </button>
-            <input ref={photoInput} type="file" accept="image/*"
+            <input ref={photoInput} type="file" accept="image/*" multiple
               style={{ display:"none" }} onChange={handlePhoto}/>
           </div>
 
@@ -1182,13 +1260,13 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           )}
 
           {/* AI Recommendations */}
-          {(form.faction || form.unit_type || form.photo_url) && (
+          {(form.faction || form.unit_type || photoUrls.length > 0) && (
             <AiRecommendations
               faction={form.faction}
               unit={form.unit_type || form.faction}
               onApply={handleApplyAi}
               universe={universe}
-              photoUrl={form.photo_url || null}
+              photoUrls={photoUrls}
             />
           )}
 
