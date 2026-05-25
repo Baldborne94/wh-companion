@@ -1103,7 +1103,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
       const serializedPhoto = photoUrls.length === 0 ? ""
         : photoUrls.length === 1 ? photoUrls[0]
         : JSON.stringify(photoUrls);
-      const payload = { ...form, photo_url: serializedPhoto, user_id: userId };
+      const payload = { ...form, photo_url: serializedPhoto, user_id: userId, universe };
 
       if (isEdit) {
         await db.update("miniatures", miniId, payload);
@@ -1605,9 +1605,9 @@ export default function PaintingTracker({ user, universe }) {
     try {
       let data;
       if (tab === "collection" && user) {
-        data = await db.get("miniatures", `user_id=eq.${user.id}`);
+        data = await db.get("miniatures", `user_id=eq.${user.id}&universe=eq.${universe}`);
       } else {
-        data = await db.get("miniatures", "is_public=eq.true");
+        data = await db.get("miniatures", `is_public=eq.true&universe=eq.${universe}`);
         // Sort by newest
         data = [...data].sort((a, b) =>
           new Date(b.created_at) - new Date(a.created_at)
@@ -1627,7 +1627,7 @@ export default function PaintingTracker({ user, universe }) {
     } finally {
       setLoading(false);
     }
-  }, [tab, user]);
+  }, [tab, user, universe]);
 
   useEffect(() => { loadMinis(); }, [loadMinis]);
 
