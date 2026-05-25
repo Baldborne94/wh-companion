@@ -1343,6 +1343,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                 universe={universe}
                 onSelect={name => setForm(f => ({ ...f, unit_type: name }))}
               />
+            </div>
           </div>
 
           {/* Status */}
