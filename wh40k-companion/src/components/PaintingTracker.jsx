@@ -504,33 +504,117 @@ function PinterestButton({ faction, unit, name, style = {} }) {
   );
 }
 
-// ─── PAINT ROW (colore aggiunto alla mini) ────────────────────────────────
+// ─── PAINT ROW (editable — outside MiniModal to prevent remount) ─────────────
 
-function PaintRow({ paint, onRemove }) {
+function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
+  const [editing,    setEditing]    = useState(false);
+  const [partInput,  setPartInput]  = useState(paint.part_name  || "");
+  const [usageInput, setUsageInput] = useState(paint.usage_type || "base");
+  const [showPicker, setShowPicker] = useState(false);
+
+  const save = () => {
+    onUpdate(paint.id, { part_name: partInput.trim(), usage_type: usageInput });
+    setEditing(false);
+  };
+
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:8,
-                  background:C.card, border:`1px solid ${C.border}`,
-                  borderRadius:8, padding:"8px 12px" }}>
-      <div style={{ width:22, height:22, borderRadius:4, background:paint.paint_hex || "#555",
-                    border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 }}/>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ color:C.text, fontSize:12, fontWeight:600,
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-          {paint.paint_name}
+    <div>
+      {/* ── Compact row ── */}
+      <div style={{ display:"flex", alignItems:"center", gap:8,
+                    background:C.card, border:`1px solid ${editing ? C.gold+"55" : C.border}`,
+                    borderRadius: editing ? "8px 8px 0 0" : 8, padding:"8px 12px",
+                    transition:"border-color 0.15s" }}>
+        <div style={{ width:22, height:22, borderRadius:4, background:paint.paint_hex || "#555",
+                      border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 }}/>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ color:C.text, fontSize:12, fontWeight:600,
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {paint.paint_name}
+          </div>
+          <div style={{ color:C.muted, fontSize:10 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+              {paint.usage_type}
+            </span>
+            {paint.paint_range && ` · ${paint.paint_range}`}
+          </div>
         </div>
-        <div style={{ color:C.muted, fontSize:10 }}>
-          {paint.part_name && <span>{paint.part_name} · </span>}
-          <span style={{ fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-            {paint.usage_type} · {paint.paint_range}
-          </span>
-        </div>
+        <button onClick={() => { setEditing(e => !e); setPartInput(paint.part_name || ""); setUsageInput(paint.usage_type || "base"); }}
+          title="Edit"
+          style={{ background:"transparent", border:`1px solid ${editing ? C.gold+"88" : "transparent"}`,
+                   borderRadius:4, color: editing ? C.gold : C.muted,
+                   cursor:"pointer", fontSize:12, padding:"2px 6px", transition:"all 0.15s" }}>
+          ✎
+        </button>
+        <button onClick={onRemove}
+          style={{ background:"transparent", border:"none", color:C.muted,
+                   cursor:"pointer", fontSize:16, padding:"2px 4px" }}>
+          ×
+        </button>
       </div>
-      <button onClick={onRemove}
-        style={{ background:"transparent", border:"none", color:C.muted,
-                 cursor:"pointer", fontSize:16, padding:"2px 4px" }}>
-        ×
-      </button>
+
+      {/* ── Edit panel ── */}
+      {editing && (
+        <div style={{ background:`${C.gold}08`, border:`1px solid ${C.gold}33`,
+                      borderTop:"none", borderRadius:"0 0 8px 8px",
+                      padding:"10px 12px", display:"flex", flexDirection:"column", gap:8 }}>
+          <button onClick={() => setShowPicker(true)}
+            style={{ width:"100%", padding:"8px", borderRadius:6,
+                     background:`${C.gold}15`, border:`1px solid ${C.gold}55`,
+                     color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
+                     letterSpacing:1, cursor:"pointer" }}>
+            🎨 Change Paint
+          </button>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            <div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
+                            letterSpacing:2, marginBottom:4 }}>SECTION</div>
+              <input value={partInput} onChange={e => setPartInput(e.target.value)}
+                placeholder="e.g. Skin, Armour…"
+                style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                         padding:"7px 10px", color:C.text, fontSize:12,
+                         width:"100%", boxSizing:"border-box" }}/>
+            </div>
+            <div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
+                            letterSpacing:2, marginBottom:4 }}>USE</div>
+              <select value={usageInput} onChange={e => setUsageInput(e.target.value)}
+                style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                         padding:"7px 10px", color:C.text, fontSize:12,
+                         width:"100%", boxSizing:"border-box" }}>
+                {USAGE_TYPES.map(u => <option key={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={save}
+              style={{ flex:1, padding:"8px", borderRadius:6,
+                       background:`${C.gold}22`, border:`1px solid ${C.gold}`,
+                       color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
+                       letterSpacing:1, cursor:"pointer" }}>
+              ✓ Save
+            </button>
+            <button onClick={() => setEditing(false)}
+              style={{ padding:"8px 12px", borderRadius:6, background:"transparent",
+                       border:`1px solid ${C.dim}`, color:C.muted, cursor:"pointer" }}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPicker && (
+        <PaintPicker
+          onSelect={p => {
+            onReplace(paint.id, p);
+            setShowPicker(false);
+            setEditing(false);
+          }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
+  );
+}
   );
 }
 
@@ -983,18 +1067,15 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   };
 
   const handleApplyAi = (paint) => {
-    const entry = {
-      id: crypto.randomUUID(),
-      _new: true,
-      ...paint,
-      sort_order: paints.length,
-    };
-    setPaints((ps) => [...ps, entry]);
+    setPaints((ps) => [...ps, { id: crypto.randomUUID(), _new: true, ...paint, sort_order: ps.length }]);
   };
 
-  const handleRemovePaint = (id) => {
-    setPaints((ps) => ps.filter((p) => p.id !== id));
-  };
+  const handleRemovePaint  = (id) => setPaints(ps => ps.filter(p => p.id !== id));
+  const handleUpdatePaint  = (id, updates) => setPaints(ps => ps.map(p => p.id === id ? { ...p, ...updates } : p));
+  const handleReplacePaint = (id, newPaint) => setPaints(ps => ps.map(p => p.id === id
+    ? { ...p, paint_name: newPaint.name, paint_hex: newPaint.hex,
+              paint_range: newPaint.range, paint_brand: newPaint.brand || "Citadel" }
+    : p));
 
   const handleSave = async () => {
     if (!form.name.trim()) { alert("Name is required!"); return; }
@@ -1183,15 +1264,35 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
           <FormLabel>Colour Scheme</FormLabel>
 
-          {/* Existing paints */}
-          {paints.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-              {paints.map((p) => (
-                <PaintRow key={p.id} paint={p}
-                  onRemove={() => handleRemovePaint(p.id)}/>
-              ))}
-            </div>
-          )}
+          {/* Paints grouped by section */}
+          {paints.length > 0 && (() => {
+            const groups = paints.reduce((acc, p) => {
+              const key = p.part_name?.trim() || "Other";
+              (acc[key] = acc[key] || []).push(p);
+              return acc;
+            }, {});
+            return (
+              <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:10 }}>
+                {Object.entries(groups).map(([section, sectionPaints]) => (
+                  <div key={section}>
+                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.gold,
+                                  letterSpacing:3, textTransform:"uppercase",
+                                  marginBottom:5, paddingLeft:2 }}>
+                      {section}
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                      {sectionPaints.map(p => (
+                        <PaintRow key={p.id} paint={p}
+                          onRemove={() => handleRemovePaint(p.id)}
+                          onUpdate={handleUpdatePaint}
+                          onReplace={handleReplacePaint}/>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pending paint annotator */}
           {pendingPaint && (
