@@ -3,24 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <script>
-      /* Tablet viewport scaling — initial paint + physical orientation change only */
-      function applyTabletViewport(){
-        if(navigator.maxTouchPoints < 1) return;
-        var w = window.innerWidth || screen.width;
-        var el = document.querySelector('meta[name=viewport]');
-        if(!el) return;
-        if(w <= 520){
-          el.content = 'width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no';
-        } else {
-          var s = Math.min(1.9, w / 430);
-          el.content = 'width=430,initial-scale=' + s.toFixed(2) + ',user-scalable=no';
-        }
-      }
-      applyTabletViewport();
-      /* orientationchange only — NOT resize, to avoid conflicting with the epub reader */
-      window.addEventListener('orientationchange', function(){ setTimeout(applyTabletViewport, 300); });
-    </script>
     <meta name="theme-color" content="#0a0905" />
     <meta name="description" content="Warhammer 40,000 Companion — Library, Factions, Reading Order, Painting and AI Oracle" />
 
@@ -38,9 +20,33 @@
     <link rel="apple-touch-icon" href="/icon-192.png" />
 
     <title>WH40K Companion</title>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <script>
+      /* Tablet CSS-transform scaling — keeps viewport at device-width so rotation works natively */
+      function applyTabletScale() {
+        if (navigator.maxTouchPoints < 1) return; // desktop, skip
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        var root = document.getElementById('root');
+        if (!root) return;
+        if (w <= 520) {
+          // Phone: reset any previously applied scale
+          root.style.cssText = '';
+          return;
+        }
+        var scale = Math.min(1.9, w / 430);
+        root.style.width          = '430px';
+        root.style.height         = Math.ceil(h / scale) + 'px';
+        root.style.transformOrigin = 'top left';
+        root.style.transform      = 'scale(' + scale.toFixed(4) + ')';
+        root.style.overflow       = 'hidden';
+        root.style.position       = 'relative';
+      }
+      applyTabletScale();
+      window.addEventListener('orientationchange', function () { setTimeout(applyTabletScale, 300); });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
