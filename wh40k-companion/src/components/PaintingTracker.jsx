@@ -263,29 +263,28 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
   const brandsStr = brands.join(", ");
 
-  // Build structured identity block — each field on its own line so Claude can't miss any
-  const identityLines = [
-    `Game      : ${game}`,
-    faction ? `Faction   : ${faction}` : null,
-    unit    ? `Model     : ${unit}`    : null,
-    (miniName && miniName !== unit) ? `User label: ${miniName}` : null,
+  const contextLines = [
+    faction ? `Faction : ${faction}` : null,
+    unit    ? `Unit    : ${unit}`    : null,
+    (miniName && miniName !== unit) ? `Label   : ${miniName}` : null,
   ].filter(Boolean).join("\n");
 
-  const photoNote = hasPhotos
-    ? `You have ${photoUrls.length} photo${photoUrls.length > 1 ? "s (multiple angles)" : ""} of this miniature. Analyse them carefully to:
-1. List every distinct physical component you can see (e.g. squig body, goblin skin, clothing, mushroom, weapon, base terrain — whatever is actually present on THIS model).
-2. Note the current primer colour and any paint already applied.
-3. Use what you see to define the "parts" in your colour scheme — each visible component should become its own part section with appropriate paint steps.
+  const instructions = hasPhotos
+    ? `You are an expert ${game} miniature painter and hobby coach.
 
-The IDENTITY above (faction, model, game) is fixed ground truth — do NOT change it based on the photos. Use the photos to understand the model's physical details, not to guess what it is.`
-    : `(No photos — derive parts from your knowledge of ${unit || faction} miniature components.)`;
+You have ${photoUrls.length} photo${photoUrls.length > 1 ? "s (multiple angles)" : ""} of a miniature. The photos are your PRIMARY source of truth — analyse them carefully to:
+1. Identify exactly what model(s) you can see in the images (shapes, components, scale, pose).
+2. List every distinct physical component visible (e.g. skin, armour, clothing, weapon, base terrain).
+3. Note the current primer colour and any paint already applied.
 
-  const instructions = `You are an expert ${game} miniature painter and hobby coach.
+Additional context to inform lore-accurate colour choices (use this to guide palette, do not let it override what you actually see in the photos):
+${contextLines}
 
-MINIATURE INFORMATION — treat this as ground truth:
-${identityLines}
+Build your colour scheme parts around what is ACTUALLY VISIBLE in the photos.`
+    : `You are an expert ${game} miniature painter and hobby coach.
 
-${photoNote}
+Miniature: ${[unit, faction ? `(${faction})` : null].filter(Boolean).join(" ")} — ${game}.
+Suggest colour schemes based on your knowledge of this unit's typical components.`;
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
