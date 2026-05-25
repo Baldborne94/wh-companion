@@ -1423,7 +1423,7 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>The Mortal Realms</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             {REALMS.map(r => (
-              <div key={r.name} style={{ background:`linear-gradient(135deg,${r.color}18,${AOS.card})`, border:`1px solid ${r.color}44`, borderLeft:`3px solid ${r.color}`, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
+              <div key={r.name} onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name,'_blank')} style={{ background:`linear-gradient(135deg,${r.color}18,${AOS.card})`, border:`1px solid ${r.color}44`, borderLeft:`3px solid ${r.color}`, borderRadius:10, padding:"12px 14px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
                 <span style={{ fontSize:22 }}>{r.icon}</span>
                 <div>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, color:AOS.text }}>{r.name}</div>
