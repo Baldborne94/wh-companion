@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
       /* Tablet zoom: applied to body so html stays normal → device rotation works.
          position:fixed elements (reader, mini player) are unaffected by body zoom
@@ -13,17 +13,21 @@
         function applyTabletZoom() {
           if (navigator.maxTouchPoints < 1) return;
           var w = window.innerWidth || screen.width;
+          var h = window.innerHeight || screen.height;
           var html = document.documentElement;
           if (w <= 520) {
             styleEl.textContent = '';
             html.style.removeProperty('--nav-h');
             return;
           }
-          var sc = Math.min(1.9, w / 430);
+          /* Landscape: less zoom so more content fits; Portrait: moderate zoom for readability */
+          var isLandscape = w > h;
+          var sc = isLandscape
+            ? Math.min(1.35, w / 430)
+            : Math.min(1.75, w / 430);
           /* body zoom scales all regular content; height compensates so body fits viewport */
           styleEl.textContent =
-            'body{zoom:' + sc.toFixed(4) + ';height:' + (100 / sc).toFixed(4) + 'dvh!important}' +
-            'html{overflow:clip}';
+            'body{zoom:' + sc.toFixed(4) + ';height:' + (100 / sc).toFixed(4) + 'dvh!important}';
           /* nav bar is 56px layout → 56*sc visual; mini player must clear it */
           html.style.setProperty('--nav-h', (56 * sc).toFixed(1) + 'px');
         }
