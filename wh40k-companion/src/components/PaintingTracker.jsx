@@ -272,7 +272,7 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   ].filter(Boolean).join("\n");
 
   const photoNote = hasPhotos
-    ? `Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} only to assess: current primer colour, painting state already applied, and any visible base colours. Do NOT override or re-interpret the miniature identity above — trust it exactly as written.`
+    ? `Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess: the current primer colour, any base colours already applied, the painting state, and the specific physical parts/areas visible on this model (e.g. armour panels, flesh, weapons, base). Use this visual detail to inform realistic colour scheme suggestions. The miniature IDENTITY above is fixed — do NOT change the faction, model name, or game based on the photos.`
     : `(No photos attached — work from the miniature information above.)`;
 
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
