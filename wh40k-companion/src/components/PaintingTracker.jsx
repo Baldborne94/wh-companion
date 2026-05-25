@@ -255,7 +255,7 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, miniName) {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
@@ -263,10 +263,20 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
   const brandsStr = brands.join(", ");
 
+  // Build a precise description of what the miniature is
+  const parts = [];
+  if (miniName && miniName !== unit) parts.push(`named "${miniName}"`);
+  if (unit) parts.push(unit);
+  if (faction) parts.push(`from ${faction}`);
+  parts.push(`(${game})`);
+  const modelDesc = parts.join(", ");
+
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
-${hasPhotos
-  ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
-  : `The miniature is: ${unit} from ${faction} (${game}).`}
+${hasPhotos && (faction || unit)
+  ? `The miniature is: ${modelDesc}. Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess its current painting state, primer colour, and any base colours already applied. Do NOT try to re-identify the model — trust the information above.`
+  : hasPhotos
+    ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
+    : `The miniature is: ${modelDesc}.`}
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
@@ -468,6 +478,125 @@ function PaintPicker({ onSelect, onClose }) {
   );
 }
 
+// ─── LEXICANUM SEARCH ─────────────────────────────────────────────────────
+
+function LexicanumSearch({ faction, universe, onSelect }) {
+  const [open,    setOpen]    = useState(false);
+  const [query,   setQuery]   = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [apiOk,   setApiOk]   = useState(true);
+  const timer = useRef(null);
+
+  const base = universe === 'aos'
+    ? "https://ageofsigmar.lexicanum.com"
+    : "https://wh40k.lexicanum.com";
+  const wikiUrl = `${base}/wiki/${encodeURIComponent((faction || "").replace(/ /g, "_"))}`;
+  const apiBase = `${base}/mediawiki/api.php`;
+
+  const doSearch = async (q) => {
+    if (!q.trim()) { setResults([]); return; }
+    setLoading(true);
+    try {
+      const url = `${apiBase}?action=opensearch&search=${encodeURIComponent(q)}&limit=12&namespace=0&format=json&origin=*`;
+      const r = await fetch(url);
+      const [, titles] = await r.json();
+      setResults(titles || []);
+      setApiOk(true);
+    } catch {
+      setApiOk(false);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onInput = (e) => {
+    const v = e.target.value;
+    setQuery(v);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => doSearch(v), 380);
+  };
+
+  const toggle = () => {
+    setOpen(o => !o);
+    if (!open) { setQuery(faction || ""); setTimeout(() => doSearch(faction || ""), 10); }
+  };
+
+  return (
+    <div style={{ marginTop:6 }}>
+      <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+        <button onClick={toggle}
+          style={{ padding:"4px 10px", borderRadius:6, cursor:"pointer",
+                   background: open ? `${C.gold}15` : "transparent",
+                   border:`1px solid ${open ? C.gold+"66" : C.border}`,
+                   color: open ? C.gold : C.muted,
+                   fontFamily:"'Cinzel',serif", fontSize:9,
+                   letterSpacing:1, transition:"all 0.15s" }}>
+          🔍 Search Lexicanum
+        </button>
+        {faction && (
+          <a href={wikiUrl} target="_blank" rel="noopener noreferrer"
+            style={{ color:C.goldDim, fontSize:9, fontFamily:"'Cinzel',serif",
+                     letterSpacing:1, textDecoration:"none" }}>
+            ↗ Open wiki
+          </a>
+        )}
+      </div>
+
+      {open && (
+        <div style={{ marginTop:6, background:C.card, border:`1px solid ${C.border}`,
+                      borderRadius:8, padding:"10px 12px" }}>
+          <input value={query} onChange={onInput} autoFocus
+            placeholder="Search model name on Lexicanum…"
+            style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                     padding:"8px 10px", color:C.text, fontSize:12,
+                     width:"100%", boxSizing:"border-box", marginBottom:6 }}/>
+
+          {loading && (
+            <div style={{ color:C.muted, fontSize:11, padding:"4px 0" }}>Searching…</div>
+          )}
+
+          {!apiOk && (
+            <div style={{ fontSize:11, color:C.muted, lineHeight:1.6 }}>
+              API non raggiungibile —{" "}
+              <a href={wikiUrl} target="_blank" rel="noopener noreferrer"
+                style={{ color:C.gold }}>apri il wiki Lexicanum</a>{" "}
+              e copia il nome esatto del modello.
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:220, overflowY:"auto" }}>
+              {results.map(r => (
+                <button key={r}
+                  onClick={() => { onSelect(r); setOpen(false); setQuery(""); setResults([]); }}
+                  style={{ textAlign:"left", padding:"7px 10px", borderRadius:6,
+                           background:C.surface, border:`1px solid ${C.border}`,
+                           color:C.text, fontSize:12, cursor:"pointer",
+                           transition:"border-color 0.1s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = C.gold}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!loading && !results.length && query.trim() && apiOk && (
+            <div style={{ fontSize:11, color:C.muted }}>
+              Nessun risultato —{" "}
+              <a href={`${base}/wiki/Special:Search?search=${encodeURIComponent(query)}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ color:C.gold }}>cerca sul wiki</a>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── PINTEREST SEARCH ─────────────────────────────────────────────────────
 
 function pinterestUrl(faction, unit, name) {
@@ -502,32 +631,114 @@ function PinterestButton({ faction, unit, name, style = {} }) {
   );
 }
 
-// ─── PAINT ROW (colore aggiunto alla mini) ────────────────────────────────
+// ─── PAINT ROW (editable — outside MiniModal to prevent remount) ─────────────
 
-function PaintRow({ paint, onRemove }) {
+function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
+  const [editing,    setEditing]    = useState(false);
+  const [partInput,  setPartInput]  = useState(paint.part_name  || "");
+  const [usageInput, setUsageInput] = useState(paint.usage_type || "base");
+  const [showPicker, setShowPicker] = useState(false);
+
+  const save = () => {
+    onUpdate(paint.id, { part_name: partInput.trim(), usage_type: usageInput });
+    setEditing(false);
+  };
+
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:8,
-                  background:C.card, border:`1px solid ${C.border}`,
-                  borderRadius:8, padding:"8px 12px" }}>
-      <div style={{ width:22, height:22, borderRadius:4, background:paint.paint_hex || "#555",
-                    border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 }}/>
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ color:C.text, fontSize:12, fontWeight:600,
-                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-          {paint.paint_name}
+    <div>
+      {/* ── Compact row ── */}
+      <div style={{ display:"flex", alignItems:"center", gap:8,
+                    background:C.card, border:`1px solid ${editing ? C.gold+"55" : C.border}`,
+                    borderRadius: editing ? "8px 8px 0 0" : 8, padding:"8px 12px",
+                    transition:"border-color 0.15s" }}>
+        <div style={{ width:22, height:22, borderRadius:4, background:paint.paint_hex || "#555",
+                      border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 }}/>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ color:C.text, fontSize:12, fontWeight:600,
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {paint.paint_name}
+          </div>
+          <div style={{ color:C.muted, fontSize:10 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+              {paint.usage_type}
+            </span>
+            {paint.paint_range && ` · ${paint.paint_range}`}
+          </div>
         </div>
-        <div style={{ color:C.muted, fontSize:10 }}>
-          {paint.part_name && <span>{paint.part_name} · </span>}
-          <span style={{ fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-            {paint.usage_type} · {paint.paint_range}
-          </span>
-        </div>
+        <button onClick={() => { setEditing(e => !e); setPartInput(paint.part_name || ""); setUsageInput(paint.usage_type || "base"); }}
+          title="Edit"
+          style={{ background:"transparent", border:`1px solid ${editing ? C.gold+"88" : "transparent"}`,
+                   borderRadius:4, color: editing ? C.gold : C.muted,
+                   cursor:"pointer", fontSize:12, padding:"2px 6px", transition:"all 0.15s" }}>
+          ✎
+        </button>
+        <button onClick={onRemove}
+          style={{ background:"transparent", border:"none", color:C.muted,
+                   cursor:"pointer", fontSize:16, padding:"2px 4px" }}>
+          ×
+        </button>
       </div>
-      <button onClick={onRemove}
-        style={{ background:"transparent", border:"none", color:C.muted,
-                 cursor:"pointer", fontSize:16, padding:"2px 4px" }}>
-        ×
-      </button>
+
+      {/* ── Edit panel ── */}
+      {editing && (
+        <div style={{ background:`${C.gold}08`, border:`1px solid ${C.gold}33`,
+                      borderTop:"none", borderRadius:"0 0 8px 8px",
+                      padding:"10px 12px", display:"flex", flexDirection:"column", gap:8 }}>
+          <button onClick={() => setShowPicker(true)}
+            style={{ width:"100%", padding:"8px", borderRadius:6,
+                     background:`${C.gold}15`, border:`1px solid ${C.gold}55`,
+                     color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
+                     letterSpacing:1, cursor:"pointer" }}>
+            🎨 Change Paint
+          </button>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+            <div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
+                            letterSpacing:2, marginBottom:4 }}>SECTION</div>
+              <input value={partInput} onChange={e => setPartInput(e.target.value)}
+                placeholder="e.g. Skin, Armour…"
+                style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                         padding:"7px 10px", color:C.text, fontSize:12,
+                         width:"100%", boxSizing:"border-box" }}/>
+            </div>
+            <div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
+                            letterSpacing:2, marginBottom:4 }}>USE</div>
+              <select value={usageInput} onChange={e => setUsageInput(e.target.value)}
+                style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
+                         padding:"7px 10px", color:C.text, fontSize:12,
+                         width:"100%", boxSizing:"border-box" }}>
+                {USAGE_TYPES.map(u => <option key={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={save}
+              style={{ flex:1, padding:"8px", borderRadius:6,
+                       background:`${C.gold}22`, border:`1px solid ${C.gold}`,
+                       color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
+                       letterSpacing:1, cursor:"pointer" }}>
+              ✓ Save
+            </button>
+            <button onClick={() => setEditing(false)}
+              style={{ padding:"8px 12px", borderRadius:6, background:"transparent",
+                       border:`1px solid ${C.dim}`, color:C.muted, cursor:"pointer" }}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPicker && (
+        <PaintPicker
+          onSelect={p => {
+            onReplace(paint.id, p);
+            setShowPicker(false);
+            setEditing(false);
+          }}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   );
 }
@@ -627,7 +838,7 @@ const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:
 const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
-function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
+function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls }) {
   const [data,          setData]          = useState(null);
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState(null);
@@ -644,7 +855,7 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
     if (!selBrands.length) { setError("Select at least one paint brand"); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
       setData(result);
     } catch (e) {
       if (e.message === "NO_API_KEY") {
@@ -732,7 +943,7 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
       {data && schemes.length > 0 && (
         <div>
           {/* Miniature identification (when photo was used) */}
-          {data.miniature && hasPhotos && (
+          {data.miniature && hasPhotos && !faction && (
             <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
                           fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
               Identified: <span style={{ color:C.text }}>{data.miniature}</span>
@@ -981,18 +1192,15 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   };
 
   const handleApplyAi = (paint) => {
-    const entry = {
-      id: crypto.randomUUID(),
-      _new: true,
-      ...paint,
-      sort_order: paints.length,
-    };
-    setPaints((ps) => [...ps, entry]);
+    setPaints((ps) => [...ps, { id: crypto.randomUUID(), _new: true, ...paint, sort_order: ps.length }]);
   };
 
-  const handleRemovePaint = (id) => {
-    setPaints((ps) => ps.filter((p) => p.id !== id));
-  };
+  const handleRemovePaint  = (id) => setPaints(ps => ps.filter(p => p.id !== id));
+  const handleUpdatePaint  = (id, updates) => setPaints(ps => ps.map(p => p.id === id ? { ...p, ...updates } : p));
+  const handleReplacePaint = (id, newPaint) => setPaints(ps => ps.map(p => p.id === id
+    ? { ...p, paint_name: newPaint.name, paint_hex: newPaint.hex,
+              paint_range: newPaint.range, paint_brand: newPaint.brand || "Citadel" }
+    : p));
 
   const handleSave = async () => {
     if (!form.name.trim()) { alert("Name is required!"); return; }
@@ -1110,17 +1318,31 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               </select>
             </div>
             <div>
-              <FormLabel>Unit / Type</FormLabel>
-              <select value={form.unit_type}
-                onChange={(e) => setForm((f) => ({ ...f, unit_type:e.target.value }))}
-                disabled={!units.length}
-                style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
-                         padding:"10px 14px", color:form.unit_type ? C.text : C.muted,
-                         fontSize:13, width:"100%", boxSizing:"border-box",
-                         opacity:units.length ? 1 : 0.5 }}>
-                <option value="">— Unit —</option>
-                {units.map((u) => <option key={u}>{u}</option>)}
-              </select>
+              <FormLabel>Unit / Specific Model</FormLabel>
+              {/* Dropdown quick-filler */}
+              {units.length > 0 && (
+                <select value=""
+                  onChange={e => { if (e.target.value) setForm(f => ({ ...f, unit_type: e.target.value })); }}
+                  style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:"8px 8px 0 0",
+                           padding:"8px 14px", color:C.muted, fontSize:11,
+                           width:"100%", boxSizing:"border-box", borderBottom:"none" }}>
+                  <option value="">— Quick select unit —</option>
+                  {units.map(u => <option key={u}>{u}</option>)}
+                </select>
+              )}
+              {/* Editable text — what gets saved and sent to AI */}
+              <input value={form.unit_type}
+                onChange={e => setForm(f => ({ ...f, unit_type: e.target.value }))}
+                placeholder="Type the exact model name (e.g. Loonboss on Giant Cave Squig)…"
+                style={{ background:C.card, border:`1px solid ${C.border}`,
+                         borderRadius: units.length ? "0 0 8px 8px" : 8,
+                         padding:"10px 14px", color:C.text, fontSize:13,
+                         width:"100%", boxSizing:"border-box" }}/>
+              <LexicanumSearch
+                faction={form.faction}
+                universe={universe}
+                onSelect={name => setForm(f => ({ ...f, unit_type: name }))}
+              />
             </div>
           </div>
 
@@ -1181,15 +1403,35 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
           <FormLabel>Colour Scheme</FormLabel>
 
-          {/* Existing paints */}
-          {paints.length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-              {paints.map((p) => (
-                <PaintRow key={p.id} paint={p}
-                  onRemove={() => handleRemovePaint(p.id)}/>
-              ))}
-            </div>
-          )}
+          {/* Paints grouped by section */}
+          {paints.length > 0 && (() => {
+            const groups = paints.reduce((acc, p) => {
+              const key = p.part_name?.trim() || "Other";
+              (acc[key] = acc[key] || []).push(p);
+              return acc;
+            }, {});
+            return (
+              <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:10 }}>
+                {Object.entries(groups).map(([section, sectionPaints]) => (
+                  <div key={section}>
+                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.gold,
+                                  letterSpacing:3, textTransform:"uppercase",
+                                  marginBottom:5, paddingLeft:2 }}>
+                      {section}
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                      {sectionPaints.map(p => (
+                        <PaintRow key={p.id} paint={p}
+                          onRemove={() => handleRemovePaint(p.id)}
+                          onUpdate={handleUpdatePaint}
+                          onReplace={handleReplacePaint}/>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Pending paint annotator */}
           {pendingPaint && (
@@ -1264,6 +1506,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             <AiRecommendations
               faction={form.faction}
               unit={form.unit_type || form.faction}
+              miniName={form.name}
               onApply={handleApplyAi}
               universe={universe}
               photoUrls={photoUrls}
