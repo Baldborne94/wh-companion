@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { db, storage } from "../lib/supabase";
+import { sb } from "../lib/sb";
 
 // ─── THEME ────────────────────────────────────────────────────────────────
 
@@ -307,7 +308,7 @@ Rules: max 3 schemes · max 4 parts per scheme · max 3 steps per part · use re
     },
     body: JSON.stringify({
       model: photoUrl ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
-      max_tokens: 2000,
+      max_tokens: 4000,
       messages: [{ role: "user", content: userContent }],
     }),
   });
@@ -958,11 +959,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
       // Sync paints: delete all, re-insert
       // (simple approach — for a production app you'd diff)
       if (miniId) {
-        // Delete old paints for this mini (via RLS the user can only delete their own)
-        const existing = await db.get("miniature_paints", `miniature_id=eq.${miniId}`);
-        for (const p of existing) {
-          await db.delete("miniature_paints", p.id);
-        }
+        await sb.del("miniature_paints", `miniature_id=eq.${miniId}`);
         // Insert all current paints
         for (const p of paints) {
           // eslint-disable-next-line no-unused-vars
@@ -988,9 +985,9 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     }
     setLoading(true);
     try {
-      const existing = await db.get("miniature_paints", `miniature_id=eq.${mini.id}`);
-      for (const p of existing) await db.delete("miniature_paints", p.id);
-      await db.delete("miniatures", mini.id);
+      await sb.del("miniature_paints", `miniature_id=eq.${mini.id}`);
+      const ok = await sb.del("miniatures", `id=eq.${mini.id}&user_id=eq.${userId}`);
+      if (!ok) throw new Error("Delete failed — check RLS policies");
       onSave();
     } catch (err) {
       alert("Delete error: " + err.message);
