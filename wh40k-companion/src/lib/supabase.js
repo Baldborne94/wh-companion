@@ -18,8 +18,14 @@ export const db = {
   async get(table, query) {
     let req = supabase.from(table).select('*');
     if (query) {
-      const [col, val] = query.split('=eq.');
-      if (col && val) req = req.eq(col, val);
+      query.split('&').forEach(part => {
+        const idx = part.indexOf('=eq.');
+        if (idx !== -1) {
+          const col = part.slice(0, idx);
+          const val = part.slice(idx + 4);
+          req = req.eq(col, val);
+        }
+      });
     }
     const { data } = await req;
     return data ?? [];
