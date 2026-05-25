@@ -3,6 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <script>
+      /* Tablet zoom scaling — zoom on html scales everything (incl. position:fixed) uniformly */
+      function applyTabletZoom() {
+        if (navigator.maxTouchPoints < 1) return; // desktop, skip
+        var w = window.innerWidth || screen.width;
+        if (w <= 520) { document.documentElement.style.zoom = ''; return; }
+        document.documentElement.style.zoom = Math.min(1.9, w / 430).toFixed(4);
+      }
+      applyTabletZoom();
+      window.addEventListener('orientationchange', function () { setTimeout(applyTabletZoom, 300); });
+    </script>
     <meta name="theme-color" content="#0a0905" />
     <meta name="description" content="Warhammer 40,000 Companion — Library, Factions, Reading Order, Painting and AI Oracle" />
 
