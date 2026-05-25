@@ -263,65 +263,45 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
   const brandsStr = brands.join(", ");
 
-  const contextLines = [
-    faction ? `Faction : ${faction}` : null,
-    unit    ? `Unit    : ${unit}`    : null,
-    (miniName && miniName !== unit) ? `Label   : ${miniName}` : null,
-  ].filter(Boolean).join("\n");
-
-  const introSection = hasPhotos
-    ? `You are an expert ${game} miniature painter and hobby coach.
-
-You have ${photoUrls.length} photo${photoUrls.length > 1 ? "s (multiple angles)" : ""} of a miniature. The photos are your PRIMARY source of truth — analyse them carefully to:
-1. Identify exactly what model(s) you can see in the images (shapes, components, scale, pose).
-2. List every distinct physical component visible (e.g. skin, armour, clothing, weapon, base terrain).
-3. Note the current primer colour and any paint already applied.
-
-Additional context to inform lore-accurate colour choices (use this to guide palette, do not let it override what you actually see in the photos):
-${contextLines}
-
-Build your colour scheme parts around what is ACTUALLY VISIBLE in the photos.`
-    : `You are an expert ${game} miniature painter and hobby coach.
-
-Miniature: ${[unit, faction ? `(${faction})` : null].filter(Boolean).join(" ")} — ${game}.
-Suggest colour schemes based on your knowledge of this unit's typical components.`;
-
-  const instructions = `${introSection}
-
-Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
-
-Suggest exactly 2-3 distinct painting schemes. Vary style: e.g. "Classic", "Battle-worn / Grimdark", "Display / Competition".
-For each scheme provide realistic paint steps AND actionable technique advice.
-
-Reply ONLY with valid JSON — no markdown, no extra text:
+  // System prompt: role + output schema — kept separate so visual attention isn't split
+  const systemPrompt = `You are an expert ${game} miniature painter and hobby coach.
+Always reply ONLY with valid JSON — no markdown, no extra text:
 {
-  "miniature": "brief identification",
+  "miniature": "short description of the model(s)",
   "schemes": [
     {
       "name": "scheme name",
       "difficulty": "Beginner|Intermediate|Advanced",
       "style": "one-sentence visual description",
       "techniques": ["technique1","technique2","technique3"],
-      "tip": "one key piece of advice specific to this unit",
+      "tip": "one key tip specific to this model",
       "parts": [
         {
-          "part": "part name",
+          "part": "component name",
           "steps": [
-            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"paint name","hex":"#hexcode","note":"optional short tip"}
+            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"exact paint name","hex":"#hexcode","note":"short tip"}
           ]
         }
       ]
     }
   ]
 }
-Rules: max 3 schemes · max 6 parts per scheme (cover every visible component) · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real products that exist in those ranges.`;
+Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real existing products.`;
 
-  const imageBlocks = hasPhotos
-    ? photoUrls.map(url => ({ type: "image", source: { type: "url", url } }))
-    : [];
-  const userContent = hasPhotos
-    ? [...imageBlocks, { type: "text", text: instructions }]
-    : instructions;
+  // User message: images first, then a short focused question
+  let userMessage;
+  if (hasPhotos) {
+    const paletteHint = (faction || unit)
+      ? ` Palette hint (lore accuracy only — do NOT invent parts not visible in photos): ${[unit, faction && `(${faction})`].filter(Boolean).join(" ")}.`
+      : "";
+    userMessage = [
+      ...photoUrls.map(url => ({ type: "image", source: { type: "url", url } })),
+      { type: "text", text: `What ${game} miniature is this? Identify every distinct physical component you can see, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${paletteHint}` },
+    ];
+  } else {
+    const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
+    userMessage = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
+  }
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -334,7 +314,8 @@ Rules: max 3 schemes · max 6 parts per scheme (cover every visible component) �
     body: JSON.stringify({
       model: hasPhotos ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
       max_tokens: 8000,
-      messages: [{ role: "user", content: userContent }],
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
     }),
   });
   if (!resp.ok) {
