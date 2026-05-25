@@ -1776,8 +1776,8 @@ export default function App(){
             <div style={{position:"absolute",inset:0,zIndex:3}}>
               <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
                 {appReader.fileType==="pdf"
-                  ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)}/>
-                  :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)}/>
+                  ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} onMusicClick={()=>{setAppReader(null);setSection("music");}}/>
+                  :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} onMusicClick={()=>{setAppReader(null);setSection("music");}}/>
                 }
               </Suspense>
             </div>
@@ -1797,14 +1797,7 @@ export default function App(){
           )}
         </div>
         {/* ── MINI PLAYER ── */}
-        {nowPlaying&&section!=="music"&&(appReader?(
-          /* Reading mode: tiny pill in bottom-right corner, non-intrusive */
-          <div onClick={()=>{setAppReader(null);setSection("music");}}
-            style={{position:"fixed",bottom:16,right:16,zIndex:9999,background:"rgba(10,9,5,0.75)",backdropFilter:"blur(6px)",border:`1px solid ${nowPlaying.type==="youtube"?"#FF000055":"#1DB95455"}`,borderRadius:20,display:"flex",alignItems:"center",gap:6,padding:"5px 10px 5px 8px",cursor:"pointer",boxShadow:"0 2px 12px rgba(0,0,0,0.5)"}}>
-            <span style={{fontSize:13,color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954"}}>♪</span>
-            <span style={{fontSize:11,color:"rgba(212,203,184,0.7)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.title}</span>
-          </div>
-        ):(
+        {nowPlaying&&section!=="music"&&!appReader&&(
           /* Normal mode: full bar above nav */
           <div onClick={()=>setSection("music")}
             style={{position:"fixed",bottom:56,left:0,right:0,zIndex:9999,maxWidth:1100,margin:"0 auto",background:C.surface,borderTop:`2px solid ${nowPlaying.type==="youtube"?"#FF000066":"#1DB95466"}`,display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",boxShadow:"0 -2px 12px rgba(0,0,0,0.6)"}}>
@@ -1816,7 +1809,7 @@ export default function App(){
             </div>
             <span style={{fontSize:11,color:nowPlaying.type==="youtube"?"#FF0000":"#1DB954",flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>🎵</span>
           </div>
-        ))}
+        )}
         {/* ── BOTTOM NAV ── */}
         {(()=>{
           const nBg=universe==='aos'?AOS.surface:C.surface;
