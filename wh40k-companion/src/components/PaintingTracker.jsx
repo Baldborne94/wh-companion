@@ -255,7 +255,7 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, miniName) {
   const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
@@ -263,12 +263,20 @@ async function getAiRecommendations(faction, unit, universe, photoUrls, availabl
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
   const brandsStr = brands.join(", ");
 
+  // Build a precise description of what the miniature is
+  const parts = [];
+  if (miniName && miniName !== unit) parts.push(`named "${miniName}"`);
+  if (unit) parts.push(unit);
+  if (faction) parts.push(`from ${faction}`);
+  parts.push(`(${game})`);
+  const modelDesc = parts.join(", ");
+
   const instructions = `You are an expert ${game} miniature painter and hobby coach.
-${hasPhotos && faction
-  ? `The miniature is: ${unit} from ${faction} (${game}). Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess its current painting state, primer colour, and any base colours already applied.`
+${hasPhotos && (faction || unit)
+  ? `The miniature is: ${modelDesc}. Analyse the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""} to assess its current painting state, primer colour, and any base colours already applied. Do NOT try to re-identify the model — trust the information above.`
   : hasPhotos
     ? `Analyse the miniature in the attached image${photoUrls.length > 1 ? "s (multiple angles)" : ""}. Identify what it is, its current state, and any base colours already applied.`
-    : `The miniature is: ${unit} from ${faction} (${game}).`}
+    : `The miniature is: ${modelDesc}.`}
 
 Available paint brands: ${brandsStr}. You MUST only suggest paints from these brands. Use real paint names that actually exist in those ranges.
 
@@ -713,7 +721,7 @@ const DIFFICULTY_COLOR = { Beginner:"#4aaa6a", Intermediate:"#c9a84c", Advanced:
 const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
-function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
+function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls }) {
   const [data,          setData]          = useState(null);
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState(null);
@@ -730,7 +738,7 @@ function AiRecommendations({ faction, unit, onApply, universe, photoUrls }) {
     if (!selBrands.length) { setError("Select at least one paint brand"); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
       setData(result);
     } catch (e) {
       if (e.message === "NO_API_KEY") {
@@ -1193,17 +1201,26 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
               </select>
             </div>
             <div>
-              <FormLabel>Unit / Type</FormLabel>
-              <select value={form.unit_type}
-                onChange={(e) => setForm((f) => ({ ...f, unit_type:e.target.value }))}
-                disabled={!units.length}
-                style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
-                         padding:"10px 14px", color:form.unit_type ? C.text : C.muted,
-                         fontSize:13, width:"100%", boxSizing:"border-box",
-                         opacity:units.length ? 1 : 0.5 }}>
-                <option value="">— Unit —</option>
-                {units.map((u) => <option key={u}>{u}</option>)}
-              </select>
+              <FormLabel>Unit / Specific Model</FormLabel>
+              {/* Dropdown quick-filler */}
+              {units.length > 0 && (
+                <select value=""
+                  onChange={e => { if (e.target.value) setForm(f => ({ ...f, unit_type: e.target.value })); }}
+                  style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:"8px 8px 0 0",
+                           padding:"8px 14px", color:C.muted, fontSize:11,
+                           width:"100%", boxSizing:"border-box", borderBottom:"none" }}>
+                  <option value="">— Quick select unit —</option>
+                  {units.map(u => <option key={u}>{u}</option>)}
+                </select>
+              )}
+              {/* Editable text — what gets saved and sent to AI */}
+              <input value={form.unit_type}
+                onChange={e => setForm(f => ({ ...f, unit_type: e.target.value }))}
+                placeholder="Type the exact model name (e.g. Loonboss on Giant Cave Squig)…"
+                style={{ background:C.card, border:`1px solid ${C.border}`,
+                         borderRadius: units.length ? "0 0 8px 8px" : 8,
+                         padding:"10px 14px", color:C.text, fontSize:13,
+                         width:"100%", boxSizing:"border-box" }}/>
             </div>
           </div>
 
@@ -1367,6 +1384,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             <AiRecommendations
               faction={form.faction}
               unit={form.unit_type || form.faction}
+              miniName={form.name}
               onApply={handleApplyAi}
               universe={universe}
               photoUrls={photoUrls}
