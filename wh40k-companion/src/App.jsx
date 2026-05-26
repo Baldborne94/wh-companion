@@ -1847,7 +1847,6 @@ export default function App(){
           <div onClick={()=>setSection("music")}
             style={{position:"fixed",bottom:"var(--nav-h,56px)",left:0,right:0,zIndex:9999,maxWidth:1100,margin:"0 auto",background:C.surface,borderTop:`2px solid ${nowPlaying.type==="youtube"?"#FF000066":"#1DB95466"}`,display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",boxShadow:"0 -2px 12px rgba(0,0,0,0.6)"}}>
             {nowPlaying.type==="spotify"&&nowPlaying.albumArt&&<img src={nowPlaying.albumArt} width={36} height={36} style={{borderRadius:4,flexShrink:0}}/>}
-            {nowPlaying.type==="youtube"&&<span style={{fontSize:18,flexShrink:0,color:"#FF0000"}}>▶</span>}
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.title}</div>
               {nowPlaying.subtitle&&<div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.subtitle}</div>}
