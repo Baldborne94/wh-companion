@@ -57,21 +57,6 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         .login-btn:active { background:rgba(200,196,188,0.12); }
       `}</style>
 
-      {/* Pulsing rings: red (40K inner), blue (AoS mid), silver (outer) */}
-      {[
-        { size:310, delay:"0s",   anim:"ring40k",   color:RED  },
-        { size:500, delay:"1.2s", anim:"ringAoS",   color:BLUE },
-        { size:710, delay:"2.4s", anim:"ringOuter", color:SILVER },
-      ].map((r, i) => (
-        <div key={i} style={{
-          position:"absolute", left:"50%", top:"44%",
-          width:r.size, height:r.size, borderRadius:"50%",
-          border:`1px solid ${r.color}`,
-          animation:`${r.anim} 4s ease-in-out infinite ${r.delay}`,
-          transform:"translate(-50%,-50%)",
-          pointerEvents:"none",
-        }}/>
-      ))}
 
       {/* Corner accents: top-left 40K red, top-right silver, bottom-left silver, bottom-right AoS blue */}
       {[
