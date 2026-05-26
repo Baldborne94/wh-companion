@@ -5,7 +5,7 @@
 //           Citadel paint picker, photo upload, AI color recommendations
 // ══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
 import { db, storage } from "../lib/supabase";
 import { sb } from "../lib/sb";
 
@@ -16,6 +16,14 @@ const C = {
   gold: "#c9a84c", goldDim: "#7a6330", red: "#b03030",
   text: "#d4cbb8", muted: "#7a7060", dim: "#3a3428",
 };
+
+const C_AOS = {
+  bg: "#06080f", surface: "#0a0f1c", card: "#0f1625", border: "#1c2840",
+  gold: "#C9A227", goldDim: "#7a6015", red: "#b03030",
+  text: "#d4cbb8", muted: "#6070a0", dim: "#162030",
+};
+
+const ThemeCtx = createContext(C);
 
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────
 
@@ -347,6 +355,7 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
 // ─── STATUS STEPPER ───────────────────────────────────────────────────────
 
 function StatusStepper({ value, onChange }) {
+  const C = useContext(ThemeCtx);
   return (
     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
       {STATUS.map((s, i) => {
@@ -383,6 +392,7 @@ function StatusStepper({ value, onChange }) {
 // ─── PAINT PICKER ─────────────────────────────────────────────────────────
 
 function PaintPicker({ onSelect, onClose }) {
+  const C = useContext(ThemeCtx);
   const [search, setSearch] = useState("");
   const [brand,  setBrand]  = useState("Citadel");
   const [range,  setRange]  = useState("All");
@@ -519,6 +529,7 @@ function PinterestButton({ faction, unit, name, style = {} }) {
 // ─── PAINT ROW (editable — outside MiniModal to prevent remount) ─────────────
 
 function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
+  const C = useContext(ThemeCtx);
   const [editing,    setEditing]    = useState(false);
   const [partInput,  setPartInput]  = useState(paint.part_name  || "");
   const [usageInput, setUsageInput] = useState(paint.usage_type || "base");
@@ -631,6 +642,7 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
 // ─── MINI CARD ────────────────────────────────────────────────────────────
 
 function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
+  const C = useContext(ThemeCtx);
   const st       = STATUS.find((s) => s.id === mini.status) || STATUS[0];
   const faction  = mini.faction || "";
   const coverUrl = (() => {
@@ -724,6 +736,7 @@ const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
                      highlight:"#7a6020", drybrush:"#4a3018", contrast:"#2a3a2a" };
 
 function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls, miniId, onDataChange, initialData }) {
+  const C = useContext(ThemeCtx);
   const lsKey = miniId ? `wh40k_ai_${miniId}` : null;
 
   const [data,          setData]          = useState(() => {
@@ -977,6 +990,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
 // ─── FORM HELPERS (outside MiniModal to prevent re-mount on each keystroke) ──
 
 function FormLabel({ children }) {
+  const C = useContext(ThemeCtx);
   return (
     <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                   letterSpacing:3, textTransform:"uppercase", marginBottom:6, marginTop:14 }}>
@@ -986,6 +1000,7 @@ function FormLabel({ children }) {
 }
 
 function FormInput({ value, onChange, placeholder, multiline }) {
+  const C = useContext(ThemeCtx);
   const s = {
     background: C.card, border:`1px solid ${C.border}`, borderRadius:8,
     padding:"10px 14px", color:C.text, fontSize:13, width:"100%",
@@ -1001,6 +1016,7 @@ function FormInput({ value, onChange, placeholder, multiline }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function MiniModal({ mini, userId, onSave, onClose, universe }) {
+  const C = useContext(ThemeCtx);
   const isEdit = !!mini;
   const photoInput = useRef(null);
 
@@ -1504,6 +1520,7 @@ const BATTLE_RESULTS=[
 ];
 
 function BattleLog({userId}){
+  const C = useContext(ThemeCtx);
   const lsKey=`wh40k_battles_${userId||'anon'}`;
   const [battles,setBattles]=useState(()=>{try{return JSON.parse(localStorage.getItem(lsKey))||[];}catch{return[];}});
   const [showAdd,setShowAdd]=useState(false);
@@ -1652,8 +1669,11 @@ export default function PaintingTracker({ user, universe }) {
 
   // ─── Render ────────────────────────────────────────────────────────────
 
+  const theme = universe === 'aos' ? C_AOS : C;
+
   return (
-    <div style={{ minHeight:"100%", background:C.bg, paddingBottom:80 }}>
+    <ThemeCtx.Provider value={theme}>
+    <div style={{ minHeight:"100%", background:theme.bg, paddingBottom:80 }}>
 
       {/* ── TAB HEADER ────────────────────────────────────────────── */}
       <div style={{ position:"sticky", top:0, zIndex:10, background:C.surface,
@@ -1783,12 +1803,13 @@ export default function PaintingTracker({ user, universe }) {
       {/* ── NOT LOGGED IN CTA (collection tab) ───────────────────── */}
       {tab === "collection" && !user && (
         <div style={{ padding:40, textAlign:"center" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:C.muted,
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:theme.muted,
                         letterSpacing:1, lineHeight:2 }}>
             Sign in with Google to manage your collection
           </div>
         </div>
       )}
     </div>
+    </ThemeCtx.Provider>
   );
 }
