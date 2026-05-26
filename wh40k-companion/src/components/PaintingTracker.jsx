@@ -1676,8 +1676,8 @@ export default function PaintingTracker({ user, universe }) {
     <div style={{ minHeight:"100%", background:theme.bg, paddingBottom:80 }}>
 
       {/* ── TAB HEADER ────────────────────────────────────────────── */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:C.surface,
-                    borderBottom:`1px solid ${C.border}`, padding:"0 16px" }}>
+      <div style={{ position:"sticky", top:0, zIndex:10, background:theme.surface,
+                    borderBottom:`1px solid ${theme.border}`, padding:"0 16px" }}>
         <div style={{ display:"flex", gap:0 }}>
           {[
             { id:"gallery",    label:"🏛 Community Gallery" },
@@ -1685,8 +1685,8 @@ export default function PaintingTracker({ user, universe }) {
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex:1, padding:"14px 8px", background:"transparent",
-                       border:"none", borderBottom:`2px solid ${tab===id ? C.gold : "transparent"}`,
-                       color:tab===id ? C.gold : C.muted,
+                       border:"none", borderBottom:`2px solid ${tab===id ? theme.gold : "transparent"}`,
+                       color:tab===id ? theme.gold : theme.muted,
                        fontFamily:"'Cinzel',serif", fontSize:11,
                        letterSpacing:2, cursor:"pointer", transition:"all 0.2s" }}>
               {label}
@@ -1701,10 +1701,10 @@ export default function PaintingTracker({ user, universe }) {
           {STATUS.map(s=>{
             const cnt=minis.filter(m=>m.status===s.id).length;
             return(
-              <div key={s.id} style={{background:C.card,border:`1px solid ${cnt>0?s.color+"44":C.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
+              <div key={s.id} style={{background:theme.card,border:`1px solid ${cnt>0?s.color+"44":theme.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                 <div style={{fontSize:16,marginBottom:2}}>{s.icon}</div>
-                <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:16,color:cnt>0?s.color:C.dim}}>{cnt}</div>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.muted,letterSpacing:1,lineHeight:1.2}}>{s.label}</div>
+                <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:16,color:cnt>0?s.color:theme.dim}}>{cnt}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:theme.muted,letterSpacing:1,lineHeight:1.2}}>{s.label}</div>
               </div>
             );
           })}
@@ -1719,9 +1719,9 @@ export default function PaintingTracker({ user, universe }) {
         {factions.map((f) => (
           <button key={f} onClick={() => setFilter(f)}
             style={{ flexShrink:0, padding:"5px 12px", borderRadius:20,
-                     border:`1px solid ${filter===f ? C.gold : C.border}`,
-                     background:filter===f ? `${C.gold}22` : "transparent",
-                     color:filter===f ? C.gold : C.muted,
+                     border:`1px solid ${filter===f ? theme.gold : theme.border}`,
+                     background:filter===f ? `${theme.gold}22` : "transparent",
+                     color:filter===f ? theme.gold : theme.muted,
                      fontFamily:"'Cinzel',serif", fontSize:10,
                      letterSpacing:1, cursor:"pointer" }}>
             {f}
@@ -1732,14 +1732,14 @@ export default function PaintingTracker({ user, universe }) {
       {/* ── GRID ──────────────────────────────────────────────────── */}
       <div style={{ padding:"16px" }}>
         {loading ? (
-          <div style={{ textAlign:"center", padding:60, color:C.muted,
+          <div style={{ textAlign:"center", padding:60, color:theme.muted,
                         fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:2 }}>
             ⚙ Loading…
           </div>
         ) : displayed.length === 0 ? (
           <div style={{ textAlign:"center", padding:60 }}>
             <div style={{ fontSize:48, marginBottom:12, opacity:0.3 }}>⚙</div>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:C.muted,
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:theme.muted,
                           letterSpacing:2 }}>
               {tab === "collection"
                 ? "No miniatures in your collection"
@@ -1748,8 +1748,8 @@ export default function PaintingTracker({ user, universe }) {
             {tab === "collection" && user && (
               <button onClick={() => setModal("add")}
                 style={{ marginTop:20, padding:"12px 24px", borderRadius:10,
-                         background:`${C.gold}22`, border:`1px solid ${C.gold}`,
-                         color:C.gold, fontFamily:"'Cinzel',serif", fontSize:12,
+                         background:`${theme.gold}22`, border:`1px solid ${theme.gold}`,
+                         color:theme.gold, fontFamily:"'Cinzel',serif", fontSize:12,
                          letterSpacing:2, cursor:"pointer" }}>
                 + Add your First
               </button>
@@ -1781,8 +1781,8 @@ export default function PaintingTracker({ user, universe }) {
           onClick={() => setModal("add")}
           style={{ position:"fixed", bottom:80, right:20, zIndex:50,
                    width:56, height:56, borderRadius:"50%",
-                   background:`linear-gradient(135deg,${C.gold},#8a6f28)`,
-                   border:"none", color:C.bg, fontSize:24,
+                   background:`linear-gradient(135deg,${theme.gold},#8a6f28)`,
+                   border:"none", color:theme.bg, fontSize:24,
                    cursor:"pointer", boxShadow:"0 4px 20px rgba(0,0,0,0.5)",
                    display:"flex", alignItems:"center", justifyContent:"center" }}>
           +
