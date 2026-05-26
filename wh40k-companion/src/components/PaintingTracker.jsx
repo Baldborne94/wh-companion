@@ -2087,9 +2087,30 @@ export default function PaintingTracker({ user, universe }) {
                   <div style={{ display:"grid",
                                 gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12 }}>
                     {ungrouped.map(m => (
-                      <MiniCard key={m.id} mini={m} paints={paints[m.id]||[]}
-                        isOwner={user?.id === m.user_id}
-                        onEdit={() => setModal(m)} onClick={() => setModal(m)} />
+                      <div key={m.id} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                        <MiniCard mini={m} paints={paints[m.id]||[]}
+                          isOwner={user?.id === m.user_id}
+                          onEdit={() => setModal(m)} onClick={() => setModal(m)} />
+                        {user?.id === m.user_id && ownedUnits.length > 0 && (
+                          <select
+                            defaultValue=""
+                            onChange={async e => {
+                              if (!e.target.value) return;
+                              const [f, u] = e.target.value.split("|||");
+                              await db.update("miniatures", m.id, { faction: f, unit_type: u });
+                              loadMinis();
+                            }}
+                            style={{ background:theme.surface, border:`1px solid ${theme.border}`,
+                                     borderRadius:6, padding:"5px 8px", color:theme.muted,
+                                     fontSize:10, fontFamily:"'Cinzel',serif",
+                                     width:"100%", cursor:"pointer", boxSizing:"border-box" }}>
+                            <option value="">📌 Move to section…</option>
+                            {ownedUnits.map(({ faction:f, unit:u }) => (
+                              <option key={`${f}|||${u}`} value={`${f}|||${u}`}>{u}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
