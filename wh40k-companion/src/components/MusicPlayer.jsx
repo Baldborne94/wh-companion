@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { C } from "../data/constants";
 
 // ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ function clearYtToken() { localStorage.removeItem("yt_token"); }
 
 // ─── YOUTUBE ─────────────────────────────────────────────────────────────────
 
-function YouTubeSection({ onNowPlaying }) {
+const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref) {
   const [token, setToken]               = useState(() => loadYtToken());
   const [playlists, setPlaylists]       = useState([]);
   const [selectedPl, setSelectedPl]     = useState(null);
@@ -28,6 +28,10 @@ function YouTubeSection({ onNowPlaying }) {
   const [error, setError]               = useState(null);
   const tokenClientRef                  = useRef(null);
   const clientId                        = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  useImperativeHandle(ref, () => ({
+    stop: () => { setCurrentVideo(null); setCurrentTitle(null); onNowPlaying(null); },
+  }));
 
   // Restore playlists if token already saved
   useEffect(() => {
@@ -161,7 +165,7 @@ function YouTubeSection({ onNowPlaying }) {
       )}
     </div>
   );
-}
+});
 
 // ─── SPOTIFY ─────────────────────────────────────────────────────────────────
 
@@ -177,7 +181,7 @@ async function pkce() {
   return { verifier, challenge: base64url(digest) };
 }
 
-function SpotifySection({ onNowPlaying }) {
+const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref) {
   const [token, setToken]           = useState(() => localStorage.getItem("sp_token") || null);
   const [playlists, setPlaylists]   = useState([]);
   const [selectedPl, setSelectedPl] = useState(null);
@@ -185,6 +189,10 @@ function SpotifySection({ onNowPlaying }) {
   const [error, setError]           = useState(null);
   const clientId                    = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirectUri                 = window.location.origin;
+
+  useImperativeHandle(ref, () => ({
+    stop: () => { setSelectedPl(null); onNowPlaying(null); },
+  }));
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -308,7 +316,7 @@ function SpotifySection({ onNowPlaying }) {
       )}
     </div>
   );
-}
+});
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 
@@ -381,12 +389,17 @@ const TABS = [
   { id: "spotify", label: "Spotify",  icon: "♪", activeColor: "#1DB954" },
 ];
 
-export default function MusicPlayer({ onNowPlaying = () => {} }) {
-  // Auto-switch to Spotify tab when returning from OAuth
+const MusicPlayer = forwardRef(function MusicPlayer({ onNowPlaying = () => {} }, ref) {
   const [tab, setTab] = useState(() => {
     const p = new URLSearchParams(window.location.search);
     return p.get("state") === "spotify_auth" ? "spotify" : "youtube";
   });
+  const ytRef = useRef(null);
+  const spRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    stop: () => { ytRef.current?.stop(); spRef.current?.stop(); },
+  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -415,9 +428,11 @@ export default function MusicPlayer({ onNowPlaying = () => {} }) {
         </div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-        {tab === "youtube" && <YouTubeSection onNowPlaying={onNowPlaying} />}
-        {tab === "spotify" && <SpotifySection onNowPlaying={onNowPlaying} />}
+        {tab === "youtube" && <YouTubeSection ref={ytRef} onNowPlaying={onNowPlaying} />}
+        {tab === "spotify" && <SpotifySection ref={spRef} onNowPlaying={onNowPlaying} />}
       </div>
     </div>
   );
-}
+});
+
+export default MusicPlayer;
