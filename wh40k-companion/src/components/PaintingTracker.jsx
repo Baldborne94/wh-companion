@@ -1728,9 +1728,18 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
     setCustomInput("");
   };
 
-  const getPaintStatus = (faction, unit) => {
-    const mini = minis.find(m => m.faction === faction && m.unit_type === unit);
-    return mini ? STATUS.find(s => s.id === mini.status) || null : null;
+  const getPaintStatuses = (faction, unit) => {
+    const unitMinis = minis.filter(m => m.faction === faction && m.unit_type === unit);
+    if (!unitMinis.length) return [];
+    const counts = {};
+    unitMinis.forEach(m => {
+      const st = STATUS.find(s => s.id === m.status);
+      if (st) {
+        if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
+        counts[st.id].count++;
+      }
+    });
+    return Object.values(counts);
   };
 
   const getExistingMini = (faction, unit) =>
@@ -1821,9 +1830,9 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
               {isExpanded && (
                 <div style={{ borderTop:`1px solid ${C.border}` }}>
                   {allUnits.map(unit => {
-                    const unitStatus  = factionUnits[unit];
-                    const paintStatus = getPaintStatus(faction, unit);
-                    const existing    = getExistingMini(faction, unit);
+                    const unitStatus    = factionUnits[unit];
+                    const paintStatuses = getPaintStatuses(faction, unit);
+                    const existing      = getExistingMini(faction, unit);
                     return (
                       <div key={unit}
                         style={{ display:"flex", alignItems:"center", gap:8,
@@ -1834,16 +1843,20 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
                                         overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                             {unit}
                           </div>
-                          {paintStatus && (
-                            <div style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:2,
-                                          background:`${paintStatus.color}22`,
-                                          border:`1px solid ${paintStatus.color}44`,
-                                          borderRadius:20, padding:"1px 6px" }}>
-                              <span style={{ fontSize:9 }}>{paintStatus.icon}</span>
-                              <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
-                                             color:paintStatus.color, letterSpacing:1 }}>
-                                {paintStatus.label}
-                              </span>
+                          {paintStatuses.length > 0 && (
+                            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:3 }}>
+                              {paintStatuses.map(st => (
+                                <div key={st.id}
+                                  style={{ display:"inline-flex", alignItems:"center", gap:3,
+                                           background:`${st.color}22`, border:`1px solid ${st.color}44`,
+                                           borderRadius:20, padding:"1px 6px" }}>
+                                  <span style={{ fontSize:9 }}>{st.icon}</span>
+                                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
+                                                 color:st.color, letterSpacing:1 }}>
+                                    {st.count} {st.label}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
