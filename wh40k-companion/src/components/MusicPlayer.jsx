@@ -27,10 +27,13 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const tokenClientRef                  = useRef(null);
+  const iframeRef                       = useRef(null);
   const clientId                        = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useImperativeHandle(ref, () => ({
-    stop: () => { setCurrentVideo(null); setCurrentTitle(null); onNowPlaying(null); },
+    stop:   () => { setCurrentVideo(null); setCurrentTitle(null); onNowPlaying(null); },
+    pause:  () => { iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event:"command", func:"pauseVideo", args:"" }), "https://www.youtube.com"); },
+    resume: () => { iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event:"command", func:"playVideo",  args:"" }), "https://www.youtube.com"); },
   }));
 
   // Restore playlists if token already saved
@@ -120,8 +123,8 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {currentVideo && (
         <div style={{ aspectRatio: "16/9", borderRadius: 8, overflow: "hidden", background: "#000" }}>
-          <iframe width="100%" height="100%"
-            src={`https://www.youtube.com/embed/${currentVideo}?autoplay=1`}
+          <iframe ref={iframeRef} width="100%" height="100%"
+            src={`https://www.youtube.com/embed/${currentVideo}?autoplay=1&enablejsapi=1`}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen style={{ border: "none" }} />
         </div>
@@ -187,11 +190,14 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
   const [selectedPl, setSelectedPl] = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
+  const iframeRef                   = useRef(null);
   const clientId                    = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirectUri                 = window.location.origin;
 
   useImperativeHandle(ref, () => ({
-    stop: () => { setSelectedPl(null); onNowPlaying(null); },
+    stop:   () => { setSelectedPl(null); onNowPlaying(null); },
+    pause:  () => { iframeRef.current?.contentWindow?.postMessage({ command: "pause"  }, "https://open.spotify.com"); },
+    resume: () => { iframeRef.current?.contentWindow?.postMessage({ command: "resume" }, "https://open.spotify.com"); },
   }));
 
   useEffect(() => {
@@ -303,6 +309,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         <>
           <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); onNowPlaying(null); }} />
           <iframe
+            ref={iframeRef}
             title={selectedPl.name}
             src={`https://open.spotify.com/embed/playlist/${selectedPl.id}?utm_source=generator&theme=0`}
             width="100%"
@@ -398,7 +405,9 @@ const MusicPlayer = forwardRef(function MusicPlayer({ onNowPlaying = () => {} },
   const spRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
-    stop: () => { ytRef.current?.stop(); spRef.current?.stop(); },
+    stop:   () => { ytRef.current?.stop();   spRef.current?.stop();   },
+    pause:  () => { ytRef.current?.pause();  spRef.current?.pause();  },
+    resume: () => { ytRef.current?.resume(); spRef.current?.resume(); },
   }));
 
   return (

@@ -348,7 +348,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 export default function EpubReader({
   url, title, bookId, userId,
   initProgress, initChapterIndex, initPageIndex,
-  onProgress, onClose, nowPlaying, onMusicClick, onStopMusic,
+  onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
   useReaderViewport();
   useReaderStyles();
@@ -894,11 +894,17 @@ export default function EpubReader({
               <button onClick={onMusicClick} title={nowPlaying.title}
                 style={{ background:"transparent", border:"none", cursor:"pointer",
                          padding:"6px 2px 6px 4px", display:"flex", alignItems:"center",
-                         maxWidth:76, overflow:"hidden", flexShrink:0 }}>
+                         maxWidth:72, overflow:"hidden", flexShrink:0 }}>
                 <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
                                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {nowPlaying.title}
                 </span>
+              </button>
+              <button onClick={onTogglePauseMusic} title={musicPaused?"Resume":"Pause"}
+                style={{ background:"transparent", border:"none", cursor:"pointer",
+                         padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
+                         fontSize:12, lineHeight:1, flexShrink:0 }}>
+                {musicPaused ? "▶" : "⏸"}
               </button>
               <button onClick={onStopMusic} title="Stop music"
                 style={{ background:"transparent", border:"none", cursor:"pointer",

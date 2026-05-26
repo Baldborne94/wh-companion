@@ -99,7 +99,7 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function PdfReader({ url, title, bookId, userId, onClose, nowPlaying, onMusicClick, onStopMusic }) {
+export default function PdfReader({ url, title, bookId, userId, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
@@ -438,11 +438,17 @@ export default function PdfReader({ url, title, bookId, userId, onClose, nowPlay
             <button onClick={e => { e.stopPropagation(); onMusicClick?.(); }} title={nowPlaying.title}
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 2px 4px 4px", display:"flex", alignItems:"center",
-                       maxWidth:76, overflow:"hidden", flexShrink:0 }}>
+                       maxWidth:72, overflow:"hidden", flexShrink:0 }}>
               <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
                              textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {nowPlaying.title}
               </span>
+            </button>
+            <button onClick={e => { e.stopPropagation(); onTogglePauseMusic?.(); }} title={musicPaused?"Resume":"Pause"}
+              style={{ background:"transparent", border:"none", cursor:"pointer",
+                       padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
+                       fontSize:12, lineHeight:1, flexShrink:0 }}>
+              {musicPaused ? "▶" : "⏸"}
             </button>
             <button onClick={e => { e.stopPropagation(); onStopMusic?.(); }} title="Stop music"
               style={{ background:"transparent", border:"none", cursor:"pointer",
