@@ -1,7 +1,7 @@
 {
-  "name": "Warhammer 40,000 Companion",
-  "short_name": "WH40K",
-  "description": "Your complete Warhammer 40,000 companion — library, lore, reading order, painting and AI oracle.",
+  "name": "WH Companion",
+  "short_name": "WH",
+  "description": "Your complete Warhammer companion — library, lore, reading order, painting and AI oracle.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0905",
