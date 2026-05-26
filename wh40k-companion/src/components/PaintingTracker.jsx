@@ -1624,7 +1624,18 @@ function BattleLog({userId}){
 function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, onAdd }) {
   const C = useContext(ThemeCtx);
   const [open, setOpen] = useState(true);
-  const painted = minis.filter(m => ['painted','completed'].includes(m.status)).length;
+
+  const statusCounts = (() => {
+    const counts = {};
+    minis.forEach(m => {
+      const st = STATUS.find(s => s.id === m.status);
+      if (st) {
+        if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
+        counts[st.id].count++;
+      }
+    });
+    return Object.values(counts);
+  })();
 
   return (
     <div style={{ marginBottom:20 }}>
@@ -1641,8 +1652,23 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
                         letterSpacing:2, marginTop:2, textTransform:"uppercase" }}>
             {faction}
             {minis.length > 0 && ` · ${minis.length} ${minis.length === 1 ? "model" : "models"}`}
-            {painted > 0 && ` · ${painted} painted`}
           </div>
+          {statusCounts.length > 0 && (
+            <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:4 }}>
+              {statusCounts.map(st => (
+                <div key={st.id}
+                  style={{ display:"inline-flex", alignItems:"center", gap:3,
+                           background:`${st.color}22`, border:`1px solid ${st.color}44`,
+                           borderRadius:20, padding:"1px 6px" }}>
+                  <span style={{ fontSize:9 }}>{st.icon}</span>
+                  <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
+                                 color:st.color, letterSpacing:1 }}>
+                    {st.count} {st.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {userId && (
           <button onClick={e => { e.stopPropagation(); onAdd(); }}
