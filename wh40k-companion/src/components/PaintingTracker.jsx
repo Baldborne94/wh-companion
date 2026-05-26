@@ -5,7 +5,7 @@
 //           Citadel paint picker, photo upload, AI color recommendations
 // ══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useRef, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
 import { db, storage } from "../lib/supabase";
 import { sb } from "../lib/sb";
 
@@ -1619,6 +1619,74 @@ function BattleLog({userId}){
   );
 }
 
+// ─── COLLECTION SECTION ───────────────────────────────────────────────────
+
+function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, onAdd }) {
+  const C = useContext(ThemeCtx);
+  const [open, setOpen] = useState(true);
+  const painted = minis.filter(m => ['painted','completed'].includes(m.status)).length;
+
+  return (
+    <div style={{ marginBottom:20 }}>
+      {/* Header */}
+      <div onClick={() => setOpen(o => !o)}
+        style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer",
+                 padding:"10px 0 8px", borderBottom:`1px solid ${C.border}`, marginBottom:8 }}>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:C.text,
+                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {unit}
+          </div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.gold,
+                        letterSpacing:2, marginTop:2, textTransform:"uppercase" }}>
+            {faction}
+            {minis.length > 0 && ` · ${minis.length} ${minis.length === 1 ? "model" : "models"}`}
+            {painted > 0 && ` · ${painted} painted`}
+          </div>
+        </div>
+        {userId && (
+          <button onClick={e => { e.stopPropagation(); onAdd(); }}
+            style={{ flexShrink:0, padding:"6px 12px", borderRadius:8, cursor:"pointer",
+                     background:`${C.gold}22`, border:`1px solid ${C.gold}55`,
+                     color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1 }}>
+            + Add
+          </button>
+        )}
+        <span style={{ color:C.muted, fontSize:11, flexShrink:0 }}>{open ? "▲" : "▼"}</span>
+      </div>
+
+      {/* Content */}
+      {open && (
+        minis.length === 0 ? (
+          <div style={{ padding:"16px 0 4px", textAlign:"center" }}>
+            <div style={{ color:C.muted, fontFamily:"'Cinzel',serif", fontSize:11,
+                          letterSpacing:1, marginBottom:10 }}>
+              No models added yet
+            </div>
+            {userId && (
+              <button onClick={onAdd}
+                style={{ padding:"8px 18px", borderRadius:8, cursor:"pointer",
+                         background:`${C.gold}22`, border:`1px solid ${C.gold}55`,
+                         color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1 }}>
+                + Add first model
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display:"grid",
+                        gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12 }}>
+            {minis.map(m => (
+              <MiniCard key={m.id} mini={m} paints={paintsMap[m.id]||[]}
+                isOwner={userId === m.user_id}
+                onEdit={() => onEdit(m)} onClick={() => onEdit(m)} />
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 // ─── ARMY TAB ─────────────────────────────────────────────────────────────
 
 function ArmyTab({ userId, universe, minis, onOpenMini }) {
@@ -1882,6 +1950,24 @@ export default function PaintingTracker({ user, universe }) {
     ? minis
     : minis.filter((m) => m.faction === filter);
 
+  // ─── Army data (owned units from My Army tab) ──────────────────────────
+
+  const armyData = useMemo(() => {
+    const lsKey = `wh40k_army_${user?.id || 'anon'}_${universe}`;
+    try { return JSON.parse(localStorage.getItem(lsKey)) || { followed: [], units: {} }; }
+    catch { return { followed: [], units: {} }; }
+  }, [user?.id, universe, tab]);
+
+  const ownedUnits = useMemo(() => {
+    const result = [];
+    Object.entries(armyData.units).forEach(([faction, units]) => {
+      Object.entries(units).forEach(([unit, status]) => {
+        if (status === 'owned') result.push({ faction, unit });
+      });
+    });
+    return result;
+  }, [armyData]);
+
   // ─── Render ────────────────────────────────────────────────────────────
 
   const theme = universe === 'aos' ? C_AOS : C;
@@ -1962,7 +2048,56 @@ export default function PaintingTracker({ user, universe }) {
                         fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:2 }}>
             ⚙ Loading…
           </div>
+        ) : tab === "collection" && ownedUnits.length > 0 ? (
+          // ── Grouped view (My Collection with army sections) ────────
+          <>
+            {ownedUnits
+              .filter(({ faction }) => filter === "All" || faction === filter)
+              .map(({ faction, unit }) => {
+                const sectionMinis = minis.filter(
+                  m => m.faction === faction && m.unit_type === unit
+                );
+                return (
+                  <CollectionSection
+                    key={`${faction}|||${unit}`}
+                    faction={faction}
+                    unit={unit}
+                    minis={sectionMinis}
+                    paintsMap={paints}
+                    userId={user?.id}
+                    onEdit={m => setModal(m)}
+                    onAdd={() => setModal({ faction, unit_type: unit })}
+                  />
+                );
+              })
+            }
+            {/* Ungrouped minis (not linked to any owned army unit) */}
+            {(() => {
+              const ungrouped = minis.filter(m =>
+                !ownedUnits.some(u => u.faction === m.faction && u.unit === m.unit_type) &&
+                (filter === "All" || m.faction === filter)
+              );
+              if (!ungrouped.length) return null;
+              return (
+                <div style={{ marginTop:24, paddingTop:16, borderTop:`1px solid ${theme.border}` }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:theme.muted,
+                                letterSpacing:3, textTransform:"uppercase", marginBottom:12 }}>
+                    Other Models
+                  </div>
+                  <div style={{ display:"grid",
+                                gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:12 }}>
+                    {ungrouped.map(m => (
+                      <MiniCard key={m.id} mini={m} paints={paints[m.id]||[]}
+                        isOwner={user?.id === m.user_id}
+                        onEdit={() => setModal(m)} onClick={() => setModal(m)} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
         ) : displayed.length === 0 ? (
+          // ── Empty state ────────────────────────────────────────────
           <div style={{ textAlign:"center", padding:60 }}>
             <div style={{ fontSize:48, marginBottom:12, opacity:0.3 }}>⚙</div>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:theme.muted,
@@ -1982,6 +2117,7 @@ export default function PaintingTracker({ user, universe }) {
             )}
           </div>
         ) : (
+          // ── Flat grid (gallery or collection without army data) ────
           <div style={{ display:"grid",
                         gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",
                         gap:12 }}>
