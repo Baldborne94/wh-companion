@@ -1625,6 +1625,8 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
   const C = useContext(ThemeCtx);
   const [open, setOpen] = useState(true);
 
+  const allCompleted = minis.length > 0 && minis.every(m => m.status === 'completed');
+
   const statusCounts = (() => {
     const counts = {};
     minis.forEach(m => {
@@ -1644,9 +1646,19 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
         style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer",
                  padding:"10px 0 8px", borderBottom:`1px solid ${C.border}`, marginBottom:8 }}>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:C.text,
-                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-            {unit}
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:C.text,
+                          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              {unit}
+            </div>
+            {allCompleted && (
+              <span style={{ flexShrink:0, background:"#4aaa6a22", border:"1px solid #4aaa6a44",
+                             borderRadius:20, padding:"1px 8px",
+                             fontFamily:"'Cinzel',serif", fontSize:8,
+                             color:"#4aaa6a", letterSpacing:1 }}>
+                ✓ Completed
+              </span>
+            )}
           </div>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.gold,
                         letterSpacing:2, marginTop:2, textTransform:"uppercase" }}>
@@ -1720,8 +1732,8 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
   const lsKey = `wh40k_army_${userId || 'anon'}_${universe}`;
 
   const [data, setData] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(lsKey)) || { followed: [], units: {} }; }
-    catch { return { followed: [], units: {} }; }
+    try { return JSON.parse(localStorage.getItem(lsKey)) || { followed: [], completed: [], units: {} }; }
+    catch { return { followed: [], completed: [], units: {} }; }
   });
   const [expanded,    setExpanded]    = useState(null);
   const [customInput, setCustomInput] = useState("");
@@ -1738,6 +1750,13 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
       ? data.followed.filter(f => f !== faction)
       : [...data.followed, faction];
     persist({ ...data, followed });
+  };
+
+  const toggleComplete = (faction) => {
+    const completed = (data.completed || []).includes(faction)
+      ? (data.completed || []).filter(f => f !== faction)
+      : [...(data.completed || []), faction];
+    persist({ ...data, completed });
   };
 
   const setUnitStatus = (faction, unit, status) => {
@@ -1808,6 +1827,7 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {sorted.map(faction => {
           const isFollowed   = data.followed.includes(faction);
+          const isCompleted  = (data.completed || []).includes(faction);
           const isExpanded   = expanded === faction;
           const factionUnits = data.units[faction] || {};
           const ownedCount   = Object.values(factionUnits).filter(s => s === 'owned').length;
@@ -1819,17 +1839,27 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
           return (
             <div key={faction}
               style={{ background:C.card, borderRadius:10, overflow:"hidden",
-                       border:`1px solid ${isFollowed ? C.gold+"44" : C.border}`,
+                       border:`1px solid ${isCompleted ? "#4aaa6a44" : isFollowed ? C.gold+"44" : C.border}`,
                        transition:"border-color 0.2s" }}>
 
               {/* Faction header */}
-              <div style={{ display:"flex", alignItems:"center", gap:10,
+              <div style={{ display:"flex", alignItems:"center", gap:8,
                             padding:"12px 14px", cursor:"pointer" }}
                    onClick={() => setExpanded(isExpanded ? null : faction)}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1,
-                                color:isFollowed ? C.text : C.muted }}>
-                    {faction}
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span style={{ fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1,
+                                   color:isFollowed ? C.text : C.muted }}>
+                      {faction}
+                    </span>
+                    {isCompleted && (
+                      <span style={{ background:"#4aaa6a22", border:"1px solid #4aaa6a44",
+                                     borderRadius:20, padding:"1px 8px",
+                                     fontFamily:"'Cinzel',serif", fontSize:8,
+                                     color:"#4aaa6a", letterSpacing:1 }}>
+                        ✓ Completed
+                      </span>
+                    )}
                   </div>
                   {(ownedCount > 0 || wishCount > 0) && (
                     <div style={{ display:"flex", gap:10, marginTop:3 }}>
@@ -1838,6 +1868,17 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
                     </div>
                   )}
                 </div>
+                {isFollowed && (
+                  <button onClick={e => { e.stopPropagation(); toggleComplete(faction); }}
+                    style={{ flexShrink:0, padding:"4px 10px", borderRadius:20, cursor:"pointer",
+                             border:`1px solid ${isCompleted ? "#4aaa6a" : C.border}`,
+                             background:isCompleted ? "#4aaa6a22" : "transparent",
+                             color:isCompleted ? "#4aaa6a" : C.muted,
+                             fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                             transition:"all 0.15s" }}>
+                    {isCompleted ? "✓ Done" : "Mark Done"}
+                  </button>
+                )}
                 <button onClick={e => { e.stopPropagation(); toggleFollow(faction); }}
                   style={{ flexShrink:0, padding:"4px 10px", borderRadius:20, cursor:"pointer",
                            border:`1px solid ${isFollowed ? C.gold : C.border}`,
@@ -2048,8 +2089,8 @@ export default function PaintingTracker({ user, universe }) {
 
       {/* ── COLLECTION STATS ──────────────────────────────────────── */}
       {tab === "collection" && minis.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, padding:"12px 16px 0" }}>
-          {STATUS.map(s=>{
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, padding:"12px 16px 0" }}>
+          {STATUS.filter(s => s.id !== 'owned').map(s=>{
             const cnt=minis.filter(m=>m.status===s.id).length;
             return(
               <div key={s.id} style={{background:theme.card,border:`1px solid ${cnt>0?s.color+"44":theme.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
