@@ -1017,7 +1017,7 @@ function FormInput({ value, onChange, placeholder, multiline }) {
 
 function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const C = useContext(ThemeCtx);
-  const isEdit = !!mini;
+  const isEdit = !!mini?.id;
   const photoInput = useRef(null);
 
   // Parse saved photo_url: may be a JSON array (multiple photos) or a plain URL
@@ -1619,6 +1619,221 @@ function BattleLog({userId}){
   );
 }
 
+// ─── ARMY TAB ─────────────────────────────────────────────────────────────
+
+function ArmyTab({ userId, universe, minis, onOpenMini }) {
+  const C = useContext(ThemeCtx);
+  const lsKey = `wh40k_army_${userId || 'anon'}_${universe}`;
+
+  const [data, setData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey)) || { followed: [], units: {} }; }
+    catch { return { followed: [], units: {} }; }
+  });
+  const [expanded,    setExpanded]    = useState(null);
+  const [customInput, setCustomInput] = useState("");
+
+  useEffect(() => { setCustomInput(""); }, [expanded]);
+
+  const FACTIONS = universe === 'aos' ? FACTIONS_AOS : FACTIONS_40K;
+  const allFactionNames = Object.keys(FACTIONS);
+
+  const persist = (d) => { setData(d); localStorage.setItem(lsKey, JSON.stringify(d)); };
+
+  const toggleFollow = (faction) => {
+    const followed = data.followed.includes(faction)
+      ? data.followed.filter(f => f !== faction)
+      : [...data.followed, faction];
+    persist({ ...data, followed });
+  };
+
+  const setUnitStatus = (faction, unit, status) => {
+    const fu = { ...(data.units[faction] || {}) };
+    if (fu[unit] === status) delete fu[unit]; else fu[unit] = status;
+    persist({ ...data, units: { ...data.units, [faction]: fu } });
+  };
+
+  const addCustomUnit = (faction) => {
+    const unit = customInput.trim();
+    if (!unit) return;
+    const fu = { ...(data.units[faction] || {}), [unit]: 'owned' };
+    persist({ ...data, units: { ...data.units, [faction]: fu } });
+    setCustomInput("");
+  };
+
+  const getPaintStatus = (faction, unit) => {
+    const mini = minis.find(m => m.faction === faction && m.unit_type === unit);
+    return mini ? STATUS.find(s => s.id === mini.status) || null : null;
+  };
+
+  const getExistingMini = (faction, unit) =>
+    minis.find(m => m.faction === faction && m.unit_type === unit) || null;
+
+  const totalOwned    = Object.values(data.units).reduce((n, u) => n + Object.values(u).filter(s => s === 'owned').length,    0);
+  const totalWishlist = Object.values(data.units).reduce((n, u) => n + Object.values(u).filter(s => s === 'wishlist').length, 0);
+
+  const sorted = [
+    ...data.followed.filter(f => allFactionNames.includes(f)),
+    ...allFactionNames.filter(f => !data.followed.includes(f)),
+  ];
+
+  return (
+    <div style={{ padding:"12px 16px 80px" }}>
+
+      {/* Stats */}
+      {(data.followed.length > 0 || totalOwned > 0) && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
+          {[
+            { label:"Armies",   value:data.followed.length, color:C.gold },
+            { label:"Owned",    value:totalOwned,            color:"#4aaa6a" },
+            { label:"Wishlist", value:totalWishlist,         color:"#4a8adc" },
+          ].map(s => (
+            <div key={s.label} style={{ background:C.card, border:`1px solid ${C.border}`,
+                                        borderRadius:8, padding:"10px 4px", textAlign:"center" }}>
+              <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:20, color:s.color }}>
+                {s.value}
+              </div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
+                            letterSpacing:2, textTransform:"uppercase" }}>
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Faction list */}
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {sorted.map(faction => {
+          const isFollowed   = data.followed.includes(faction);
+          const isExpanded   = expanded === faction;
+          const factionUnits = data.units[faction] || {};
+          const ownedCount   = Object.values(factionUnits).filter(s => s === 'owned').length;
+          const wishCount    = Object.values(factionUnits).filter(s => s === 'wishlist').length;
+          const baseUnits    = FACTIONS[faction] || [];
+          const customUnits  = Object.keys(factionUnits).filter(u => !baseUnits.includes(u));
+          const allUnits     = [...baseUnits, ...customUnits];
+
+          return (
+            <div key={faction}
+              style={{ background:C.card, borderRadius:10, overflow:"hidden",
+                       border:`1px solid ${isFollowed ? C.gold+"44" : C.border}`,
+                       transition:"border-color 0.2s" }}>
+
+              {/* Faction header */}
+              <div style={{ display:"flex", alignItems:"center", gap:10,
+                            padding:"12px 14px", cursor:"pointer" }}
+                   onClick={() => setExpanded(isExpanded ? null : faction)}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1,
+                                color:isFollowed ? C.text : C.muted }}>
+                    {faction}
+                  </div>
+                  {(ownedCount > 0 || wishCount > 0) && (
+                    <div style={{ display:"flex", gap:10, marginTop:3 }}>
+                      {ownedCount > 0 && <span style={{ fontSize:10, color:"#4aaa6a" }}>📦 {ownedCount}</span>}
+                      {wishCount  > 0 && <span style={{ fontSize:10, color:"#4a8adc" }}>🛒 {wishCount}</span>}
+                    </div>
+                  )}
+                </div>
+                <button onClick={e => { e.stopPropagation(); toggleFollow(faction); }}
+                  style={{ flexShrink:0, padding:"4px 10px", borderRadius:20, cursor:"pointer",
+                           border:`1px solid ${isFollowed ? C.gold : C.border}`,
+                           background:isFollowed ? `${C.gold}22` : "transparent",
+                           color:isFollowed ? C.gold : C.muted,
+                           fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
+                           transition:"all 0.15s" }}>
+                  {isFollowed ? "✓ Collecting" : "+ Collect"}
+                </button>
+                <span style={{ color:C.muted, fontSize:11, flexShrink:0 }}>
+                  {isExpanded ? "▲" : "▼"}
+                </span>
+              </div>
+
+              {/* Unit list */}
+              {isExpanded && (
+                <div style={{ borderTop:`1px solid ${C.border}` }}>
+                  {allUnits.map(unit => {
+                    const unitStatus  = factionUnits[unit];
+                    const paintStatus = getPaintStatus(faction, unit);
+                    const existing    = getExistingMini(faction, unit);
+                    return (
+                      <div key={unit}
+                        style={{ display:"flex", alignItems:"center", gap:8,
+                                 padding:"9px 14px", borderBottom:`1px solid ${C.border}`,
+                                 background:unitStatus === 'owned' ? `${C.gold}06` : "transparent" }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, color:unitStatus ? C.text : C.muted,
+                                        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                            {unit}
+                          </div>
+                          {paintStatus && (
+                            <div style={{ display:"inline-flex", alignItems:"center", gap:3, marginTop:2,
+                                          background:`${paintStatus.color}22`,
+                                          border:`1px solid ${paintStatus.color}44`,
+                                          borderRadius:20, padding:"1px 6px" }}>
+                              <span style={{ fontSize:9 }}>{paintStatus.icon}</span>
+                              <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
+                                             color:paintStatus.color, letterSpacing:1 }}>
+                                {paintStatus.label}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <button onClick={() => setUnitStatus(faction, unit, 'wishlist')} title="Wishlist"
+                          style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
+                                   border:`1px solid ${unitStatus==='wishlist' ? '#4a8adc' : C.dim}`,
+                                   background:unitStatus==='wishlist' ? '#4a8adc22' : "transparent",
+                                   color:unitStatus==='wishlist' ? '#4a8adc' : C.muted,
+                                   fontSize:11, transition:"all 0.15s" }}>
+                          🛒
+                        </button>
+                        <button onClick={() => setUnitStatus(faction, unit, 'owned')} title="Owned"
+                          style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
+                                   border:`1px solid ${unitStatus==='owned' ? '#4aaa6a' : C.dim}`,
+                                   background:unitStatus==='owned' ? '#4aaa6a22' : "transparent",
+                                   color:unitStatus==='owned' ? '#4aaa6a' : C.muted,
+                                   fontSize:11, transition:"all 0.15s" }}>
+                          📦
+                        </button>
+                        {unitStatus === 'owned' && (
+                          <button onClick={() => onOpenMini(existing || { faction, unit_type: unit })}
+                            style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
+                                     border:`1px solid ${C.gold}55`, background:`${C.gold}15`,
+                                     color:C.gold, fontFamily:"'Cinzel',serif",
+                                     fontSize:9, letterSpacing:1 }}>
+                            🖌
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add custom unit */}
+                  <div style={{ padding:"10px 14px", display:"flex", gap:8 }}>
+                    <input value={customInput}
+                      onChange={e => setCustomInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addCustomUnit(faction)}
+                      placeholder="Add custom model…"
+                      style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`,
+                               borderRadius:6, padding:"7px 10px", color:C.text, fontSize:12,
+                               boxSizing:"border-box" }}/>
+                    <button onClick={() => addCustomUnit(faction)}
+                      style={{ padding:"7px 14px", borderRadius:6,
+                               background:`${C.gold}22`, border:`1px solid ${C.gold}55`,
+                               color:C.gold, cursor:"pointer", fontSize:14, fontWeight:600 }}>
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function PaintingTracker({ user, universe }) {
   const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
   const [minis,    setMinis]    = useState([]);
@@ -1633,7 +1848,7 @@ export default function PaintingTracker({ user, universe }) {
     setLoading(true);
     try {
       let data;
-      if (tab === "collection" && user) {
+      if ((tab === "collection" || tab === "army") && user) {
         data = await db.get("miniatures", `user_id=eq.${user.id}&universe=eq.${universe}`);
       } else {
         data = await db.get("miniatures", `is_public=eq.true&universe=eq.${universe}`);
@@ -1681,6 +1896,7 @@ export default function PaintingTracker({ user, universe }) {
         <div style={{ display:"flex", gap:0 }}>
           {[
             { id:"gallery",    label:"🏛 Community Gallery" },
+            { id:"army",       label:"⚔ My Army" },
             { id:"collection", label:"⚙ My Collection" },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
@@ -1694,6 +1910,16 @@ export default function PaintingTracker({ user, universe }) {
           ))}
         </div>
       </div>
+
+      {/* ── ARMY TAB ──────────────────────────────────────────────── */}
+      {tab === "army" && (
+        <ArmyTab
+          userId={user?.id}
+          universe={universe}
+          minis={minis}
+          onOpenMini={(miniOrPrefill) => setModal(miniOrPrefill.id ? miniOrPrefill : { ...miniOrPrefill })}
+        />
+      )}
 
       {/* ── COLLECTION STATS ──────────────────────────────────────── */}
       {tab === "collection" && minis.length > 0 && (
@@ -1712,7 +1938,7 @@ export default function PaintingTracker({ user, universe }) {
       )}
 
       {/* ── FACTION FILTER + GRID ─────────────────────────────────── */}
-      {true && (
+      {tab !== "army" && (
       <>
       <div style={{ overflowX:"auto", padding:"12px 16px 0",
                     display:"flex", gap:8, scrollbarWidth:"none" }}>
