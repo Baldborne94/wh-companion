@@ -26,9 +26,9 @@ export default function LoginPage({ authLoading, onEnter, user }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@400;700;900&display=swap');
 
-        @keyframes ring40k   { 0%,100%{opacity:0.09;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.22;transform:translate(-50%,-50%) scale(1.04);} }
-        @keyframes ringAoS   { 0%,100%{opacity:0.06;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.16;transform:translate(-50%,-50%) scale(1.06);} }
-        @keyframes ringOuter { 0%,100%{opacity:0.03;transform:translate(-50%,-50%) scale(1);}   50%{opacity:0.09;transform:translate(-50%,-50%) scale(1.08);} }
+        @keyframes ring40k   { 0%,100%{opacity:0.07;} 50%{opacity:0.20;} }
+        @keyframes ringAoS   { 0%,100%{opacity:0.04;} 50%{opacity:0.13;} }
+        @keyframes ringOuter { 0%,100%{opacity:0.02;} 50%{opacity:0.07;} }
         @keyframes silverShimmer { 0%{background-position:-200% center;} 100%{background-position:200% center;} }
 @keyframes loginGlow { 0%,100%{box-shadow:0 0 10px rgba(200,196,188,.1),0 0 28px rgba(200,196,188,.03);} 50%{box-shadow:0 0 20px rgba(200,196,188,.22),0 0 44px rgba(200,196,188,.07);} }
         @keyframes loginBtnHov { 0%,100%{box-shadow:0 0 16px rgba(200,196,188,.18);} 50%{box-shadow:0 0 30px rgba(200,196,188,.38);} }
@@ -60,14 +60,14 @@ export default function LoginPage({ authLoading, onEnter, user }) {
       {/* Pulsing rings: red (40K inner), blue (AoS mid), silver (outer) */}
       {[
         { size:310, delay:"0s",   anim:"ring40k",   color:RED  },
-        { size:500, delay:"1.1s", anim:"ringAoS",   color:BLUE },
-        { size:710, delay:"2.2s", anim:"ringOuter", color:SILVER },
+        { size:500, delay:"1.2s", anim:"ringAoS",   color:BLUE },
+        { size:710, delay:"2.4s", anim:"ringOuter", color:SILVER },
       ].map((r, i) => (
         <div key={i} style={{
           position:"absolute", left:"50%", top:"44%",
           width:r.size, height:r.size, borderRadius:"50%",
           border:`1px solid ${r.color}`,
-          animation:`${r.anim} 5s ease-in-out infinite ${r.delay}`,
+          animation:`${r.anim} 4s ease-in-out infinite ${r.delay}`,
           transform:"translate(-50%,-50%)",
           pointerEvents:"none",
         }}/>

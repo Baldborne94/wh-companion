@@ -902,7 +902,13 @@ export default function EpubReader({
             </button>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
-          <IBtn onClick={saveBookmark}                     color={bmSaved?C.gold:T.muted} title="Bookmark">🔖</IBtn>
+          <IBtn
+            onClick={bookmarks.length > 0
+              ? () => { rendRef.current?.display(bookmarks[0].cfi); }
+              : saveBookmark}
+            color={bookmarks.length > 0 ? C.gold : (bmSaved ? C.gold : T.muted)}
+            title={bookmarks.length > 0 ? "Go to bookmark" : "Save bookmark"}
+          >🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
@@ -1020,12 +1026,20 @@ export default function EpubReader({
                      width:Math.min(300, window.innerWidth * 0.85),
                      background:T.surface, borderLeft:`1px solid ${T.border}`,
                      animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
-            <div style={{ padding:"16px 16px 10px", borderBottom:`1px solid ${T.border}`,
+            <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${T.border}`,
                           display:"flex", justifyContent:"space-between", alignItems:"center",
                           position:"sticky", top:0, background:T.surface, flexShrink:0 }}>
               <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Bookmarks</span>
-              <button onClick={() => setShowBookmarks(false)}
-                style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <button onClick={() => { saveBookmark(); }}
+                  style={{ background:"transparent", border:`1px solid ${C.gold}55`, borderRadius:4,
+                           color:C.gold, cursor:"pointer", fontSize:10, padding:"4px 8px",
+                           fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+                  + Save here
+                </button>
+                <button onClick={() => setShowBookmarks(false)}
+                  style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
+              </div>
             </div>
             {bookmarks.length === 0 ? (
               <p style={{ textAlign:"center", color:T.muted, fontSize:12,

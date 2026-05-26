@@ -1718,6 +1718,7 @@ export default function App(){
     return p.get("state")==="spotify_auth"?"music":"home";
   });
   const [nowPlaying,setNowPlaying]=useState(null);
+  const musicRef=useRef(null);
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
@@ -1808,7 +1809,7 @@ export default function App(){
         <div style={{flex:1,overflow:"hidden",position:"relative"}}>
           {/* MusicPlayer always in DOM — never unmounted, so iframe keeps playing even when reader opens */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:section==="music"&&!appReader?2:0,pointerEvents:section==="music"&&!appReader?"auto":"none"}}>
-            <MusicPlayer onNowPlaying={setNowPlaying}/>
+            <MusicPlayer ref={musicRef} onNowPlaying={setNowPlaying}/>
           </div>
           {/* Reader on top (z-index 3) when open */}
           {appReader&&(
@@ -1847,6 +1848,12 @@ export default function App(){
               {nowPlaying.subtitle&&<div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.subtitle}</div>}
             </div>
             <span style={{fontSize:11,color:nowPlaying.type==="youtube"?"#FF0000":"#1DB954",flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>🎵</span>
+            <button
+              onClick={(e)=>{e.stopPropagation();musicRef.current?.stop();setNowPlaying(null);}}
+              style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",
+                      fontSize:18,lineHeight:1,padding:"4px 6px",flexShrink:0}}
+              title="Stop music"
+            >✕</button>
           </div>
         )}
         {/* ── BOTTOM NAV ── */}
