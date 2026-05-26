@@ -348,7 +348,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 export default function EpubReader({
   url, title, bookId, userId,
   initProgress, initChapterIndex, initPageIndex,
-  onProgress, onClose, nowPlaying, onMusicClick,
+  onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
   useReaderViewport();
   useReaderStyles();
@@ -890,16 +890,29 @@ export default function EpubReader({
 
         <div style={{ display:"flex", alignItems:"center" }}>
           {nowPlaying && (
-            <button onClick={onMusicClick} title={nowPlaying.title}
-              style={{ background:"transparent", border:"none", cursor:"pointer",
-                       padding:"6px 6px 6px 4px", display:"flex", alignItems:"center", gap:3,
-                       maxWidth:84, overflow:"hidden", flexShrink:0 }}>
-              <span style={{ fontSize:12, color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954", flexShrink:0 }}>♪</span>
-              <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
-                             textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {nowPlaying.title}
-              </span>
-            </button>
+            <>
+              <button onClick={onMusicClick} title={nowPlaying.title}
+                style={{ background:"transparent", border:"none", cursor:"pointer",
+                         padding:"6px 2px 6px 4px", display:"flex", alignItems:"center",
+                         maxWidth:72, overflow:"hidden", flexShrink:0 }}>
+                <span style={{ fontSize:9, color:"rgba(212,203,184,0.5)", overflow:"hidden",
+                               textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {nowPlaying.title}
+                </span>
+              </button>
+              <button onClick={onTogglePauseMusic} title={musicPaused?"Resume":"Pause"}
+                style={{ background:"transparent", border:"none", cursor:"pointer",
+                         padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
+                         fontSize:12, lineHeight:1, flexShrink:0 }}>
+                {musicPaused ? "▶" : "⏸"}
+              </button>
+              <button onClick={onStopMusic} title="Stop music"
+                style={{ background:"transparent", border:"none", cursor:"pointer",
+                         padding:"4px 5px", color:"rgba(212,203,184,0.45)", fontSize:14,
+                         lineHeight:1, flexShrink:0 }}>
+                ✕
+              </button>
+            </>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
           <IBtn
@@ -1059,7 +1072,7 @@ export default function EpubReader({
                         {bm.label}
                       </div>
                       <div style={{ fontSize:10, color:T.muted }}>
-                        {bm.pct}% · {new Date(bm.createdAt).toLocaleDateString("en-US", { day:"numeric", month:"short" })}
+                        {new Date(bm.createdAt).toLocaleDateString("en-US", { day:"numeric", month:"short" })}
                       </div>
                     </button>
                     <button

@@ -1718,8 +1718,13 @@ export default function App(){
     return p.get("state")==="spotify_auth"?"music":"home";
   });
   const [nowPlaying,setNowPlaying]=useState(null);
+  const [musicPaused,setMusicPaused]=useState(false);
   const musicRef=useRef(null);
   const mainRef=useRef(null);
+  const toggleMusicPause=useCallback(()=>{
+    if(musicPaused){musicRef.current?.resume();setMusicPaused(false);}
+    else{musicRef.current?.pause();setMusicPaused(true);}
+  },[musicPaused]);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
   const curNavLabel=curNav?(curNav.id==="reading"&&universe==='aos'?"Path to Glory":curNav.label):"";
@@ -1809,15 +1814,15 @@ export default function App(){
         <div style={{flex:1,overflow:"hidden",position:"relative"}}>
           {/* MusicPlayer always in DOM — never unmounted, so iframe keeps playing even when reader opens */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",zIndex:section==="music"&&!appReader?2:0,pointerEvents:section==="music"&&!appReader?"auto":"none"}}>
-            <MusicPlayer ref={musicRef} onNowPlaying={setNowPlaying}/>
+            <MusicPlayer ref={musicRef} onNowPlaying={(v)=>{setNowPlaying(v);setMusicPaused(false);}}/>
           </div>
           {/* Reader on top (z-index 3) when open */}
           {appReader&&(
             <div style={{position:"absolute",inset:0,zIndex:3}}>
               <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
                 {appReader.fileType==="pdf"
-                  ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} onMusicClick={()=>{setAppReader(null);setSection("music");}}/>
-                  :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} onMusicClick={()=>{setAppReader(null);setSection("music");}}/>
+                  ?<PdfReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
+                  :<EpubReader url={appReader.url} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
                 }
               </Suspense>
             </div>
@@ -1847,9 +1852,14 @@ export default function App(){
               <div style={{fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.title}</div>
               {nowPlaying.subtitle&&<div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.subtitle}</div>}
             </div>
-            <span style={{fontSize:11,color:nowPlaying.type==="youtube"?"#FF0000":"#1DB954",flexShrink:0,fontFamily:"'Cinzel',serif",letterSpacing:1}}>🎵</span>
             <button
-              onClick={(e)=>{e.stopPropagation();musicRef.current?.stop();setNowPlaying(null);}}
+              onClick={(e)=>{e.stopPropagation();toggleMusicPause();}}
+              style={{background:"transparent",border:"none",color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",cursor:"pointer",
+                      fontSize:16,lineHeight:1,padding:"4px 6px",flexShrink:0}}
+              title={musicPaused?"Resume":"Pause"}
+            >{musicPaused?"▶":"⏸"}</button>
+            <button
+              onClick={(e)=>{e.stopPropagation();musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}}
               style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",
                       fontSize:18,lineHeight:1,padding:"4px 6px",flexShrink:0}}
               title="Stop music"
