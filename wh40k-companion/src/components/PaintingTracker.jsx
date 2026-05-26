@@ -1727,7 +1727,7 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
 
 // ─── ARMY TAB ─────────────────────────────────────────────────────────────
 
-function ArmyTab({ userId, universe, minis, onOpenMini }) {
+function ArmyTab({ userId, universe, minis, onGoToSection }) {
   const C = useContext(ThemeCtx);
   const lsKey = `wh40k_army_${userId || 'anon'}_${universe}`;
 
@@ -1786,9 +1786,6 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
     });
     return Object.values(counts);
   };
-
-  const getExistingMini = (faction, unit) =>
-    minis.find(m => m.faction === faction && m.unit_type === unit) || null;
 
   const totalOwned    = Object.values(data.units).reduce((n, u) => n + Object.values(u).filter(s => s === 'owned').length,    0);
   const totalWishlist = Object.values(data.units).reduce((n, u) => n + Object.values(u).filter(s => s === 'wishlist').length, 0);
@@ -1899,7 +1896,6 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
                   {allUnits.map(unit => {
                     const unitStatus    = factionUnits[unit];
                     const paintStatuses = getPaintStatuses(faction, unit);
-                    const existing      = getExistingMini(faction, unit);
                     return (
                       <div key={unit}
                         style={{ display:"flex", alignItems:"center", gap:8,
@@ -1944,12 +1940,12 @@ function ArmyTab({ userId, universe, minis, onOpenMini }) {
                           📦
                         </button>
                         {unitStatus === 'owned' && (
-                          <button onClick={() => onOpenMini(existing || { faction, unit_type: unit })}
+                          <button onClick={() => onGoToSection(faction)}
+                            title="Go to My Collection"
                             style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
-                                     border:`1px solid ${C.gold}55`, background:`${C.gold}15`,
-                                     color:C.gold, fontFamily:"'Cinzel',serif",
-                                     fontSize:9, letterSpacing:1 }}>
-                            🖌
+                                     border:`1px solid ${C.border}`, background:"transparent",
+                                     color:C.muted, fontSize:12 }}>
+                            →
                           </button>
                         )}
                       </div>
@@ -2083,7 +2079,7 @@ export default function PaintingTracker({ user, universe }) {
           userId={user?.id}
           universe={universe}
           minis={minis}
-          onOpenMini={(miniOrPrefill) => setModal(miniOrPrefill.id ? miniOrPrefill : { ...miniOrPrefill })}
+          onGoToSection={(faction) => { setTab("collection"); setFilter(faction); }}
         />
       )}
 
