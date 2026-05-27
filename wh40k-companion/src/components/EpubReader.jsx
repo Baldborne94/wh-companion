@@ -419,6 +419,8 @@ export default function EpubReader({
   const [bookmarks,     setBookmarks]     = useState(() => {
     try { return JSON.parse(localStorage.getItem(`wh40k_bm_${userId}_${bookId}`) || "[]"); } catch { return []; }
   });
+  const bookmarksRef = useRef([]);
+  useEffect(() => { bookmarksRef.current = bookmarks; }, [bookmarks]);
 
   // Pre-load CFI from DB if not in localStorage (new device)
   useEffect(() => {
@@ -434,27 +436,27 @@ export default function EpubReader({
 
   const [syncStatus, setSyncStatus] = useState(null);
 
-  // Load bookmarks from DB — runs on mount, after book loads, and when Supabase session becomes ready
+  // Sync bookmarks: push all local → pull all from DB → update state
   const syncBookmarksFromDB = useCallback((showStatus = false) => {
     if (!userId || !bookId) return;
     if (showStatus) setSyncStatus("syncing…");
-    loadBookmarksFromDB(userId, bookId).then(({ ok, bms, msg }) => {
-      setBookmarks(prev => {
-        const dbCfis = new Set(bms.map(b => b.cfi));
-        const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
-        if (ok && localOnly.length > 0) {
-          localOnly.forEach(b => saveBookmarkToDB(userId, bookId, b));
+    const local = bookmarksRef.current;
+    // Push all local bookmarks to DB first (idempotent: delete+insert)
+    Promise.all(local.map(b => saveBookmarkToDB(userId, bookId, b)))
+      .then(() => loadBookmarksFromDB(userId, bookId))
+      .then(({ ok, bms, msg }) => {
+        if (!ok) {
+          if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 3000); }
+          return;
         }
-        const merged = [...bms, ...localOnly];
-        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
+        setBookmarks(bms);
+        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(bms));
         if (showStatus) {
-          const n = merged.length;
-          setSyncStatus(ok ? `✓ ${n} bookmark${n !== 1 ? "s" : ""}` : `✗ ${msg}`);
+          const n = bms.length;
+          setSyncStatus(`✓ ${n} bookmark${n !== 1 ? "s" : ""}`);
           setTimeout(() => setSyncStatus(null), 3000);
         }
-        return merged;
       });
-    });
   }, [userId, bookId]);
 
   useEffect(() => { syncBookmarksFromDB(); }, [syncBookmarksFromDB]);
@@ -860,8 +862,9 @@ export default function EpubReader({
 
   const bmPageLabel = useCallback((bm) => {
     if (bm.page) return `Pag. ${bm.page}`;
-    if (pageDisplay?.total) return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
-    return `${bm.pct}%`;
+    if (pageDisplay?.total && bm.pct > 0) return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
+    if (bm.pct > 0) return `${bm.pct}%`;
+    return "–";
   }, [pageDisplay]);
 
   const deleteBookmark = useCallback((cfi) => {
