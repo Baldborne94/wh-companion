@@ -11,6 +11,27 @@ const C = {
 };
 const PAINT_ACCENT = "#9a4adc";
 
+const STATS_STYLES = `
+  @keyframes statsGlowGold {
+    0%,100% { box-shadow: 0 0 10px #c9a84c22, 0 2px 16px #c9a84c11; }
+    50%      { box-shadow: 0 0 22px #c9a84c44, 0 4px 28px #c9a84c22; }
+  }
+  @keyframes statsGlowPaint {
+    0%,100% { box-shadow: 0 0 10px #9a4adc22, 0 2px 16px #9a4adc11; }
+    50%      { box-shadow: 0 0 22px #9a4adc44, 0 4px 28px #9a4adc22; }
+  }
+  @keyframes statsShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .ach-unlocked-gold  { animation: statsGlowGold  3s ease-in-out infinite; }
+  .ach-unlocked-paint { animation: statsGlowPaint 3s ease-in-out infinite; }
+`;
+
+function StyleTag() {
+  return <style>{STATS_STYLES}</style>;
+}
+
 function monthKey(iso) { return iso ? iso.slice(0, 7) : null; }
 
 function parseStatuses(raw) {
@@ -33,59 +54,120 @@ function StatBox({ n, label, color }) {
 }
 
 function AchCard({ a, unlocked, accent }) {
+  const isGold = accent === C.gold;
+  if (unlocked) {
+    return (
+      <div
+        className={isGold ? "ach-unlocked-gold" : "ach-unlocked-paint"}
+        style={{
+          background: `linear-gradient(160deg, ${accent}20 0%, ${C.card} 55%, ${accent}0d 100%)`,
+          border: `1px solid ${accent}88`,
+          borderRadius: 12,
+          padding: "14px 10px 12px",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          textAlign: "center", gap: 0, position: "relative", overflow: "hidden",
+        }}
+      >
+        {/* top shimmer line */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: 2,
+          background: `linear-gradient(90deg, transparent, ${accent}cc, transparent)`,
+          backgroundSize: "200% 100%",
+          animation: "statsShimmer 3s linear infinite",
+        }} />
+        {/* icon */}
+        <div style={{
+          width: 46, height: 46, borderRadius: "50%",
+          background: `radial-gradient(circle, ${accent}30 0%, ${accent}0a 70%)`,
+          border: `2px solid ${accent}77`,
+          boxShadow: `0 0 14px ${accent}55`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, marginBottom: 8,
+        }}>{a.icon}</div>
+        {/* achieved badge */}
+        <div style={{
+          fontFamily: "'Cinzel',serif", fontSize: 6, letterSpacing: 3,
+          color: accent, textTransform: "uppercase", marginBottom: 5,
+          opacity: 0.9,
+        }}>✦ Achieved ✦</div>
+        {/* label */}
+        <div style={{
+          fontFamily: "'Cinzel Decorative',serif", fontSize: 9,
+          color: C.text, lineHeight: 1.3, marginBottom: 6,
+          textShadow: `0 0 8px ${accent}44`,
+        }}>{a.label}</div>
+        {/* desc */}
+        <div style={{
+          fontSize: 9, color: C.muted, lineHeight: 1.5,
+          fontStyle: "italic", letterSpacing: 0.3,
+        }}>{a.desc}</div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      background: unlocked ? `linear-gradient(135deg, ${accent}18, ${C.card})` : C.surface,
-      border: `1px solid ${unlocked ? accent + "66" : C.border + "44"}`,
-      borderRadius: 10, padding: "10px 12px",
-      display: "flex", gap: 10, alignItems: "center",
-      opacity: unlocked ? 1 : 0.42,
+      background: C.surface, border: `1px solid ${C.border}33`,
+      borderRadius: 12, padding: "12px 10px",
+      display: "flex", flexDirection: "column", alignItems: "center",
+      textAlign: "center", gap: 0, opacity: 0.36,
     }}>
       <div style={{
-        width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-        background: unlocked ? `${accent}22` : C.dim,
-        border: `1px solid ${unlocked ? accent + "55" : "transparent"}`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
-      }}>
-        {unlocked ? a.icon : "🔒"}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: "'Cinzel',serif", fontSize: 10,
-          color: unlocked ? C.text : C.muted, marginBottom: 2,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>{a.label}</div>
-        <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.3 }}>{a.desc}</div>
-      </div>
-      {unlocked && <span style={{ color: accent, fontSize: 13, flexShrink: 0 }}>✓</span>}
+        width: 38, height: 38, borderRadius: "50%", background: C.dim,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 18, marginBottom: 7, color: C.muted,
+      }}>🔒</div>
+      <div style={{
+        fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted,
+        marginBottom: 4, lineHeight: 1.3,
+      }}>{a.label}</div>
+      <div style={{ fontSize: 9, color: C.muted, lineHeight: 1.4, fontStyle: "italic" }}>{a.desc}</div>
     </div>
   );
 }
 
-// Compact card for dynamic earned achievements (sagas, armies)
+// Card for dynamic earned achievements (sagas, armies)
 function DynCard({ id, accent }) {
   const a = achievementFromId(id);
   if (!a) return null;
+  const isGold = accent === C.gold;
   return (
-    <div style={{
-      background: `linear-gradient(135deg, ${accent}18, ${C.card})`,
-      border: `2px solid ${accent}66`,
-      borderRadius: 10, padding: "10px 12px",
-      display: "flex", gap: 10, alignItems: "center",
-    }}>
+    <div
+      className={isGold ? "ach-unlocked-gold" : "ach-unlocked-paint"}
+      style={{
+        background: `linear-gradient(135deg, ${accent}20 0%, ${C.card} 60%)`,
+        border: `1px solid ${accent}88`,
+        borderRadius: 12, padding: "12px 14px",
+        display: "flex", gap: 12, alignItems: "center",
+        position: "relative", overflow: "hidden",
+      }}
+    >
       <div style={{
-        width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
-        background: `${accent}22`, border: `1px solid ${accent}55`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, transparent, ${accent}cc, transparent)`,
+        backgroundSize: "200% 100%",
+        animation: "statsShimmer 3s linear infinite",
+      }} />
+      <div style={{
+        width: 42, height: 42, borderRadius: "50%", flexShrink: 0,
+        background: `radial-gradient(circle, ${accent}30 0%, ${accent}0a 70%)`,
+        border: `2px solid ${accent}77`,
+        boxShadow: `0 0 12px ${accent}55`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
       }}>{a.icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: "'Cinzel',serif", fontSize: 10, color: C.text, marginBottom: 2,
+          fontFamily: "'Cinzel',serif", fontSize: 6, letterSpacing: 3,
+          color: accent, textTransform: "uppercase", marginBottom: 4, opacity: 0.9,
+        }}>✦ Achieved ✦</div>
+        <div style={{
+          fontFamily: "'Cinzel Decorative',serif", fontSize: 10,
+          color: C.text, marginBottom: 4, lineHeight: 1.2,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          textShadow: `0 0 8px ${accent}44`,
         }}>{a.label}</div>
-        <div style={{ fontSize: 10, color: C.muted }}>{a.desc}</div>
+        <div style={{ fontSize: 9, color: C.muted, fontStyle: "italic", lineHeight: 1.4 }}>{a.desc}</div>
       </div>
-      <span style={{ color: accent, fontSize: 13, flexShrink: 0 }}>✓</span>
     </div>
   );
 }
@@ -158,6 +240,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.88)", display: "flex", flexDirection: "column" }}>
+      <StyleTag />
       <div style={{ flex: 1, background: C.bg, display: "flex", flexDirection: "column", maxHeight: "100%", overflow: "hidden" }}>
 
         {/* Header */}
