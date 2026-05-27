@@ -381,6 +381,8 @@ export default function EpubReader({
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
   const [bmSaved,       setBmSaved]       = useState(false);
+  const [pageRange,     setPageRange]     = useState(null);
+  const [pageDisplay,   setPageDisplay]   = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
 
   const toggleFullscreen = useCallback(() => {
@@ -482,6 +484,8 @@ export default function EpubReader({
     setProgress(0);
     setAtStart(true);
     setAtEnd(false);
+    setPageRange(null);
+    setPageDisplay(null);
 
     // Destroy previous instance
     if (bookRef.current) {
@@ -610,9 +614,13 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
+          if (loc.start?.displayed) setPageDisplay(loc.start.displayed);
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
+            const endCfi = loc.end?.cfi;
+            const endPct = endCfi ? (book.locations.percentageFromCfi(endCfi) ?? pct) : pct;
+            setPageRange({ start: pct * 100, end: Math.max(pct * 100 + 0.05, endPct * 100) });
             clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
               if (cancelled) return;
@@ -816,6 +824,10 @@ export default function EpubReader({
     deleteBookmarkFromDB(userId, bookId, cfi);
   }, [bookmarks, userId, bookId]);
 
+  const pageHasBookmark = pageRange != null && bookmarks.some(
+    b => b.pct >= pageRange.start - 0.1 && b.pct <= pageRange.end + 0.1
+  );
+
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) return (
     <div style={{ position:"fixed", inset:0, background:"#0f0e09", zIndex:999,
@@ -856,6 +868,17 @@ export default function EpubReader({
 
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:54, left:0, right:0 }} />
+
+      {/* Bookmark page indicator */}
+      {pageHasBookmark && !showBookmarks && (
+        <div onClick={() => setShowBookmarks(true)}
+          style={{ position:"absolute", top:54, right:0, zIndex:15, cursor:"pointer",
+                   background:`${C.gold}22`, border:`1px solid ${C.gold}44`,
+                   borderLeft:"none", borderTop:"none", borderRadius:"0 0 0 10px",
+                   padding:"5px 10px", display:"flex", alignItems:"center" }}>
+          <span style={{ fontSize:15 }}>🔖</span>
+        </div>
+      )}
 
       {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
       {isTouch.current && (
@@ -964,11 +987,16 @@ export default function EpubReader({
             <div style={{ height:"100%", width:`${progress}%`, background:C.gold,
                           borderRadius:2, transition:"width .5s ease" }} />
           </div>
-          <div style={{ display:"flex", justifyContent:"center", alignItems:"center" }}>
+          <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:6 }}>
             <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1,
                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {chLabel}
             </span>
+            {settings.paginate && pageDisplay && pageDisplay.total > 1 && (
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, flexShrink:0 }}>
+                · {pageDisplay.page}/{pageDisplay.total}
+              </span>
+            )}
           </div>
         </div>
 
