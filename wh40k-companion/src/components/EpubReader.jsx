@@ -43,13 +43,19 @@ async function loadBookmarksFromDB(userId, bookId) {
   if (!userId || !bookId) return { ok: false, bms: [], msg: "no userId/bookId" };
   try {
     const headers = await _authHeaders();
-    // simplified query — filter nulls in JS to avoid PostgREST not.is.null syntax issues
-    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&select=epub_cfi,label,progress,created_at,id&order=created_at.desc`;
+    // minimal query — no select/order to isolate 400 cause
+    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}`;
     const r = await fetch(url, { headers });
-    if (!r.ok) return { ok: false, bms: [], msg: `HTTP ${r.status}` };
+    if (!r.ok) {
+      let errBody = "";
+      try { errBody = JSON.stringify(await r.json()); } catch {}
+      console.error("[Bookmarks] HTTP", r.status, errBody);
+      return { ok: false, bms: [], msg: `HTTP ${r.status}: ${errBody}` };
+    }
     const data = await r.json();
     const mapped = data
       .filter(b => b.epub_cfi)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
     const seen = new Set();
     const bms = mapped.filter(b => { if (seen.has(b.cfi)) return false; seen.add(b.cfi); return true; });
