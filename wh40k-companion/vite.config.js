@@ -9,11 +9,23 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        // Cache app shell + static assets
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Runtime caching: Supabase storage (ebook signed URLs) — network-first
+        // Only precache stable static assets — NOT JS chunks (they change hash on every deploy)
+        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
+            // JS chunks: NetworkFirst so stale hash filenames never 404 after a deploy
+            urlPattern: /\/assets\/.*\.js$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'js-chunks',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              networkTimeoutSeconds: 10,
+            },
+          },
+          {
+            // Supabase API + Storage — NetworkFirst
             urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
             handler: 'NetworkFirst',
             options: {
@@ -23,6 +35,7 @@ export default defineConfig({
             },
           },
           {
+            // Google Fonts — CacheFirst (stable for a year)
             urlPattern: ({ url }) => url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com',
             handler: 'CacheFirst',
             options: {
