@@ -10,10 +10,12 @@ const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers
 // ─────────────────────────────────────────────────────────────────────────────
-async function _authHeaders() {
+async function _authHeaders(method = "GET") {
   const { data:{ session } } = await supabase.auth.getSession();
   const tok = session?.access_token ?? SB_KEY;
-  return { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" };
+  const h = { apikey:SB_KEY, Authorization:`Bearer ${tok}` };
+  if (method !== "GET") h["Content-Type"] = "application/json";
+  return h;
 }
 
 async function saveProgressToSupabase(userId, bookId, pct, cfi) {
@@ -21,7 +23,7 @@ async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   try {
     await fetch(`${SB_URL}/rest/v1/reading_progress?on_conflict=user_id,book_id`, {
       method: "POST",
-      headers: { ...await _authHeaders(), Prefer: "resolution=merge-duplicates" },
+      headers: { ...await _authHeaders("POST"), Prefer: "resolution=merge-duplicates" },
       body: JSON.stringify({ user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) }),
     });
   } catch {}
@@ -41,11 +43,14 @@ async function loadBookmarksFromDB(userId, bookId) {
   if (!userId || !bookId) return { ok: false, bms: [], msg: "no userId/bookId" };
   try {
     const headers = await _authHeaders();
-    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=not.is.null&order=created_at.desc`;
+    // simplified query — filter nulls in JS to avoid PostgREST not.is.null syntax issues
+    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&select=epub_cfi,label,progress,created_at,id&order=created_at.desc`;
     const r = await fetch(url, { headers });
     if (!r.ok) return { ok: false, bms: [], msg: `HTTP ${r.status}` };
     const data = await r.json();
-    const mapped = data.map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
+    const mapped = data
+      .filter(b => b.epub_cfi)
+      .map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
     const seen = new Set();
     const bms = mapped.filter(b => { if (seen.has(b.cfi)) return false; seen.add(b.cfi); return true; });
     return { ok: true, bms, msg: `${bms.length} found` };
@@ -54,12 +59,11 @@ async function loadBookmarksFromDB(userId, bookId) {
 
 async function saveBookmarkToDB(userId, bookId, bm) {
   if (!userId || !bookId || !bm.cfi) return;
-  const headers = await _authHeaders();
+  const headers = await _authHeaders("POST");
   const enc = encodeURIComponent(bm.cfi);
   try {
-    // delete any existing bookmark at the same CFI first to avoid duplicates
     await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
-      method: "DELETE", headers,
+      method: "DELETE", headers: await _authHeaders("DELETE"),
     });
     await fetch(`${SB_URL}/rest/v1/bookmarks`, {
       method: "POST",
@@ -75,7 +79,7 @@ async function deleteBookmarkFromDB(userId, bookId, cfi) {
     const enc = encodeURIComponent(cfi);
     await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
       method: "DELETE",
-      headers: await _authHeaders(),
+      headers: await _authHeaders("DELETE"),
     });
   } catch {}
 }
