@@ -430,12 +430,12 @@ export default function EpubReader({
     });
   }, [userId, bookId]);
 
-  // Load bookmarks from DB on mount — DB is source of truth, merge with any local-only ones
-  useEffect(() => {
+  // Load bookmarks from DB — runs on mount and again after book finishes loading
+  // (second run ensures Supabase session is ready on mobile browsers)
+  const syncBookmarksFromDB = useCallback(() => {
     if (!userId || !bookId) return;
     loadBookmarksFromDB(userId, bookId).then(dbBms => {
       setBookmarks(prev => {
-        // DB bookmarks take precedence; add any local-only ones not yet in DB
         const dbCfis = new Set(dbBms.map(b => b.cfi));
         const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
         const merged = [...dbBms, ...localOnly];
@@ -444,6 +444,13 @@ export default function EpubReader({
       });
     });
   }, [userId, bookId]);
+
+  useEffect(() => { syncBookmarksFromDB(); }, [syncBookmarksFromDB]);
+
+  useEffect(() => {
+    if (!loading) syncBookmarksFromDB();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const containerRef = useRef(null);
@@ -1077,6 +1084,12 @@ export default function EpubReader({
                           position:"sticky", top:0, background:T.surface, flexShrink:0 }}>
               <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Bookmarks</span>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <button onClick={() => syncBookmarksFromDB()}
+                  style={{ background:"transparent", border:`1px solid ${T.border}`, borderRadius:4,
+                           color:T.muted, cursor:"pointer", fontSize:10, padding:"4px 8px",
+                           fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+                  ↻ Sync
+                </button>
                 <button onClick={() => { saveBookmark(); }}
                   style={{ background:"transparent", border:`1px solid ${C.gold}55`, borderRadius:4,
                            color:C.gold, cursor:"pointer", fontSize:10, padding:"4px 8px",
@@ -1090,7 +1103,7 @@ export default function EpubReader({
             {bookmarks.length === 0 ? (
               <p style={{ textAlign:"center", color:T.muted, fontSize:12,
                           padding:"28px 16px", fontStyle:"italic" }}>
-                No bookmarks yet.<br />Tap 🔖 while reading to add one.
+                No bookmarks yet.<br />Use "+ Save here" to add one.
               </p>
             ) : (
               <div style={{ overflowY:"auto", flex:1 }}>
