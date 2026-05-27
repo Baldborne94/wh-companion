@@ -12,10 +12,13 @@ async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   // Don't overwrite existing progress with a cold-open 0% (no CFI = nothing navigated yet)
   if (!cfi && (!pct || pct === 0)) return;
   try {
-    await supabase.from("reading_progress").upsert(
-      { user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) },
-      { onConflict: "user_id,book_id" }
-    );
+    const now = new Date().toISOString();
+    const row = { user_id:userId, book_id:bookId, progress_pct:pct, last_read:now, ...(cfi?{epub_cfi:cfi}:{}) };
+    const { error } = await supabase.from("reading_progress").upsert(row, { onConflict: "user_id,book_id" });
+    if (!error) return;
+    // No unique constraint on (user_id, book_id) — fall back to delete + insert
+    await supabase.from("reading_progress").delete().eq("user_id", userId).eq("book_id", bookId);
+    await supabase.from("reading_progress").insert(row);
   } catch {}
 }
 
@@ -918,19 +921,30 @@ export default function EpubReader({
   const pageHasBookmark = pageDisplay?.page != null && bookmarks.some(b => b.page === pageDisplay.page);
 
   // ── Search ────────────────────────────────────────────────────────────────
-  const runSearch = useCallback((q) => {
+  const runSearch = useCallback(async (q) => {
     if (!q.trim() || !bookRef.current) return;
     setSearchLoading(true);
     setSearchResults([]);
-    bookRef.current.search(q.trim())
-      .then(results => {
-        setSearchResults((results || []).slice(0, 50));
-        setSearchLoading(false);
-      })
-      .catch(() => {
-        setSearchResults([]);
-        setSearchLoading(false);
-      });
+    try {
+      const book = bookRef.current;
+      const sections = [];
+      book.spine.each(s => sections.push(s));
+      const results = [];
+      for (const section of sections) {
+        if (results.length >= 50) break;
+        try {
+          await section.load(book.load.bind(book));
+          const found = section.find(q.trim()) || [];
+          results.push(...found);
+          section.unload();
+        } catch {}
+      }
+      setSearchResults(results.slice(0, 50));
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
   }, []);
 
   const openSearch = useCallback(() => {
