@@ -38,16 +38,18 @@ async function loadCfiFromDB(userId, bookId) {
 }
 
 async function loadBookmarksFromDB(userId, bookId) {
-  if (!userId || !bookId) return [];
+  if (!userId || !bookId) return { ok: false, bms: [], msg: "no userId/bookId" };
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=not.is.null&order=created_at.desc`, { headers: await _authHeaders() });
-    if (!r.ok) return [];
+    const headers = await _authHeaders();
+    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=not.is.null&order=created_at.desc`;
+    const r = await fetch(url, { headers });
+    if (!r.ok) return { ok: false, bms: [], msg: `HTTP ${r.status}` };
     const data = await r.json();
     const mapped = data.map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
-    // deduplicate by CFI (keep most recent = first due to desc order)
     const seen = new Set();
-    return mapped.filter(b => { if (seen.has(b.cfi)) return false; seen.add(b.cfi); return true; });
-  } catch { return []; }
+    const bms = mapped.filter(b => { if (seen.has(b.cfi)) return false; seen.add(b.cfi); return true; });
+    return { ok: true, bms, msg: `${bms.length} found` };
+  } catch (e) { return { ok: false, bms: [], msg: e?.message || "fetch error" }; }
 }
 
 async function saveBookmarkToDB(userId, bookId, bm) {
@@ -430,18 +432,23 @@ export default function EpubReader({
     });
   }, [userId, bookId]);
 
+  const [syncStatus, setSyncStatus] = useState(null);
+
   // Load bookmarks from DB — runs on mount and again after book finishes loading
-  // (second run ensures Supabase session is ready on mobile browsers)
-  const syncBookmarksFromDB = useCallback(() => {
+  const syncBookmarksFromDB = useCallback((showStatus = false) => {
     if (!userId || !bookId) return;
-    loadBookmarksFromDB(userId, bookId).then(dbBms => {
+    if (showStatus) setSyncStatus("syncing…");
+    loadBookmarksFromDB(userId, bookId).then(({ ok, bms, msg }) => {
+      console.log("[Bookmarks] sync:", ok, msg, "userId:", userId, "bookId:", bookId);
+      if (showStatus) setSyncStatus(ok ? (bms.length ? `✓ ${bms.length} loaded` : "✓ 0 in DB") : `✗ ${msg}`);
       setBookmarks(prev => {
-        const dbCfis = new Set(dbBms.map(b => b.cfi));
+        const dbCfis = new Set(bms.map(b => b.cfi));
         const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
-        const merged = [...dbBms, ...localOnly];
+        const merged = [...bms, ...localOnly];
         localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
         return merged;
       });
+      if (showStatus) setTimeout(() => setSyncStatus(null), 3000);
     });
   }, [userId, bookId]);
 
@@ -1084,11 +1091,12 @@ export default function EpubReader({
                           position:"sticky", top:0, background:T.surface, flexShrink:0 }}>
               <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Bookmarks</span>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <button onClick={() => syncBookmarksFromDB()}
+                <button onClick={() => syncBookmarksFromDB(true)}
                   style={{ background:"transparent", border:`1px solid ${T.border}`, borderRadius:4,
-                           color:T.muted, cursor:"pointer", fontSize:10, padding:"4px 8px",
-                           fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-                  ↻ Sync
+                           color: syncStatus ? (syncStatus.startsWith("✓") ? C.green||"#4aaa6a" : syncStatus.startsWith("✗") ? C.red||"#b03030" : T.muted) : T.muted,
+                           cursor:"pointer", fontSize:10, padding:"4px 8px",
+                           fontFamily:"'Cinzel',serif", letterSpacing:1, minWidth:60 }}>
+                  {syncStatus || "↻ Sync"}
                 </button>
                 <button onClick={() => { saveBookmark(); }}
                   style={{ background:"transparent", border:`1px solid ${C.gold}55`, borderRadius:4,
