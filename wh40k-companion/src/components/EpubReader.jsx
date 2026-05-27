@@ -614,13 +614,15 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
-          if (loc.start?.displayed) setPageDisplay(loc.start.displayed);
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
             const endCfi = loc.end?.cfi;
             const endPct = endCfi ? (book.locations.percentageFromCfi(endCfi) ?? pct) : pct;
             setPageRange({ start: pct * 100, end: Math.max(pct * 100 + 0.05, endPct * 100) });
+            const locIdx = book.locations.locationFromCfi(cfi);
+            const locTotal = book.locations.total;
+            if (locIdx != null && locTotal > 0) setPageDisplay({ page: locIdx + 1, total: locTotal });
             clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
               if (cancelled) return;
