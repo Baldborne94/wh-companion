@@ -10,6 +10,15 @@ import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
 import { AoSHomePage, AoSLibrarySection, AoSCrusadeSection, AOS } from "./components/AoSApp";
 import CoverImage from "./components/CoverImage";
+import AchievementPopup from "./components/AchievementPopup";
+import StatsModal from "./components/StatsModal";
+import {
+  ALL_ACHIEVEMENTS,
+  computeReadingAchievements,
+  diffAchievements,
+  loadUnlockedIds,
+  saveUnlockedIds,
+} from "./lib/achievements";
 
 const EpubReader = lazy(() => import("./components/EpubReader"));
 const PdfReader  = lazy(() => import("./components/PdfReader"));
@@ -1686,10 +1695,44 @@ export default function App(){
     syncStatuses(uid, local, false).then(merged => setStatuses(merged));
   },[user?.id, syncStatuses]);
 
+  // ── Refs for cross-universe achievement checks (avoids stale closures) ────────
+  const statusesRef    = useRef({});
+  const aosStatusesRef = useRef({});
+  useEffect(() => { statusesRef.current    = statuses;    }, [statuses]);
+  useEffect(() => { aosStatusesRef.current = aosStatuses; }, [aosStatuses]);
+
+  // ── Achievement state ─────────────────────────────────────────────────────
+  const [unlockedIds,         setUnlockedIds]         = useState([]);
+  const [pendingAchievements, setPendingAchievements] = useState([]);
+  const [showStats,           setShowStats]           = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) { setUnlockedIds([]); return; }
+    loadUnlockedIds(supabase, user.id).then(ids => setUnlockedIds(ids));
+  }, [user?.id]);
+
+  const checkReadingAchievements = useCallback((combinedStatuses) => {
+    if (!user?.id) return;
+    const nowUnlocked = computeReadingAchievements(combinedStatuses, BOOKS);
+    setUnlockedIds(prev => {
+      const newIds = diffAchievements(prev, nowUnlocked);
+      if (!newIds.length) return prev;
+      const merged = [...prev, ...newIds];
+      saveUnlockedIds(supabase, user.id, merged);
+      const defs = newIds.map(id => ALL_ACHIEVEMENTS.find(a => a.id === id)).filter(Boolean);
+      setPendingAchievements(q => [...q, ...defs]);
+      return merged;
+    });
+  }, [user?.id]);
+
   const updateStatus=useCallback((bookId,newStatus)=>{
     const uid=user?.id;
     const updated=setBookStatusLS(uid,bookId,newStatus);
-    setStatuses(prev=>({...prev,[bookId]:updated}));
+    setStatuses(prev=>{
+      const next={...prev,[bookId]:updated};
+      if(newStatus==='read') checkReadingAchievements({...next,...aosStatusesRef.current});
+      return next;
+    });
     if(uid){
       sb.upsert("reading_status",{
         user_id:uid,book_id:bookId,status:newStatus,
@@ -1698,12 +1741,16 @@ export default function App(){
         ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
       },"user_id,book_id");
     }
-  },[user?.id]);
+  },[user?.id, checkReadingAchievements]);
 
   const updateAoSStatus=useCallback((bookId,newStatus)=>{
     const uid=user?.id;
     const updated=setBookStatusLS(uid,bookId,newStatus);
-    setAosStatuses(prev=>({...prev,[bookId]:updated}));
+    setAosStatuses(prev=>{
+      const next={...prev,[bookId]:updated};
+      if(newStatus==='read') checkReadingAchievements({...statusesRef.current,...next});
+      return next;
+    });
     if(uid){
       sb.upsert("reading_status",{
         user_id:uid,book_id:bookId,status:newStatus,
@@ -1712,7 +1759,7 @@ export default function App(){
         ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
       },"user_id,book_id");
     }
-  },[user?.id]);
+  },[user?.id, checkReadingAchievements]);
 
   // Landing page: always shown first on each fresh session.
   // sessionStorage persists across Google OAuth redirects but resets on tab close.
@@ -1829,7 +1876,9 @@ export default function App(){
                 {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
               </div>
               {/* auth right */}
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <button onClick={()=>setShowStats(true)} title="Achievements & Stats"
+                  style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>🏆</button>
                 {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
                 <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
               </div>
@@ -1863,7 +1912,11 @@ export default function App(){
               {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
               {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}
-              {section==="painting"&&<PaintingTracker user={user} universe={universe}/>}
+              {section==="painting"&&<PaintingTracker user={user} universe={universe}
+                onAchievement={defs=>setPendingAchievements(q=>[...q,...defs])}
+                unlockedIds={unlockedIds}
+                onUpdateUnlocked={merged=>{setUnlockedIds(merged);if(user?.id)saveUnlockedIds(supabase,user.id,merged);}}
+              />}
             </div>
           )}
         </div>
@@ -1890,6 +1943,25 @@ export default function App(){
               title="Stop music"
             >✕</button>
           </div>
+        )}
+        {/* ── ACHIEVEMENT POPUP ── */}
+        {pendingAchievements.length>0&&(
+          <AchievementPopup
+            key={pendingAchievements[0].id}
+            achievement={pendingAchievements[0]}
+            type={pendingAchievements[0].id.startsWith('paint')||pendingAchievements[0].id.startsWith('monthly_painter')||pendingAchievements[0].id.startsWith('army')?"painting":"reading"}
+            onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
+          />
+        )}
+        {/* ── STATS MODAL ── */}
+        {showStats&&(
+          <StatsModal
+            user={user}
+            statuses={statuses}
+            aosStatuses={aosStatuses}
+            unlockedIds={unlockedIds}
+            onClose={()=>setShowStats(false)}
+          />
         )}
         {/* ── BOTTOM NAV ── */}
         {(()=>{
