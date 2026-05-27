@@ -1711,7 +1711,7 @@ export default function App(){
     loadUnlockedIds(supabase, user.id).then(ids => setUnlockedIds(ids));
   }, [user?.id]);
 
-  const checkReadingAchievements = useCallback((combinedStatuses) => {
+  const checkReadingAchievements = useCallback((combinedStatuses, univ = 'wh40k') => {
     if (!user?.id) return;
     const nowUnlocked = computeReadingAchievements(combinedStatuses, BOOKS);
     setUnlockedIds(prev => {
@@ -1719,7 +1719,8 @@ export default function App(){
       if (!newIds.length) return prev;
       const merged = [...prev, ...newIds];
       saveUnlockedIds(supabase, user.id, merged);
-      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean);
+      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
+                         .map(d => ({...d, _universe: univ}));
       setPendingAchievements(q => [...q, ...defs]);
       return merged;
     });
@@ -1730,7 +1731,7 @@ export default function App(){
     const updated=setBookStatusLS(uid,bookId,newStatus);
     setStatuses(prev=>{
       const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkReadingAchievements({...next,...aosStatusesRef.current});
+      if(newStatus==='read') checkReadingAchievements({...next,...aosStatusesRef.current},'wh40k');
       return next;
     });
     if(uid){
@@ -1748,7 +1749,7 @@ export default function App(){
     const updated=setBookStatusLS(uid,bookId,newStatus);
     setAosStatuses(prev=>{
       const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkReadingAchievements({...statusesRef.current,...next});
+      if(newStatus==='read') checkReadingAchievements({...statusesRef.current,...next},'aos');
       return next;
     });
     if(uid){
@@ -1950,6 +1951,7 @@ export default function App(){
             key={pendingAchievements[0].id}
             achievement={pendingAchievements[0]}
             type={["paint","monthly_painter","army"].some(p=>pendingAchievements[0].id.startsWith(p))?"painting":"reading"}
+            universe={pendingAchievements[0]._universe||'wh40k'}
             onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
           />
         )}

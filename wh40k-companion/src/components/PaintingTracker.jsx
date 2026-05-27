@@ -2068,7 +2068,8 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
     if (!newIds.length) return;
     const merged = [...unlockedIdsRef.current, ...newIds];
     onUpdateUnlocked?.(merged);
-    const defs = newIds.map(id => achievementFromId(id)).filter(Boolean);
+    const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
+                      .map(d => ({...d, _universe: universe}));
     onAchievement(defs);
   }, [completedMinis]); // eslint-disable-line react-hooks/exhaustive-deps
 
