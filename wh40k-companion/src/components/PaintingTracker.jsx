@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
 import { db, storage } from "../lib/supabase";
 import { sb } from "../lib/sb";
-import { PAINTING_ACHIEVEMENTS, computePaintingAchievements, diffAchievements } from "../lib/achievements";
+import { achievementFromId, computePaintingAchievements, diffAchievements } from "../lib/achievements";
 
 // ─── THEME ────────────────────────────────────────────────────────────────
 
@@ -2068,7 +2068,7 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
     if (!newIds.length) return;
     const merged = [...unlockedIdsRef.current, ...newIds];
     onUpdateUnlocked?.(merged);
-    const defs = newIds.map(id => PAINTING_ACHIEVEMENTS.find(a => a.id === id)).filter(Boolean);
+    const defs = newIds.map(id => achievementFromId(id)).filter(Boolean);
     onAchievement(defs);
   }, [completedMinis]); // eslint-disable-line react-hooks/exhaustive-deps
 

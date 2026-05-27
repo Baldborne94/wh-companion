@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
-  getConsecutiveMonthStreak,
+  getConsecutiveMonthStreak, achievementFromId,
 } from "../lib/achievements";
 
 const C = {
@@ -39,15 +39,13 @@ function AchCard({ a, unlocked, accent }) {
       border: `1px solid ${unlocked ? accent + "66" : C.border + "44"}`,
       borderRadius: 10, padding: "10px 12px",
       display: "flex", gap: 10, alignItems: "center",
-      opacity: unlocked ? 1 : 0.45,
-      transition: "opacity 0.2s",
+      opacity: unlocked ? 1 : 0.42,
     }}>
       <div style={{
         width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
         background: unlocked ? `${accent}22` : C.dim,
         border: `1px solid ${unlocked ? accent + "55" : "transparent"}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 18,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
       }}>
         {unlocked ? a.icon : "🔒"}
       </div>
@@ -60,6 +58,42 @@ function AchCard({ a, unlocked, accent }) {
         <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.3 }}>{a.desc}</div>
       </div>
       {unlocked && <span style={{ color: accent, fontSize: 13, flexShrink: 0 }}>✓</span>}
+    </div>
+  );
+}
+
+// Compact card for dynamic earned achievements (sagas, armies)
+function DynCard({ id, accent }) {
+  const a = achievementFromId(id);
+  if (!a) return null;
+  return (
+    <div style={{
+      background: `linear-gradient(135deg, ${accent}18, ${C.card})`,
+      border: `2px solid ${accent}66`,
+      borderRadius: 10, padding: "10px 12px",
+      display: "flex", gap: 10, alignItems: "center",
+    }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+        background: `${accent}22`, border: `1px solid ${accent}55`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+      }}>{a.icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: "'Cinzel',serif", fontSize: 10, color: C.text, marginBottom: 2,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>{a.label}</div>
+        <div style={{ fontSize: 10, color: C.muted }}>{a.desc}</div>
+      </div>
+      <span style={{ color: accent, fontSize: 13, flexShrink: 0 }}>✓</span>
+    </div>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 3, color: C.goldDim, textTransform: "uppercase", marginBottom: 10, marginTop: 20 }}>
+      {children}
     </div>
   );
 }
@@ -78,26 +112,47 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
   }, [user?.id, tab]);
 
   // ── Reading stats ──────────────────────────────────────────────────────────
-  const allStatuses = { ...statuses, ...aosStatuses };
-  const readEntries = Object.entries(allStatuses).filter(([, v]) => v?.status === 'read');
-  const readCount   = readEntries.length;
-  const readingCount = Object.values(allStatuses).filter(v => v?.status === 'reading').length;
-  const nowMonth    = new Date().toISOString().slice(0, 7);
+  const allStatuses   = { ...statuses, ...aosStatuses };
+  const readEntries   = Object.entries(allStatuses).filter(([, v]) => v?.status === 'read');
+  const readCount     = readEntries.length;
+  const readingCount  = Object.values(allStatuses).filter(v => v?.status === 'reading').length;
+  const nowMonth      = new Date().toISOString().slice(0, 7);
   const thisMonthRead = readEntries.filter(([, v]) => monthKey(v.completedAt) === nowMonth).length;
-  const readStreak  = getConsecutiveMonthStreak(readEntries.map(([, v]) => v.completedAt).filter(Boolean));
+  const readStreak    = getConsecutiveMonthStreak(readEntries.map(([, v]) => v.completedAt).filter(Boolean));
+
+  // Dynamic reading achievements stored
+  const completedSagas   = unlockedIds.filter(id => id.startsWith('series:'));
+  const staticReadUnlocked = unlockedIds.filter(id => READING_ACHIEVEMENTS.some(a => a.id === id));
 
   // ── Painting stats ─────────────────────────────────────────────────────────
   const lsKey = user?.id ? `wh40k_painted_${user.id}` : null;
   let paintTS = {};
   try { if (lsKey) paintTS = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch {}
 
-  const completedMinis = minis
+  const completedMinis  = minis
     .filter(m => parseStatuses(m.status).includes('completed'))
     .map(m => ({ id: m.id, faction: m.faction || "", completedAt: paintTS[m.id] || m.created_at }));
 
   const paintCount      = completedMinis.length;
   const thisMonthPaint  = completedMinis.filter(m => monthKey(m.completedAt) === nowMonth).length;
   const paintStreak     = getConsecutiveMonthStreak(completedMinis.map(m => m.completedAt).filter(Boolean));
+
+  // Dynamic painting achievements stored — deduplicate: keep highest milestone per faction
+  const armyIds = unlockedIds.filter(id => id.startsWith('army:'));
+  const topArmyIds = (() => {
+    const byFaction = {};
+    armyIds.forEach(id => {
+      const rest = id.slice('army:'.length);
+      const sep  = rest.lastIndexOf(':');
+      const faction = rest.slice(0, sep);
+      const count   = parseInt(rest.slice(sep + 1), 10);
+      if (!byFaction[faction] || count > byFaction[faction].count) {
+        byFaction[faction] = { id, count };
+      }
+    });
+    return Object.values(byFaction).map(v => v.id);
+  })();
+  const staticPaintUnlocked = unlockedIds.filter(id => PAINTING_ACHIEVEMENTS.some(a => a.id === id));
 
   const isUnlocked = id => unlockedIds.includes(id);
 
@@ -143,9 +198,24 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               <StatBox n={thisMonthRead}  label="This Month"   color="#4aaa6a"  />
               <StatBox n={`${readStreak}mo`} label="Streak"   color={C.gold}   />
             </div>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 3, color: C.goldDim, textTransform: "uppercase", marginBottom: 10 }}>
-              Achievements — {unlockedIds.filter(id => READING_ACHIEVEMENTS.some(a => a.id === id)).length}/{READING_ACHIEVEMENTS.length} Unlocked
-            </div>
+
+            {/* Completed sagas — dynamic, always visible */}
+            <SectionLabel>
+              Completed Sagas — {completedSagas.length}
+            </SectionLabel>
+            {completedSagas.length === 0 ? (
+              <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
+                Finish every book in a series to earn a saga completion.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                {completedSagas.map(id => <DynCard key={id} id={id} accent={C.gold} />)}
+              </div>
+            )}
+
+            <SectionLabel>
+              Achievements — {staticReadUnlocked.length}/{READING_ACHIEVEMENTS.length} Unlocked
+            </SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {READING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={C.gold} />)}
             </div>
@@ -160,9 +230,24 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
                 <StatBox n={thisMonthPaint} label="This Month"  color="#4aaa6a"      />
                 <StatBox n={`${paintStreak}mo`} label="Streak"  color={C.gold}       />
               </div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 3, color: C.goldDim, textTransform: "uppercase", marginBottom: 10 }}>
-                Achievements — {unlockedIds.filter(id => PAINTING_ACHIEVEMENTS.some(a => a.id === id)).length}/{PAINTING_ACHIEVEMENTS.length} Unlocked
-              </div>
+
+              {/* Armies built — dynamic, always visible */}
+              <SectionLabel>
+                Armies Built — {topArmyIds.length} faction{topArmyIds.length !== 1 ? 's' : ''}
+              </SectionLabel>
+              {topArmyIds.length === 0 ? (
+                <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
+                  Complete 5 minis of the same faction to unlock your first army achievement.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                  {topArmyIds.map(id => <DynCard key={id} id={id} accent={PAINT_ACCENT} />)}
+                </div>
+              )}
+
+              <SectionLabel>
+                Achievements — {staticPaintUnlocked.length}/{PAINTING_ACHIEVEMENTS.length} Unlocked
+              </SectionLabel>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {PAINTING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={PAINT_ACCENT} />)}
               </div>

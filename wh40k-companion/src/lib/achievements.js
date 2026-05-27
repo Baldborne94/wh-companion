@@ -1,6 +1,6 @@
 // Achievement definitions + pure computation engine
 
-// ─── DEFINITIONS ─────────────────────────────────────────────────────────────
+// ─── STATIC DEFINITIONS ──────────────────────────────────────────────────────
 
 export const READING_ACHIEVEMENTS = [
   { id:"read_1",        label:"First Tome",             desc:"Read your first book",                  icon:"📖", cat:"milestone" },
@@ -19,7 +19,6 @@ export const READING_ACHIEVEMENTS = [
   { id:"faction_3",     label:"Faction Devotee",        desc:"Read 3 books of the same faction",      icon:"🎖",  cat:"faction"   },
   { id:"faction_5",     label:"Faction Champion",       desc:"Read 5 books of the same faction",      icon:"🏆", cat:"faction"   },
   { id:"faction_10",    label:"Faction Exemplar",       desc:"Read 10 books of the same faction",     icon:"👑", cat:"faction"   },
-  { id:"series_complete",label:"Series Purged",         desc:"Completed every book in a series",      icon:"📜", cat:"series"    },
   { id:"explorer_3",    label:"Wanderer",               desc:"Read from 3 different factions",        icon:"🌍", cat:"explorer"  },
   { id:"explorer_5",    label:"Pathfinder",             desc:"Read from 5 different factions",        icon:"🗺",  cat:"explorer"  },
   { id:"explorer_8",    label:"Inquisitor",             desc:"Read from 8 different factions",        icon:"🔍", cat:"explorer"  },
@@ -38,25 +37,53 @@ export const PAINTING_ACHIEVEMENTS = [
   { id:"paint_streak_2",    label:"Devoted Painter",    desc:"Painted in 2 consecutive months",        icon:"🔥", cat:"streak"    },
   { id:"paint_streak_3",    label:"Unstoppable",        desc:"Painted in 3 consecutive months",        icon:"💫", cat:"streak"    },
   { id:"paint_streak_6",    label:"Legion Painter",     desc:"Painted in 6 consecutive months",        icon:"⚔",  cat:"streak"    },
-  { id:"army_5",            label:"Combat Ready",       desc:"5 minis of the same faction complete",   icon:"⚔",  cat:"army"      },
-  { id:"army_10",           label:"Full Detachment",    desc:"10 minis of same faction complete",      icon:"🛡",  cat:"army"      },
-  { id:"army_20",           label:"Battle Company",     desc:"20 minis of same faction complete",      icon:"👑", cat:"army"      },
 ];
 
 export const ALL_ACHIEVEMENTS = [...READING_ACHIEVEMENTS, ...PAINTING_ACHIEVEMENTS];
 
+// ─── DYNAMIC ACHIEVEMENT RESOLUTION ─────────────────────────────────────────
+// Dynamic IDs are stored in unlockedIds just like static ones.
+// "series:Eisenhorn"          → named saga completion
+// "army:Space Marines:5"      → 5 minis of named faction complete
+
+const ARMY_MEDALS = {
+  '5':  { label: 'Combat Ready',    icon: '⚔'  },
+  '10': { label: 'Full Detachment', icon: '🛡'  },
+  '20': { label: 'Battle Company',  icon: '👑'  },
+};
+
+export function achievementFromId(id) {
+  const stat = ALL_ACHIEVEMENTS.find(a => a.id === id);
+  if (stat) return stat;
+
+  if (id.startsWith('series:')) {
+    const name = id.slice('series:'.length);
+    return { id, label: `${name} Saga Complete`, desc: `Every book in ${name} read`, icon: "📜", cat: "series" };
+  }
+
+  if (id.startsWith('army:')) {
+    const rest = id.slice('army:'.length);
+    const sep  = rest.lastIndexOf(':');
+    const faction = rest.slice(0, sep);
+    const count   = rest.slice(sep + 1);
+    const medal   = ARMY_MEDALS[count] || { label: `${count} Minis`, icon: '🎖' };
+    return { id, label: `${faction} — ${medal.label}`, desc: `${count} ${faction} miniatures complete`, icon: medal.icon, cat: "army" };
+  }
+
+  return null;
+}
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function monthKey(iso) {
-  if (!iso) return null;
-  return iso.slice(0, 7); // "YYYY-MM"
+  return iso ? iso.slice(0, 7) : null;
 }
 
 function currentMonthKey() {
   return new Date().toISOString().slice(0, 7);
 }
 
-// Returns the length of the longest consecutive-month streak, starting from the most recent month.
+// Longest consecutive-month streak from the most recent month backwards.
 export function getConsecutiveMonthStreak(isoTimestamps) {
   if (!isoTimestamps || !isoTimestamps.length) return 0;
   const months = [...new Set(isoTimestamps.map(ts => ts.slice(0, 7)).filter(Boolean))].sort().reverse();
@@ -65,11 +92,8 @@ export function getConsecutiveMonthStreak(isoTimestamps) {
   for (let i = 1; i < months.length; i++) {
     const [y0, m0] = months[i - 1].split('-').map(Number);
     const [y1, m1] = months[i].split('-').map(Number);
-    if (y0 * 12 + m0 - (y1 * 12 + m1) === 1) {
-      streak++;
-    } else {
-      break;
-    }
+    if (y0 * 12 + m0 - (y1 * 12 + m1) === 1) streak++;
+    else break;
   }
   return streak;
 }
@@ -80,9 +104,9 @@ export function getConsecutiveMonthStreak(isoTimestamps) {
 // books: BOOKS array (WH40K only — used for faction/series checks)
 export function computeReadingAchievements(statuses, books) {
   const readEntries = Object.entries(statuses).filter(([, v]) => v?.status === 'read');
-  const readCount = readEntries.length;
-  const readIds = new Set(readEntries.map(([k]) => String(k)));
-  const unlocked = [];
+  const readCount   = readEntries.length;
+  const readIds     = new Set(readEntries.map(([k]) => String(k)));
+  const unlocked    = [];
 
   // Milestones
   if (readCount >= 1)   unlocked.push("read_1");
@@ -92,7 +116,7 @@ export function computeReadingAchievements(statuses, books) {
   if (readCount >= 50)  unlocked.push("read_50");
   if (readCount >= 100) unlocked.push("read_100");
 
-  // Reading streak (consecutive months with at least 1 book completed)
+  // Streak
   const completedDates = readEntries.map(([, v]) => v.completedAt).filter(Boolean);
   const streak = getConsecutiveMonthStreak(completedDates);
   if (streak >= 2)  unlocked.push("streak_2");
@@ -100,7 +124,7 @@ export function computeReadingAchievements(statuses, books) {
   if (streak >= 6)  unlocked.push("streak_6");
   if (streak >= 12) unlocked.push("streak_12");
 
-  // Monthly medals (current calendar month)
+  // Monthly medals
   const thisMonth = currentMonthKey();
   const thisMonthCount = readEntries.filter(([, v]) => monthKey(v.completedAt) === thisMonth).length;
   if (thisMonthCount >= 1) unlocked.push("monthly_bronze");
@@ -114,24 +138,25 @@ export function computeReadingAchievements(statuses, books) {
       factionCounts[b.faction] = (factionCounts[b.faction] || 0) + 1;
     }
   });
-  const maxFaction = factionCounts ? Math.max(0, ...Object.values(factionCounts)) : 0;
+  const maxFaction = Object.values(factionCounts).length ? Math.max(...Object.values(factionCounts)) : 0;
   if (maxFaction >= 3)  unlocked.push("faction_3");
   if (maxFaction >= 5)  unlocked.push("faction_5");
   if (maxFaction >= 10) unlocked.push("faction_10");
 
-  // Series complete (WH40K, exclude single-book "series", require ≥2 books)
+  // ── Per-series completion (dynamic IDs) ───────────────────────────────────
   const seriesMap = {};
   books.forEach(b => {
     if (!seriesMap[b.series]) seriesMap[b.series] = [];
     seriesMap[b.series].push(b);
   });
-  const hasSeriesComplete = Object.entries(seriesMap).some(([sName, sBooks]) => {
-    if (sName === 'Standalone' || sName === 'Codex' || sBooks.length < 2) return false;
-    return sBooks.every(b => readIds.has(String(b.id)));
+  Object.entries(seriesMap).forEach(([sName, sBooks]) => {
+    if (sName === 'Standalone' || sName === 'Codex' || sBooks.length < 2) return;
+    if (sBooks.every(b => readIds.has(String(b.id)))) {
+      unlocked.push(`series:${sName}`);
+    }
   });
-  if (hasSeriesComplete) unlocked.push("series_complete");
 
-  // Explorer: distinct factions among read WH40K books
+  // Explorer
   const distinctFactions = new Set(books.filter(b => readIds.has(String(b.id))).map(b => b.faction));
   if (distinctFactions.size >= 3) unlocked.push("explorer_3");
   if (distinctFactions.size >= 5) unlocked.push("explorer_5");
@@ -144,7 +169,7 @@ export function computeReadingAchievements(statuses, books) {
 
 // completedMinis: [{ id, faction, completedAt: ISO_string }]
 export function computePaintingAchievements(completedMinis) {
-  const count = completedMinis.length;
+  const count   = completedMinis.length;
   const unlocked = [];
 
   // Milestones
@@ -155,7 +180,7 @@ export function computePaintingAchievements(completedMinis) {
   if (count >= 50)  unlocked.push("paint_50");
   if (count >= 100) unlocked.push("paint_100");
 
-  // Monthly painter (current month)
+  // Monthly painter
   const thisMonth = currentMonthKey();
   const thisMonthCount = completedMinis.filter(m => monthKey(m.completedAt) === thisMonth).length;
   if (thisMonthCount >= 1) unlocked.push("monthly_painter_1");
@@ -169,15 +194,16 @@ export function computePaintingAchievements(completedMinis) {
   if (streak >= 3) unlocked.push("paint_streak_3");
   if (streak >= 6) unlocked.push("paint_streak_6");
 
-  // Army builder (same faction)
+  // ── Per-faction army milestones (dynamic IDs) ─────────────────────────────
   const factionCounts = {};
   completedMinis.forEach(m => {
     if (m.faction) factionCounts[m.faction] = (factionCounts[m.faction] || 0) + 1;
   });
-  const maxArmy = factionCounts ? Math.max(0, ...Object.values(factionCounts)) : 0;
-  if (maxArmy >= 5)  unlocked.push("army_5");
-  if (maxArmy >= 10) unlocked.push("army_10");
-  if (maxArmy >= 20) unlocked.push("army_20");
+  Object.entries(factionCounts).forEach(([faction, n]) => {
+    if (n >= 5)  unlocked.push(`army:${faction}:5`);
+    if (n >= 10) unlocked.push(`army:${faction}:10`);
+    if (n >= 20) unlocked.push(`army:${faction}:20`);
+  });
 
   return unlocked;
 }

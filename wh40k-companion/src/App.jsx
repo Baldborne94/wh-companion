@@ -13,7 +13,7 @@ import CoverImage from "./components/CoverImage";
 import AchievementPopup from "./components/AchievementPopup";
 import StatsModal from "./components/StatsModal";
 import {
-  ALL_ACHIEVEMENTS,
+  achievementFromId,
   computeReadingAchievements,
   diffAchievements,
   loadUnlockedIds,
@@ -1719,7 +1719,7 @@ export default function App(){
       if (!newIds.length) return prev;
       const merged = [...prev, ...newIds];
       saveUnlockedIds(supabase, user.id, merged);
-      const defs = newIds.map(id => ALL_ACHIEVEMENTS.find(a => a.id === id)).filter(Boolean);
+      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean);
       setPendingAchievements(q => [...q, ...defs]);
       return merged;
     });
@@ -1949,7 +1949,7 @@ export default function App(){
           <AchievementPopup
             key={pendingAchievements[0].id}
             achievement={pendingAchievements[0]}
-            type={pendingAchievements[0].id.startsWith('paint')||pendingAchievements[0].id.startsWith('monthly_painter')||pendingAchievements[0].id.startsWith('army')?"painting":"reading"}
+            type={["paint","monthly_painter","army"].some(p=>pendingAchievements[0].id.startsWith(p))?"painting":"reading"}
             onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
           />
         )}
