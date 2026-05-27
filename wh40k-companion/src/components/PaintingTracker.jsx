@@ -37,6 +37,22 @@ const STATUS = [
 
 const statusIndex = (s) => STATUS.findIndex((x) => x.id === s);
 
+function parseStatuses(raw) {
+  if (!raw) return ["owned"];
+  if (Array.isArray(raw)) return raw;
+  try { const p = JSON.parse(raw); if (Array.isArray(p)) return p; } catch {}
+  return [raw];
+}
+
+function highestStatus(raw) {
+  const ids = parseStatuses(raw);
+  return ids.reduce((best, id) => {
+    const st = STATUS.find(s => s.id === id);
+    if (!st) return best;
+    return !best || statusIndex(id) > statusIndex(best.id) ? st : best;
+  }, null) || STATUS[0];
+}
+
 // ─── CITADEL PAINTS DATABASE ──────────────────────────────────────────────
 
 const CITADEL_PAINTS = [
@@ -356,29 +372,31 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
 
 function StatusStepper({ value, onChange }) {
   const C = useContext(ThemeCtx);
+  const active = parseStatuses(value);
+
+  const toggle = (id) => {
+    if (id === 'completed') {
+      onChange(JSON.stringify(active.includes('completed') ? [] : ['completed']));
+      return;
+    }
+    const without = active.filter(s => s !== 'completed' && s !== id);
+    onChange(JSON.stringify(active.includes(id) ? without : [...without, id]));
+  };
+
   return (
     <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-      {STATUS.map((s, i) => {
-        const active = value === s.id;
-        const past   = i <= statusIndex(value);
+      {STATUS.map((s) => {
+        const on = active.includes(s.id);
         return (
-          <button key={s.id} onClick={() => onChange(s.id)}
+          <button key={s.id} onClick={() => toggle(s.id)}
             style={{
-              flex: "1 1 auto",
-              padding: "8px 4px",
-              borderRadius: 8,
-              border: `1px solid ${active ? s.color : C.border}`,
-              background: active ? `${s.color}33` : past ? `${s.color}11` : "transparent",
-              color: active ? "#fff" : past ? C.text : C.muted,
-              fontFamily: "'Cinzel',serif",
-              fontSize: 10,
-              letterSpacing: 1,
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 3,
-              transition: "all 0.2s",
+              flex: "1 1 auto", padding: "8px 4px", borderRadius: 8,
+              border: `1px solid ${on ? s.color : C.border}`,
+              background: on ? `${s.color}33` : "transparent",
+              color: on ? "#fff" : C.muted,
+              fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1,
+              cursor: "pointer", display: "flex", flexDirection: "column",
+              alignItems: "center", gap: 3, transition: "all 0.2s",
             }}>
             <span style={{ fontSize: 16 }}>{s.icon}</span>
             {s.label}
@@ -643,7 +661,7 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
 
 function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
   const C = useContext(ThemeCtx);
-  const st       = STATUS.find((s) => s.id === mini.status) || STATUS[0];
+  const st       = highestStatus(mini.status);
   const faction  = mini.faction || "";
   const coverUrl = (() => {
     try { if (mini.photo_url?.startsWith("[")) return JSON.parse(mini.photo_url)[0]; }
@@ -1625,16 +1643,18 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
   const C = useContext(ThemeCtx);
   const [open, setOpen] = useState(true);
 
-  const allCompleted = minis.length > 0 && minis.every(m => m.status === 'completed');
+  const allCompleted = minis.length > 0 && minis.every(m => parseStatuses(m.status).includes('completed'));
 
   const statusCounts = (() => {
     const counts = {};
     minis.forEach(m => {
-      const st = STATUS.find(s => s.id === m.status);
-      if (st) {
-        if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
-        counts[st.id].count++;
-      }
+      parseStatuses(m.status).forEach(id => {
+        const st = STATUS.find(s => s.id === id);
+        if (st) {
+          if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
+          counts[st.id].count++;
+        }
+      });
     });
     return Object.values(counts);
   })();
@@ -1778,11 +1798,13 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
     if (!unitMinis.length) return [];
     const counts = {};
     unitMinis.forEach(m => {
-      const st = STATUS.find(s => s.id === m.status);
-      if (st) {
-        if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
-        counts[st.id].count++;
-      }
+      parseStatuses(m.status).forEach(id => {
+        const st = STATUS.find(s => s.id === id);
+        if (st) {
+          if (!counts[st.id]) counts[st.id] = { ...st, count: 0 };
+          counts[st.id].count++;
+        }
+      });
     });
     return Object.values(counts);
   };
@@ -2087,7 +2109,7 @@ export default function PaintingTracker({ user, universe }) {
       {tab === "collection" && minis.length > 0 && (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, padding:"12px 16px 0" }}>
           {STATUS.filter(s => s.id !== 'owned').map(s=>{
-            const cnt=minis.filter(m=>m.status===s.id).length;
+            const cnt=minis.filter(m=>parseStatuses(m.status).includes(s.id)).length;
             return(
               <div key={s.id} style={{background:theme.card,border:`1px solid ${cnt>0?s.color+"44":theme.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                 <div style={{fontSize:16,marginBottom:2}}>{s.icon}</div>
