@@ -476,6 +476,13 @@ export default function EpubReader({
     return () => subscription.unsubscribe();
   }, [syncBookmarksFromDB]);
 
+  // Re-sync when app becomes visible again (tab switch, phone unlock, etc.)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") syncBookmarksFromDB(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [syncBookmarksFromDB]);
+
   // ── Refs ───────────────────────────────────────────────────────────────────
   const containerRef = useRef(null);
   const bookRef      = useRef(null);
