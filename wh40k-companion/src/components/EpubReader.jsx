@@ -14,9 +14,6 @@ async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   try {
     const now = new Date().toISOString();
     const row = { user_id:userId, book_id:bookId, progress_pct:pct, last_read:now, ...(cfi?{epub_cfi:cfi}:{}) };
-    const { error } = await supabase.from("reading_progress").upsert(row, { onConflict: "user_id,book_id" });
-    if (!error) return;
-    // No unique constraint on (user_id, book_id) — fall back to delete + insert
     await supabase.from("reading_progress").delete().eq("user_id", userId).eq("book_id", bookId);
     await supabase.from("reading_progress").insert(row);
   } catch {}
