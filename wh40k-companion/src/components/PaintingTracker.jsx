@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
 import { db, storage } from "../lib/supabase";
 import { sb } from "../lib/sb";
+import { achievementFromId, computePaintingAchievements, diffAchievements } from "../lib/achievements";
 
 // ─── THEME ────────────────────────────────────────────────────────────────
 
@@ -2000,13 +2001,18 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
   );
 }
 
-export default function PaintingTracker({ user, universe }) {
-  const [tab,      setTab]      = useState("gallery"); // "gallery" | "collection"
-  const [minis,    setMinis]    = useState([]);
-  const [paints,   setPaintsMap]= useState({});       // miniatureId → paint[]
-  const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState(null);     // null | "add" | {mini object}
-  const [filter,   setFilter]   = useState("All");
+export default function PaintingTracker({ user, universe, onAchievement, unlockedIds = [], onUpdateUnlocked }) {
+  const [tab,            setTab]          = useState("gallery");
+  const [minis,          setMinis]        = useState([]);
+  const [completedMinis, setCompletedMinis] = useState([]);
+  const [paints,         setPaintsMap]    = useState({});
+  const [loading,        setLoading]      = useState(true);
+  const [modal,          setModal]        = useState(null);
+  const [filter,         setFilter]       = useState("All");
+
+  // keep unlockedIds in a ref so the achievement effect never has stale closure
+  const unlockedIdsRef = useRef(unlockedIds);
+  useEffect(() => { unlockedIdsRef.current = unlockedIds; }, [unlockedIds]);
 
   // ─── Load minis ──────────────────────────────────────────────────────────
 
@@ -2018,12 +2024,25 @@ export default function PaintingTracker({ user, universe }) {
         data = await db.get("miniatures", `user_id=eq.${user.id}&universe=eq.${universe}`);
       } else {
         data = await db.get("miniatures", `is_public=eq.true&universe=eq.${universe}`);
-        // Sort by newest
-        data = [...data].sort((a, b) =>
-          new Date(b.created_at) - new Date(a.created_at)
-        );
+        data = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       }
       setMinis(data);
+
+      // Track completed minis + write missing timestamps to localStorage
+      if (user?.id && data) {
+        const lsKey = `wh40k_painted_${user.id}`;
+        let ts = {};
+        try { ts = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch {}
+        let changed = false;
+        data.filter(m => parseStatuses(m.status).includes('completed')).forEach(m => {
+          if (!ts[m.id]) { ts[m.id] = new Date().toISOString(); changed = true; }
+        });
+        if (changed) localStorage.setItem(lsKey, JSON.stringify(ts));
+        setCompletedMinis(
+          data.filter(m => parseStatuses(m.status).includes('completed'))
+              .map(m => ({ id: m.id, faction: m.faction || "", completedAt: ts[m.id] || m.created_at }))
+        );
+      }
 
       // Load paints for all minis
       const map = {};
@@ -2040,6 +2059,19 @@ export default function PaintingTracker({ user, universe }) {
   }, [tab, user, universe]);
 
   useEffect(() => { loadMinis(); }, [loadMinis]);
+
+  // ─── Check painting achievements whenever completedMinis changes ─────────
+  useEffect(() => {
+    if (!completedMinis.length || !user?.id || !onAchievement) return;
+    const nowUnlocked = computePaintingAchievements(completedMinis);
+    const newIds = diffAchievements(unlockedIdsRef.current, nowUnlocked);
+    if (!newIds.length) return;
+    const merged = [...unlockedIdsRef.current, ...newIds];
+    onUpdateUnlocked?.(merged);
+    const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
+                      .map(d => ({...d, _universe: universe}));
+    onAchievement(defs);
+  }, [completedMinis]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Filtered minis ────────────────────────────────────────────────────
 
