@@ -4,51 +4,47 @@ import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
 
-const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Supabase helpers
+// Supabase helpers (use JS client — handles auth token automatically)
 // ─────────────────────────────────────────────────────────────────────────────
-async function _authHeaders(method = "GET") {
-  const { data:{ session } } = await supabase.auth.getSession();
-  const tok = session?.access_token ?? SB_KEY;
-  const h = { apikey:SB_KEY, Authorization:`Bearer ${tok}` };
-  if (method !== "GET") h["Content-Type"] = "application/json";
-  return h;
-}
-
 async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   if (!userId || !bookId) return;
   try {
-    await fetch(`${SB_URL}/rest/v1/reading_progress?on_conflict=user_id,book_id`, {
-      method: "POST",
-      headers: { ...await _authHeaders("POST"), Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) }),
-    });
+    await supabase.from("reading_progress").upsert(
+      { user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) },
+      { onConflict: "user_id,book_id" }
+    );
   } catch {}
 }
 
 async function loadCfiFromDB(userId, bookId) {
   if (!userId || !bookId) return null;
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/reading_progress?user_id=eq.${userId}&book_id=eq.${bookId}&select=epub_cfi&limit=1`, { headers: await _authHeaders() });
-    if (!r.ok) return null;
-    const data = await r.json();
-    return data?.[0]?.epub_cfi ?? null;
+    const { data } = await supabase
+      .from("reading_progress")
+      .select("epub_cfi")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .limit(1)
+      .single();
+    return data?.epub_cfi ?? null;
   } catch { return null; }
 }
 
 async function loadBookmarksFromDB(userId, bookId) {
   if (!userId || !bookId) return { ok: false, bms: [], msg: "no userId/bookId" };
   try {
-    const headers = await _authHeaders();
-    // simplified query — filter nulls in JS to avoid PostgREST not.is.null syntax issues
-    const url = `${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&select=epub_cfi,label,progress,created_at,id&order=created_at.desc`;
-    const r = await fetch(url, { headers });
-    if (!r.ok) return { ok: false, bms: [], msg: `HTTP ${r.status}` };
-    const data = await r.json();
-    const mapped = data
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("[Bookmarks] error", error);
+      return { ok: false, bms: [], msg: error.message };
+    }
+    const mapped = (data || [])
       .filter(b => b.epub_cfi)
       .map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
     const seen = new Set();
@@ -59,28 +55,28 @@ async function loadBookmarksFromDB(userId, bookId) {
 
 async function saveBookmarkToDB(userId, bookId, bm) {
   if (!userId || !bookId || !bm.cfi) return;
-  const headers = await _authHeaders("POST");
-  const enc = encodeURIComponent(bm.cfi);
   try {
-    await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
-      method: "DELETE", headers: await _authHeaders("DELETE"),
-    });
-    await fetch(`${SB_URL}/rest/v1/bookmarks`, {
-      method: "POST",
-      headers: { ...headers, Prefer: "return=minimal" },
-      body: JSON.stringify({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 }),
-    });
+    await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .eq("epub_cfi", bm.cfi);
+    await supabase
+      .from("bookmarks")
+      .insert({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 });
   } catch {}
 }
 
 async function deleteBookmarkFromDB(userId, bookId, cfi) {
   if (!userId || !bookId || !cfi) return;
   try {
-    const enc = encodeURIComponent(cfi);
-    await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
-      method: "DELETE",
-      headers: await _authHeaders("DELETE"),
-    });
+    await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .eq("epub_cfi", cfi);
   } catch {}
 }
 
