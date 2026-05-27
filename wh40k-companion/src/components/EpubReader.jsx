@@ -43,16 +43,25 @@ async function loadBookmarksFromDB(userId, bookId) {
     const r = await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=not.is.null&order=created_at.desc`, { headers: await _authHeaders() });
     if (!r.ok) return [];
     const data = await r.json();
-    return data.map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
+    const mapped = data.map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at, _dbId: b.id }));
+    // deduplicate by CFI (keep most recent = first due to desc order)
+    const seen = new Set();
+    return mapped.filter(b => { if (seen.has(b.cfi)) return false; seen.add(b.cfi); return true; });
   } catch { return []; }
 }
 
 async function saveBookmarkToDB(userId, bookId, bm) {
   if (!userId || !bookId || !bm.cfi) return;
+  const headers = await _authHeaders();
+  const enc = encodeURIComponent(bm.cfi);
   try {
+    // delete any existing bookmark at the same CFI first to avoid duplicates
+    await fetch(`${SB_URL}/rest/v1/bookmarks?user_id=eq.${userId}&book_id=eq.${bookId}&epub_cfi=eq.${enc}`, {
+      method: "DELETE", headers,
+    });
     await fetch(`${SB_URL}/rest/v1/bookmarks`, {
       method: "POST",
-      headers: { ...await _authHeaders(), Prefer: "return=minimal" },
+      headers: { ...headers, Prefer: "return=minimal" },
       body: JSON.stringify({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 }),
     });
   } catch {}
@@ -421,14 +430,15 @@ export default function EpubReader({
     });
   }, [userId, bookId]);
 
-  // Merge bookmarks from DB on mount
+  // Load bookmarks from DB on mount — DB is source of truth, merge with any local-only ones
   useEffect(() => {
     if (!userId || !bookId) return;
     loadBookmarksFromDB(userId, bookId).then(dbBms => {
-      if (!dbBms.length) return;
       setBookmarks(prev => {
-        const localCfis = new Set(prev.map(b => b.cfi));
-        const merged = [...prev, ...dbBms.filter(b => !localCfis.has(b.cfi))];
+        // DB bookmarks take precedence; add any local-only ones not yet in DB
+        const dbCfis = new Set(dbBms.map(b => b.cfi));
+        const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
+        const merged = [...dbBms, ...localOnly];
         localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
         return merged;
       });
