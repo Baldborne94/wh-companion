@@ -439,16 +439,21 @@ export default function EpubReader({
     if (!userId || !bookId) return;
     if (showStatus) setSyncStatus("syncing…");
     loadBookmarksFromDB(userId, bookId).then(({ ok, bms, msg }) => {
-      console.log("[Bookmarks] sync:", ok, msg, "userId:", userId, "bookId:", bookId);
-      if (showStatus) setSyncStatus(ok ? (bms.length ? `✓ ${bms.length} loaded` : "✓ 0 in DB") : `✗ ${msg}`);
       setBookmarks(prev => {
         const dbCfis = new Set(bms.map(b => b.cfi));
         const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
+        if (ok && localOnly.length > 0) {
+          localOnly.forEach(b => saveBookmarkToDB(userId, bookId, b));
+        }
         const merged = [...bms, ...localOnly];
         localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
+        if (showStatus) {
+          const n = merged.length;
+          setSyncStatus(ok ? `✓ ${n} bookmark${n !== 1 ? "s" : ""}` : `✗ ${msg}`);
+          setTimeout(() => setSyncStatus(null), 3000);
+        }
         return merged;
       });
-      if (showStatus) setTimeout(() => setSyncStatus(null), 3000);
     });
   }, [userId, bookId]);
 
@@ -834,14 +839,17 @@ export default function EpubReader({
   const saveBookmark = useCallback(() => {
     const cfi = cfiRef.current;
     if (!cfi) return;
-    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, createdAt: new Date().toISOString() };
+    const label = pageDisplay
+      ? `Pag. ${pageDisplay.page}${chLabel ? ` · ${chLabel}` : ""}`
+      : (chLabel || "Bookmark");
+    const bm  = { cfi, label, pct: progress, createdAt: new Date().toISOString() };
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
     saveBookmarkToDB(userId, bookId, bm);
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
-  }, [chLabel, progress, bookmarks, userId, bookId]);
+  }, [chLabel, progress, bookmarks, userId, bookId, pageDisplay]);
 
   const deleteBookmark = useCallback((cfi) => {
     const upd = bookmarks.filter(b => b.cfi !== cfi);
@@ -1126,7 +1134,7 @@ export default function EpubReader({
                         {bm.label}
                       </div>
                       <div style={{ fontSize:10, color:T.muted }}>
-                        {new Date(bm.createdAt).toLocaleDateString("en-US", { day:"numeric", month:"short" })}
+                        {bm.createdAt ? new Date(bm.createdAt).toLocaleDateString("it-IT", { day:"numeric", month:"short", year:"numeric" }) : ""}
                       </div>
                     </button>
                     <button
