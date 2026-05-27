@@ -749,6 +749,14 @@ export default function EpubReader({
           const locIdx = cfi ? book.locations.locationFromCfi(cfi) : null;
           const locTotal = book.locations.total;
           if (locIdx != null && locTotal > 0) setPageDisplay({ page: locIdx + 1, total: locTotal });
+          // Compute page number for bookmarks that don't have it (loaded from DB)
+          if (locTotal > 0) {
+            setBookmarks(prev => prev.map(bm => {
+              if (bm.page || !bm.cfi) return bm;
+              const idx = book.locations.locationFromCfi(bm.cfi);
+              return idx != null ? { ...bm, page: idx + 1 } : bm;
+            }));
+          }
           if (!savedCfi && (initProgress ?? 0) > 0) {
             const jumpCfi = book.locations.cfiFromPercentage(initProgress);
             if (jumpCfi) rend.display(jumpCfi);
@@ -895,9 +903,7 @@ export default function EpubReader({
     deleteBookmarkFromDB(userId, bookId, cfi);
   }, [bookmarks, userId, bookId]);
 
-  const pageHasBookmark = pageRange != null && bookmarks.some(
-    b => b.pct >= pageRange.start - 0.1 && b.pct <= pageRange.end + 0.1
-  );
+  const pageHasBookmark = pageDisplay?.page != null && bookmarks.some(b => b.page === pageDisplay.page);
 
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) return (
