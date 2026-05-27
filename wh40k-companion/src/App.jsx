@@ -68,11 +68,12 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
   useEffect(()=>{
     if(!user?.id) return; // RLS needs an authenticated user
     (async()=>{
-      const [files,progData]=await Promise.all([
-        sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),
+      const [filesRes,progData]=await Promise.all([
+        supabase.from("ebook_files").select("*").eq("user_id",user.id).eq("book_id",book.id).limit(1),
         sb.get("reading_progress",`book_id=eq.${book.id}&limit=1`),
       ]);
-      if(files?.length){
+      const files=filesRes.data||[];
+      if(files.length){
         setEbookMeta(files[0]);
       } else {
         const cached=localStorage.getItem(`wh40k_ebook_${user.id}_${book.id}`);
@@ -112,12 +113,16 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     const ok=await sb.storage.upload(path,file);
     if(ok){
       const meta={user_id:user.id,book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub"};
-      const dbResult=await sb.upsert("ebook_files",meta,"user_id,book_id");
       const lsKey = `wh40k_ebook_${user.id}_${book.id}`;
       localStorage.setItem(lsKey, JSON.stringify(meta));
       setEbookMeta(meta);
-      if(dbResult?._error){
-        setUploadMsg(`⚠️ File saved but DB error ${dbResult._error}: ${dbResult._body?.slice(0,80)}`);
+      const { error:upsertErr } = await supabase.from("ebook_files").upsert(meta, { onConflict:"user_id,book_id" });
+      if(upsertErr){
+        // No unique constraint — fall back to delete + insert
+        await supabase.from("ebook_files").delete().eq("user_id",user.id).eq("book_id",book.id);
+        const { error:insErr } = await supabase.from("ebook_files").insert(meta);
+        if(insErr){ setUploadMsg(`⚠️ File saved locally but DB error: ${insErr.message?.slice(0,80)}`); }
+        else { setUploadMsg("✅ Uploaded & synced!"); }
       } else {
         setUploadMsg("✅ Uploaded & synced!");
       }
@@ -142,7 +147,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     // Delete from Storage
     if(ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
     // Delete from DB
-    if(user?.id) await sb.del("ebook_files",`user_id=eq.${user.id}&book_id=eq.${book.id}`);
+    if(user?.id) await supabase.from("ebook_files").delete().eq("user_id",user.id).eq("book_id",book.id);
     // Clear localStorage cache
     if(user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
     setEbookMeta(null);
@@ -314,26 +319,27 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
   useEffect(()=>{
     if(!user?.id){ setShelfBooks([]); setShelfLoading(false); return; }
     if(tab==="shelf") setShelfLoading(true);
-    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
-      if(files?.length&&!files._error){
-        const ids=new Set(files.map(f=>f.book_id));
-        setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
-      } else if(tab==="shelf"){
-        // Fallback to localStorage cache only on shelf tab (so count shows something)
-        const lsBooks=[];
-        for(let i=0;i<localStorage.length;i++){
-          const key=localStorage.key(i);
-          if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
-            try{
-              const meta=JSON.parse(localStorage.getItem(key));
-              if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
-            }catch{}
+    supabase.from("ebook_files").select("book_id,file_name,file_path,file_type").eq("user_id",user.id)
+      .then(({ data:files })=>{
+        if(files?.length){
+          const ids=new Set(files.map(f=>f.book_id));
+          setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
+        } else {
+          // Fallback to localStorage cache
+          const lsBooks=[];
+          for(let i=0;i<localStorage.length;i++){
+            const key=localStorage.key(i);
+            if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
+              try{
+                const meta=JSON.parse(localStorage.getItem(key));
+                if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
+              }catch{}
+            }
           }
+          setShelfBooks(lsBooks);
         }
-        setShelfBooks(lsBooks);
-      }
-      setShelfLoading(false);
-    });
+        setShelfLoading(false);
+      });
   },[tab, user?.id]);
 
   const handleOpenReader=({book,url,fileType,progress,chapterIndex,pageIndex})=>setReader({book,url,fileType,progress,chapterIndex,pageIndex:pageIndex||0});
@@ -1415,13 +1421,10 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
   });
   useEffect(()=>{
     if(!user?.id) return;
-    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id`).then(files=>{
-      if(files?.length&&!files._error){
-        // DB is source of truth — use DB only, discard stale localStorage counts
-        // book_id is stored as text in DB; parse to int for 40K books so Set.has() works with numeric b.id
+    supabase.from("ebook_files").select("book_id").eq("user_id",user.id).then(({ data:files })=>{
+      if(files?.length){
         setUploadedIds(new Set(files.map(f=>{ const n=parseInt(f.book_id,10); return isNaN(n)?f.book_id:n; })));
       }
-      // If DB returns empty/error we keep the localStorage-seeded initial state
     });
   },[user?.id]);
 
@@ -1735,8 +1738,8 @@ export default function App(){
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
-      const files=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${book.id}&limit=1`);
-      if(files?.length&&!files._error) meta=files[0];
+      const { data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",book.id).limit(1);
+      if(files?.length) meta=files[0];
     }
     if(!meta) return;
     // 2. Signed URL
