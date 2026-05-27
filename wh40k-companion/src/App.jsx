@@ -68,11 +68,12 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
   useEffect(()=>{
     if(!user?.id) return; // RLS needs an authenticated user
     (async()=>{
-      const [files,progData]=await Promise.all([
-        sb.get("ebook_files",`book_id=eq.${book.id}&limit=1`),
+      const [filesRes,progData]=await Promise.all([
+        supabase.from("ebook_files").select("*").eq("user_id",user.id).eq("book_id",book.id).limit(1),
         sb.get("reading_progress",`book_id=eq.${book.id}&limit=1`),
       ]);
-      if(files?.length){
+      const files=filesRes.data||[];
+      if(files.length){
         setEbookMeta(files[0]);
       } else {
         const cached=localStorage.getItem(`wh40k_ebook_${user.id}_${book.id}`);
@@ -112,12 +113,16 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     const ok=await sb.storage.upload(path,file);
     if(ok){
       const meta={user_id:user.id,book_id:book.id,file_name:file.name,file_path:path,file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub"};
-      const dbResult=await sb.upsert("ebook_files",meta,"user_id,book_id");
       const lsKey = `wh40k_ebook_${user.id}_${book.id}`;
       localStorage.setItem(lsKey, JSON.stringify(meta));
       setEbookMeta(meta);
-      if(dbResult?._error){
-        setUploadMsg(`⚠️ File saved but DB error ${dbResult._error}: ${dbResult._body?.slice(0,80)}`);
+      const { error:upsertErr } = await supabase.from("ebook_files").upsert(meta, { onConflict:"user_id,book_id" });
+      if(upsertErr){
+        // No unique constraint — fall back to delete + insert
+        await supabase.from("ebook_files").delete().eq("user_id",user.id).eq("book_id",book.id);
+        const { error:insErr } = await supabase.from("ebook_files").insert(meta);
+        if(insErr){ setUploadMsg(`⚠️ File saved locally but DB error: ${insErr.message?.slice(0,80)}`); }
+        else { setUploadMsg("✅ Uploaded & synced!"); }
       } else {
         setUploadMsg("✅ Uploaded & synced!");
       }
@@ -142,7 +147,7 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
     // Delete from Storage
     if(ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
     // Delete from DB
-    if(user?.id) await sb.del("ebook_files",`user_id=eq.${user.id}&book_id=eq.${book.id}`);
+    if(user?.id) await supabase.from("ebook_files").delete().eq("user_id",user.id).eq("book_id",book.id);
     // Clear localStorage cache
     if(user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
     setEbookMeta(null);
@@ -286,14 +291,22 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
   const [faction,setFaction]=useState("All");
   const [type,setType]=useState("All");
   const [era,setEra]=useState("All");
-  const [statusFilter,setStatusFilter]=useState("All");
   const [showFilters,setShowFilters]=useState(false);
   const [detail,setDetail]=useState(null);
   const [reader,setReader]=useState(null);
   const [shelfBooks,setShelfBooks]=useState([]);
   const [shelfLoading,setShelfLoading]=useState(false);
-  const [readingProgress,setReadingProgress]=useState({}); // bookId → pct (0-1)
-
+  const [readingProgress,setReadingProgress]=useState({});
+  useEffect(()=>{
+    if(!user?.id) return;
+    supabase.from("reading_progress").select("book_id,progress_pct").eq("user_id",user.id)
+      .then(({ data })=>{
+        if(!data?.length) return;
+        const map={};
+        data.forEach(r=>{ if(r.book_id&&r.progress_pct!=null) map[r.book_id]=r.progress_pct; });
+        setReadingProgress(map);
+      });
+  },[user?.id]);
   // Pre-load shelf from localStorage cache on mount
   useEffect(()=>{
     if(!user?.id) return;
@@ -313,41 +326,31 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
     if(lsBooks.length>0) setShelfBooks(lsBooks);
   },[user?.id]);
 
-  // Load reading progress for all books
-  useEffect(()=>{
-    if(!user?.id) return;
-    sb.get("reading_progress",`user_id=eq.${user.id}&select=book_id,progress_pct`).then(rows=>{
-      if(!rows||rows._error) return;
-      const map={};
-      rows.forEach(r=>{ if(r.book_id&&r.progress_pct!=null) map[r.book_id]=r.progress_pct; });
-      setReadingProgress(map);
-    });
-  },[user?.id]);
-
   // Load shelf books from DB on mount AND whenever tab switches to shelf
   useEffect(()=>{
     if(!user?.id){ setShelfBooks([]); setShelfLoading(false); return; }
     if(tab==="shelf") setShelfLoading(true);
-    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id,file_name,file_path,file_type`).then(files=>{
-      if(files?.length&&!files._error){
-        const ids=new Set(files.map(f=>f.book_id));
-        setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
-      } else if(tab==="shelf"){
-        // Fallback to localStorage cache only on shelf tab (so count shows something)
-        const lsBooks=[];
-        for(let i=0;i<localStorage.length;i++){
-          const key=localStorage.key(i);
-          if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
-            try{
-              const meta=JSON.parse(localStorage.getItem(key));
-              if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
-            }catch{}
+    supabase.from("ebook_files").select("book_id,file_name,file_path,file_type").eq("user_id",user.id)
+      .then(({ data:files })=>{
+        if(files?.length){
+          const ids=new Set(files.map(f=>f.book_id));
+          setShelfBooks(BOOKS.filter(b=>ids.has(b.id)).map(b=>({...b,_file:files.find(f=>f.book_id===b.id)})));
+        } else {
+          // Fallback to localStorage cache
+          const lsBooks=[];
+          for(let i=0;i<localStorage.length;i++){
+            const key=localStorage.key(i);
+            if(key?.startsWith(`wh40k_ebook_${user.id}_`)){
+              try{
+                const meta=JSON.parse(localStorage.getItem(key));
+                if(meta?.book_id){ const book=BOOKS.find(b=>b.id===meta.book_id); if(book) lsBooks.push({...book,_file:meta}); }
+              }catch{}
+            }
           }
+          setShelfBooks(lsBooks);
         }
-        setShelfBooks(lsBooks);
-      }
-      setShelfLoading(false);
-    });
+        setShelfLoading(false);
+      });
   },[tab, user?.id]);
 
   const handleOpenReader=({book,url,fileType,progress,chapterIndex,pageIndex})=>setReader({book,url,fileType,progress,chapterIndex,pageIndex:pageIndex||0});
@@ -370,11 +373,10 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
     if(faction!=="All"&&b.faction!==faction) return false;
     if(type!=="All"&&b.type!==type) return false;
     if(era!=="All"&&b.era!==era) return false;
-    if(statusFilter!=="All"){const bst=statuses[b.id]?.status||'none';if(bst!==statusFilter) return false;}
     if(search){const q=search.toLowerCase();return b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||b.series.toLowerCase().includes(q);}
     return true;
   });
-  const isFiltered=series!=="All"||faction!=="All"||type!=="All"||era!=="All"||statusFilter!=="All";
+  const isFiltered=series!=="All"||faction!=="All"||type!=="All"||era!=="All";
   const Chip=({label,active,onClick})=>(<button onClick={onClick} style={{background:active?`${C.gold}22`:"transparent",border:`1px solid ${active?C.gold:C.dim}`,borderRadius:20,padding:"6px 14px",color:active?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>);
 
   return(
@@ -549,15 +551,6 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
               ))}
             </div>
           </div>
-          {/* status filter pills */}
-          <div style={{padding:"8px 16px 4px",display:"flex",gap:6,overflowX:"auto"}}>
-            {[{v:"All",l:"All"},{v:"reading",l:"📖 Reading"},{v:"read",l:"✅ Read"},{v:"want",l:"⭐ Want"},{v:"none",l:"New"}].map(o=>(
-              <button key={o.v} onClick={()=>setStatusFilter(o.v)}
-                style={{background:statusFilter===o.v?`${C.gold}22`:"transparent",border:`1px solid ${statusFilter===o.v?C.gold:C.dim}`,borderRadius:20,padding:"5px 12px",color:statusFilter===o.v?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
-                {o.l}
-              </button>
-            ))}
-          </div>
           {showFilters&&(<div style={{padding:"0 16px 12px",borderBottom:`1px solid ${C.border}`}}>
             {[{label:"Series",value:series,set:setSeries,opts:ALL_SERIES.slice(0,22)},{label:"Faction",value:faction,set:setFaction,opts:ALL_FACTIONS},{label:"Type",value:type,set:setType,opts:ALL_TYPES},{label:"Era",value:era,set:setEra,opts:ALL_ERAS}].map(f=>(<div key={f.label} style={{marginBottom:10}}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>{f.label}</div><div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>{f.opts.map(o=><Chip key={o} label={o} active={f.value===o} onClick={()=>f.set(o)}/>)}</div></div>))}
           </div>)}
@@ -672,9 +665,7 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                                 <div style={{writingMode:"vertical-rl",transform:"rotate(180deg)",fontFamily:"'Cinzel',serif",fontSize:6,color:"rgba(255,255,255,0.85)",letterSpacing:0.8,overflow:"hidden",maxHeight:"90%",padding:"3px 2px",textShadow:"0 1px 2px rgba(0,0,0,0.9)",lineHeight:1.1,textAlign:"center"}}>
                                   {book.num>0?`#${book.num} `+book.title.split(' ').slice(0,3).join(' '):book.title.split(' ').slice(0,3).join(' ')}
                                 </div>
-                                {/* status stripe top */}
                                 {bst!=='none'&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:bstCfg.color}}/>}
-                                {/* reading progress fill from bottom */}
                                 {pctPct>0&&pctPct<100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:`${pctPct}%`,background:"rgba(74,138,220,0.25)",pointerEvents:"none"}}/>}
                                 {pctPct>=100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:"100%",background:"rgba(74,170,106,0.2)",pointerEvents:"none"}}/>}
                               </div>
@@ -1455,13 +1446,10 @@ function HomePage({user,setSection,statuses={},onOpenBook}){
   });
   useEffect(()=>{
     if(!user?.id) return;
-    sb.get("ebook_files",`user_id=eq.${user.id}&select=book_id`).then(files=>{
-      if(files?.length&&!files._error){
-        // DB is source of truth — use DB only, discard stale localStorage counts
-        // book_id is stored as text in DB; parse to int for 40K books so Set.has() works with numeric b.id
+    supabase.from("ebook_files").select("book_id").eq("user_id",user.id).then(({ data:files })=>{
+      if(files?.length){
         setUploadedIds(new Set(files.map(f=>{ const n=parseInt(f.book_id,10); return isNaN(n)?f.book_id:n; })));
       }
-      // If DB returns empty/error we keep the localStorage-seeded initial state
     });
   },[user?.id]);
 
@@ -1775,8 +1763,8 @@ export default function App(){
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
-      const files=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${book.id}&limit=1`);
-      if(files?.length&&!files._error) meta=files[0];
+      const { data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",book.id).limit(1);
+      if(files?.length) meta=files[0];
     }
     if(!meta) return;
     // 2. Signed URL

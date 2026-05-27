@@ -12,10 +12,13 @@ async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   // Don't overwrite existing progress with a cold-open 0% (no CFI = nothing navigated yet)
   if (!cfi && (!pct || pct === 0)) return;
   try {
-    await supabase.from("reading_progress").upsert(
-      { user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) },
-      { onConflict: "user_id,book_id" }
-    );
+    const now = new Date().toISOString();
+    const row = { user_id:userId, book_id:bookId, progress_pct:pct, last_read:now, ...(cfi?{epub_cfi:cfi}:{}) };
+    const { error } = await supabase.from("reading_progress").upsert(row, { onConflict: "user_id,book_id" });
+    if (!error) return;
+    // No unique constraint on (user_id, book_id) — fall back to delete + insert
+    await supabase.from("reading_progress").delete().eq("user_id", userId).eq("book_id", bookId);
+    await supabase.from("reading_progress").insert(row);
   } catch {}
 }
 
@@ -394,10 +397,6 @@ export default function EpubReader({
   const [showSettings,  setShowSettings]  = useState(false);
   const [showToc,       setShowToc]       = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
-  const [showSearch,    setShowSearch]    = useState(false);
-  const [searchQuery,   setSearchQuery]   = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
   const [bmSaved,       setBmSaved]       = useState(false);
   const [pageRange,     setPageRange]     = useState(null);
@@ -531,11 +530,11 @@ export default function EpubReader({
 
   // Keep UI visible while a panel is open
   useEffect(() => {
-    if (showSettings || showToc || showBookmarks || showSearch) {
+    if (showSettings || showToc || showBookmarks) {
       clearTimeout(hideTimer.current);
       setShowUI(true);
     }
-  }, [showSettings, showToc, showBookmarks, showSearch]);
+  }, [showSettings, showToc, showBookmarks]);
 
   // ── Book init / layout change ─────────────────────────────────────────────
   useEffect(() => {
@@ -880,13 +879,12 @@ export default function EpubReader({
         else if (showSettings)    setShowSettings(false);
         else if (showToc)         setShowToc(false);
         else if (showBookmarks)   setShowBookmarks(false);
-        else if (showSearch)      setShowSearch(false);
         else                      onClose?.();
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [next, prev, dictWord, showSettings, showToc, showBookmarks, showSearch, onClose]);
+  }, [next, prev, dictWord, showSettings, showToc, showBookmarks, onClose]);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const saveBookmark = useCallback(() => {
@@ -918,28 +916,6 @@ export default function EpubReader({
   const pageHasBookmark = pageDisplay?.page != null && bookmarks.some(b => b.page === pageDisplay.page);
 
   // ── Search ────────────────────────────────────────────────────────────────
-  const runSearch = useCallback((q) => {
-    if (!q.trim() || !bookRef.current) return;
-    setSearchLoading(true);
-    setSearchResults([]);
-    bookRef.current.search(q.trim())
-      .then(results => {
-        setSearchResults((results || []).slice(0, 50));
-        setSearchLoading(false);
-      })
-      .catch(() => {
-        setSearchResults([]);
-        setSearchLoading(false);
-      });
-  }, []);
-
-  const openSearch = useCallback(() => {
-    setShowSearch(true);
-    setShowBookmarks(false);
-    setShowToc(false);
-    setShowSettings(false);
-  }, []);
-
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) return (
     <div style={{ position:"fixed", inset:0, background:"#0f0e09", zIndex:999,
@@ -998,7 +974,7 @@ export default function EpubReader({
           onTouchStart={onSwipeStart}
           onTouchEnd={onSwipeEnd}
           style={{ position:"absolute", top:54, bottom:54, left:0, right:0, zIndex:10,
-                   pointerEvents: (!settings.paginate || showSettings || showToc || showBookmarks || showSearch || dictWord) ? "none" : "auto" }}
+                   pointerEvents: (!settings.paginate || showSettings || showToc || showBookmarks || dictWord) ? "none" : "auto" }}
         />
       )}
 
@@ -1051,7 +1027,6 @@ export default function EpubReader({
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
-          <IBtn onClick={openSearch}                      color={showSearch?C.gold:T.muted} title="Search">🔍</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
             <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?"Exit fullscreen":"Fullscreen"}>
@@ -1228,90 +1203,6 @@ export default function EpubReader({
                 ))}
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Search panel ───────────────────────────────────────────────────── */}
-      {showSearch && (
-        <div onClick={() => setShowSearch(false)}
-          style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ position:"absolute", right:0, top:0, bottom:0,
-                     width:Math.min(320, window.innerWidth * 0.92),
-                     background:T.surface, borderLeft:`1px solid ${T.border}`,
-                     animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
-            <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${T.border}`,
-                          position:"sticky", top:0, background:T.surface, flexShrink:0 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Search</span>
-                <button onClick={() => setShowSearch(false)}
-                  style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
-              </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") runSearch(searchQuery); }}
-                  placeholder="Search in book…"
-                  style={{ flex:1, background:T.bg, border:`1px solid ${T.border}`, borderRadius:6,
-                           color:T.text, padding:"7px 10px", fontSize:13,
-                           fontFamily:"'Cinzel',serif", outline:"none" }}
-                />
-                <button
-                  onClick={() => runSearch(searchQuery)}
-                  style={{ background:`${C.gold}22`, border:`1px solid ${C.gold}55`, borderRadius:6,
-                           color:C.gold, padding:"7px 12px", cursor:"pointer", fontSize:13,
-                           fontFamily:"'Cinzel',serif", flexShrink:0 }}>
-                  Go
-                </button>
-              </div>
-            </div>
-
-            <div style={{ overflowY:"auto", flex:1 }}>
-              {searchLoading && (
-                <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"28px 16px", fontStyle:"italic" }}>
-                  Searching…
-                </p>
-              )}
-              {!searchLoading && searchResults.length === 0 && searchQuery.trim() && (
-                <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"28px 16px", fontStyle:"italic" }}>
-                  No results found.
-                </p>
-              )}
-              {!searchLoading && searchResults.length === 0 && !searchQuery.trim() && (
-                <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"28px 16px", fontStyle:"italic" }}>
-                  Type a word and press Go.
-                </p>
-              )}
-              {!searchLoading && searchResults.length > 0 && (
-                <>
-                  <p style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
-                               letterSpacing:2, textTransform:"uppercase", margin:"10px 16px 4px" }}>
-                    {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
-                    {searchResults.length === 50 ? " (capped at 50)" : ""}
-                  </p>
-                  {searchResults.map((r, i) => (
-                    <div key={i}
-                      style={{ display:"flex", alignItems:"stretch", borderBottom:`1px solid ${T.border}` }}>
-                      <div style={{ flex:1, padding:"10px 16px", fontSize:12, color:T.text, lineHeight:1.55 }}>
-                        {(r.excerpt || "").slice(0, 120)}
-                        {(r.excerpt || "").length > 120 ? "…" : ""}
-                      </div>
-                      <button
-                        onClick={() => { rendRef.current?.display(r.cfi); setShowSearch(false); }}
-                        title="Navigate to result"
-                        style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
-                                 color:C.gold, padding:"0 14px", cursor:"pointer", fontSize:16,
-                                 flexShrink:0, display:"flex", alignItems:"center" }}>
-                        →
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
           </div>
         </div>
       )}
