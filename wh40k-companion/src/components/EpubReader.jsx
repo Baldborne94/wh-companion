@@ -434,7 +434,7 @@ export default function EpubReader({
 
   const [syncStatus, setSyncStatus] = useState(null);
 
-  // Load bookmarks from DB — runs on mount and again after book finishes loading
+  // Load bookmarks from DB — runs on mount, after book loads, and when Supabase session becomes ready
   const syncBookmarksFromDB = useCallback((showStatus = false) => {
     if (!userId || !bookId) return;
     if (showStatus) setSyncStatus("syncing…");
@@ -463,6 +463,16 @@ export default function EpubReader({
     if (!loading) syncBookmarksFromDB();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  // Re-sync when Supabase session becomes available (fixes mobile: session restores async)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && session) {
+        syncBookmarksFromDB();
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [syncBookmarksFromDB]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const containerRef = useRef(null);
@@ -839,10 +849,7 @@ export default function EpubReader({
   const saveBookmark = useCallback(() => {
     const cfi = cfiRef.current;
     if (!cfi) return;
-    const label = pageDisplay
-      ? `Pag. ${pageDisplay.page}${chLabel ? ` · ${chLabel}` : ""}`
-      : (chLabel || "Bookmark");
-    const bm  = { cfi, label, pct: progress, createdAt: new Date().toISOString() };
+    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
@@ -850,6 +857,12 @@ export default function EpubReader({
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bookmarks, userId, bookId, pageDisplay]);
+
+  const bmPageLabel = useCallback((bm) => {
+    if (bm.page) return `Pag. ${bm.page}`;
+    if (pageDisplay?.total) return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
+    return `${bm.pct}%`;
+  }, [pageDisplay]);
 
   const deleteBookmark = useCallback((cfi) => {
     const upd = bookmarks.filter(b => b.cfi !== cfi);
@@ -1134,7 +1147,7 @@ export default function EpubReader({
                         {bm.label}
                       </div>
                       <div style={{ fontSize:10, color:T.muted }}>
-                        {bm.createdAt ? new Date(bm.createdAt).toLocaleDateString("it-IT", { day:"numeric", month:"short", year:"numeric" }) : ""}
+                        {bmPageLabel(bm)}
                       </div>
                     </button>
                     <button
