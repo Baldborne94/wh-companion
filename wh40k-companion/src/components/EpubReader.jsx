@@ -56,16 +56,19 @@ async function loadBookmarksFromDB(userId, bookId) {
 async function saveBookmarkToDB(userId, bookId, bm) {
   if (!userId || !bookId || !bm.cfi) return;
   try {
-    await supabase
+    // Delete existing row for this CFI then insert fresh (upsert on epub_cfi not guaranteed by schema)
+    const { error: delErr } = await supabase
       .from("bookmarks")
       .delete()
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .eq("epub_cfi", bm.cfi);
-    await supabase
+    if (delErr) console.warn("[BM] delete:", delErr.message);
+    const { error: insErr } = await supabase
       .from("bookmarks")
       .insert({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 });
-  } catch {}
+    if (insErr) console.warn("[BM] insert:", insErr.message);
+  } catch (e) { console.warn("[BM] saveBookmarkToDB:", e?.message); }
 }
 
 async function deleteBookmarkFromDB(userId, bookId, cfi) {
@@ -436,12 +439,11 @@ export default function EpubReader({
 
   const [syncStatus, setSyncStatus] = useState(null);
 
-  // Sync bookmarks: push all local → pull all from DB → update state
+  // Sync bookmarks: push all local → pull all from DB → merge (never lose local data)
   const syncBookmarksFromDB = useCallback((showStatus = false) => {
     if (!userId || !bookId) return;
     if (showStatus) setSyncStatus("syncing…");
     const local = bookmarksRef.current;
-    // Push all local bookmarks to DB first (idempotent: delete+insert)
     Promise.all(local.map(b => saveBookmarkToDB(userId, bookId, b)))
       .then(() => loadBookmarksFromDB(userId, bookId))
       .then(({ ok, bms, msg }) => {
@@ -449,13 +451,18 @@ export default function EpubReader({
           if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 3000); }
           return;
         }
-        setBookmarks(bms);
-        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(bms));
-        if (showStatus) {
-          const n = bms.length;
-          setSyncStatus(`✓ ${n} bookmark${n !== 1 ? "s" : ""}`);
-          setTimeout(() => setSyncStatus(null), 3000);
-        }
+        setBookmarks(prev => {
+          const dbCfis = new Set(bms.map(b => b.cfi));
+          const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
+          const merged = [...bms, ...localOnly];
+          localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
+          if (showStatus) {
+            const n = merged.length;
+            setSyncStatus(`✓ ${n} bookmark${n !== 1 ? "s" : ""}`);
+            setTimeout(() => setSyncStatus(null), 3000);
+          }
+          return merged;
+        });
       });
   }, [userId, bookId]);
 
