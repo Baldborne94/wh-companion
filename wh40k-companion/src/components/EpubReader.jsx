@@ -54,21 +54,15 @@ async function loadBookmarksFromDB(userId, bookId) {
 }
 
 async function saveBookmarkToDB(userId, bookId, bm) {
-  if (!userId || !bookId || !bm.cfi) return;
+  if (!userId || !bookId || !bm.cfi) return null;
   try {
-    // Delete existing row for this CFI then insert fresh (upsert on epub_cfi not guaranteed by schema)
-    const { error: delErr } = await supabase
-      .from("bookmarks")
-      .delete()
-      .eq("user_id", userId)
-      .eq("book_id", bookId)
-      .eq("epub_cfi", bm.cfi);
-    if (delErr) console.warn("[BM] delete:", delErr.message);
-    const { error: insErr } = await supabase
-      .from("bookmarks")
+    await supabase.from("bookmarks").delete()
+      .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", bm.cfi);
+    const { error } = await supabase.from("bookmarks")
       .insert({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 });
-    if (insErr) console.warn("[BM] insert:", insErr.message);
-  } catch (e) { console.warn("[BM] saveBookmarkToDB:", e?.message); }
+    if (error) { console.warn("[BM] insert:", error.message, error.code); return error.message; }
+    return null;
+  } catch (e) { console.warn("[BM] saveBookmarkToDB:", e?.message); return e?.message; }
 }
 
 async function deleteBookmarkFromDB(userId, bookId, cfi) {
@@ -445,10 +439,18 @@ export default function EpubReader({
     if (showStatus) setSyncStatus("syncing…");
     const local = bookmarksRef.current;
     Promise.all(local.map(b => saveBookmarkToDB(userId, bookId, b)))
-      .then(() => loadBookmarksFromDB(userId, bookId))
+      .then(errs => {
+        const uploadErr = errs.find(Boolean);
+        if (uploadErr && showStatus) {
+          setSyncStatus(`✗ upload: ${uploadErr}`);
+          setTimeout(() => setSyncStatus(null), 6000);
+          return Promise.reject("upload-failed");
+        }
+        return loadBookmarksFromDB(userId, bookId);
+      })
       .then(({ ok, bms, msg }) => {
         if (!ok) {
-          if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 3000); }
+          if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 4000); }
           return;
         }
         setBookmarks(prev => {
@@ -463,7 +465,8 @@ export default function EpubReader({
           }
           return merged;
         });
-      });
+      })
+      .catch(e => { if (e !== "upload-failed") console.warn("[BM] sync:", e); });
   }, [userId, bookId]);
 
   useEffect(() => { syncBookmarksFromDB(); }, [syncBookmarksFromDB]);
