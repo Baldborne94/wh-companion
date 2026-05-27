@@ -722,15 +722,19 @@ export default function EpubReader({
         book.locations.generate(1536).then(() => {
           if (cancelled) return;
           locationsReady = true;
-          const pct = book.locations.percentageFromCfi(cfiRef.current);
+          const cfi = cfiRef.current;
+          const pct = cfi ? (book.locations.percentageFromCfi(cfi) ?? 0) : 0;
           if (pct != null) {
             setProgress(Math.round(pct * 100));
             onProgress?.(pct);
             saveProgressToSupabase(userId, bookId, pct);
           }
+          const locIdx = cfi ? book.locations.locationFromCfi(cfi) : null;
+          const locTotal = book.locations.total;
+          if (locIdx != null && locTotal > 0) setPageDisplay({ page: locIdx + 1, total: locTotal });
           if (!savedCfi && (initProgress ?? 0) > 0) {
-            const cfi = book.locations.cfiFromPercentage(initProgress);
-            if (cfi) rend.display(cfi);
+            const jumpCfi = book.locations.cfiFromPercentage(initProgress);
+            if (jumpCfi) rend.display(jumpCfi);
           }
         }).catch(() => {});
 
