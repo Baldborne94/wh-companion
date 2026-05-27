@@ -286,11 +286,13 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
   const [faction,setFaction]=useState("All");
   const [type,setType]=useState("All");
   const [era,setEra]=useState("All");
+  const [statusFilter,setStatusFilter]=useState("All");
   const [showFilters,setShowFilters]=useState(false);
   const [detail,setDetail]=useState(null);
   const [reader,setReader]=useState(null);
   const [shelfBooks,setShelfBooks]=useState([]);
   const [shelfLoading,setShelfLoading]=useState(false);
+  const [readingProgress,setReadingProgress]=useState({}); // bookId → pct (0-1)
 
   // Pre-load shelf from localStorage cache on mount
   useEffect(()=>{
@@ -309,6 +311,17 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
       }
     }
     if(lsBooks.length>0) setShelfBooks(lsBooks);
+  },[user?.id]);
+
+  // Load reading progress for all books
+  useEffect(()=>{
+    if(!user?.id) return;
+    sb.get("reading_progress",`user_id=eq.${user.id}&select=book_id,progress_pct`).then(rows=>{
+      if(!rows||rows._error) return;
+      const map={};
+      rows.forEach(r=>{ if(r.book_id&&r.progress_pct!=null) map[r.book_id]=r.progress_pct; });
+      setReadingProgress(map);
+    });
   },[user?.id]);
 
   // Load shelf books from DB on mount AND whenever tab switches to shelf
@@ -357,10 +370,11 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
     if(faction!=="All"&&b.faction!==faction) return false;
     if(type!=="All"&&b.type!==type) return false;
     if(era!=="All"&&b.era!==era) return false;
+    if(statusFilter!=="All"){const bst=statuses[b.id]?.status||'none';if(bst!==statusFilter) return false;}
     if(search){const q=search.toLowerCase();return b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||b.series.toLowerCase().includes(q);}
     return true;
   });
-  const isFiltered=series!=="All"||faction!=="All"||type!=="All"||era!=="All";
+  const isFiltered=series!=="All"||faction!=="All"||type!=="All"||era!=="All"||statusFilter!=="All";
   const Chip=({label,active,onClick})=>(<button onClick={onClick} style={{background:active?`${C.gold}22`:"transparent",border:`1px solid ${active?C.gold:C.dim}`,borderRadius:20,padding:"6px 14px",color:active?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>);
 
   return(
@@ -535,6 +549,15 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
               ))}
             </div>
           </div>
+          {/* status filter pills */}
+          <div style={{padding:"8px 16px 4px",display:"flex",gap:6,overflowX:"auto"}}>
+            {[{v:"All",l:"All"},{v:"reading",l:"📖 Reading"},{v:"read",l:"✅ Read"},{v:"want",l:"⭐ Want"},{v:"none",l:"New"}].map(o=>(
+              <button key={o.v} onClick={()=>setStatusFilter(o.v)}
+                style={{background:statusFilter===o.v?`${C.gold}22`:"transparent",border:`1px solid ${statusFilter===o.v?C.gold:C.dim}`,borderRadius:20,padding:"5px 12px",color:statusFilter===o.v?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:10,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                {o.l}
+              </button>
+            ))}
+          </div>
           {showFilters&&(<div style={{padding:"0 16px 12px",borderBottom:`1px solid ${C.border}`}}>
             {[{label:"Series",value:series,set:setSeries,opts:ALL_SERIES.slice(0,22)},{label:"Faction",value:faction,set:setFaction,opts:ALL_FACTIONS},{label:"Type",value:type,set:setType,opts:ALL_TYPES},{label:"Era",value:era,set:setEra,opts:ALL_ERAS}].map(f=>(<div key={f.label} style={{marginBottom:10}}><div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>{f.label}</div><div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>{f.opts.map(o=><Chip key={o} label={o} active={f.value===o} onClick={()=>f.set(o)}/>)}</div></div>))}
           </div>)}
@@ -548,12 +571,17 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                 const bst=statuses[book.id]?.status||'none';
                 const bstCfg=STATUS_CFG[bst];
                 const borderColor=bst!=='none'?bstCfg.color:fc2;
-                return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}18,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"44"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start"}}>
+                const pct=readingProgress[book.id]||0;
+                const pctPct=Math.round(pct*100);
+                return(<div key={book.id} onClick={()=>setDetail(book)} style={{background:`linear-gradient(135deg,${fc2}18,${C.card})`,border:`1px solid ${bst!=='none'?bstCfg.color+"44":fc2+"44"}`,borderLeft:`3px solid ${borderColor}`,borderRadius:8,padding:"10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start",position:"relative",overflow:"hidden"}}>
+                  {pctPct>0&&pctPct<100&&<div style={{position:"absolute",bottom:0,left:0,width:`${pctPct}%`,height:2,background:"#4a8adc88",pointerEvents:"none"}}/>}
+                  {pctPct>=100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:2,background:"#4aaa6a88",pointerEvents:"none"}}/>}
                   <CoverImage book={book} width={54} height={80} radius={3} accentColor={fc2}/>
                   <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:3}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:4}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:1,textTransform:"uppercase",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""}</div>
                       <div style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                        {pctPct>0&&pctPct<100&&<span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#4a8adc"}}>{pctPct}%</span>}
                         {bst!=='none'&&<span style={{fontSize:12}}>{bstCfg.icon}</span>}
                         <span style={{background:`${tc}22`,border:`1px solid ${tc}44`,borderRadius:4,padding:"2px 6px",fontFamily:"'Cinzel',serif",fontSize:8,color:tc,letterSpacing:1}}>{book.type}</span>
                       </div>
@@ -575,16 +603,21 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                 const fc2=FC[book.faction]||C.dim;
                 const bst=statuses[book.id]?.status||'none';
                 const bstCfg=STATUS_CFG[bst];
+                const pct=readingProgress[book.id]||0;
+                const pctPct=Math.round(pct*100);
                 return(
                   <div key={book.id} onClick={()=>setDetail(book)}
-                    style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer"}}>
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${C.border}44`,cursor:"pointer",position:"relative"}}>
                     <CoverImage book={book} width={36} height={52} radius={2} accentColor={fc2}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:13,color:bst==='read'?C.muted:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",opacity:bst==='read'?0.7:1}}>{book.title}</div>
                       <div style={{fontSize:10,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{book.series}{book.num>0?` #${book.num}`:""} · {book.author}</div>
                     </div>
+                    {pctPct>0&&pctPct<100&&<span style={{fontFamily:"'Cinzel',serif",fontSize:9,color:"#4a8adc",flexShrink:0}}>{pctPct}%</span>}
                     {bst!=='none'&&<span style={{fontSize:14,flexShrink:0}}>{bstCfg.icon}</span>}
                     <span style={{color:C.dim,fontSize:14,flexShrink:0}}>›</span>
+                    {pctPct>0&&pctPct<100&&<div style={{position:"absolute",bottom:0,left:0,width:`${pctPct}%`,height:1,background:"#4a8adc88",pointerEvents:"none"}}/>}
+                    {pctPct>=100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:1,background:"#4aaa6a88",pointerEvents:"none"}}/>}
                   </div>
                 );
               })}
@@ -620,9 +653,11 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                             const sc=FC[book.faction]||C.dim;
                             const bst=statuses[book.id]?.status||'none';
                             const bstCfg=STATUS_CFG[bst];
+                            const pct=readingProgress[book.id]||0;
+                            const pctPct=Math.round(pct*100);
                             return(
                               <div key={book.id} onClick={()=>setDetail(book)}
-                                title={`${book.title}${book.num>0?' #'+book.num:''}`}
+                                title={`${book.title}${book.num>0?' #'+book.num:''}${pctPct>0?' — '+pctPct+'%':''}`}
                                 style={{flexShrink:0,width:24,height:110,
                                   background:`linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`,
                                   borderRadius:"3px 3px 0 0",cursor:"pointer",position:"relative",
@@ -639,6 +674,9 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                                 </div>
                                 {/* status stripe top */}
                                 {bst!=='none'&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:bstCfg.color}}/>}
+                                {/* reading progress fill from bottom */}
+                                {pctPct>0&&pctPct<100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:`${pctPct}%`,background:"rgba(74,138,220,0.25)",pointerEvents:"none"}}/>}
+                                {pctPct>=100&&<div style={{position:"absolute",bottom:0,left:0,right:0,height:"100%",background:"rgba(74,170,106,0.2)",pointerEvents:"none"}}/>}
                               </div>
                             );
                           })}

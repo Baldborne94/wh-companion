@@ -9,6 +9,8 @@ import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
 // ─────────────────────────────────────────────────────────────────────────────
 async function saveProgressToSupabase(userId, bookId, pct, cfi) {
   if (!userId || !bookId) return;
+  // Don't overwrite existing progress with a cold-open 0% (no CFI = nothing navigated yet)
+  if (!cfi && (!pct || pct === 0)) return;
   try {
     await supabase.from("reading_progress").upsert(
       { user_id:userId, book_id:bookId, progress_pct:pct, last_read:new Date().toISOString(), ...(cfi?{epub_cfi:cfi}:{}) },
@@ -34,11 +36,16 @@ async function loadCfiFromDB(userId, bookId) {
 async function loadBookmarksFromDB(userId, bookId) {
   if (!userId || !bookId) return { ok: false, bms: [], msg: "no userId/bookId" };
   try {
+    // Clean up legacy rows that have no epub_cfi (created before schema migration)
+    supabase.from("bookmarks").delete()
+      .eq("user_id", userId).eq("book_id", bookId).is("epub_cfi", null)
+      .then(() => {});
     const { data, error } = await supabase
       .from("bookmarks")
       .select("*")
       .eq("user_id", userId)
       .eq("book_id", bookId)
+      .not("epub_cfi", "is", null)
       .order("created_at", { ascending: false });
     if (error) {
       console.error("[Bookmarks] error", error);
@@ -748,7 +755,7 @@ export default function EpubReader({
           if (pct != null) {
             setProgress(Math.round(pct * 100));
             onProgress?.(pct);
-            saveProgressToSupabase(userId, bookId, pct);
+            saveProgressToSupabase(userId, bookId, pct, cfi || undefined);
           }
           const locIdx = cfi ? book.locations.locationFromCfi(cfi) : null;
           const locTotal = book.locations.total;
