@@ -940,13 +940,6 @@ export default function EpubReader({
             </>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
-          <IBtn
-            onClick={bookmarks.length > 0
-              ? () => { rendRef.current?.display(bookmarks[0].cfi); }
-              : saveBookmark}
-            color={bookmarks.length > 0 ? C.gold : (bmSaved ? C.gold : T.muted)}
-            title={bookmarks.length > 0 ? "Go to bookmark" : "Save bookmark"}
-          >🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
