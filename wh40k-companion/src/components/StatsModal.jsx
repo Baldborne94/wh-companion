@@ -2,14 +2,17 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
+  AOS_READING_ACHIEVEMENTS, computeAoSReadingAchievements,
   getConsecutiveMonthStreak, achievementFromId,
 } from "../lib/achievements";
+import { AOS_BOOKS } from "./AoSApp";
 
 const C = {
   bg: "#0a0905", surface: "#111009", card: "#16140f", border: "#2a2518",
   gold: "#c9a84c", goldDim: "#7a6330", text: "#d4cbb8", muted: "#7a7060", dim: "#3a3428",
 };
 const PAINT_ACCENT = "#9a4adc";
+const AOS_ACCENT   = "#C9A227";
 
 const STATS_STYLES = `
   @keyframes statsGlowGold {
@@ -24,8 +27,13 @@ const STATS_STYLES = `
     0%   { background-position: -200% center; }
     100% { background-position: 200% center; }
   }
+  @keyframes statsGlowAos {
+    0%,100% { box-shadow: 0 0 10px #C9A22722, 0 2px 16px #C9A22711; }
+    50%      { box-shadow: 0 0 22px #C9A22744, 0 4px 28px #C9A22722; }
+  }
   .ach-unlocked-gold  { animation: statsGlowGold  3s ease-in-out infinite; }
   .ach-unlocked-paint { animation: statsGlowPaint 3s ease-in-out infinite; }
+  .ach-unlocked-aos   { animation: statsGlowAos   3s ease-in-out infinite; }
 `;
 
 function StyleTag() {
@@ -57,11 +65,11 @@ function StatBox({ n, label, color, suffix }) {
 }
 
 function AchCard({ a, unlocked, accent }) {
-  const isGold = accent === C.gold;
+  const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
   if (unlocked) {
     return (
       <div
-        className={isGold ? "ach-unlocked-gold" : "ach-unlocked-paint"}
+        className={glowClass}
         style={{
           background: `linear-gradient(160deg, ${accent}20 0%, ${C.card} 55%, ${accent}0d 100%)`,
           border: `1px solid ${accent}88`,
@@ -133,10 +141,10 @@ function AchCard({ a, unlocked, accent }) {
 function DynCard({ id, accent }) {
   const a = achievementFromId(id);
   if (!a) return null;
-  const isGold = accent === C.gold;
+  const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
   return (
     <div
-      className={isGold ? "ach-unlocked-gold" : "ach-unlocked-paint"}
+      className={glowClass}
       style={{
         background: `linear-gradient(135deg, ${accent}20 0%, ${C.card} 60%)`,
         border: `1px solid ${accent}88`,
@@ -205,6 +213,16 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
   const thisMonthRead = readEntries.filter(([, v]) => monthKey(v.completedAt) === nowMonth).length;
   const readStreak    = getConsecutiveMonthStreak(readEntries.map(([, v]) => v.completedAt).filter(Boolean));
 
+  // ── AoS reading stats ──────────────────────────────────────────────────────
+  const aosReadEntries   = Object.entries(aosStatuses).filter(([, v]) => v?.status === 'read');
+  const aosReadCount     = aosReadEntries.length;
+  const aosReadingCount  = Object.values(aosStatuses).filter(v => v?.status === 'reading').length;
+  const aosThisMonthRead = aosReadEntries.filter(([, v]) => monthKey(v.completedAt) === nowMonth).length;
+  const aosReadStreak    = getConsecutiveMonthStreak(aosReadEntries.map(([, v]) => v.completedAt).filter(Boolean));
+
+  const completedAosSagas  = unlockedIds.filter(id => id.startsWith('aos_series:'));
+  const staticAosUnlocked  = unlockedIds.filter(id => AOS_READING_ACHIEVEMENTS.some(a => a.id === id));
+
   // Dynamic reading achievements stored
   const completedSagas   = unlockedIds.filter(id => id.startsWith('series:'));
   const staticReadUnlocked = unlockedIds.filter(id => READING_ACHIEVEMENTS.some(a => a.id === id));
@@ -264,7 +282,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
         {/* Tabs */}
         <div style={{ flexShrink: 0, display: "flex", borderBottom: `1px solid ${C.border}`, background: C.surface }}>
-          {[{id:"reading",label:"📖 Reading"},{id:"painting",label:"🎨 Painting"}].map(t => (
+          {[{id:"reading",label:"📖 WH40K"},{id:"painting",label:"🎨 Painting"},{id:"aos",label:"⚡ Age of Sigmar"}].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               flex: 1, padding: "12px 4px", background: "transparent", border: "none",
               borderBottom: `2px solid ${tab === t.id ? C.gold : "transparent"}`,
@@ -338,6 +356,35 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
                 {PAINTING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={PAINT_ACCENT} />)}
               </div>
             </>}
+          </>}
+
+          {tab === "aos" && <>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+              <StatBox n={aosReadCount}      label="Read"        color={AOS_ACCENT}  />
+              <StatBox n={aosReadingCount}   label="Reading"     color="#4a8adc"     />
+              <StatBox n={aosThisMonthRead}  label="This Month"  color="#4aaa6a"     />
+              <StatBox n={aosReadStreak} suffix="mo" label="Streak" color={AOS_ACCENT} />
+            </div>
+
+            <SectionLabel>
+              Completed Sagas — {completedAosSagas.length}
+            </SectionLabel>
+            {completedAosSagas.length === 0 ? (
+              <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
+                Finish every book in a series to earn a saga completion.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                {completedAosSagas.map(id => <DynCard key={id} id={id} accent={AOS_ACCENT} />)}
+              </div>
+            )}
+
+            <SectionLabel>
+              Achievements — {staticAosUnlocked.length}/{AOS_READING_ACHIEVEMENTS.length} Unlocked
+            </SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {AOS_READING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={AOS_ACCENT} />)}
+            </div>
           </>}
         </div>
       </div>

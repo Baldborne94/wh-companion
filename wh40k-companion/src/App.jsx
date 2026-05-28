@@ -8,13 +8,14 @@ import PaintingTracker from "./components/PaintingTracker";
 import MusicPlayer from "./components/MusicPlayer";
 import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
-import { AoSHomePage, AoSLibrarySection, AoSCrusadeSection, AOS } from "./components/AoSApp";
+import { AoSHomePage, AoSLibrarySection, AoSCrusadeSection, AOS, AOS_BOOKS } from "./components/AoSApp";
 import CoverImage from "./components/CoverImage";
 import AchievementPopup from "./components/AchievementPopup";
 import StatsModal from "./components/StatsModal";
 import {
   achievementFromId,
   computeReadingAchievements,
+  computeAoSReadingAchievements,
   diffAchievements,
   loadUnlockedIds,
   saveUnlockedIds,
@@ -1711,16 +1712,31 @@ export default function App(){
     loadUnlockedIds(supabase, user.id).then(ids => setUnlockedIds(ids));
   }, [user?.id]);
 
-  const checkReadingAchievements = useCallback((combinedStatuses, univ = 'wh40k') => {
+  const checkReadingAchievements = useCallback((wh40kStatuses) => {
     if (!user?.id) return;
-    const nowUnlocked = computeReadingAchievements(combinedStatuses, BOOKS);
+    const nowUnlocked = computeReadingAchievements(wh40kStatuses, BOOKS);
     setUnlockedIds(prev => {
       const newIds = diffAchievements(prev, nowUnlocked);
       if (!newIds.length) return prev;
       const merged = [...prev, ...newIds];
       saveUnlockedIds(supabase, user.id, merged);
       const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
-                         .map(d => ({...d, _universe: univ}));
+                         .map(d => ({...d, _universe: 'wh40k'}));
+      setPendingAchievements(q => [...q, ...defs]);
+      return merged;
+    });
+  }, [user?.id]);
+
+  const checkAoSReadingAchievements = useCallback((aosStatuses) => {
+    if (!user?.id) return;
+    const nowUnlocked = computeAoSReadingAchievements(aosStatuses, AOS_BOOKS);
+    setUnlockedIds(prev => {
+      const newIds = diffAchievements(prev, nowUnlocked);
+      if (!newIds.length) return prev;
+      const merged = [...prev, ...newIds];
+      saveUnlockedIds(supabase, user.id, merged);
+      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
+                         .map(d => ({...d, _universe: 'aos'}));
       setPendingAchievements(q => [...q, ...defs]);
       return merged;
     });
@@ -1731,7 +1747,7 @@ export default function App(){
     const updated=setBookStatusLS(uid,bookId,newStatus);
     setStatuses(prev=>{
       const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkReadingAchievements({...next,...aosStatusesRef.current},'wh40k');
+      if(newStatus==='read') checkReadingAchievements(next);
       return next;
     });
     if(uid){
@@ -1749,7 +1765,7 @@ export default function App(){
     const updated=setBookStatusLS(uid,bookId,newStatus);
     setAosStatuses(prev=>{
       const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkReadingAchievements({...statusesRef.current,...next},'aos');
+      if(newStatus==='read') checkAoSReadingAchievements(next);
       return next;
     });
     if(uid){
@@ -1760,7 +1776,7 @@ export default function App(){
         ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
       },"user_id,book_id");
     }
-  },[user?.id, checkReadingAchievements]);
+  },[user?.id, checkAoSReadingAchievements]);
 
   // Landing page: always shown first on each fresh session.
   // sessionStorage persists across Google OAuth redirects but resets on tab close.

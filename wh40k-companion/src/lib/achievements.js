@@ -39,7 +39,29 @@ export const PAINTING_ACHIEVEMENTS = [
   { id:"paint_streak_6",    label:"Legion Painter",     desc:"Painted in 6 consecutive months",        icon:"⚔",  cat:"streak"    },
 ];
 
-export const ALL_ACHIEVEMENTS = [...READING_ACHIEVEMENTS, ...PAINTING_ACHIEVEMENTS];
+export const AOS_READING_ACHIEVEMENTS = [
+  { id:"aos_read_1",         label:"Realm Walker",          desc:"The Gates of Azyr have opened. Your journey through the Mortal Realms has begun.",                       icon:"📖", cat:"milestone" },
+  { id:"aos_read_5",         label:"Azyrite Scholar",        desc:"Five chronicles of the Mortal Realms. The light of Azyr grows brighter with every page you turn.",      icon:"📚", cat:"milestone" },
+  { id:"aos_read_10",        label:"Loreseeker",             desc:"Ten tomes of the Age of Sigmar. The Realmgates of knowledge open wide before you.",                     icon:"🏛",  cat:"milestone" },
+  { id:"aos_read_25",        label:"Keeper of Realms",       desc:"Twenty-five chronicles. You carry the history of eight realms within you. Few mortals know this much.", icon:"⚔",  cat:"milestone" },
+  { id:"aos_read_50",        label:"Sigmar's Chosen",        desc:"Fifty books. Sigmar himself would name you a worthy keeper of his sacred lore.",                         icon:"🔮", cat:"milestone" },
+  { id:"aos_read_100",       label:"God-King's Champion",    desc:"One hundred tomes of the Mortal Realms. Your devotion is absolute — worthy of legend itself.",           icon:"👑", cat:"milestone" },
+  { id:"aos_streak_2",       label:"Undying Crusader",       desc:"Two months of relentless reading. Even death cannot stop a true crusader of the Mortal Realms.",         icon:"🗡",  cat:"streak"    },
+  { id:"aos_streak_3",       label:"Eternal Stormcast",      desc:"Three months without pause. You have been reforged in the fires of devotion. You are eternal.",          icon:"🛡",  cat:"streak"    },
+  { id:"aos_streak_6",       label:"Hallowed Knight",        desc:"Six months of ceaseless reading. Your soul shines with a light even Nagash cannot extinguish.",          icon:"⚡", cat:"streak"    },
+  { id:"aos_streak_12",      label:"Champion of Azyr",       desc:"A full year of unbroken reading. Sigmar has taken notice. Your name rings out across Azyr.",             icon:"👁",  cat:"streak"    },
+  { id:"aos_monthly_bronze", label:"Bronze Sigmarite",       desc:"One book this month. The God-King's light falls on all who honour their vow.",                           icon:"🥉", cat:"monthly"   },
+  { id:"aos_monthly_silver", label:"Silver Sigmarite",       desc:"Two or three books this month. Your reading pace rivals a Stormcast on campaign.",                       icon:"🥈", cat:"monthly"   },
+  { id:"aos_monthly_gold",   label:"Gold Sigmarite",         desc:"Four or more books this month. Even the Celestant-Prime would honour your devotion.",                    icon:"🥇", cat:"monthly"   },
+  { id:"aos_series_3",       label:"Series Devotee",         desc:"Three books from the same saga. Your loyalty to a single story runs deep.",                              icon:"🎖",  cat:"series_dev"},
+  { id:"aos_series_5",       label:"Series Champion",        desc:"Five books, one saga. You do not merely read this story — you have become part of it.",                  icon:"🏆", cat:"series_dev"},
+  { id:"aos_series_10",      label:"Series Exemplar",        desc:"Ten books of a single saga. Your devotion is absolute. Even Sigmar himself stands in awe.",              icon:"👑", cat:"series_dev"},
+  { id:"aos_explorer_3",     label:"Realm Explorer",         desc:"Three different sagas read. The Mortal Realms yield their secrets to those who seek them.",              icon:"🌍", cat:"explorer"  },
+  { id:"aos_explorer_5",     label:"Realm Pathfinder",       desc:"Five sagas explored. You see the Mortal Realms through more eyes than most mortals ever will.",          icon:"🗺",  cat:"explorer"  },
+  { id:"aos_explorer_8",     label:"Lord-Arcanum",           desc:"Eight sagas. Your knowledge spans the Mortal Realms entire. Nothing is hidden from your gaze.",          icon:"🔍", cat:"explorer"  },
+];
+
+export const ALL_ACHIEVEMENTS = [...READING_ACHIEVEMENTS, ...PAINTING_ACHIEVEMENTS, ...AOS_READING_ACHIEVEMENTS];
 
 // ─── DYNAMIC ACHIEVEMENT RESOLUTION ─────────────────────────────────────────
 // Dynamic IDs are stored in unlockedIds just like static ones.
@@ -55,6 +77,11 @@ const ARMY_MEDALS = {
 export function achievementFromId(id) {
   const stat = ALL_ACHIEVEMENTS.find(a => a.id === id);
   if (stat) return stat;
+
+  if (id.startsWith('aos_series:')) {
+    const name = id.slice('aos_series:'.length);
+    return { id, label: `${name} Saga Complete`, desc: `Every book in the ${name} saga read`, icon: "📜", cat: "aos_series" };
+  }
 
   if (id.startsWith('series:')) {
     const name = id.slice('series:'.length);
@@ -204,6 +231,75 @@ export function computePaintingAchievements(completedMinis) {
     if (n >= 10) unlocked.push(`army:${faction}:10`);
     if (n >= 20) unlocked.push(`army:${faction}:20`);
   });
+
+  return unlocked;
+}
+
+// ─── AOS READING COMPUTATION ──────────────────────────────────────────────────
+
+// aosStatuses: { [bookId]: { status, completedAt } }
+// aosBooks: AOS_BOOKS array
+export function computeAoSReadingAchievements(aosStatuses, aosBooks) {
+  const readEntries = Object.entries(aosStatuses).filter(([, v]) => v?.status === 'read');
+  const readCount   = readEntries.length;
+  const readIds     = new Set(readEntries.map(([k]) => String(k)));
+  const unlocked    = [];
+
+  // Milestones
+  if (readCount >= 1)   unlocked.push("aos_read_1");
+  if (readCount >= 5)   unlocked.push("aos_read_5");
+  if (readCount >= 10)  unlocked.push("aos_read_10");
+  if (readCount >= 25)  unlocked.push("aos_read_25");
+  if (readCount >= 50)  unlocked.push("aos_read_50");
+  if (readCount >= 100) unlocked.push("aos_read_100");
+
+  // Streak
+  const completedDates = readEntries.map(([, v]) => v.completedAt).filter(Boolean);
+  const streak = getConsecutiveMonthStreak(completedDates);
+  if (streak >= 2)  unlocked.push("aos_streak_2");
+  if (streak >= 3)  unlocked.push("aos_streak_3");
+  if (streak >= 6)  unlocked.push("aos_streak_6");
+  if (streak >= 12) unlocked.push("aos_streak_12");
+
+  // Monthly medals
+  const thisMonth = currentMonthKey();
+  const thisMonthCount = readEntries.filter(([, v]) => monthKey(v.completedAt) === thisMonth).length;
+  if (thisMonthCount >= 1) unlocked.push("aos_monthly_bronze");
+  if (thisMonthCount >= 2) unlocked.push("aos_monthly_silver");
+  if (thisMonthCount >= 4) unlocked.push("aos_monthly_gold");
+
+  // Series devotion (same as faction devotion for WH40K)
+  const seriesCounts = {};
+  aosBooks.forEach(b => {
+    if (readIds.has(String(b.id)) && b.series) {
+      seriesCounts[b.series] = (seriesCounts[b.series] || 0) + 1;
+    }
+  });
+  const maxSeries = Object.values(seriesCounts).length ? Math.max(...Object.values(seriesCounts)) : 0;
+  if (maxSeries >= 3)  unlocked.push("aos_series_3");
+  if (maxSeries >= 5)  unlocked.push("aos_series_5");
+  if (maxSeries >= 10) unlocked.push("aos_series_10");
+
+  // Series completion (dynamic IDs)
+  const seriesMap = {};
+  aosBooks.forEach(b => {
+    if (!seriesMap[b.series]) seriesMap[b.series] = [];
+    seriesMap[b.series].push(b);
+  });
+  Object.entries(seriesMap).forEach(([sName, sBooks]) => {
+    if (sBooks.length < 2) return;
+    if (sBooks.every(b => readIds.has(String(b.id)))) {
+      unlocked.push(`aos_series:${sName}`);
+    }
+  });
+
+  // Explorer (distinct series)
+  const distinctSeries = new Set(
+    aosBooks.filter(b => readIds.has(String(b.id)) && b.series).map(b => b.series)
+  );
+  if (distinctSeries.size >= 3) unlocked.push("aos_explorer_3");
+  if (distinctSeries.size >= 5) unlocked.push("aos_explorer_5");
+  if (distinctSeries.size >= 8) unlocked.push("aos_explorer_8");
 
   return unlocked;
 }
