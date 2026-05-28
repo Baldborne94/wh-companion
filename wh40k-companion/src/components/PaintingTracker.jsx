@@ -2008,11 +2008,21 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
   const [paints,         setPaintsMap]    = useState({});
   const [loading,        setLoading]      = useState(true);
   const [modal,          setModal]        = useState(null);
+  const [lightboxMini,   setLightboxMini] = useState(null);
   const [filter,         setFilter]       = useState("All");
 
   // keep unlockedIds in a ref so the achievement effect never has stale closure
   const unlockedIdsRef = useRef(unlockedIds);
   useEffect(() => { unlockedIdsRef.current = unlockedIds; }, [unlockedIds]);
+
+  // ─── Cover URL helper ────────────────────────────────────────────────────
+
+  const getCoverUrl = (m) => {
+    const raw = m?.photo_url ?? "";
+    if (!raw) return "";
+    try { if (raw.startsWith("[")) return JSON.parse(raw)[0]; } catch {}
+    return raw;
+  };
 
   // ─── Load minis ──────────────────────────────────────────────────────────
 
@@ -2272,14 +2282,14 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
           <div style={{ display:"grid",
                         gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",
                         gap:12 }}>
-            {displayed.map((m) => (
+            {(tab === "gallery" ? displayed.filter(m => getCoverUrl(m)) : displayed).map((m) => (
               <MiniCard
                 key={m.id}
                 mini={m}
                 paints={paints[m.id] || []}
                 isOwner={user?.id === m.user_id}
                 onEdit={() => setModal(m)}
-                onClick={() => setModal(m)}
+                onClick={tab === "gallery" ? () => setLightboxMini(m) : () => setModal(m)}
               />
             ))}
           </div>
@@ -2322,6 +2332,49 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
           </div>
         </div>
       )}
+
+      {/* ── LIGHTBOX ──────────────────────────────────────────────── */}
+      {lightboxMini && (() => {
+        const photoUrl = getCoverUrl(lightboxMini);
+        return (
+          <div
+            onClick={() => setLightboxMini(null)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 999,
+              background: "rgba(0,0,0,0.96)",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              padding: 24,
+            }}
+          >
+            <button
+              onClick={() => setLightboxMini(null)}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                background: "transparent", border: `1px solid ${theme.border}`,
+                color: theme.muted, borderRadius: 8,
+                padding: "6px 14px", fontFamily: "'Cinzel',serif",
+                fontSize: 14, cursor: "pointer",
+              }}
+            >✕</button>
+            <img
+              src={photoUrl}
+              alt={lightboxMini.name}
+              onClick={e => e.stopPropagation()}
+              style={{
+                maxWidth: "90vw", maxHeight: "72vh",
+                objectFit: "contain", borderRadius: 10,
+                boxShadow: "0 8px 48px rgba(0,0,0,0.8)",
+              }}
+            />
+            <div style={{
+              marginTop: 20, fontFamily: "'Cinzel Decorative',serif",
+              fontSize: 16, color: theme.text, textAlign: "center",
+              letterSpacing: 1,
+            }}>{lightboxMini.name}</div>
+          </div>
+        );
+      })()}
     </div>
     </ThemeCtx.Provider>
   );
