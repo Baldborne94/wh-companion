@@ -41,13 +41,16 @@ function parseStatuses(raw) {
   return [raw];
 }
 
-function StatBox({ n, label, color }) {
+function StatBox({ n, label, color, suffix }) {
   return (
     <div style={{
       flex: "1 1 70px", background: C.card, border: `1px solid ${color}44`,
       borderRadius: 10, padding: "10px 8px", textAlign: "center",
     }}>
-      <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color, lineHeight: 1 }}>{n}</div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, lineHeight: 1 }}>
+        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color }}>{n}</span>
+        {suffix && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 11, color, opacity: 0.8 }}>{suffix}</span>}
+      </div>
       <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.muted, letterSpacing: 2, marginTop: 4, textTransform: "uppercase" }}>{label}</div>
     </div>
   );
@@ -279,7 +282,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               <StatBox n={readCount}      label="Read"         color={C.gold}   />
               <StatBox n={readingCount}   label="Reading"      color="#4a8adc"  />
               <StatBox n={thisMonthRead}  label="This Month"   color="#4aaa6a"  />
-              <StatBox n={`${readStreak}mo`} label="Streak"   color={C.gold}   />
+              <StatBox n={readStreak} suffix="mo" label="Streak" color={C.gold} />
             </div>
 
             {/* Completed sagas — dynamic, always visible */}
@@ -311,7 +314,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
                 <StatBox n={paintCount}     label="Completed"   color={PAINT_ACCENT} />
                 <StatBox n={thisMonthPaint} label="This Month"  color="#4aaa6a"      />
-                <StatBox n={`${paintStreak}mo`} label="Streak"  color={C.gold}       />
+                <StatBox n={paintStreak} suffix="mo" label="Streak" color={C.gold} />
               </div>
 
               {/* Armies built — dynamic, always visible */}
