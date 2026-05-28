@@ -6,6 +6,7 @@ import {
   getConsecutiveMonthStreak, achievementFromId,
 } from "../lib/achievements";
 import { AOS_BOOKS } from "./AoSApp";
+import { BOOKS } from "../data/books";
 
 const C = {
   bg: "#0a0905", surface: "#111009", card: "#16140f", border: "#2a2518",
@@ -118,21 +119,21 @@ function AchCard({ a, unlocked, accent }) {
 
   return (
     <div style={{
-      background: C.surface, border: `1px solid ${C.border}33`,
-      borderRadius: 12, padding: "12px 10px",
+      background: C.surface, border: `1px solid ${C.border}22`,
+      borderRadius: 12, padding: "14px 10px 12px",
       display: "flex", flexDirection: "column", alignItems: "center",
-      textAlign: "center", gap: 0, opacity: 0.36,
+      textAlign: "center", opacity: 0.32,
     }}>
       <div style={{
         width: 38, height: 38, borderRadius: "50%", background: C.dim,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 18, marginBottom: 7, color: C.muted,
+        fontSize: 16, marginBottom: 8,
       }}>🔒</div>
       <div style={{
         fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted,
-        marginBottom: 4, lineHeight: 1.3,
+        lineHeight: 1.3,
       }}>{a.label}</div>
-      <div style={{ fontSize: 9, color: C.muted, lineHeight: 1.4, fontStyle: "italic" }}>{a.desc}</div>
+      <div style={{ fontSize: 9, color: C.dim, marginTop: 4, letterSpacing: 1 }}>???</div>
     </div>
   );
 }
@@ -207,6 +208,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
   // ── Reading stats ──────────────────────────────────────────────────────────
   const allStatuses   = { ...statuses, ...aosStatuses };
   const readEntries   = Object.entries(allStatuses).filter(([, v]) => v?.status === 'read');
+  const readIds       = new Set(readEntries.map(([k]) => String(k)));
   const readCount     = readEntries.length;
   const readingCount  = Object.values(allStatuses).filter(v => v?.status === 'reading').length;
   const nowMonth      = new Date().toISOString().slice(0, 7);
@@ -303,6 +305,37 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               <StatBox n={readStreak} suffix="mo" label="Streak" color={C.gold} />
             </div>
 
+            {/* Monthly reading chart — last 6 months */}
+            {(() => {
+              const months = [];
+              for (let i = 5; i >= 0; i--) {
+                const d = new Date(); d.setMonth(d.getMonth() - i);
+                const key = d.toISOString().slice(0, 7);
+                const label = d.toLocaleDateString('it-IT', { month: 'short' });
+                const count = readEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
+                months.push({ key, label, count });
+              }
+              const peak = Math.max(...months.map(x => x.count), 1);
+              return (
+                <div style={{ marginBottom: 4 }}>
+                  <SectionLabel>Monthly Reading</SectionLabel>
+                  <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 72, marginBottom: 8 }}>
+                    {months.map(m => {
+                      const barH = Math.max((m.count / peak) * 52, m.count > 0 ? 6 : 2);
+                      const isCur = m.key === nowMonth;
+                      return (
+                        <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <div style={{ fontSize: 9, color: isCur ? C.gold : C.muted, fontFamily: "'Cinzel',serif" }}>{m.count > 0 ? m.count : ''}</div>
+                          <div style={{ width: "100%", height: barH, background: isCur ? C.gold : `${C.gold}44`, borderRadius: "3px 3px 0 0", transition: "height 0.4s" }} />
+                          <div style={{ fontSize: 7, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>{m.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Completed sagas — dynamic, always visible */}
             <SectionLabel>
               Completed Sagas — {completedSagas.length}
@@ -316,6 +349,44 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
                 {completedSagas.map(id => <DynCard key={id} id={id} accent={C.gold} />)}
               </div>
             )}
+
+            {/* In-progress series */}
+            {(() => {
+              const seriesMap = {};
+              BOOKS.forEach(b => {
+                if (!seriesMap[b.series]) seriesMap[b.series] = { total: 0, read: 0 };
+                seriesMap[b.series].total++;
+                if (readIds.has(String(b.id))) seriesMap[b.series].read++;
+              });
+              const inProgress = Object.entries(seriesMap)
+                .filter(([s, v]) => s !== 'Standalone' && s !== 'Codex' && v.total >= 2 && v.read > 0 && v.read < v.total)
+                .sort(([, a], [, b]) => (b.read / b.total) - (a.read / a.total));
+              if (!inProgress.length) return null;
+              return (
+                <>
+                  <SectionLabel>In Progress — {inProgress.length} series</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                    {inProgress.map(([sName, v]) => {
+                      const pct = v.read / v.total;
+                      return (
+                        <div key={sName} style={{
+                          background: C.card, border: `1px solid ${C.border}`,
+                          borderRadius: 10, padding: "10px 12px",
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.text }}>{sName}</div>
+                            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim }}>{v.read}/{v.total}</div>
+                          </div>
+                          <div style={{ height: 3, background: C.dim, borderRadius: 2 }}>
+                            <div style={{ height: "100%", width: `${pct * 100}%`, background: `linear-gradient(to right, ${C.gold}, ${C.gold}88)`, borderRadius: 2, transition: "width 0.4s" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
 
             <SectionLabel>
               Achievements — {staticReadUnlocked.length}/{READING_ACHIEVEMENTS.length} Unlocked

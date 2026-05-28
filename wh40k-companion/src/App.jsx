@@ -1701,16 +1701,32 @@ export default function App(){
   const aosStatusesRef = useRef({});
   useEffect(() => { statusesRef.current    = statuses;    }, [statuses]);
   useEffect(() => { aosStatusesRef.current = aosStatuses; }, [aosStatuses]);
+  const didInitialAosCheck = useRef(false);
 
   // ── Achievement state ─────────────────────────────────────────────────────
   const [unlockedIds,         setUnlockedIds]         = useState([]);
+  const [unlockedIdsLoaded,   setUnlockedIdsLoaded]   = useState(false);
   const [pendingAchievements, setPendingAchievements] = useState([]);
   const [showStats,           setShowStats]           = useState(false);
 
   useEffect(() => {
-    if (!user?.id) { setUnlockedIds([]); return; }
-    loadUnlockedIds(supabase, user.id).then(ids => setUnlockedIds(ids));
+    if (!user?.id) { setUnlockedIds([]); setUnlockedIdsLoaded(false); didInitialAosCheck.current = false; return; }
+    loadUnlockedIds(supabase, user.id).then(ids => { setUnlockedIds(ids); setUnlockedIdsLoaded(true); });
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !unlockedIdsLoaded || didInitialAosCheck.current) return;
+    if (!Object.keys(aosStatuses).length) return;
+    didInitialAosCheck.current = true;
+    const nowUnlocked = computeAoSReadingAchievements(aosStatuses, AOS_BOOKS);
+    setUnlockedIds(prev => {
+      const newIds = diffAchievements(prev, nowUnlocked);
+      if (!newIds.length) return prev;
+      const merged = [...prev, ...newIds];
+      saveUnlockedIds(supabase, user.id, merged);
+      return merged;
+    });
+  }, [user?.id, unlockedIdsLoaded, aosStatuses]);
 
   const checkReadingAchievements = useCallback((wh40kStatuses) => {
     if (!user?.id) return;
