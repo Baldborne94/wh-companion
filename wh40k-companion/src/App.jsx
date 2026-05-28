@@ -1653,9 +1653,11 @@ export default function App(){
     if(rows && !rows._error && rows.length) {
       rows.forEach(r => { dbMap[r.book_id] = r; });
     }
-    // Merge: DB wins if newer, local wins otherwise
+    // Merge: DB wins if newer, local wins otherwise — filter by universe to prevent cross-contamination
     const merged = {...localMap};
     Object.entries(dbMap).forEach(([bid, dbRow]) => {
+      if(isAoS && !String(bid).startsWith('aos')) return;
+      if(!isAoS && String(bid).startsWith('aos')) return;
       const local = merged[bid];
       if(!local || !local.updatedAt || new Date(dbRow.updated_at) > new Date(local.updatedAt)) {
         merged[bid] = { status:dbRow.status, updatedAt:dbRow.updated_at, startedAt:dbRow.started_at, completedAt:dbRow.completed_at };
@@ -1716,15 +1718,16 @@ export default function App(){
 
   useEffect(() => {
     if (!user?.id || !unlockedIdsLoaded || didInitialAosCheck.current) return;
-    if (!Object.keys(aosStatuses).length) return;
     didInitialAosCheck.current = true;
     const nowUnlocked = computeAoSReadingAchievements(aosStatuses, AOS_BOOKS);
     setUnlockedIds(prev => {
-      const newIds = diffAchievements(prev, nowUnlocked);
-      if (!newIds.length) return prev;
-      const merged = [...prev, ...newIds];
-      saveUnlockedIds(supabase, user.id, merged);
-      return merged;
+      // Rebuild: keep non-AoS IDs + only legitimately earned AoS IDs
+      const nonAos  = prev.filter(id => !id.startsWith('aos_') && !id.startsWith('aos_series:'));
+      const corrected = [...new Set([...nonAos, ...nowUnlocked])];
+      const changed = corrected.length !== prev.length || corrected.some(id => !prev.includes(id)) || prev.some(id => !corrected.includes(id));
+      if (!changed) return prev;
+      saveUnlockedIds(supabase, user.id, corrected);
+      return corrected;
     });
   }, [user?.id, unlockedIdsLoaded, aosStatuses]);
 
