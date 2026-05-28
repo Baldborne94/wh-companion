@@ -51,14 +51,20 @@ function parseStatuses(raw) {
 }
 
 function StatBox({ n, label, color, suffix }) {
+  const isZero = n === 0 && suffix;
   return (
     <div style={{
       flex: "1 1 70px", background: C.card, border: `1px solid ${color}44`,
       borderRadius: 10, padding: "10px 8px", textAlign: "center",
     }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2, lineHeight: 1 }}>
-        <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color }}>{n}</span>
-        {suffix && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 11, color, opacity: 0.8 }}>{suffix}</span>}
+        {isZero
+          ? <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color, opacity: 0.4 }}>—</span>
+          : <>
+              <span style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color }}>{n}</span>
+              {suffix && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 11, color, opacity: 0.8 }}>{suffix}</span>}
+            </>
+        }
       </div>
       <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.muted, letterSpacing: 2, marginTop: 4, textTransform: "uppercase" }}>{label}</div>
     </div>
@@ -437,6 +443,37 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               <StatBox n={aosReadStreak} suffix="mo" label="Streak" color={AOS_ACCENT} />
             </div>
 
+            {/* Monthly AoS reading chart */}
+            {(() => {
+              const months = [];
+              for (let i = 5; i >= 0; i--) {
+                const d = new Date(); d.setMonth(d.getMonth() - i);
+                const key = d.toISOString().slice(0, 7);
+                const label = d.toLocaleDateString('it-IT', { month: 'short' });
+                const count = aosReadEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
+                months.push({ key, label, count });
+              }
+              const peak = Math.max(...months.map(x => x.count), 1);
+              return (
+                <div style={{ marginBottom: 4 }}>
+                  <SectionLabel>Monthly Reading</SectionLabel>
+                  <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 72, marginBottom: 8 }}>
+                    {months.map(m => {
+                      const barH = Math.max((m.count / peak) * 52, m.count > 0 ? 6 : 2);
+                      const isCur = m.key === nowMonth;
+                      return (
+                        <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                          <div style={{ fontSize: 9, color: isCur ? AOS_ACCENT : C.muted, fontFamily: "'Cinzel',serif" }}>{m.count > 0 ? m.count : ''}</div>
+                          <div style={{ width: "100%", height: barH, background: isCur ? AOS_ACCENT : `${AOS_ACCENT}44`, borderRadius: "3px 3px 0 0", transition: "height 0.4s" }} />
+                          <div style={{ fontSize: 7, color: C.muted, textTransform: "uppercase", letterSpacing: 1 }}>{m.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             <SectionLabel>
               Completed Sagas — {completedAosSagas.length}
             </SectionLabel>
@@ -449,6 +486,45 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
                 {completedAosSagas.map(id => <DynCard key={id} id={id} accent={AOS_ACCENT} />)}
               </div>
             )}
+
+            {/* In-progress AoS series */}
+            {(() => {
+              const aosReadIds = new Set(aosReadEntries.map(([k]) => String(k)));
+              const seriesMap = {};
+              AOS_BOOKS.forEach(b => {
+                if (!seriesMap[b.series]) seriesMap[b.series] = { total: 0, read: 0 };
+                seriesMap[b.series].total++;
+                if (aosReadIds.has(String(b.id))) seriesMap[b.series].read++;
+              });
+              const inProgress = Object.entries(seriesMap)
+                .filter(([, v]) => v.total >= 2 && v.read > 0 && v.read < v.total)
+                .sort(([, a], [, b]) => (b.read / b.total) - (a.read / a.total));
+              if (!inProgress.length) return null;
+              return (
+                <>
+                  <SectionLabel>In Progress — {inProgress.length} series</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
+                    {inProgress.map(([sName, v]) => {
+                      const pct = v.read / v.total;
+                      return (
+                        <div key={sName} style={{
+                          background: C.card, border: `1px solid ${C.border}`,
+                          borderRadius: 10, padding: "10px 12px",
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.text }}>{sName}</div>
+                            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim }}>{v.read}/{v.total}</div>
+                          </div>
+                          <div style={{ height: 3, background: C.dim, borderRadius: 2 }}>
+                            <div style={{ height: "100%", width: `${pct * 100}%`, background: `linear-gradient(to right, ${AOS_ACCENT}, ${AOS_ACCENT}88)`, borderRadius: 2, transition: "width 0.4s" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
 
             <SectionLabel>
               Achievements — {staticAosUnlocked.length}/{AOS_READING_ACHIEVEMENTS.length} Unlocked

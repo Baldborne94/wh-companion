@@ -53,6 +53,20 @@ function loadAoSStatuses(uid){
   return out;
 }
 
+function getBookRating(uid, bid) {
+  return parseInt(localStorage.getItem(`wh40k_rating_${uid||'anon'}_${bid}`) || '0') || 0;
+}
+function setBookRatingLS(uid, bid, r) {
+  localStorage.setItem(`wh40k_rating_${uid||'anon'}_${bid}`, String(r));
+}
+function getBookNotes(uid, bid) {
+  return localStorage.getItem(`wh40k_notes_${uid||'anon'}_${bid}`) || '';
+}
+function setBookNotesLS(uid, bid, n) {
+  if (n) localStorage.setItem(`wh40k_notes_${uid||'anon'}_${bid}`, n);
+  else localStorage.removeItem(`wh40k_notes_${uid||'anon'}_${bid}`);
+}
+
 // ─── BOOK DETAIL ──────────────────────────────────────────────────────────────
 function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
   const fc=FC[book.faction]||C.dim;
@@ -66,6 +80,9 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
   const [pageIndex,     setPageIndex]     = useState(0);
   const [bookmarkInfo,  setBookmarkInfo]  = useState(null);
   const [bookmarksList, setBookmarksList] = useState([]); // manual bookmarks array
+  const [rating,    setRating]    = useState(() => getBookRating(user?.id, book.id));
+  const [notes,     setNotes]     = useState(() => getBookNotes(user?.id, book.id));
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(()=>{ setCurStatus(status?.status||'none'); },[status]);
 
@@ -285,7 +302,28 @@ function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }
               );
             })}
           </div>
-          {curStatus==='read'&&<div style={{marginTop:8,fontSize:11,color:STATUS_CFG.read.color,textAlign:"center",fontFamily:"'Cinzel',serif",letterSpacing:1}}>This book is in your completed collection!</div>}
+          {curStatus==='read'&&(
+            <div style={{marginTop:12,display:"flex",justifyContent:"center",gap:4}}>
+              {[1,2,3,4,5].map(i=>(
+                <span key={i} onClick={()=>{setRating(i);setBookRatingLS(user?.id,book.id,i);}}
+                  style={{fontSize:26,cursor:"pointer",color:i<=rating?C.gold:C.dim,transition:"color 0.15s",lineHeight:1}}>
+                  ★
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Notes */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",marginTop:0}}>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Personal Notes</div>
+          <textarea
+            value={notes}
+            onChange={e=>setNotes(e.target.value)}
+            onBlur={()=>{setBookNotesLS(user?.id,book.id,notes);setNotesSaved(true);setTimeout(()=>setNotesSaved(false),1500);}}
+            placeholder="Your thoughts on this book…"
+            style={{width:"100%",minHeight:80,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",color:C.text,fontSize:12,fontFamily:"'Cinzel',serif",resize:"vertical",boxSizing:"border-box",outline:"none",lineHeight:1.5}}
+          />
+          {notesSaved&&<div style={{fontSize:10,color:C.green,marginTop:4,fontFamily:"'Cinzel',serif",letterSpacing:1}}>✓ Saved</div>}
         </div>
       </div>
     </div>
@@ -592,6 +630,7 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
                     <div style={{fontSize:14,fontWeight:700,color:bst==='read'?C.muted:C.text,lineHeight:1.3,fontFamily:"'Cinzel',serif",opacity:bst==='read'?0.75:1}}>{book.title}</div>
                     <div style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>{book.author}</div>
                     <div style={{fontSize:10,color:FC[book.faction]||C.dim,marginTop:2,fontFamily:"'Cinzel',serif",letterSpacing:1}}>{book.faction}</div>
+                    {(()=>{const r=getBookRating(user?.id,book.id);return r>0?(<div style={{fontSize:11,color:C.gold,letterSpacing:2,marginTop:2}}>{'★'.repeat(r)+'☆'.repeat(5-r)}</div>):null;})()}
                   </div>
                 </div>);
               })}

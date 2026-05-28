@@ -2057,14 +2057,18 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
         );
       }
 
-      // Load paints for all minis
+      // Load paints for all minis in one query
       const map = {};
-      await Promise.all(
-        data.map(async (m) => {
-          const ps = await db.get("miniature_paints", `miniature_id=eq.${m.id}`);
-          map[m.id] = ps;
-        })
-      );
+      if (data.length) {
+        const ids = data.map(m => m.id).join(',');
+        const allPaints = await db.get("miniature_paints", `miniature_id=in.(${ids})`);
+        if (allPaints && !allPaints._error && Array.isArray(allPaints)) {
+          allPaints.forEach(p => {
+            if (!map[p.miniature_id]) map[p.miniature_id] = [];
+            map[p.miniature_id].push(p);
+          });
+        }
+      }
       setPaintsMap(map);
     } finally {
       setLoading(false);
