@@ -2008,21 +2008,24 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
   const [paints,         setPaintsMap]    = useState({});
   const [loading,        setLoading]      = useState(true);
   const [modal,          setModal]        = useState(null);
-  const [lightboxMini,   setLightboxMini] = useState(null);
-  const [filter,         setFilter]       = useState("All");
+  const [lightboxMini,   setLightboxMini]   = useState(null);
+  const [lightboxIdx,    setLightboxIdx]    = useState(0);
+  const [filter,         setFilter]         = useState("All");
 
   // keep unlockedIds in a ref so the achievement effect never has stale closure
   const unlockedIdsRef = useRef(unlockedIds);
   useEffect(() => { unlockedIdsRef.current = unlockedIds; }, [unlockedIds]);
 
-  // ─── Cover URL helper ────────────────────────────────────────────────────
+  // ─── Photo URL helpers ───────────────────────────────────────────────────
 
-  const getCoverUrl = (m) => {
+  const getPhotoUrls = (m) => {
     const raw = m?.photo_url ?? "";
-    if (!raw) return "";
-    try { if (raw.startsWith("[")) return JSON.parse(raw)[0]; } catch {}
-    return raw;
+    if (!raw) return [];
+    try { if (raw.startsWith("[")) { const arr = JSON.parse(raw); return Array.isArray(arr) ? arr.filter(Boolean) : []; } } catch {}
+    return [raw];
   };
+
+  const getCoverUrl = (m) => getPhotoUrls(m)[0] || "";
 
   // ─── Load minis ──────────────────────────────────────────────────────────
 
@@ -2282,16 +2285,29 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
           <div style={{ display:"grid",
                         gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",
                         gap:12 }}>
-            {(tab === "gallery" ? displayed.filter(m => getCoverUrl(m)) : displayed).map((m) => (
-              <MiniCard
-                key={m.id}
-                mini={m}
-                paints={paints[m.id] || []}
-                isOwner={user?.id === m.user_id}
-                onEdit={() => setModal(m)}
-                onClick={tab === "gallery" ? () => setLightboxMini(m) : () => setModal(m)}
-              />
-            ))}
+            {(tab === "gallery" ? displayed.filter(m => getCoverUrl(m)) : displayed).map((m) => {
+              const photoCount = tab === "gallery" ? getPhotoUrls(m).length : 0;
+              return (
+                <div key={m.id} style={{ position: "relative" }}>
+                  <MiniCard
+                    mini={m}
+                    paints={paints[m.id] || []}
+                    isOwner={user?.id === m.user_id}
+                    onEdit={() => setModal(m)}
+                    onClick={tab === "gallery" ? () => { setLightboxMini(m); setLightboxIdx(0); } : () => setModal(m)}
+                  />
+                  {photoCount > 1 && (
+                    <div style={{
+                      position: "absolute", bottom: 8, right: 8,
+                      background: "rgba(0,0,0,0.72)", borderRadius: 20,
+                      padding: "2px 7px", fontSize: 10,
+                      color: "#d4cbb8", fontFamily: "'Cinzel',serif",
+                      pointerEvents: "none",
+                    }}>📷 {photoCount}</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -2335,7 +2351,23 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
 
       {/* ── LIGHTBOX ──────────────────────────────────────────────── */}
       {lightboxMini && (() => {
-        const photoUrl = getCoverUrl(lightboxMini);
+        const photos = getPhotoUrls(lightboxMini);
+        const idx    = Math.min(lightboxIdx, photos.length - 1);
+        const hasPrev = idx > 0;
+        const hasNext = idx < photos.length - 1;
+        const navBtn = (show, onClick, label) => show ? (
+          <button
+            onClick={e => { e.stopPropagation(); onClick(); }}
+            style={{
+              position: "absolute", top: "50%", transform: "translateY(-50%)",
+              ...(label === "‹" ? { left: 12 } : { right: 12 }),
+              background: "rgba(0,0,0,0.55)", border: `1px solid ${theme.border}`,
+              color: theme.text, borderRadius: "50%",
+              width: 40, height: 40, fontSize: 22,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >{label}</button>
+        ) : null;
         return (
           <div
             onClick={() => setLightboxMini(null)}
@@ -2344,7 +2376,7 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
               background: "rgba(0,0,0,0.96)",
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
-              padding: 24,
+              padding: "24px 60px",
             }}
           >
             <button
@@ -2357,21 +2389,44 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
                 fontSize: 14, cursor: "pointer",
               }}
             >✕</button>
-            <img
-              src={photoUrl}
-              alt={lightboxMini.name}
-              onClick={e => e.stopPropagation()}
-              style={{
-                maxWidth: "90vw", maxHeight: "72vh",
-                objectFit: "contain", borderRadius: 10,
-                boxShadow: "0 8px 48px rgba(0,0,0,0.8)",
-              }}
-            />
-            <div style={{
-              marginTop: 20, fontFamily: "'Cinzel Decorative',serif",
-              fontSize: 16, color: theme.text, textAlign: "center",
-              letterSpacing: 1,
-            }}>{lightboxMini.name}</div>
+
+            <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%" }}>
+              {navBtn(hasPrev, () => setLightboxIdx(idx - 1), "‹")}
+              <img
+                key={idx}
+                src={photos[idx]}
+                alt={`${lightboxMini.name} ${idx + 1}`}
+                onClick={e => e.stopPropagation()}
+                style={{
+                  maxWidth: "80vw", maxHeight: "70vh",
+                  objectFit: "contain", borderRadius: 10,
+                  boxShadow: "0 8px 48px rgba(0,0,0,0.8)",
+                }}
+              />
+              {navBtn(hasNext, () => setLightboxIdx(idx + 1), "›")}
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <div style={{
+                fontFamily: "'Cinzel Decorative',serif",
+                fontSize: 15, color: theme.text, letterSpacing: 1, marginBottom: 6,
+              }}>{lightboxMini.name}</div>
+              {photos.length > 1 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                  {photos.map((_, i) => (
+                    <div
+                      key={i}
+                      onClick={e => { e.stopPropagation(); setLightboxIdx(i); }}
+                      style={{
+                        width: i === idx ? 18 : 8, height: 8, borderRadius: 4,
+                        background: i === idx ? theme.gold : theme.muted,
+                        cursor: "pointer", transition: "all 0.2s",
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         );
       })()}
