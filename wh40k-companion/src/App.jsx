@@ -4,14 +4,11 @@ import { sb } from "./lib/sb";
 import { C, FC, STATUS_CFG } from "./data/constants";
 import { BOOKS, ALL_SERIES, ALL_FACTIONS, ALL_TYPES, ALL_ERAS } from "./data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "./data/hhGuide";
-import PaintingTracker from "./components/PaintingTracker";
 import MusicPlayer from "./components/MusicPlayer";
 import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
-import { AoSHomePage, AoSLibrarySection, AoSCrusadeSection, AOS, AOS_BOOKS } from "./components/AoSApp";
+import { AOS, AOS_BOOKS } from "./data/aosBooks";
 import CoverImage from "./components/CoverImage";
-import AchievementPopup from "./components/AchievementPopup";
-import StatsModal from "./components/StatsModal";
 import {
   achievementFromId,
   computeReadingAchievements,
@@ -21,8 +18,14 @@ import {
   saveUnlockedIds,
 } from "./lib/achievements";
 
-const EpubReader = lazy(() => import("./components/EpubReader"));
-const PdfReader  = lazy(() => import("./components/PdfReader"));
+const EpubReader        = lazy(() => import("./components/EpubReader"));
+const PdfReader         = lazy(() => import("./components/PdfReader"));
+const PaintingTracker   = lazy(() => import("./components/PaintingTracker"));
+const StatsModal        = lazy(() => import("./components/StatsModal"));
+const AchievementPopup  = lazy(() => import("./components/AchievementPopup"));
+const AoSHomePage       = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSHomePage })));
+const AoSLibrarySection = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSLibrarySection })));
+const AoSCrusadeSection = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSCrusadeSection })));
 
 // ─── READING STATUS SYSTEM ────────────────────────────────────────────────────
 function getBookStatus(uid,bid){
@@ -403,6 +406,21 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
 
   const handleOpenReader=({book,url,fileType,progress,chapterIndex,pageIndex})=>setReader({book,url,fileType,progress,chapterIndex,pageIndex:pageIndex||0});
 
+  const filtered=useMemo(()=>BOOKS.filter(b=>{
+    if(series!=="All"&&b.series!==series) return false;
+    if(faction!=="All"&&b.faction!==faction) return false;
+    if(type!=="All"&&b.type!==type) return false;
+    if(era!=="All"&&b.era!==era) return false;
+    if(search){const q=search.toLowerCase();return b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||b.series.toLowerCase().includes(q);}
+    return true;
+  }),[series,faction,type,era,search]);
+
+  const sfilt=useMemo(()=>{
+    if(!search) return shelfBooks;
+    const q=search.toLowerCase();
+    return shelfBooks.filter(b=>b.title.toLowerCase().includes(q)||b.series.toLowerCase().includes(q)||b.author.toLowerCase().includes(q));
+  },[shelfBooks,search]);
+
   if(reader){
     const {book,url,fileType,progress,chapterIndex}=reader;
     return(
@@ -416,14 +434,6 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
   }
   if(detail) return <BookDetail book={detail} user={user} onBack={()=>setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
 
-  const filtered=BOOKS.filter(b=>{
-    if(series!=="All"&&b.series!==series) return false;
-    if(faction!=="All"&&b.faction!==faction) return false;
-    if(type!=="All"&&b.type!==type) return false;
-    if(era!=="All"&&b.era!==era) return false;
-    if(search){const q=search.toLowerCase();return b.title.toLowerCase().includes(q)||b.author.toLowerCase().includes(q)||b.series.toLowerCase().includes(q);}
-    return true;
-  });
   const isFiltered=series!=="All"||faction!=="All"||type!=="All"||era!=="All";
   const Chip=({label,active,onClick})=>(<button onClick={onClick} style={{background:active?`${C.gold}22`:"transparent",border:`1px solid ${active?C.gold:C.dim}`,borderRadius:20,padding:"6px 14px",color:active?C.gold:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",whiteSpace:"nowrap"}}>{label}</button>);
 
@@ -470,7 +480,7 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
               {/* view toggle + count */}
               <div style={{padding:"8px 16px",display:"flex",gap:8,alignItems:"center"}}>
                 <span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:C.muted,flex:1}}>
-                  {shelfBooks.filter(b=>!search||b.title.toLowerCase().includes(search.toLowerCase())||b.author.toLowerCase().includes(search.toLowerCase())).length} ebook
+                  {sfilt.length} ebook
                 </span>
                 <div style={{display:"flex",gap:2,background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:2}}>
                   {[{m:"card",icon:"▦"},{m:"list",icon:"☰"},{m:"shelf",icon:"📚"}].map(v=>(
@@ -483,7 +493,6 @@ function LibrarySection({ user, statuses={}, onStatusChange }) {
               </div>
               {/* books — reuses same view modes as catalogue */}
               {(()=>{
-                const sfilt=shelfBooks.filter(b=>!search||b.title.toLowerCase().includes(search.toLowerCase())||b.series.toLowerCase().includes(search.toLowerCase())||b.author.toLowerCase().includes(search.toLowerCase()));
                 if(sfilt.length===0) return <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontStyle:"italic"}}>No results.</div>;
 
                 if(viewMode==="card") return(
@@ -1107,139 +1116,6 @@ function ReadingSection({user, statuses={}, onOpenBook, setSection}){
   );
 }
 
-// ─── LORE DATA (unused — Lore section links to Fandom Wiki directly) ─────────
-const FACTIONS_LORE=[
-  {id:"space-marines",name:"Space Marines",sub:"Adeptus Astartes",icon:"⚔️",color:"#2a5fa0",era:"M30–M42",
-   short:"I guerrieri più potenti dell'Imperium, creati dalla genetica dei Primachi.",
-   long:"Gli Space Marines sono i campioni dell'Imperium of Man, soldati potenziati geneticamente attraverso l'impianto di organi speciali derivati dal codice genetico dei Primachi. Ogni Chapter conta circa mille marines, ciascuno capace di compiere imprese ben oltre le capacità umane.\n\nNati durante la Grande Crociata dell'imperatore, le originali venti Legioni Space Marine conquistarono la galassia. Dopo la Devastante Eresia di Horus e le Riforme di Guilliman, le Legioni furono divise in Chapter indipendenti per evitare che nessun comandante potesse mai radunare abbastanza potere da minacciare di nuovo l'Imperium.\n\nOgni Space Marine subisce anni di selezione e addestramento brutale, con un tasso di sopravvivenza bassissimo. I sopravvissuti vengono ulteriormente trasformati con fino a diciannove impianti genetici, tra cui la pre-stomaco che permette di digerire quasi qualsiasi sostanza, l'occhio nictitante per vedere al buio, e il famoso Baculum Ossmodula che rinforza le ossa.",
-   keyFacts:["~1.000 Chapter attivi, ognuno con ~1.000 marines","Creati dalla genetica di 20 Primachi originali","Il Codex Astartes di Guilliman regolamenta struttura e tattiche","I Primaris Marines (M42) sono una versione potenziata"]},
-  {id:"chaos",name:"Chaos Space Marines",sub:"Traitor Legions",icon:"⛧",color:"#8b1a1a",era:"M31–M42",
-   short:"Le nove Legioni traditrici corrotte dalle potenze del Caos, nemici eterni dell'Imperium.",
-   long:"Le Legioni Traditrici sono le nove Legioni Space Marine che seguirono Horus durante l'Eresia, rinnegando l'Imperatore e abbracciando i Poteri del Caos. Dopo la sconfitta nella Battaglia di Terra, fuggirono nell'Eye of Terror, una cicatrice nel tessuto dello spazio dove il Warp si riversa nel mondo reale.\n\nNell'Eye of Terror, il tempo scorre diversamente: guerre che durano decenni per il resto della galassia possono durare secoli o settimane al loro interno. I Chaos Space Marines sono quindi spesso veterani di decine di millenni di guerra, i loro corpi e menti trasformati dalle benedizioni dei Dèi del Caos.\n\nOgni Legione serve (o almeno onora) una divinità del Caos differente: i World Bearers diffondono il culto del Caos Indiviso, i World Eaters servono Khorne il Dio del Sangue, i Thousand Sons di Magnus servono Tzeentch, la Death Guard di Mortarion serve Nurgle, e gli Emperor's Children di Fulgrim servono Slaanesh.",
-   keyFacts:["9 Legioni Traditrici: Word Bearers, World Eaters, Thousand Sons, Death Guard, Emperor's Children, Night Lords, Iron Warriors, Alpha Legion, Sons of Horus","Abaddon guida le Crociate Nere dall'Eye of Terror","La Cicatrix Maledictum ha spaccato la galassia in M42","Corruzione fisica e spirituale dai Dèi del Caos"]},
-  {id:"necrons",name:"Necrons",sub:"The Undying Legions",icon:"💀",color:"#1a7a50",era:"Pre-M1–M42",
-   short:"Antichi scheletri di metallo vivente, svegli dopo 60 milioni di anni di sonno.",
-   long:"I Necron sono tra le razze più antiche della galassia. Furono i Necrontyr, una razza biologica tormentata da malattie e morte precoce a causa delle radiazioni del loro sole. Per sfuggire alla mortalità, fecero un patto con i C'tan — antichi esseri cosmici che si nutrivano di energia stellare — e trasferirono le loro coscienze in corpi di Necrodermis, un metallo vivente praticamente indistruttibile.\n\nIl trasferimento li privò però di gran parte della loro umanità e sentimenti. I C'tan li usarono come esercito nella Guerra in Paradiso contro gli Old Ones. Infine, i Necron si ribellarono ai loro padroni, riducendo i C'tan in frammenti chiamati Shard. Esausti, i Necron si misero in letargo nei Tomb Worlds sparsi in tutta la galassia.\n\nOra si stanno svegliando, trovando i loro mondi occupati da razze giovani. Ogni Dynastia è guidata da un Overlord o un Phaeron, e il Silent King Szarekh — loro supremo sovrano — è tornato dalla sua esilio per riunificarli davanti alla minaccia dei Tyranid.",
-   keyFacts:["Corpi di Necrodermis: si auto-riparano e possono teletrasportare","I C'tan sono ora imprigionati come Shard e usati come armi","Gauss weapons: disintegrano la materia atomicamente","Il Silent King Szarekh è tornato per guidare la riunificazione"]},
-  {id:"tyranids",name:"Tyranids",sub:"The Great Devourer",icon:"🦑",color:"#7a1a9a",era:"M41–M42",
-   short:"Una mente alveare extragalattica che consuma intere biossfere per nutrirsi.",
-   long:"I Tyranid provengono dall'esterno della galassia, attirati forse dai segnali psionici dell'Imperium. Non sono un'organizzazione politica o militare nel senso tradizionale: sono un super-organismo governato da una singola Mente Alveare (Hive Mind), un'intelligenza collettiva gestalt di immensa potenza psionica.\n\nOgni Hive Fleet è composto da miliardi di organismi bioingegnerizzati, ognuno progettato per uno scopo specifico in battaglia o nell'assimilazione biologica. Dopo ogni conquista, i Tyranid consumano ogni forma di vita e materia organica di un pianeta, assimilando il DNA utile per creare nuove specie ancora più adatte.\n\nLa Hive Mind proietta un campo psiconico chiamato 'Shadow in the Warp' che distorce la comunicazione psichica e rende quasi impossibile l'uso del Warp nelle vicinanze di una flotta. Le tre grandi flotte giunte finora — Behemoth, Kraken e Leviathan — hanno devastato intere regioni della galassia.",
-   keyFacts:["Hive Fleet Behemoth (745.M41), Kraken (992.M41), Leviathan (~999.M41)","La Shadow in the Warp blocca comunicazioni Warp e psionici","Bio-adattamento continuo: evolvono in risposta alle difese nemiche","I Genestealers sono avanscoperta infiltrata secoli prima della flotta"]},
-  {id:"aeldari",name:"Aeldari (Eldar)",sub:"The Dying Race",icon:"🌙",color:"#1a6a7a",era:"Pre-M1–M42",
-   short:"Una razza antica e declinante, creatori involontari di Slaanesh.",
-   long:"L'Aeldari era una delle razze più avanzate della galassia, governando un impero stellare vasto prima che l'umanità sviluppasse l'agricoltura. La loro psionicità naturale era straordinaria, e la loro civiltà raggiunse vertici di arte, scienza e piacere irraggiungibili per qualsiasi altra specie.\n\nMa la loro decadenza li rovinò. Per millenni si abbandonarono a piaceri sempre più estremi, e i loro eccessi collettivi nel Warp crearono lentamente una nuova entità: Slaanesh, il Dio del Piacere e del Dolore. Quando Slaanesh si 'svegliò' nel 29° millennio, divorò l'anima della stragrande maggioranza degli Aeldari in un istante — l'evento noto come The Fall.\n\nI sopravvissuti si divisero in gruppi: i Craftworld Aeldari vivono su enormi navi-mondo biosphere, preservando la loro cultura; i Drukhari (Eldar Oscuri) si nascondono nella Città-Ombra di Commorragh nel Webway; gli Harlequin servono Cegorach il Dio Buffone; e gli Exoditi vivono su mondi primitivi. Tutti condividono la maledizione: quando muoiono, la loro anima rischia di essere consumata da Slaanesh.",
-   keyFacts:["The Fall (M29): Slaanesh divorò quasi tutta la razza","Craftworld Iyanden, Ulthwé, Biel-Tan, Saim-Hann, Alaitoc","Il Webway: rete di tunnel nell'iperspazio che bypassano il Warp","Le Pietre Spirito catturano le anime dopo la morte per proteggerle"]},
-  {id:"orks",name:"Orks",sub:"The Green Tide",icon:"💪",color:"#4a6a1a",era:"Pre-M1–M42",
-   short:"Funghi bellicosi creati dagli Old Ones per fare la guerra, prosperano nel conflitto.",
-   long:"Gli Orks sono spore fungine ambulanti create dagli Old Ones come armi biologiche durante la Guerra in Paradiso contro i C'tan. Ma il progetto sfuggì di mano: gli Orks si riproducono tramite spore rilasciate quando muoiono, contaminando pianeti interi per decenni dopo una battaglia.\n\nLa loro biologia è programmata per la guerra. I loro corpi producono adrenalina in battaglia invece che dolore, li rende quasi insensibili alle ferite, e si auto-curano a velocità straordinaria. La loro tecnologia funziona in parte grazie a una bassa-frequenza psionica che emanano collettivamente: un'ascia di ferro 'crede' di essere un fucile, e con abbastanza Orks che ci credono, diventa uno.\n\nGli Orks non hanno un governo o strategia globale. Il più forte diventa il Boss, il Boss più forte diventa il Warboss, e il Warboss più potente di tutti diventa un Overlord o addirittura un Ghazghkull. Quando abbastanza Ork si radunano, scatta il WAAAGH! — una migrazione bellica che può spazzare via interi settori.",
-   keyFacts:["Si riproducono tramite spore: un campo di battaglia rimane Orkinfestato per decenni","La loro 'tecnologia' funziona grazie al campo psiconico collettivo","WAAAGH!: migrazione bellica di scala epica","Ghazghkull Thraka è il più grande Warboss dell'era attuale"]},
-  {id:"tau",name:"T'au Empire",sub:"For the Greater Good",icon:"🔵",color:"#1a4a6a",era:"M35–M42",
-   short:"Una giovane razza xeno espansionista guidata dall'ideologia del Bene Maggiore.",
-   long:"Il T'au Empire è la razza aliena più giovane a livello di potere galattico significativo. Hanno sviluppato la tecnologia spaziale solo qualche millennio fa, ma la loro ascesa è stata stupefacentemente rapida grazie alla loro filosofia politica: il Por'Vre, o 'Bene Maggiore' — un'ideologia che sottolinea il sacrificio personale per il bene collettivo.\n\nLa società T'au è divisa in Caste: i Tau (guerrieri), Etherali (casta governante spirituale), Por (diplomatici), Fio (ingegneri) e Kor (piloti). L'unità di tutte le caste è mantenuta dagli Etherali, la cui influenza psionica è sottile ma onnipresente.\n\nI T'au sono unici nella galassia per la loro genuina politica di inclusione: reclutano razze aliene nelle loro file come Forze Auxiliari, tra cui i feroci Kroot e i volanti Vespid. Tecnologicamente eccellono nelle armi a energia, nei mech da combattimento (Crisis Suits, Riptides) e nelle battaglie a distanza, evitando il corpo a corpo dove sono vulnerabili.",
-   keyFacts:["5 Sfere di Espansione, ora nella 6ª","Caste: Tau (guerrieri), Por (diplomatici), Fio (ingegneri), Kor (piloti), Etherali","Tecnologia avanzata: armi a plasma, battlesuit, droni","Alleanza con Kroot, Vespid e altre razze xeno"]},
-  {id:"astra-militarum",name:"Astra Militarum",sub:"Imperial Guard",icon:"🪖",color:"#4a6a3a",era:"M30–M42",
-   short:"Miliardi di soldati umani normali, il principale esercito dell'Imperium.",
-   long:"L'Astra Militarum è il più grande esercito mai organizzato nella storia della galassia. Mentre i Space Marines sono i campioni d'élite, la maggior parte delle guerre dell'Imperium è vinta (o persa) dalla Guardia Imperiale: uomini e donne comuni, reclutati da miliardi di mondi, armati con armi basilari e mandati a combattere orrori cosmici.\n\nOgni pianeta dell'Imperium deve contribuire con Reggimenti alla forza imperiale. Questi reggimenti variano enormemente nel carattere, nell'equipaggiamento e nella specializzazione in base al mondo di origine: i Cadian sono famosi disciplinati fucilieri da un mondo sotto costante attacco del Chaos; i Catachan sono assassini della jungla; i Valhallan combattono come gli antichi eserciti sovietici nella neve.\n\nLa dottrina dell'Astra Militarum si basa sulla supremazia numerica e sul fuoco di soppressione. I Leman Russ tank, i Basilisk d'artiglieria e le Chimera da trasporto formano la spina dorsale di ogni grande offensiva. Il loro morale è sostenuto dai Commissar Imperiali, ufficiali politici con autorità di eseguire i codardi sul campo.",
-   keyFacts:["Recluta da ogni pianeta dell'Imperium","Reggimenti famosi: Cadian, Catachan, Valhallans, Death Korps of Krieg","Supporto di Leman Russ, Basilisk, Baneblade","I Commissar eseguono i codardi per mantenere il morale"]},
-  {id:"adeptus-mechanicus",name:"Adeptus Mechanicus",sub:"Servants of the Omnissiah",icon:"⚙️",color:"#8a2a18",era:"Pre-M30–M42",
-   short:"Sacerdoti-ingegneri di Marte che venerano la tecnologia come religione.",
-   long:"L'Adeptus Mechanicus, o Mechanicum, è l'istituzione responsabile della produzione e manutenzione di tutta la tecnologia dell'Imperium. La loro sede è su Marte, pianeta che controllano completamente come enclave semi-indipendente. Venerano una divinità chiamata l'Omnissiah — che credono essere un aspetto dell'Imperatore stesso, ma manifestato come intelletto puro e macchina perfetta.\n\nI Magos del Mechanicus si modificano il corpo progressivamente, sostituendo carne con metallo nel percorso verso la perfezione meccanica. I più anziani sono quasi completamente macchine, con appena tracce di tessuto umano. Il loro culto del 'Rito Meccanicus' tratta la riparazione e l'operazione di macchinari come atti sacri, e ogni macchina complessa ha uno 'Spirito della Macchina' che deve essere propiziato.\n\nControllano le conoscenze tecnologiche dell'Imperium gelosamente: capire come funziona qualcosa è 'Conoscenza dell'Omnissiah', non tecnica pratica. Questo porta spesso a situazioni dove i tecnici sanno come fare funzionare una macchina ma non perché funziona — tecnologia cargo cult su scala imperiale.",
-   keyFacts:["Skitarii: truppe cibernetiche d'élite del Mechanicus","Titan Legions: i giganteschi mech da guerra (Warhound, Reaver, Warlord)","Controllo di tutti i Forge Worlds e la produzione di armi","L'Omnissiah: divinità tecnologica venerata come aspetto dell'Imperatore"]},
-];
-
-const TIMELINE_LORE=[
-  {era:"Age of Terra",name:"Età di Terra",icon:"🌍",color:"#7a6030",
-   summary:"L'alba dell'umanità. Prima dell'era spaziale, Terra è la culla della razza umana. L'Imperatore esiste già in questa epoca — immortale, psionicamente onnipotente — guidando l'umanità nell'ombra come consigliere, guerriero e mago. È questo il periodo in cui forgia le sue prime alleanze e comprende la sua missione cosmica.\n\nL'umanità muove i primi passi nello spazio, colonizzando il sistema solare. La tecnologia avanza lentamente ma con certezza. È un'epoca di costruzione, di prima espansione, di proto-civiltà umane che si scontrano e si fondono."},
-  {era:"Dark Age of Technology",name:"Era Oscura della Tecnologia",icon:"⚙️",color:"#4a8adc",
-   summary:"Il culmine della civiltà umana. Le navi a Warp permettono colonizzazione galattica rapida; la tecnologia STC (Standard Template Construct) distribuisce avanzate blueprint a ogni colonia; vengono creati i primi Pariah Nexus, le prime intelligenze artificiali senzienti, i Men of Iron.\n\nQuesto è il picco — e la caduta. I Men of Iron si ribellano ai loro creatori in una guerra devastante. La galassia è segnata da conflitti e instabilità. L'era termina con l'Età delle Lotte, quando le tempeste warp isolano le colonie umane per migliaia di anni, facendo dimenticare tecnologie chiave che non sono mai state recuperate."},
-  {era:"Age of Strife",name:"Età delle Lotte",icon:"⚡",color:"#8a3a3a",
-   summary:"Il buio che precede l'alba. Per 5.000 anni, tempeste warp rendono impossibile la navigazione interstellare. Le colonie umane si isolano, regrediscono, si massacrano a vicenda. Terra stessa precipita in chaos — mutanti, psionici incontrollati, tirannidi guerre tra città-stato.\n\nL'Imperatore emerge finalmente dall'ombra su Terra, unificando il pianeta nelle Guerre di Unificazione. È brutale e necessario: solo un'umanità unificata può sopravvivere alla galassia. Parallelamente, l'Imperatore e il suo Primarca-precursore Malcador il Sigilita lavorano segretamente al progetto più ambizioso mai concepito: il Progetto Primarca."},
-  {era:"Great Crusade",name:"Grande Crociata",icon:"🚀",color:"#c9a84c",
-   summary:"L'Imperium nasce. L'Imperatore lascia Terra alla guida delle Legioni Space Marine — diciassette Primachi ritrovati si riuniscono alle proprie Legioni — per reconquistare la galassia e riunire l'umanità. In due secoli, migliaia di mondi vengono 'liberati' o conquistati.\n\nÈ un'era di glorie e atrocità. Horus Lupercal è dichiarato Warmaster, luogotenente supremo dell'Imperatore. L'Imperium si espande a ritmi vertiginosi. Ma l'arroganza, le gelosie e le ambizioni personali iniziano a incrinare la facciata di unità. E poi arriva Davin..."},
-  {era:"Horus Heresy",name:"Eresia di Horus",icon:"💥",color:"#b03030",
-   summary:"La più grande tragedia della storia umana. Horus, corrotto dal Caos su Davin, si rivolta contro l'Imperatore. Nove Legioni su venti lo seguono — alcune per fede, alcune per risentimento, alcune per opportunismo. Metà dell'Imperium affronta l'altra in una guerra di sette anni che culmina all'Assedio di Terra.\n\nL'Imperatore sale a bordo della nave di Horus in persona. Lo scontro finale è catastrofico: Sanguinius muore per mano di Horus; l'Imperatore affronta Horus e, rifiutandosi di usare tutto il suo potere per non uccidere l'anima del figlio che ancora crede di poter salvare, viene quasi distrutto. Solo quando vede Horus assassinare un soldato comune per puro piacere, l'Imperatore scatena tutta la sua forza — eliminando Horus dalla realtà stessa. Ma è troppo tardi: il suo corpo è irrimediabilmente ferito, e viene posto sul Trono d'Oro."},
-  {era:"Age of Imperium",name:"Età dell'Imperium",icon:"⚜️",color:"#7a5a20",
-   summary:"Diecimila anni di declino lento e guerra costante. Con l'Imperatore sul Trono d'Oro in uno stato di morte-non-morte, l'Imperium è governato dall'Alto Consiglio di Terra e dal Consiglio Adeptus. Ma senza la guida visionaria dell'Imperatore, l'Imperium si burocratizza, si fossilizza, diventa paranoico e repressivo.\n\nEpoca dopo epoca, l'Imperium sopravvive a malapena: Grandi Crociate Nere di Abaddon, guerre contro i Tyranid, Necron che si risvegliano, T'au che si espandono. Ogni guerra lascia cicatrici profonde. La popolazione vive in miseria e paura, ma l'Imperium — incredibilmente — tiene."},
-  {era:"Dark Imperium",name:"Imperium Oscuro",icon:"🌌",color:"#3a1a6a",
-   summary:"L'era attuale. La Cicatrix Maledictum — una cicatrice warp che attraversa tutta la galassia — si apre durante la 13ª Crociata Nera di Abaddon. La galassia è letteralmente spezzata in due: lato Illuminato (Terra) e lato Oscuro. Roboute Guilliman, Primarca degli Ultramarines, viene risvegliato dopo 10.000 anni.\n\nGuilliman diventa Lord Commander dell'Imperium e lancia l'Indomitus Crusade per riconquistare i mondi perduti, distribuendo i nuovi Primaris Space Marines creati dal genetico Belisarius Cawl. L'Imperium è più debole che mai, ma ha anche per la prima volta da millenni una guida competente. La guerra per la sopravvivenza dell'umanità continua."},
-];
-
-const PRIMARCHS_LORE=[
-  {num:"I",name:"Lion El'Jonson",legion:"Dark Angels",icon:"🦁",color:"#1a3a1a",status:"Dormiente — Rock",loyal:true,
-   short:"Il Leone, primo Primarca. Leader spietato e stratega inarrivabile, leader dei Dark Angels. Segreto e introverso persino tra i fratelli.",
-   fate:"Creduto morto dopo l'Eresia, in realtà dorme nel cuore del Castello dei Dark Angels (The Rock). Si è risvegliato in M42."},
-  {num:"II",name:"[Cancellato]",legion:"[Cancellata]",icon:"❌",color:"#3a3428",status:"Cancellato dai Registri",loyal:null,
-   short:"Il secondo Primarca e la sua Legione sono stati completamente cancellati dai registri imperiali. La ragione è sconosciuta.",
-   fate:"Sconosciuto. Probabilmente eliminato prima dell'Eresia per ragioni che l'Imperium non ha mai rivelato."},
-  {num:"III",name:"Fulgrim",legion:"Emperor's Children",icon:"🦚",color:"#8a2a6a",status:"Demone Primarca di Slaanesh",loyal:false,
-   short:"Il Fenice Perfetto. Ossessionato dalla perfezione in ogni arte, fu il primo Primarca a cadere al Caos, corrotto da Slaanesh.",
-   fate:"Trasformato in Demone Primarca di Slaanesh dopo l'Eresia. Vaga nel Warp e nel regno materiale."},
-  {num:"IV",name:"Perturabo",legion:"Iron Warriors",icon:"🔨",color:"#5a5a5a",status:"Demone Primarca di Tzeentch",loyal:false,
-   short:"Il Signore dell'Acciaio. Maestro di assedi e guerre di trincea, sempre in ombra di gloria altrui. La sua amarezza lo portò al Caos.",
-   fate:"Demone Primarca di Tzeentch. Risiede nella fortezza di Medrengard nell'Eye of Terror."},
-  {num:"V",name:"Jaghatai Khan",legion:"White Scars",icon:"🏇",color:"#c8c8c8",status:"Nel Webway",loyal:true,
-   short:"Il Grande Khan. Guerriero nomade fulmineo, maestro della guerra di movimento. Misterioso e incompreso dai fratelli.",
-   fate:"Inseguì i Drukhari nel Webway durante M31. Non è mai tornato — ma non è confermato morto."},
-  {num:"VI",name:"Leman Russ",legion:"Space Wolves",icon:"🐺",color:"#3a5a7a",status:"Nel Warp — 'La lunga caccia'",loyal:true,
-   short:"Il Re dei Lupi. Feroce e selvaggio come i lupi di Fenris, incaricato dall'Imperatore di giustiziare i Primachi caduti.",
-   fate:"Partì da solo nel Warp in M32 in quella che chiama 'La Caccia'. Predetto di tornare alla fine dei tempi."},
-  {num:"VII",name:"Rogal Dorn",legion:"Imperial Fists",icon:"🏰",color:"#d4a020",status:"Caduto in battaglia (M32)",loyal:true,
-   short:"Il Difensore di Terra. Mastro costruttore e difensore, guidò la difesa di Terra durante l'Assedio.",
-   fate:"Morì combattendo sul Chaos Desecrator 'Sword of Sacrilege' in M32. Solo la sua mano fu recuperata."},
-  {num:"VIII",name:"Konrad Curze",legion:"Night Lords",icon:"🌑",color:"#1a1a3a",status:"Assassinato M31",loyal:false,
-   short:"Il Principe della Notte. Psionico tormentato da visioni di morte e violenza, governava attraverso il terrore assoluto.",
-   fate:"Sapendo del proprio assassinio, si lasciò uccidere da un assassino dell'Officio Assassinorum. La sua morte era la sua ultima profezia."},
-  {num:"IX",name:"Sanguinius",legion:"Blood Angels",icon:"🩸",color:"#8a1a1a",status:"Morto — Siege of Terra",loyal:true,
-   short:"L'Angelo. Il più amato tra i Primachi, bello come un dio, con ali angeliche. Combatté e morì per mano di Horus all'Assedio di Terra.",
-   fate:"Ucciso da Horus sulla Vengeful Spirit. La sua morte prima dello scontro Imperatore-Horus è considerata il sacrificio che permise all'Imperatore di vincere."},
-  {num:"X",name:"Ferrus Manus",legion:"Iron Hands",icon:"🤖",color:"#3a3a4a",status:"Decapitato — Isstvan V",loyal:true,
-   short:"La Gorgone. Mani di metallo fuso, ossessionato dal miglioramento cibernetico. Tra i più duri e pragmatici dei Primachi.",
-   fate:"Decapitato da Fulgrim alla Strage di Isstvan V. La sua testa fu portata come trofeo a Horus."},
-  {num:"XI",name:"[Cancellato]",legion:"[Cancellata]",icon:"❌",color:"#3a3428",status:"Cancellato dai Registri",loyal:null,
-   short:"Come il II, il undicesimo Primarca e la sua Legione sono stati cancellati completamente dalla storia imperiale.",
-   fate:"Sconosciuto."},
-  {num:"XII",name:"Angron",legion:"World Eaters",icon:"🪓",color:"#8a1a00",status:"Demone Primarca di Khorne",loyal:false,
-   short:"Il Re Rosso. Schiavo liberato e gladiatore, portava i Chiodi di Dolor — impianti che lo portavano in furia costante e lo uccidevano lentamente.",
-   fate:"Demone Primarca di Khorne. Richiamato nel mondo materiale durante l'Eresia e in seguito. Furia pura incarnata."},
-  {num:"XIII",name:"Roboute Guilliman",legion:"Ultramarines",icon:"📜",color:"#2a4a8a",status:"Risvegliato — Lord Commander",loyal:true,
-   short:"Il Re Architettonico. Statista, stratega e legislatore. Autore del Codex Astartes che divise le Legioni in Chapter.",
-   fate:"Ferito da Fulgrim e posto in stasi per millenni. Risvegliato in M42, ora Lord Commander dell'Imperium, guida l'Indomitus Crusade."},
-  {num:"XIV",name:"Mortarion",legion:"Death Guard",icon:"☠️",color:"#4a6a2a",status:"Demone Primarca di Nurgle",loyal:false,
-   short:"Il Principe della Morte. Cresciuto su un mondo post-apocalittico, ossessionato dalla morte e dalla sopravvivenza. Caduto a Nurgle dopo l'Eresia.",
-   fate:"Demone Primarca di Nurgle. Comanda la Death Guard e il Pianeta dei Plaghe. Comparso in M42 durante l'invasione di Ultramar."},
-  {num:"XV",name:"Magnus il Rosso",legion:"Thousand Sons",icon:"📚",color:"#b05020",status:"Demone Primarca di Tzeentch",loyal:false,
-   short:"Il Signore Cremisi. Il più potente psionico tra i Primachi, ossessionato dalla conoscenza arcana. Caduto a Tzeentch.",
-   fate:"Demone Primarca di Tzeentch. Risiede nel Pianeta degli Stregoni, Sortiarius, nell'Eye of Terror."},
-  {num:"XVI",name:"Horus Lupercal",legion:"Luna Wolves / Sons of Horus",icon:"👑",color:"#7a6020",status:"Distrutto dall'Imperatore",loyal:false,
-   short:"Il Warmaster. Il figlio prediletto dell'Imperatore, il più amato e capace tra tutti i Primachi. La sua corruzione avviò l'Eresia.",
-   fate:"Ucciso dall'Imperatore all'Assedio di Terra. La sua anima fu completamente annientata — non sopravvisse nemmeno come entità warp."},
-  {num:"XVII",name:"Lorgar Aurelian",legion:"Word Bearers",icon:"📖",color:"#6a3a1a",status:"Demone Primarca di Chaos Indiviso",loyal:false,
-   short:"Il Portatore della Parola. Il primo Primarca a cadere, il predicatore del Chaos che convinse Horus e altri alla ribellione.",
-   fate:"Demone Primarca in meditazione su Sicarus nell'Eye of Terror. Ha smesso di combattere e medita sull'universo."},
-  {num:"XVIII",name:"Vulkan",legion:"Salamanders",icon:"🔥",color:"#1a3a1a",status:"Immortale — Perambulante",loyal:true,
-   short:"Il Fabbro di Nocturne. Il più umano tra i Primachi, si preoccupava della gente comune. Immortale: non può morire permanentemente.",
-   fate:"Scomparve dopo millenni di resurrezioni. Si dice si reincarna e vaga la galassia come guerriero anonimo."},
-  {num:"XIX",name:"Corvus Corax",legion:"Raven Guard",icon:"🐦",color:"#2a2a2a",status:"Scomparso nel Warp",loyal:true,
-   short:"L'Ombra Corvina. Maestro della guerra non convenzionale, stealth e liberazione degli oppressi. Tormentato dai propri esperimenti genetici.",
-   fate:"Scomparve nel Warp in M31 dopo aver trasformato i suoi Marines in mostri nel tentativo di ricostruire la Legione. 'Nevermore'."},
-  {num:"XX",name:"Alpharius Omegon",legion:"Alpha Legion",icon:"🐍",color:"#1a4a3a",status:"??",loyal:null,
-   short:"Il Serpente. I gemelli Primarca — o forse una singola entità? I più misteriosi, maestri di inganno e infiltrazione.",
-   fate:"Alpharius fu ucciso da Roboute Guilliman a Eskrador. Ma era davvero lui? Omegon forse ancora vive. Forse tutto è ancora secondo il piano."},
-];
-
-// ─── LORE SECTION (wiki style) ───────────────────────────────────────────────
-const FACTION_INFOBOXES={
-  "space-marines":[{label:"Alleanza",value:"Imperium of Man"},{label:"Base",value:"Variable — ogni Chapter ha il proprio homeworld"},{label:"Fondazione",value:"~M30 — Grande Crociata"},{label:"Forze",value:"~1.000 Chapters attivi"},{label:"Dottrina",value:"Codex Astartes (Roboute Guilliman)"},{label:"Comandante",value:"Lord Commander Roboute Guilliman"}],
-  "chaos":[{label:"Alleanza",value:"Chaos Undivided / Ruinous Powers"},{label:"Base",value:"Eye of Terror, Cicatrix Maledictum"},{label:"Fondazione",value:"M31 — Eresia di Horus"},{label:"Forze",value:"9 Traitor Legions + innumerevoli warband"},{label:"Dei",value:"Khorne, Tzeentch, Nurgle, Slaanesh"},{label:"Comandante",value:"Ezekyle Abaddon (Warmaster del Caos)"}],
-  "necrons":[{label:"Alleanza",value:"Indipendente — Necron Dynasties"},{label:"Base",value:"Tomb Worlds sparsi in tutta la galassia"},{label:"Fondazione",value:"~60 milioni di anni fa (biotransferimento)"},{label:"Forze",value:"Innumerevoli Dynasties + C'tan Shards"},{label:"Tecnologia",value:"Necrodermis (metallo vivente), gauss weapons"},{label:"Comandante",value:"Silent King Szarekh"}],
-  "tyranids":[{label:"Alleanza",value:"Hive Mind (indipendente)"},{label:"Base",value:"Extragalattica — Hive Fleets mobili"},{label:"Fondazione",value:"Primo contatto ~745.M41 (Hive Fleet Behemoth)"},{label:"Forze",value:"Hive Fleets: Behemoth, Kraken, Leviathan…"},{label:"Meccanismo",value:"Shadow in the Warp, bio-adattamento continuo"},{label:"Controllo",value:"Hive Mind — coscienza gestalt"}],
-  "aeldari":[{label:"Alleanza",value:"Indipendente (occasionalmente con l'Imperium)"},{label:"Base",value:"Craftworlds (Ulthwé, Biel-Tan, Saim-Hann…)"},{label:"Fondazione",value:"Pre-M30 — impero antico"},{label:"Caduta",value:"~M29/M30 — La Caduta, nascita di Slaanesh"},{label:"Tecnologia",value:"Wraithbone, Webway, cristalli d'anima"},{label:"Fazioni",value:"Craftworld, Drukhari, Harlequins, Ynnari"}],
-  "orks":[{label:"Alleanza",value:"WAAAGH! (indipendente)"},{label:"Base",value:"Ork Worlds sparsi in tutta la galassia"},{label:"Origine",value:"Creati dagli Old Ones ~60 milioni di anni fa"},{label:"Riproduzione",value:"Spore fungine — impossibili da eradicare"},{label:"Clan",value:"Goffs, Blood Axes, Evil Sunz, Bad Moons…"},{label:"Warlord",value:"Ghazghkull Mag Uruk Thraka"}],
-  "tau":[{label:"Alleanza",value:"T'au Empire — Greater Good (Tau'va)"},{label:"Base",value:"Sept world T'au (Fringe orientale)"},{label:"Fondazione",value:"~6.000 anni fa"},{label:"Caste",value:"Fire, Earth, Water, Air, Ethereal"},{label:"Tecnologia",value:"XV Battlesuits, railguns, pulse weapons"},{label:"Alleati",value:"Kroot, Vespid, Gue'vesa (umani defectors)"}],
-  "astra-militarum":[{label:"Alleanza",value:"Imperium of Man"},{label:"Base",value:"Segmentum Commands — tutti i mondi imperiali"},{label:"Fondazione",value:"~M30 (Imperial Army della Grande Crociata)"},{label:"Forze",value:"Centinaia di miliardi di soldati"},{label:"Reggimenti",value:"Cadian, Catachan, Valhallan, Tallarn…"},{label:"Comandante",value:"Lord Commander Militant (Terra)"}],
-  "adeptus-mechanicus":[{label:"Alleanza",value:"Imperium (partner semi-autonomo)"},{label:"Base",value:"Marte + centinaia di Forge Worlds"},{label:"Fondazione",value:"Pre-M30 (Mechanicum di Marte)"},{label:"Dio",value:"L'Omnissiah (identificato con l'Imperatore)"},{label:"Forze",value:"Skitarii, Titan Legions, Legio Cybernetica"},{label:"Comandante",value:"Fabricator-General di Marte"}],
-};
-
 const AOS_REALMS=[
   {name:"Realm of Aqshy", sub:"Fire",    color:"#C0392B",icon:"🔥"},
   {name:"Realm of Ghyran",sub:"Life",    color:"#4aaa6a",icon:"🌿"},
@@ -1253,9 +1129,6 @@ const AOS_REALMS=[
 
 function LoreSection({ universe }){
   const [wikiSearch,setWikiSearch]=useState("");
-  // eslint-disable-next-line no-unused-vars
-  const _unused=null; // FACTIONS_LORE/TIMELINE_LORE/PRIMARCHS_LORE kept for future use
-
   const isAoS=universe==='aos';
 
   const openWikiSearch=()=>{
@@ -1981,17 +1854,17 @@ export default function App(){
           {!appReader&&section!=="music"&&(
             <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
               {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-              {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook}/>}
+              {section==="home"    &&universe==='aos'&&<Suspense fallback={null}><AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook}/></Suspense>}
               {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-              {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus}/>}
+              {section==="library" &&universe==='aos'&&<Suspense fallback={null}><AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus}/></Suspense>}
               {section==="lore"    &&<LoreSection universe={universe}/>}
               {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-              {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}
-              {section==="painting"&&<PaintingTracker user={user} universe={universe}
+              {section==="reading" &&universe==='aos'&&<Suspense fallback={null}><AoSCrusadeSection user={user} statuses={aosStatuses}/></Suspense>}
+              {section==="painting"&&<Suspense fallback={null}><PaintingTracker user={user} universe={universe}
                 onAchievement={defs=>setPendingAchievements(q=>[...q,...defs])}
                 unlockedIds={unlockedIds}
                 onUpdateUnlocked={merged=>{setUnlockedIds(merged);if(user?.id)saveUnlockedIds(supabase,user.id,merged);}}
-              />}
+              /></Suspense>}
             </div>
           )}
         </div>
@@ -2021,23 +1894,27 @@ export default function App(){
         )}
         {/* ── ACHIEVEMENT POPUP ── */}
         {pendingAchievements.length>0&&(
-          <AchievementPopup
-            key={pendingAchievements[0].id}
-            achievement={pendingAchievements[0]}
-            type={["paint","monthly_painter","army"].some(p=>pendingAchievements[0].id.startsWith(p))?"painting":"reading"}
-            universe={pendingAchievements[0]._universe||'wh40k'}
-            onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
-          />
+          <Suspense fallback={null}>
+            <AchievementPopup
+              key={pendingAchievements[0].id}
+              achievement={pendingAchievements[0]}
+              type={["paint","monthly_painter","army"].some(p=>pendingAchievements[0].id.startsWith(p))?"painting":"reading"}
+              universe={pendingAchievements[0]._universe||'wh40k'}
+              onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
+            />
+          </Suspense>
         )}
         {/* ── STATS MODAL ── */}
         {showStats&&(
-          <StatsModal
-            user={user}
-            statuses={statuses}
-            aosStatuses={aosStatuses}
-            unlockedIds={unlockedIds}
-            onClose={()=>setShowStats(false)}
-          />
+          <Suspense fallback={null}>
+            <StatsModal
+              user={user}
+              statuses={statuses}
+              aosStatuses={aosStatuses}
+              unlockedIds={unlockedIds}
+              onClose={()=>setShowStats(false)}
+            />
+          </Suspense>
         )}
         {/* ── BOTTOM NAV ── */}
         {(()=>{
