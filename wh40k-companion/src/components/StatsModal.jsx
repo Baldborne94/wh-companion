@@ -5,7 +5,7 @@ import {
   AOS_READING_ACHIEVEMENTS, computeAoSReadingAchievements,
   getConsecutiveMonthStreak, achievementFromId,
 } from "../lib/achievements";
-import { AOS_BOOKS } from "./AoSApp";
+import { AOS_BOOKS } from "../data/aosBooks";
 import { BOOKS } from "../data/books";
 
 const C = {
