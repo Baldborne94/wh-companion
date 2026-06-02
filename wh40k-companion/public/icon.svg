@@ -1,1 +1,146 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 32 32"><image width="32" height="32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAGw0lEQVR4nK1WW0gUXxg/Z87M7OTu6HrDNCuzi4iiJbsZZZabgmBRDz5EBEEQEkRPPSRKPRQEvQT5GCRBFj5EIlaGmCgpmixSO5Vmmuhm7i66upfZ28w5/4dvG7eCHv70e9mz35zzXX/fdw5GCCGEOI7DGKNfwRjDGDPGEELGV2MB8tQ98BckhBDGmK7r6J9DkiRjjcGUruttbW21tbUZGRmMMVEUwQtBECKRiCiKGON4PM4Y0zQtFAppmoYQkmVZkiRRFFVVlWWZMebz+ZxO5+DgoNvtrqioOHjw4K1bt3gIubq6uq6urq+vj+f51HiN8Hk+uZMQIggCxlhVVa/XGwqFOI6LxWKapi0vL8uyfPXqVYfDIUlSZ2fn2toa4nkeIfT8+fORkZH/kZCKiorz58/fu3dvYmJC13WoQSwWe/fuXWFhIcaYh32apkmSxPM8ZAzSx3GcruuQELPZHA6HEUJWq9Vut5eUlJw6dcpms2VlZRkaxsfH+/v7nU7np0+fvF6vqqqbBkRRpJRSSgkhsBvkgiDcvn27pqYmIyOjt7f3wIEDNpstPz8fvgaDwdHRUUVRFEUJBoOqqoqi6HA42tvbW1paFEXZNEAIIYRQSmOxGEi2b99ut9ubmpouXrwIkv379yOEKKWKoszPz/v9/kAgkJOTU1ZW1tDQUFxcbOStp6envLzc5XJhgCAIJ0+epJQ6nc4TJ04cOXLEbrfv2bPHbDZDNLCNUooQikQia2trVqs1IyMjtRjhcNjv96+urrpcLq/Xm5+ff+7cOR44U1FR0dXVtbq6mpmZmZaWZpyBYgALEEIcxyGE0tLSvn796nQ6PR4PpXRubm5tbU1V1UAg4PP5CCGLi4vPnj0LBAJwikcIzc7ORqPRbdu2gVLGGDQ21CMVUKfc3NysrCyr1SrLMlhFCCUSiUQiIQhCUVFROBxOT09HCDHGeI7jNjY2Pnz4cPToUV3XDX8B0O4cx4EiWHi93qGhIejBzMzMrKyswsLC/Pz8HTt2dHd3Ly8vp6enezweoCLPcRyldGBgoLa29jd/odHAJKzHxsZUVa2vr6+qqlpfX5+bm/vy5YuiKPfv3w8EArIsT01NYYyB9EktcN7hcICz7CcopTAbWltbe3p64NPNmzehua5du/bx40eWgmg0euHCBdA5PDz89u1bIGdyOpaWloZCIUMvpVTX9XA43NTUhBA6e/YsaBkfHzeSTgipr69/9OiRx+NhjCmKsmXLFkEQwADMhWQVMcaNjY2Tk5PgMmMskUgwxu7evQshlpSUgGRjYyM3N5fjOFAEKCgouH79emNjI0JIFEUw8ObNm6QB8KilpeXJkyeGamCLzWaDqhJCpqenIYiGhgY4CTRLZZpBvJGRkZcvX4JzSXqUl5cHAgFN0wghiUSCUhoMBr99+wbDQ9f1yclJ0HL48GHQBTUDjoEiYwwbTYMQSv4UFRWJouh2uxFCgiAQQiwWy9atW9HPKwyKZhiArjaaQ9O0VAljDHLIGOMMaU5Ozvr6Osa4q6vr8uXLVVVV8/Pz6Gc/T0xMgIM2my07O5tS+ucVmwqjSLxhMzs7u7W1NZFIDA4Opm4F16anp91ud2FhISHEZDL9RTX4tDlgDC2iKPb39w8ODhJCIKeGbUJINBq9c+cOlBEO/z2CYDAIezZTBPUUBAEumd9yihDq6+sLBoMWi8Vut6OUMv6J1HfG5qiCgQzJ5X4FOL68vLywsIAQOnToEPdXIISMNCYNSJJkvGSMPjCg/8Tw8DBjrLKyklIaj8fpHwCKx2IxY4IlS+HxeHbu3PngwYPMzMxIJLJ3795wOMzzPM/zMDwIIaqq7tu3D2N87NixsbExhFAsFjOZTJBMTdOgFSildrvdoHUygmg0+uLFi+/fvzPGdu3atbKy4nA4fD6fy+XKy8v78ePHzMxMTU3N3Nzc0tLS0NBQPB73er2yLM/MzOTk5CwuLgqC4HK50tPTZ2ZmXr16FYlEfjGQm5tbWlr6+vXr7u5ui8Vy48aN0dFRl8v18OFDVVX7+vp6e3s9Hk9HR8fTp08FQWhvb+/o6IhEIgMDA1euXPn8+fPs7OzU1JTVau3s7FQUBQxsXvqSJB0/fnxpaSkvLy8ej7e1ta2srJSVlcErr66uDmO8sLBw6dIlt9ttNpubm5thSJw5c2Z+fn737t2yLFdWVq6urp4+fbq4uFhV1SSj4MJpbm6urq6Gx4vf7zebzXDDiKIYDocxxsFgkFJaUFCQSCT8fr/FYgHuSZJkMpkikQjG2JhLCKH3798/fvz4L1T+Z0h2I4zff6jXeLv/B1oLLfECIJBtAAAAAElFTkSuQmCC"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="68%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#201b0c"/>
+      <stop offset="100%" stop-color="#060504"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#edd97a"/>
+      <stop offset="35%" stop-color="#c9a84c"/>
+      <stop offset="100%" stop-color="#7a5f20"/>
+    </linearGradient>
+    <linearGradient id="goldDeep" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#d4b254"/>
+      <stop offset="100%" stop-color="#6a5018"/>
+    </linearGradient>
+    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a0e05"/>
+      <stop offset="100%" stop-color="#050403"/>
+    </radialGradient>
+    <filter id="skullGlow" x="-8%" y="-8%" width="116%" height="116%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="blur"/>
+      <feFlood flood-color="#c9a84c" flood-opacity="0.3" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#060504"/>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- Outer border ring -->
+  <rect x="9" y="9" width="494" height="494" rx="87" fill="none"
+        stroke="#c9a84c" stroke-width="5.5" opacity="0.50"/>
+  <!-- Inner thin ring -->
+  <rect x="22" y="22" width="468" height="468" rx="74" fill="none"
+        stroke="#c9a84c" stroke-width="1.5" opacity="0.22"/>
+
+  <!-- Corner brackets — Top Left -->
+  <path d="M 42,42 L 95,42 L 95,47 L 47,47 L 47,95 L 42,95 Z"
+        fill="#c9a84c" opacity="0.70"/>
+  <path d="M 52,52 L 78,52 L 78,55 L 55,55 L 55,78 L 52,78 Z"
+        fill="#c9a84c" opacity="0.35"/>
+  <!-- Corner brackets — Top Right -->
+  <path d="M 470,42 L 417,42 L 417,47 L 465,47 L 465,95 L 470,95 Z"
+        fill="#c9a84c" opacity="0.70"/>
+  <path d="M 460,52 L 434,52 L 434,55 L 457,55 L 457,78 L 460,78 Z"
+        fill="#c9a84c" opacity="0.35"/>
+  <!-- Corner brackets — Bottom Left -->
+  <path d="M 42,470 L 95,470 L 95,465 L 47,465 L 47,417 L 42,417 Z"
+        fill="#c9a84c" opacity="0.70"/>
+  <path d="M 52,460 L 78,460 L 78,457 L 55,457 L 55,434 L 52,434 Z"
+        fill="#c9a84c" opacity="0.35"/>
+  <!-- Corner brackets — Bottom Right -->
+  <path d="M 470,470 L 417,470 L 417,465 L 465,465 L 465,417 L 470,417 Z"
+        fill="#c9a84c" opacity="0.70"/>
+  <path d="M 460,460 L 434,460 L 434,457 L 457,457 L 457,434 L 460,434 Z"
+        fill="#c9a84c" opacity="0.35"/>
+
+  <!-- Horizontal rule top -->
+  <line x1="110" y1="112" x2="402" y2="112" stroke="#c9a84c" stroke-width="1.5" opacity="0.30"/>
+  <circle cx="256" cy="112" r="4.5" fill="#c9a84c" opacity="0.50"/>
+  <circle cx="156" cy="112" r="3" fill="#c9a84c" opacity="0.35"/>
+  <circle cx="356" cy="112" r="3" fill="#c9a84c" opacity="0.35"/>
+
+  <!-- THE SKULL (heraldic, gold) -->
+  <!-- Cranium — large rounded dome -->
+  <ellipse cx="256" cy="218" rx="108" ry="96" fill="url(#gold)" filter="url(#skullGlow)"/>
+
+  <!-- Cheekbones — wider at eye-level -->
+  <ellipse cx="256" cy="268" rx="118" ry="52" fill="url(#gold)"/>
+
+  <!-- Zygomatic arches — side knobs -->
+  <ellipse cx="152" cy="260" rx="26" ry="20" fill="url(#goldDeep)" opacity="0.85"/>
+  <ellipse cx="360" cy="260" rx="26" ry="20" fill="url(#goldDeep)" opacity="0.85"/>
+
+  <!-- Jaw / mandible -->
+  <path d="M 186,292 Q 178,295 175,310 L 175,355 Q 175,370 188,370
+           L 234,370 L 234,345 L 248,345 L 248,370
+           L 264,370 L 264,345 L 278,345 L 278,370
+           L 324,370 Q 337,370 337,355
+           L 337,310 Q 334,295 326,292 Z"
+        fill="url(#gold)"/>
+
+  <!-- Bridge of nose / brow ridge -->
+  <rect x="190" y="190" width="132" height="14" rx="7" fill="url(#goldDeep)" opacity="0.60"/>
+
+  <!-- Eye socket LEFT -->
+  <ellipse cx="210" cy="238" rx="44" ry="38" fill="url(#eyeGlow)"/>
+  <ellipse cx="208" cy="235" rx="18" ry="14" fill="#c9a84c" opacity="0.06"/>
+
+  <!-- Eye socket RIGHT -->
+  <ellipse cx="302" cy="238" rx="44" ry="38" fill="url(#eyeGlow)"/>
+  <ellipse cx="304" cy="235" rx="18" ry="14" fill="#c9a84c" opacity="0.06"/>
+
+  <!-- Nasal cavity -->
+  <path d="M 246,274 Q 243,264 256,270 Q 269,264 266,274
+           Q 263,288 256,293 Q 249,288 246,274 Z"
+        fill="url(#eyeGlow)"/>
+
+  <!-- Jaw-skull seam line -->
+  <rect x="186" y="290" width="140" height="5" rx="2.5" fill="#080605" opacity="0.60"/>
+
+  <!-- Teeth gaps (5 gaps) -->
+  <rect x="218" y="300" width="6" height="58" rx="3" fill="#080605" opacity="0.55"/>
+  <rect x="248" y="300" width="6" height="58" rx="3" fill="#080605" opacity="0.55"/>
+  <rect x="278" y="300" width="6" height="58" rx="3" fill="#080605" opacity="0.55"/>
+  <rect x="308" y="300" width="6" height="58" rx="3" fill="#080605" opacity="0.55"/>
+
+  <!-- Laurel branch — LEFT -->
+  <g opacity="0.62" fill="#c9a84c">
+    <ellipse cx="116" cy="278" rx="13" ry="5.5" transform="rotate(-50,116,278)"/>
+    <ellipse cx="106" cy="255" rx="13" ry="5.5" transform="rotate(-38,106,255)"/>
+    <ellipse cx="101" cy="230" rx="13" ry="5.5" transform="rotate(-22,101,230)"/>
+    <ellipse cx="102" cy="205" rx="13" ry="5.5" transform="rotate(-6,102,205)"/>
+    <ellipse cx="109" cy="182" rx="13" ry="5.5" transform="rotate(10,109,182)"/>
+    <line x1="120" y1="290" x2="110" y2="170" stroke="#c9a84c" stroke-width="2.5" opacity="0.45"/>
+  </g>
+  <!-- Laurel branch — RIGHT (mirror) -->
+  <g opacity="0.62" fill="#c9a84c">
+    <ellipse cx="396" cy="278" rx="13" ry="5.5" transform="rotate(50,396,278)"/>
+    <ellipse cx="406" cy="255" rx="13" ry="5.5" transform="rotate(38,406,255)"/>
+    <ellipse cx="411" cy="230" rx="13" ry="5.5" transform="rotate(22,411,230)"/>
+    <ellipse cx="410" cy="205" rx="13" ry="5.5" transform="rotate(6,410,205)"/>
+    <ellipse cx="403" cy="182" rx="13" ry="5.5" transform="rotate(-10,403,182)"/>
+    <line x1="392" y1="290" x2="402" y2="170" stroke="#c9a84c" stroke-width="2.5" opacity="0.45"/>
+  </g>
+
+  <!-- Crown / Crest above skull -->
+  <path d="M 206,132 L 212,108 L 220,126 L 232,100 L 244,122 L 256,94 L 268,122 L 280,100 L 292,126 L 300,108 L 306,132 Z"
+        fill="url(#gold)" opacity="0.88"/>
+  <!-- Crown base band -->
+  <rect x="200" y="130" width="112" height="14" rx="5" fill="url(#goldDeep)" opacity="0.90"/>
+
+  <!-- Horizontal rule bottom -->
+  <line x1="110" y1="395" x2="402" y2="395" stroke="#c9a84c" stroke-width="1.5" opacity="0.28"/>
+  <path d="M 220,410 L 256,422 L 292,410" stroke="#c9a84c" stroke-width="1.5"
+        fill="none" opacity="0.35"/>
+  <circle cx="256" cy="426" r="4" fill="#c9a84c" opacity="0.40"/>
+
+  <!-- Bottom fleur dots -->
+  <circle cx="175" cy="457" r="3.5" fill="#c9a84c" opacity="0.25"/>
+  <circle cx="256" cy="460" r="5" fill="#c9a84c" opacity="0.30"/>
+  <circle cx="337" cy="457" r="3.5" fill="#c9a84c" opacity="0.25"/>
+  <line x1="175" y1="457" x2="337" y2="457" stroke="#c9a84c" stroke-width="1" opacity="0.18"/>
+</svg>
