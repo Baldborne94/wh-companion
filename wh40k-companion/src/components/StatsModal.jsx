@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
@@ -7,6 +7,7 @@ import {
 } from "../lib/achievements";
 import { AOS_BOOKS } from "../data/aosBooks";
 import { BOOKS } from "../data/books";
+import { CHALLENGES, TIER } from "../data/challenges";
 
 const C = {
   bg: "#0a0905", surface: "#111009", card: "#16140f", border: "#2a2518",
@@ -397,9 +398,49 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
             <SectionLabel>
               Achievements — {staticReadUnlocked.length}/{READING_ACHIEVEMENTS.length} Unlocked
             </SectionLabel>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 4 }}>
               {READING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={C.gold} />)}
             </div>
+
+            {/* Reading Challenges */}
+            {(() => {
+              const chs = CHALLENGES.map(c => {
+                const { current, target } = c.compute(statuses);
+                const done = current >= target;
+                return { ...c, current, target, done, pct: Math.min(100, Math.round((current / target) * 100)) };
+              });
+              const completed = chs.filter(c => c.done).length;
+              return (
+                <>
+                  <SectionLabel>Sfide di Lettura — {completed}/{chs.length} completate</SectionLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {chs.map(c => {
+                      const tc = TIER[c.tier];
+                      return (
+                        <div key={c.id} style={{ background: c.done ? `${tc.color}12` : C.card, border: `1px solid ${c.done ? tc.color + "66" : C.border}`, borderLeft: `3px solid ${c.done ? tc.color : C.dim}`, borderRadius: 10, padding: "10px 12px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 18, flexShrink: 0 }}>{c.done ? "✅" : c.icon}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+                                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, color: c.done ? tc.color : C.text, fontWeight: 700 }}>{c.title}</div>
+                                <span style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: tc.color, letterSpacing: 1, background: `${tc.color}22`, border: `1px solid ${tc.color}44`, borderRadius: 3, padding: "1px 4px", flexShrink: 0 }}>{c.tier.toUpperCase()}</span>
+                              </div>
+                              <div style={{ fontSize: 10, color: C.muted, marginBottom: 5 }}>{c.desc}</div>
+                              <div style={{ height: 3, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${c.pct}%`, background: c.done ? tc.color : `${tc.color}cc`, borderRadius: 2 }} />
+                              </div>
+                              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: c.done ? tc.color : C.muted, marginTop: 3, letterSpacing: 1 }}>
+                                {c.done ? "COMPLETED" : `${c.current} / ${c.target}`}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
           </>}
 
           {tab === "painting" && <>
