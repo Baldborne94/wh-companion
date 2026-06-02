@@ -48,7 +48,7 @@ export default defineConfig({
       manifest: {
         name: 'WH Companion',
         short_name: 'WH',
-        description: 'Your complete Warhammer companion — library, lore, reading order, painting and AI oracle.',
+        description: 'Your complete Warhammer companion — library, lore, reading order and painting tracker.',
         start_url: '/',
         display: 'standalone',
         background_color: '#0a0905',
