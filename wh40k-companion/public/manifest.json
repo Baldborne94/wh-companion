@@ -1,6 +1,6 @@
 {
-  "name": "WH Companion",
-  "short_name": "WH",
+  "name": "Warhammer Companion",
+  "short_name": "WH-C",
   "description": "Your complete Warhammer companion — library, lore, reading order, painting and AI oracle.",
   "start_url": "/",
   "display": "standalone",
