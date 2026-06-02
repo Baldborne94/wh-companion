@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { supabase } from "../lib/supabase";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import { BOOKS, ALL_SERIES, ALL_FACTIONS, ALL_TYPES, ALL_ERAS } from "../data/books";
+import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
 import CoverImage from "./CoverImage";
 import BookDetail from "./BookDetail";
 import { getBookRating } from "../lib/bookStatus";
@@ -160,8 +161,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
           ))}
         </div>
         <div style={{ display: "flex", gap: 0 }}>
-          {[{ id: "catalogue", label: "Catalogue" }, { id: "shelf", label: `My Shelf${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` }].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px", background: "transparent", border: "none", borderBottom: `2px solid ${tab === t.id ? C.gold : "transparent"}`, color: tab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 12, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>{t.label}</button>
+          {[{ id: "catalogue", label: "Catalogue" }, { id: "shelf", label: `My Shelf${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` }, { id: "upcoming", label: "Upcoming" }].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px", background: "transparent", border: "none", borderBottom: `2px solid ${tab === t.id ? C.gold : "transparent"}`, color: tab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>{t.label}</button>
           ))}
         </div>
       </div>
@@ -287,6 +288,45 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
         </>
       )}
 
+      {tab === "upcoming" && (
+        <div style={{ paddingBottom: 20 }}>
+          <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "baseline", gap: 8 }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 1 }}>
+              Lista aggiornata al {new Date(RELEASES_UPDATED).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+            <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
+              style={{ marginLeft: "auto", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.blue, letterSpacing: 1, textDecoration: "none", flexShrink: 0 }}>
+              blacklibrary.com ›
+            </a>
+          </div>
+          {UPCOMING_RELEASES.map(group => (
+            <div key={group.month} style={{ marginBottom: 14 }}>
+              <div style={{ padding: "6px 16px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 3, textTransform: "uppercase", borderBottom: `1px solid ${C.border}` }}>{group.month}</div>
+              <div style={{ padding: "6px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+                {group.items.map((item, i) => {
+                  const typeColor = item.type === 'Novel' ? C.text : item.type === 'Anthology' ? C.blue : C.goldDim;
+                  const uLabel = item.universe === 'aos' ? 'AoS' : '40K';
+                  const uColor = item.universe === 'aos' ? '#4aaa6a' : C.red;
+                  return (
+                    <div key={i} style={{ background: C.card, border: `1px solid ${C.border}`, borderLeft: `3px solid ${item.universe === 'aos' ? '#4aaa6a44' : C.gold + '44'}`, borderRadius: 8, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                          <span style={{ background: `${uColor}22`, border: `1px solid ${uColor}55`, borderRadius: 4, padding: "1px 5px", fontFamily: "'Cinzel',serif", fontSize: 8, color: uColor, letterSpacing: 1, flexShrink: 0 }}>{uLabel}</span>
+                          <span style={{ background: `${typeColor}18`, border: `1px solid ${typeColor}33`, borderRadius: 4, padding: "1px 5px", fontFamily: "'Cinzel',serif", fontSize: 8, color: typeColor, letterSpacing: 1, flexShrink: 0 }}>{item.type}</span>
+                          {item.faction && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.faction}</span>}
+                        </div>
+                        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
+                        <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginTop: 2 }}>by {item.author}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {tab === "catalogue" && (
         <>
           <div style={{ padding: "12px 16px 0" }}>
@@ -393,7 +433,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
           )}
 
           {/* ── VIEW: SHELF (by series) ── */}
-          {viewMode === "shelf" && (() => {
+          {viewMode === "shelf" && (()=> {
             if (filtered.length === 0) return <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>No tomes found, Inquisitor.</div>;
             const seriesMap = {};
             filtered.forEach(b => { if (!seriesMap[b.series]) seriesMap[b.series] = []; seriesMap[b.series].push(b); });
