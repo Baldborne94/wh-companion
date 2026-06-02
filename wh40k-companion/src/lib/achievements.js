@@ -16,6 +16,8 @@ export const READING_ACHIEVEMENTS = [
   { id:"monthly_bronze",label:"Bronze Aquila",           desc:"One book this month. The Aquila watches over those who keep their vow.",                           icon:"🥉", cat:"monthly"   },
   { id:"monthly_silver",label:"Silver Aquila",           desc:"Two to three books this month. Your reading pace rivals the Astartes themselves.",                  icon:"🥈", cat:"monthly"   },
   { id:"monthly_gold",  label:"Gold Aquila",             desc:"Four or more books this month. An extraordinary display of devotion to the written word.",          icon:"🥇", cat:"monthly"   },
+  { id:"hh_10",         label:"Herald of Heresy",         desc:"Ten Horus Heresy novels. The seeds of treachery are taking root within your mind.",               icon:"🌌", cat:"series"    },
+  { id:"hh_30",         label:"Heresy Veteran",           desc:"Thirty novels deep into the greatest betrayal in history. You live and breathe the Heresy.",         icon:"💀", cat:"series"    },
   { id:"faction_3",     label:"Faction Devotee",         desc:"Three books under the same banner. You know exactly where your loyalties lie.",                     icon:"🎖",  cat:"faction"   },
   { id:"faction_5",     label:"Faction Champion",        desc:"Five books, one allegiance. The faction has no greater scholar walking among them.",                 icon:"🏆", cat:"faction"   },
   { id:"faction_10",    label:"Faction Exemplar",        desc:"Ten books of a single faction. Your devotion is absolute. Unmatched. Beyond all measure.",          icon:"👑", cat:"faction"   },
@@ -157,6 +159,11 @@ export function computeReadingAchievements(statuses, books) {
   if (thisMonthCount >= 1) unlocked.push("monthly_bronze");
   if (thisMonthCount >= 2) unlocked.push("monthly_silver");
   if (thisMonthCount >= 4) unlocked.push("monthly_gold");
+
+  // Horus Heresy milestones
+  const hhRead = books.filter(b => b.series === 'Horus Heresy' && readIds.has(String(b.id))).length;
+  if (hhRead >= 10) unlocked.push("hh_10");
+  if (hhRead >= 30) unlocked.push("hh_30");
 
   // Faction devotion (WH40K books only)
   const factionCounts = {};
