@@ -9,6 +9,7 @@ import UniverseSelector from "./components/UniverseSelector";
 import { AOS, AOS_BOOKS } from "./data/aosBooks";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { loadAllStatuses, loadAoSStatuses, setBookStatusLS } from "./lib/bookStatus";
+import { shouldShowReleaseReminder, dismissReleaseReminder } from "./data/releases";
 import {
   achievementFromId,
   computeReadingAchievements,
@@ -256,6 +257,9 @@ export default function App(){
     return true;
   },[user?.id]);
 
+  // ── Release reminder ─────────────────────────────────────────────────────
+  const [showReleaseReminder, setShowReleaseReminder] = useState(() => shouldShowReleaseReminder());
+
   // ── Offline detection ─────────────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   useEffect(() => {
@@ -321,6 +325,19 @@ export default function App(){
         {!isOnline&&(
           <div style={{flexShrink:0,background:"#b0302299",borderBottom:"1px solid #ff444466",padding:"6px 16px",textAlign:"center",fontFamily:"'Cinzel',serif",fontSize:11,color:"#ffaaaa",letterSpacing:1}}>
             📡 Offline — local data only
+          </div>
+        )}
+        {/* ── RELEASE REMINDER ── */}
+        {showReleaseReminder&&(
+          <div style={{flexShrink:0,background:`${C.gold}18`,borderBottom:`1px solid ${C.gold}55`,padding:"8px 16px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:16,flexShrink:0}}>📅</span>
+            <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:10,color:C.gold,letterSpacing:1}}>
+              Lista uscite BL non aggiornata da 6 mesi — chiedi a Claude di aggiornarla!
+            </div>
+            <button onClick={()=>{dismissReleaseReminder();setShowReleaseReminder(false);}}
+              style={{background:"transparent",border:`1px solid ${C.gold}55`,borderRadius:6,color:C.goldDim,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer",flexShrink:0}}>
+              OK
+            </button>
           </div>
         )}
         {/* ── CONTENT ── */}

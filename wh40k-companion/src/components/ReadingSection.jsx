@@ -3,6 +3,8 @@ import { sb } from "../lib/sb";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import { BOOKS } from "../data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "../data/hhGuide";
+import { CHALLENGES, TIER } from "../data/challenges";
+import { getBookRating } from "../lib/bookStatus";
 import CoverImage from "./CoverImage";
 import { getNextSuggestion } from "../lib/readingHelpers";
 
@@ -132,6 +134,194 @@ function HHGuideSection({ statuses }) {
   );
 }
 
+function ChallengesTab({ statuses, userId }) {
+  const challenges = useMemo(() => CHALLENGES.map(c => {
+    const { current, target } = c.compute(statuses);
+    const done = current >= target;
+    return { ...c, current, target, done, pct: Math.min(100, Math.round((current / target) * 100)) };
+  }), [statuses]);
+
+  const completed = challenges.filter(c => c.done).length;
+
+  return (
+    <div style={{ paddingBottom: 80 }}>
+      <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text, marginBottom: 4 }}>Sfide di Lettura</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, letterSpacing: 1 }}>{completed} / {challenges.length} completate</div>
+        <div style={{ height: 4, background: C.dim, borderRadius: 2, marginTop: 8, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${Math.round((completed / challenges.length) * 100)}%`, background: `linear-gradient(to right,${C.gold},${C.green})`, borderRadius: 2 }} />
+        </div>
+      </div>
+      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {challenges.map(c => {
+          const tc = TIER[c.tier];
+          return (
+            <div key={c.id} style={{ background: c.done ? `${tc.color}12` : C.card, border: `1px solid ${c.done ? tc.color + "66" : C.border}`, borderLeft: `3px solid ${c.done ? tc.color : C.dim}`, borderRadius: 10, padding: "12px 14px", opacity: c.done ? 1 : 0.9 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>{c.done ? "✅" : c.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+                    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: c.done ? tc.color : C.text, fontWeight: 700 }}>{c.title}</div>
+                    <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: tc.color, letterSpacing: 1, background: `${tc.color}22`, border: `1px solid ${tc.color}44`, borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>{tc.label.toUpperCase()}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{c.desc}</div>
+                  <div style={{ height: 4, background: C.dim, borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${c.pct}%`, background: c.done ? tc.color : `linear-gradient(to right,${tc.color}88,${tc.color})`, borderRadius: 2, transition: "width 0.5s ease" }} />
+                  </div>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: c.done ? tc.color : C.muted, marginTop: 4, letterSpacing: 1 }}>
+                    {c.done ? "COMPLETED" : `${c.current} / ${c.target}`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatsTab({ statuses, userId }) {
+  const readBooks = useMemo(() => BOOKS.filter(b => statuses[b.id]?.status === 'read'), [statuses]);
+
+  const monthlyData = useMemo(() => {
+    const map = {};
+    Object.values(statuses).forEach(s => {
+      if (s.status === 'read' && s.completedAt) {
+        const key = s.completedAt.slice(0, 7);
+        map[key] = (map[key] || 0) + 1;
+      }
+    });
+    const months = [];
+    const now = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      months.push({ label: d.toLocaleDateString('it-IT', { month: 'short' }), count: map[key] || 0 });
+    }
+    return months;
+  }, [statuses]);
+
+  const maxMonthly = Math.max(...monthlyData.map(m => m.count), 1);
+
+  const streak = useMemo(() => {
+    const days = [...new Set(
+      Object.values(statuses)
+        .filter(s => s.status === 'read' && s.completedAt)
+        .map(s => s.completedAt.slice(0, 10))
+    )].sort();
+    if (!days.length) return { current: 0, best: 0 };
+    let best = 1, run = 1;
+    for (let i = 1; i < days.length; i++) {
+      const diff = (new Date(days[i]) - new Date(days[i - 1])) / 86400000;
+      run = diff === 1 ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+    const last = new Date(days[days.length - 1]);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diffLast = (today - last) / 86400000;
+    return { current: diffLast <= 1 ? run : 0, best };
+  }, [statuses]);
+
+  const thisYear = useMemo(() => {
+    const y = new Date().getFullYear();
+    return Object.values(statuses).filter(s => s.status === 'read' && s.completedAt?.startsWith(String(y))).length;
+  }, [statuses]);
+
+  const avgRating = useMemo(() => {
+    const rated = readBooks.map(b => getBookRating(userId, b.id)).filter(r => r > 0);
+    if (!rated.length) return 0;
+    return (rated.reduce((a, b) => a + b, 0) / rated.length).toFixed(1);
+  }, [readBooks, userId]);
+
+  const recentlyRead = useMemo(() =>
+    [...readBooks]
+      .filter(b => statuses[b.id]?.completedAt)
+      .sort((a, b) => new Date(statuses[b.id].completedAt) - new Date(statuses[a.id].completedAt))
+      .slice(0, 5),
+    [readBooks, statuses]
+  );
+
+  const topSeries = useMemo(() => {
+    const map = {};
+    readBooks.forEach(b => { map[b.series] = (map[b.series] || 0) + 1; });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [readBooks]);
+
+  return (
+    <div style={{ paddingBottom: 80 }}>
+      <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text }}>Statistiche</div>
+      </div>
+
+      <div style={{ padding: "12px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+        {[
+          { label: "Totale", value: readBooks.length, color: C.green },
+          { label: `Nel ${new Date().getFullYear()}`, value: thisYear, color: C.blue },
+          { label: "Streak", value: streak.current > 0 ? `${streak.current}d` : "—", color: "#ff9944" },
+          { label: "Voto medio", value: avgRating > 0 ? `${avgRating}★` : "—", color: C.gold },
+        ].map(s => (
+          <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 6px", textAlign: "center" }}>
+            <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: s.color, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.muted, letterSpacing: 1, marginTop: 4, textTransform: "uppercase" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {streak.best > 0 && (
+        <div style={{ margin: "10px 16px 0", padding: "8px 12px", background: `${"#ff9944"}12`, border: `1px solid ${"#ff9944"}44`, borderRadius: 8, fontFamily: "'Cinzel',serif", fontSize: 10, color: "#ff9944", letterSpacing: 1 }}>
+          🔥 Miglior streak: {streak.best} giorn{streak.best === 1 ? "o" : "i"} consecutivi
+        </div>
+      )}
+
+      <div style={{ padding: "14px 16px 0" }}>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 10 }}>Libri letti per mese (ultimi 12 mesi)</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 80 }}>
+          {monthlyData.map((m, i) => (
+            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <div style={{ fontSize: 8, color: m.count > 0 ? C.gold : "transparent", fontFamily: "'Cinzel',serif" }}>{m.count || ""}</div>
+              <div style={{ width: "100%", height: `${Math.max(4, (m.count / maxMonthly) * 56)}px`, background: m.count > 0 ? `linear-gradient(to top,${C.gold},${C.gold}88)` : C.dim, borderRadius: "2px 2px 0 0", minHeight: 4 }} />
+              <div style={{ fontSize: 7, color: C.muted, fontFamily: "'Cinzel',serif", letterSpacing: 0 }}>{m.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {recentlyRead.length > 0 && (
+        <div style={{ padding: "14px 16px 0" }}>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>Ultimi letti</div>
+          {recentlyRead.map(b => {
+            const rating = getBookRating(userId, b.id);
+            return (
+              <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: `1px solid ${C.border}44` }}>
+                <CoverImage book={b} width={28} height={42} radius={2} accentColor={FC[b.faction] || C.dim} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</div>
+                  <div style={{ fontSize: 10, color: C.muted }}>{statuses[b.id]?.completedAt ? new Date(statuses[b.id].completedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : ""}</div>
+                </div>
+                {rating > 0 && <div style={{ fontSize: 11, color: C.gold, flexShrink: 0 }}>{"★".repeat(rating)}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {topSeries.length > 0 && (
+        <div style={{ padding: "14px 16px 0" }}>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>Serie più lette</div>
+          {topSeries.map(([name, count]) => (
+            <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: `1px solid ${C.border}44` }}>
+              <div style={{ flex: 1, fontFamily: "'Cinzel',serif", fontSize: 12, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+              <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 14, color: C.gold, flexShrink: 0 }}>{count}</div>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 1, flexShrink: 0 }}>libri</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ReadingSection({ user, statuses = {}, onOpenBook, setSection }) {
   const [crusadeTab, setCrusadeTab] = useState('overview');
   const [expanded, setExpanded] = useState(null);
@@ -189,13 +379,15 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, background: C.surface, position: "sticky", top: 0, zIndex: 5 }}>
-        {[{ id: "overview", label: "Overview" }, { id: "guide", label: "⚔ Heresy Guide" }].map(t => (
-          <button key={t.id} onClick={() => setCrusadeTab(t.id)} style={{ flex: 1, padding: "12px 4px", background: "transparent", border: "none", borderBottom: `2px solid ${crusadeTab === t.id ? C.gold : "transparent"}`, color: crusadeTab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "color 0.15s" }}>
+        {[{ id: "overview", label: "Overview" }, { id: "guide", label: "⚔ Heresy" }, { id: "challenges", label: "🏅 Sfide" }, { id: "stats", label: "📊 Stats" }].map(t => (
+          <button key={t.id} onClick={() => setCrusadeTab(t.id)} style={{ flex: 1, padding: "12px 2px", background: "transparent", border: "none", borderBottom: `2px solid ${crusadeTab === t.id ? C.gold : "transparent"}`, color: crusadeTab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "color 0.15s" }}>
             {t.label}
           </button>
         ))}
       </div>
       {crusadeTab === "guide" && <HHGuideSection statuses={statuses} />}
+      {crusadeTab === "challenges" && <ChallengesTab statuses={statuses} userId={user?.id} />}
+      {crusadeTab === "stats" && <StatsTab statuses={statuses} userId={user?.id} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
