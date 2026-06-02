@@ -4,6 +4,7 @@ import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
 import CoverImage from "./CoverImage";
 import { AOS, AOS_BOOKS } from "../data/aosBooks";
+import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
 
 export { AOS, AOS_BOOKS };
 
@@ -601,6 +602,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
   const TABS = [
     { id:"catalogue", label:"Catalogue" },
     { id:"shelf",     label:`My Shelf${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` },
+    { id:"upcoming",  label:"Upcoming" },
   ];
 
   const Chip = ({label, active, onClick, color}) => (
@@ -762,6 +764,47 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
             </>
           )}
         </>
+      )}
+
+      {/* UPCOMING */}
+      {tab === "upcoming" && (
+        <div style={{ paddingBottom:20 }}>
+          <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"baseline", gap:8 }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1 }}>
+              Lista aggiornata al {new Date(RELEASES_UPDATED).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}
+            </div>
+            <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
+              style={{ marginLeft:"auto", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.blue, letterSpacing:1, textDecoration:"none", flexShrink:0 }}>
+              blacklibrary.com ›
+            </a>
+          </div>
+          {UPCOMING_RELEASES.map(group => {
+            const aosItems = group.items.filter(i => i.universe === 'aos');
+            if (!aosItems.length) return null;
+            return (
+              <div key={group.month} style={{ marginBottom:14 }}>
+                <div style={{ padding:"6px 16px 8px", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", borderBottom:`1px solid ${AOS.border}` }}>{group.month}</div>
+                <div style={{ padding:"6px 16px", display:"flex", flexDirection:"column", gap:6 }}>
+                  {aosItems.map((item,i) => {
+                    const typeColor = item.type==='Novel' ? AOS.text : item.type==='Anthology' ? AOS.blue : AOS.goldDim;
+                    return (
+                      <div key={i} style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderLeft:`3px solid ${AOS.gold}44`, borderRadius:8, padding:"10px 12px", display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
+                            <span style={{ background:`${typeColor}18`, border:`1px solid ${typeColor}33`, borderRadius:4, padding:"1px 5px", fontFamily:"'Cinzel',serif", fontSize:8, color:typeColor, letterSpacing:1, flexShrink:0 }}>{item.type}</span>
+                            {item.faction && <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.faction}</span>}
+                          </div>
+                          <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</div>
+                          <div style={{ fontSize:11, color:AOS.muted, fontStyle:"italic", marginTop:2 }}>by {item.author}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* CATALOGUE */}
