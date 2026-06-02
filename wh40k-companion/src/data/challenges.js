@@ -33,11 +33,11 @@ export const CHALLENGES = [
     compute: st => ({ current: seriesRead(st, "Gaunt's Ghosts"), target: seriesSize("Gaunt's Ghosts") }) },
 
   { id: 'hh_start',    tier: 'bronze',   icon: '🌌',  title: 'The Heresy Begins',     desc: 'Read 10 Horus Heresy novels',
-    compute: st => ({ current: Math.min(seriesRead(st, 'The Horus Heresy'), 10), target: 10 }) },
+    compute: st => ({ current: Math.min(seriesRead(st, 'Horus Heresy'), 10), target: 10 }) },
   { id: 'hh_mid',      tier: 'silver',   icon: '💀',  title: 'Deep in the Heresy',    desc: 'Read 30 Horus Heresy novels',
-    compute: st => ({ current: Math.min(seriesRead(st, 'The Horus Heresy'), 30), target: 30 }) },
+    compute: st => ({ current: Math.min(seriesRead(st, 'Horus Heresy'), 30), target: 30 }) },
   { id: 'hh_complete', tier: 'platinum', icon: '🌟',  title: 'Warmaster',             desc: 'Complete the entire Horus Heresy',
-    compute: st => ({ current: seriesRead(st, 'The Horus Heresy'), target: seriesSize('The Horus Heresy') }) },
+    compute: st => ({ current: seriesRead(st, 'Horus Heresy'), target: seriesSize('Horus Heresy') }) },
 
   { id: 'factions_5',  tier: 'silver',   icon: '🗺️',  title: 'Know Your Enemy',       desc: 'Read books from 5 different factions',
     compute: st => {
