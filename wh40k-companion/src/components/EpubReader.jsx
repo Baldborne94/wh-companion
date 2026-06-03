@@ -755,15 +755,26 @@ export default function EpubReader({
           if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
         }, 20000);
 
-        // Scroll mode: after a section renders, scroll to the exact saved CFI position.
-        // rend.display(savedCfi) navigates to the chapter but may not scroll to the
-        // exact paragraph — scrollIntoView on the CFI element fixes this.
-        if (!settingsRef.current.paginate && savedCfi) {
-          let scrolledOnLoad = false;
-          const onRendered = () => {
-            if (scrolledOnLoad || cancelled) return;
-            setTimeout(() => {
-              if (scrolledOnLoad || cancelled) return;
+        // Scroll mode: track pixel-accurate position via scrollTop/scrollHeight ratio.
+        // On load, restore from this ratio; fall back to CFI scrollIntoView for old data.
+        if (!settingsRef.current.paginate) {
+          const scrollPctKey = `wh40k_scrollpct_${userId}_${bookId}`;
+          const savedScrollPct = (() => {
+            const n = parseFloat(localStorage.getItem(scrollPctKey) || '');
+            return isNaN(n) ? null : n;
+          })();
+          let scrollListenerAttached = false;
+          let scrollSaveTimer = null;
+
+          const tryAttach = () => {
+            if (scrollListenerAttached || cancelled) return;
+            const scrollEl = getEpubScrollEl(rend, containerRef.current);
+            if (!scrollEl) return;
+            scrollListenerAttached = true;
+
+            if (savedScrollPct != null && scrollEl.scrollHeight > scrollEl.clientHeight) {
+              scrollEl.scrollTop = savedScrollPct * scrollEl.scrollHeight;
+            } else if (savedCfi) {
               for (const c of (rend.getContents() ?? [])) {
                 try {
                   const range = c.range(savedCfi);
@@ -771,14 +782,23 @@ export default function EpubReader({
                     (range.startContainer.nodeType === 3
                       ? range.startContainer.parentElement
                       : range.startContainer)?.scrollIntoView({ block: 'start' });
-                    scrolledOnLoad = true;
                     break;
                   }
                 } catch {}
               }
-            }, 150);
+            }
+
+            scrollEl.addEventListener('scroll', () => {
+              if (cancelled) return;
+              clearTimeout(scrollSaveTimer);
+              scrollSaveTimer = setTimeout(() => {
+                if (cancelled || !scrollEl.scrollHeight) return;
+                localStorage.setItem(scrollPctKey, String(scrollEl.scrollTop / scrollEl.scrollHeight));
+              }, 600);
+            });
           };
-          rend.on("rendered", onRendered);
+
+          rend.on("rendered", () => { if (!cancelled) setTimeout(tryAttach, 150); });
         }
 
         book.ready
