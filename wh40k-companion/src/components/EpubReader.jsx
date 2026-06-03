@@ -706,9 +706,17 @@ export default function EpubReader({
           }
         });
 
-        rend.on("selected", (_range, contents) => {
+        rend.on("selected", (cfiRange, contents) => {
           if (cancelled) return;
-          const text = contents?.window?.getSelection?.()?.toString()?.trim() ?? "";
+          let text = "";
+          try {
+            // In paginated mode css-columns shift visual positions; use CFI-based range
+            // to get the actual selected text instead of getSelection() which can misfire
+            const domRange = contents.range(cfiRange);
+            text = domRange?.toString()?.trim() ?? "";
+          } catch {
+            text = contents?.window?.getSelection?.()?.toString()?.trim() ?? "";
+          }
           const word = text.replace(/[^a-zA-Z'-]/g, "");
           if (word.length >= 2 && word.length < 40) setDictWord(word);
         });
