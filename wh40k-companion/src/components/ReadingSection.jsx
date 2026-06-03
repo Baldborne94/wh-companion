@@ -6,19 +6,23 @@ import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "../data/hhGuide";
 import CoverImage from "./CoverImage";
 import { getNextSuggestion } from "../lib/readingHelpers";
 
-function HHBookRow({ entry, statuses, isLast }) {
+function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
   const book = findHHBook(entry);
   const status = book ? statuses[book.id]?.status || 'none' : null;
   const stCfg = status && status !== 'none' ? STATUS_CFG[status] : null;
   const type = entry.type || 'novel';
   const isSecondary = type === 'short' || type === 'audio';
+  const shortId = isSecondary ? `${entry.t}__${entry.a}` : null;
+  const isShortRead = shortId ? readShorts?.has(shortId) : false;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: isLast ? "none" : `1px solid ${C.border}22`, opacity: isSecondary ? 0.72 : 1 }}>
+    <div
+      onClick={isSecondary && toggleShort ? () => toggleShort(shortId) : undefined}
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: isLast ? "none" : `1px solid ${C.border}22`, opacity: isSecondary ? (isShortRead ? 1 : 0.72) : 1, cursor: isSecondary ? "pointer" : undefined }}>
       <span style={{ fontSize: 11, flexShrink: 0, width: 18, textAlign: "center" }}>
         {type === 'audio' ? '🎧' : type === 'short' ? '📄' : type === 'novella' ? '📑' : '📖'}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: entry.opt ? C.muted : C.text, fontStyle: entry.opt ? 'italic' : 'normal', overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: type === 'novel' || type === 'novella' ? "'Cinzel',serif" : undefined }}>
+        <div style={{ fontSize: 12, color: isSecondary ? (isShortRead ? C.gold : entry.opt ? C.muted : C.text) : (entry.opt ? C.muted : C.text), fontStyle: entry.opt ? 'italic' : 'normal', overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: type === 'novel' || type === 'novella' ? "'Cinzel',serif" : undefined }}>
           {entry.t}
           {entry.n > 0 && <span style={{ fontSize: 9, color: C.goldDim, marginLeft: 4 }}>#{entry.n}</span>}
           {entry.opt && <span style={{ fontSize: 9, color: C.muted, marginLeft: 4 }}>(optional)</span>}
@@ -27,26 +31,42 @@ function HHBookRow({ entry, statuses, isLast }) {
           {entry.a}{entry.src && <span style={{ color: C.dim }}> · {entry.src}</span>}
         </div>
       </div>
-      {stCfg && <span style={{ fontSize: 13, flexShrink: 0 }}>{stCfg.icon}</span>}
+      {isSecondary
+        ? <span style={{ fontSize: 14, flexShrink: 0, color: isShortRead ? C.gold : C.dim, transition: "color 0.15s" }}>{isShortRead ? '✓' : '○'}</span>
+        : stCfg && <span style={{ fontSize: 13, flexShrink: 0 }}>{stCfg.icon}</span>
+      }
     </div>
   );
 }
 
-function HHGuideSection({ statuses }) {
+function HHGuideSection({ statuses, userId }) {
   const [mode, setMode] = useState('minimalist');
   const [open, setOpen] = useState(new Set(['m1']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const lsKey = `wh40k_hh_shorts_${userId || 'guest'}`;
+  const [readShorts, setReadShorts] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
+  });
+  const toggleShort = (id) => setReadShorts(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    localStorage.setItem(lsKey, JSON.stringify([...next]));
+    return next;
+  });
 
   const parts = mode === 'minimalist' ? HH_MIN : HH_FULL;
 
   const PartCard = ({ part, dimmed }) => {
     const isOpen = open.has(part.id);
     const mainBooks = (part.books || []).filter(b => !b.b40k);
-    const novelCount = mainBooks.filter(b => !b.type || b.type === 'novel' || b.type === 'novella').length;
-    const extraCount = mainBooks.length - novelCount;
     const novelEntries = mainBooks.filter(b => !b.type || b.type === 'novel' || b.type === 'novella');
+    const shortEntries = mainBooks.filter(b => b.type === 'short' || b.type === 'audio');
+    const novelCount = novelEntries.length;
+    const extraCount = shortEntries.length;
     const novelMatched = novelEntries.map(e => findHHBook(e)).filter(Boolean);
     const readCount = novelMatched.filter(b => statuses[b.id]?.status === 'read').length;
+    const shortReadCount = shortEntries.filter(e => readShorts.has(`${e.t}__${e.a}`)).length;
     const allRead = novelMatched.length > 0 && readCount === novelMatched.length;
     const accentColor = dimmed ? C.dim : allRead ? C.green : C.dim;
     return (
@@ -62,6 +82,7 @@ function HHGuideSection({ statuses }) {
                 {novelCount > 0 && `${novelCount} novel${novelCount !== 1 ? 's' : ''}`}
                 {extraCount > 0 && ` + ${extraCount} shorts/audio`}
                 {novelMatched.length > 0 && readCount > 0 && <span style={{ color: allRead ? C.green : C.blue, marginLeft: 6 }}>{allRead ? '✅' : ''}{readCount}/{novelMatched.length} read</span>}
+                {extraCount > 0 && shortReadCount > 0 && <span style={{ color: C.gold, marginLeft: 4 }}>· {shortReadCount}/{extraCount} shorts ✓</span>}
               </>}
             </div>
           </div>
@@ -76,20 +97,20 @@ function HHGuideSection({ statuses }) {
                   <div key={oi} style={{ background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${opt.color || C.gold}`, borderRadius: 8, padding: "8px 10px" }}>
                     <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: opt.color || C.gold, letterSpacing: 2, marginBottom: opt.note ? 4 : 6 }}>{opt.label.toUpperCase()}</div>
                     {opt.note && <div style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginBottom: 6 }}>💡 {opt.note}</div>}
-                    {opt.books.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === opt.books.length - 1} />)}
+                    {opt.books.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === opt.books.length - 1} readShorts={readShorts} toggleShort={toggleShort} />)}
                   </div>
                 ))}
               </div>
             ) : (
               <>
-                {mainBooks.map((entry, i) => <HHBookRow key={i} entry={entry} statuses={statuses} isLast={i === mainBooks.length - 1} />)}
+                {mainBooks.map((entry, i) => <HHBookRow key={i} entry={entry} statuses={statuses} isLast={i === mainBooks.length - 1} readShorts={readShorts} toggleShort={toggleShort} />)}
                 {(() => {
                   const b40k = (part.books || []).filter(b => b.b40k);
                   if (!b40k.length) return null;
                   return (
                     <div style={{ marginTop: 10, background: `${C.gold}08`, border: `1px solid ${C.gold}22`, borderRadius: 6, padding: "6px 10px" }}>
                       <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 2, marginBottom: 6 }}>🌌 BONUS 40K READS</div>
-                      {b40k.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === b40k.length - 1} />)}
+                      {b40k.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === b40k.length - 1} readShorts={readShorts} toggleShort={toggleShort} />)}
                     </div>
                   );
                 })()}
@@ -196,7 +217,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
           </button>
         ))}
       </div>
-      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} />}
+      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} userId={user?.id} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
