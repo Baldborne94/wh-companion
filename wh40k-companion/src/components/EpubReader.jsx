@@ -702,7 +702,18 @@ export default function EpubReader({
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
-        rend.display(savedCfi || undefined);
+
+        // In scroll mode, preload savedScrollPct before deciding what to display.
+        // If we have it, open the book at position 0 (undefined) and restore via ratio —
+        // using rend.display(savedCfi) in scroll mode causes a race: epub.js sets its own
+        // scrollTop asynchronously after our restoration, overwriting it.
+        const scrollPctKey = `wh40k_scrollpct_${userId}_${bookId}`;
+        const savedScrollPct = !settingsRef.current.paginate ? (() => {
+          const n = parseFloat(localStorage.getItem(scrollPctKey) || '');
+          return isNaN(n) ? null : n;
+        })() : null;
+
+        rend.display((!settingsRef.current.paginate && savedScrollPct != null) ? undefined : (savedCfi || undefined));
 
         // loc.start.percentage uses spine position (chapter index / total) before
         // locations are generated — last chapter reads as ~100% regardless of actual
@@ -756,24 +767,41 @@ export default function EpubReader({
         }, 20000);
 
         // Scroll mode: track pixel-accurate position via scrollTop/scrollHeight ratio.
-        // On load, restore from this ratio; fall back to CFI scrollIntoView for old data.
+        // savedScrollPct was preloaded above; if present, rend.display() was called without
+        // a CFI so epub.js won't race-set its own scrollTop after our restoration.
         if (!settingsRef.current.paginate) {
-          const scrollPctKey = `wh40k_scrollpct_${userId}_${bookId}`;
-          const savedScrollPct = (() => {
-            const n = parseFloat(localStorage.getItem(scrollPctKey) || '');
-            return isNaN(n) ? null : n;
-          })();
           let scrollListenerAttached = false;
           let scrollSaveTimer = null;
 
-          const tryAttach = () => {
-            if (scrollListenerAttached || cancelled) return;
-            const scrollEl = getEpubScrollEl(rend, containerRef.current);
-            if (!scrollEl) return;
+          const attachScrollSaver = (scrollEl) => {
+            if (scrollListenerAttached) return;
             scrollListenerAttached = true;
+            scrollEl.addEventListener('scroll', () => {
+              if (cancelled) return;
+              clearTimeout(scrollSaveTimer);
+              scrollSaveTimer = setTimeout(() => {
+                if (cancelled || !scrollEl.scrollHeight) return;
+                localStorage.setItem(scrollPctKey, String(scrollEl.scrollTop / scrollEl.scrollHeight));
+              }, 600);
+            });
+          };
 
-            if (savedScrollPct != null && scrollEl.scrollHeight > scrollEl.clientHeight) {
-              scrollEl.scrollTop = savedScrollPct * scrollEl.scrollHeight;
+          // Retry restoration: scrollHeight may not be final on first render.
+          const tryRestore = (attempt = 0) => {
+            if (cancelled) return;
+            const scrollEl = getEpubScrollEl(rend, containerRef.current);
+            if (!scrollEl) {
+              if (attempt < 5) setTimeout(() => tryRestore(attempt + 1), 200);
+              return;
+            }
+            attachScrollSaver(scrollEl);
+            if (savedScrollPct != null) {
+              if (scrollEl.scrollHeight > scrollEl.clientHeight) {
+                scrollEl.scrollTop = savedScrollPct * scrollEl.scrollHeight;
+              } else if (attempt < 6) {
+                // scrollHeight not ready yet — retry
+                setTimeout(() => tryRestore(attempt + 1), 250);
+              }
             } else if (savedCfi) {
               for (const c of (rend.getContents() ?? [])) {
                 try {
@@ -787,18 +815,9 @@ export default function EpubReader({
                 } catch {}
               }
             }
-
-            scrollEl.addEventListener('scroll', () => {
-              if (cancelled) return;
-              clearTimeout(scrollSaveTimer);
-              scrollSaveTimer = setTimeout(() => {
-                if (cancelled || !scrollEl.scrollHeight) return;
-                localStorage.setItem(scrollPctKey, String(scrollEl.scrollTop / scrollEl.scrollHeight));
-              }, 600);
-            });
           };
 
-          rend.on("rendered", () => { if (!cancelled) setTimeout(tryAttach, 150); });
+          rend.on("rendered", () => { if (!cancelled) setTimeout(() => tryRestore(0), 150); });
         }
 
         book.ready
