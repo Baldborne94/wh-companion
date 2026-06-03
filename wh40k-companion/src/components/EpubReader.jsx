@@ -840,9 +840,15 @@ export default function EpubReader({
     // Check if the long-press created a text selection in the iframe.
     // This must run here because the overlay intercepts all touch events, so
     // selectionchange listeners inside the iframe never fire on touch devices.
-    const iframe = containerRef.current?.querySelector('iframe');
-    if (iframe?.contentDocument) {
-      const sel = iframe.contentDocument.defaultView?.getSelection?.();
+    // In spread view there are two iframes — pick the one under the touch.
+    const iframes = Array.from(containerRef.current?.querySelectorAll('iframe') ?? []);
+    const tapIframe = iframes.find(f => {
+      const r = f.getBoundingClientRect();
+      return swipeRef.current.x >= r.left && swipeRef.current.x <= r.right &&
+             swipeRef.current.y >= r.top  && swipeRef.current.y <= r.bottom;
+    }) ?? iframes[0];
+    if (tapIframe?.contentDocument) {
+      const sel = tapIframe.contentDocument.defaultView?.getSelection?.();
       const selText = sel?.toString()?.trim() ?? "";
       const selWord = selText.replace(/[^a-zA-Z'-]/g, "");
       if (selWord.length >= 2 && selWord.length < 40) {
@@ -854,7 +860,7 @@ export default function EpubReader({
     // Pure tap — the overlay blocks touches from reaching epub iframes, so
     // forward manually: find the element under the touch in the iframe doc.
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-      const iframe = containerRef.current?.querySelector('iframe');
+      const iframe = tapIframe;
       if (iframe?.contentDocument) {
         const rect = iframe.getBoundingClientRect();
         // body{zoom:N} scales outer clientX/Y but the iframe's internal coordinate
