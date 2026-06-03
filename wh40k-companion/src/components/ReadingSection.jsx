@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { supabase } from "../lib/supabase";
 import { sb } from "../lib/sb";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import { BOOKS } from "../data/books";
@@ -151,9 +152,28 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   const [readShorts, setReadShorts] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
   });
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('hh_shorts').select('short_id').eq('user_id', user.id).then(({ data }) => {
+      if (!data?.length) return;
+      setReadShorts(prev => {
+        const merged = new Set([...prev, ...data.map(r => r.short_id)]);
+        localStorage.setItem(lsKey, JSON.stringify([...merged]));
+        return merged;
+      });
+    });
+  }, [user?.id, lsKey]);
+
   const toggleShort = (id) => setReadShorts(prev => {
     const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+      if (user?.id) supabase.from('hh_shorts').delete().eq('user_id', user.id).eq('short_id', id).then(() => {});
+    } else {
+      next.add(id);
+      if (user?.id) supabase.from('hh_shorts').upsert({ user_id: user.id, short_id: id }).then(() => {});
+    }
     localStorage.setItem(lsKey, JSON.stringify([...next]));
     return next;
   });
