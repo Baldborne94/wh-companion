@@ -857,8 +857,11 @@ export default function EpubReader({
       const iframe = containerRef.current?.querySelector('iframe');
       if (iframe?.contentDocument) {
         const rect = iframe.getBoundingClientRect();
-        const x = swipeRef.current.x - rect.left;
-        const y = swipeRef.current.y - rect.top;
+        // body{zoom:N} scales outer clientX/Y but the iframe's internal coordinate
+        // system is unzoomed — divide by zoom so caretRangeFromPoint hits the right word.
+        const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
+        const x = (swipeRef.current.x - rect.left) / zoom;
+        const y = (swipeRef.current.y - rect.top) / zoom;
         const el = iframe.contentDocument.elementFromPoint(x, y);
 
         // 1. Lore keyword → open wiki
