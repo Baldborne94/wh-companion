@@ -185,6 +185,25 @@ function applyTheme(rend, settings, T, fnt) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Scroll-mode helpers
+// ─────────────────────────────────────────────────────────────────────────────
+// In scrolled-doc mode epub.js creates a stage element (overflow:auto) inside
+// the container div.  That element is the true scroll root.
+// We try the epub.js manager's element first, then fall back to a DOM walk.
+function getEpubScrollEl(rend, container) {
+  const mgr = rend?.manager?.element || rend?.manager?.stage?.element;
+  if (mgr && mgr.scrollHeight > mgr.clientHeight) return mgr;
+  const walk = (el, d) => {
+    if (!el || d > 4) return null;
+    const ov = getComputedStyle(el).overflowY;
+    if ((ov === 'scroll' || ov === 'auto') && el.scrollHeight > el.clientHeight + 20) return el;
+    for (const c of el.children) { const f = walk(c, d + 1); if (f) return f; }
+    return null;
+  };
+  return walk(container, 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TOC helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function flattenToc(items, depth = 0) {
@@ -971,11 +990,16 @@ export default function EpubReader({
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const saveBookmark = useCallback(() => {
     let cfi = cfiRef.current;
+    let scrollPct = null;
     if (!settingsRef.current.paginate && rendRef.current) {
       try { const loc = rendRef.current.currentLocation(); if (loc?.start?.cfi) cfi = loc.start.cfi; } catch {}
+      try {
+        const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
+        if (scrollEl?.scrollHeight > 0) scrollPct = scrollEl.scrollTop / scrollEl.scrollHeight;
+      } catch {}
     }
     if (!cfi) return;
-    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
+    const bm  = { cfi, scrollPct, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
@@ -1268,21 +1292,30 @@ export default function EpubReader({
                     <button
                       onClick={() => {
                         const cfi = bm.cfi;
-                        rendRef.current?.display(cfi);
-                        if (!settingsRef.current.paginate && rendRef.current) {
-                          setTimeout(() => {
-                            for (const c of (rendRef.current?.getContents() ?? [])) {
-                              try {
-                                const range = c.range(cfi);
-                                if (range?.startContainer) {
-                                  (range.startContainer.nodeType === 3
-                                    ? range.startContainer.parentElement
-                                    : range.startContainer)?.scrollIntoView({ block: 'start' });
-                                  break;
-                                }
-                              } catch {}
-                            }
-                          }, 400);
+                        if (!settingsRef.current.paginate) {
+                          // Scroll mode: scrollPct gives line-accurate position.
+                          // Fall back to CFI+scrollIntoView for old bookmarks without scrollPct.
+                          const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
+                          if (scrollEl && bm.scrollPct != null) {
+                            scrollEl.scrollTop = bm.scrollPct * scrollEl.scrollHeight;
+                          } else {
+                            rendRef.current?.display(cfi);
+                            setTimeout(() => {
+                              for (const c of (rendRef.current?.getContents() ?? [])) {
+                                try {
+                                  const range = c.range(cfi);
+                                  if (range?.startContainer) {
+                                    (range.startContainer.nodeType === 3
+                                      ? range.startContainer.parentElement
+                                      : range.startContainer)?.scrollIntoView({ block: 'start' });
+                                    break;
+                                  }
+                                } catch {}
+                              }
+                            }, 400);
+                          }
+                        } else {
+                          rendRef.current?.display(cfi);
                         }
                         setShowBookmarks(false);
                       }}
