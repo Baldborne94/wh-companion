@@ -203,6 +203,31 @@ function getEpubScrollEl(rend, container) {
   return walk(container, 0);
 }
 
+// Navigate to a CFI in scroll mode by computing the element's absolute Y
+// position within the epub.js scroll container.
+// el.getBoundingClientRect() is in the IFRAME's viewport coords; to convert to
+// outer-document coords we must add the iframe's own getBoundingClientRect().top.
+function scrollToCfi(rend, scrollEl, cfi) {
+  for (const c of (rend?.getContents() ?? [])) {
+    try {
+      const range = c.range(cfi);
+      if (!range?.startContainer) continue;
+      const el = range.startContainer.nodeType === 3
+        ? range.startContainer.parentElement
+        : range.startContainer;
+      if (!el) continue;
+      const iframe = el.ownerDocument?.defaultView?.frameElement;
+      if (!iframe) continue;
+      const iframeRect = iframe.getBoundingClientRect();
+      const elRect    = el.getBoundingClientRect();
+      const scrollRect = scrollEl.getBoundingClientRect();
+      scrollEl.scrollTop += (iframeRect.top + elRect.top) - scrollRect.top;
+      return true;
+    } catch {}
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // TOC helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -803,17 +828,7 @@ export default function EpubReader({
                 setTimeout(() => tryRestore(attempt + 1), 250);
               }
             } else if (savedCfi) {
-              for (const c of (rend.getContents() ?? [])) {
-                try {
-                  const range = c.range(savedCfi);
-                  if (range?.startContainer) {
-                    (range.startContainer.nodeType === 3
-                      ? range.startContainer.parentElement
-                      : range.startContainer)?.scrollIntoView({ block: 'start' });
-                    break;
-                  }
-                } catch {}
-              }
+              scrollToCfi(rend, scrollEl, savedCfi);
             }
           };
 
@@ -1336,27 +1351,12 @@ export default function EpubReader({
                           if (scrollEl && bm.scrollPct != null) {
                             scrollEl.scrollTop = bm.scrollPct * scrollEl.scrollHeight;
                           } else if (scrollEl) {
-                            // No scrollPct (old bookmark / loaded from DB): navigate via CFI then
-                            // use getBoundingClientRect to set scrollTop on the epub.js container.
-                            // scrollIntoView() is NOT used — it would scroll the iframe's internal
-                            // document scroll, not the outer epub.js scroll container.
+                            // No scrollPct (old bookmark / loaded from DB): navigate via CFI.
+                            // display(cfi) scrolls epub.js to the right section; then
+                            // scrollToCfi() computes the element's absolute Y in the outer
+                            // scroll container (accounting for iframe coordinate offset).
                             rendRef.current?.display(cfi);
-                            setTimeout(() => {
-                              for (const c of (rendRef.current?.getContents() ?? [])) {
-                                try {
-                                  const range = c.range(cfi);
-                                  if (!range?.startContainer) continue;
-                                  const el = range.startContainer.nodeType === 3
-                                    ? range.startContainer.parentElement
-                                    : range.startContainer;
-                                  if (!el) continue;
-                                  const elRect = el.getBoundingClientRect();
-                                  const scrollRect = scrollEl.getBoundingClientRect();
-                                  scrollEl.scrollTop += elRect.top - scrollRect.top;
-                                  break;
-                                } catch {}
-                              }
-                            }, 400);
+                            setTimeout(() => scrollToCfi(rendRef.current, scrollEl, cfi), 400);
                           }
                         } else {
                           rendRef.current?.display(cfi);
