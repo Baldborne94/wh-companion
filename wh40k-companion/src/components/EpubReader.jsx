@@ -203,12 +203,17 @@ function getEpubScrollEl(rend, container) {
   return walk(container, 0);
 }
 
-// Navigate to a CFI in scroll mode by computing the element's absolute Y
-// position within the epub.js scroll container.
-// el.getBoundingClientRect() is in the IFRAME's viewport coords; to convert to
-// outer-document coords we must add the iframe's own getBoundingClientRect().top.
+// Navigate to a CFI in scroll mode.
+// IMPORTANT: c.range(cfi) in epub.js ignores the chapter/section part of the CFI
+// and only uses the within-document position path. Without section filtering,
+// iterating all contents can match the wrong chapter and scroll to the wrong place.
+// We use spine.get(cfi) to identify the correct section, then only try that content.
 function scrollToCfi(rend, scrollEl, cfi) {
+  let targetIdx = null;
+  try { targetIdx = rend?.book?.spine?.get(cfi)?.index ?? null; } catch {}
+
   for (const c of (rend?.getContents() ?? [])) {
+    if (targetIdx != null && c.section != null && c.section.index !== targetIdx) continue;
     try {
       const range = c.range(cfi);
       if (!range?.startContainer) continue;
