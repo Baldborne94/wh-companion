@@ -1332,23 +1332,28 @@ export default function EpubReader({
                       onClick={() => {
                         const cfi = bm.cfi;
                         if (!settingsRef.current.paginate) {
-                          // Scroll mode: scrollPct gives line-accurate position.
-                          // Fall back to CFI+scrollIntoView for old bookmarks without scrollPct.
                           const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
                           if (scrollEl && bm.scrollPct != null) {
                             scrollEl.scrollTop = bm.scrollPct * scrollEl.scrollHeight;
-                          } else {
+                          } else if (scrollEl) {
+                            // No scrollPct (old bookmark / loaded from DB): navigate via CFI then
+                            // use getBoundingClientRect to set scrollTop on the epub.js container.
+                            // scrollIntoView() is NOT used — it would scroll the iframe's internal
+                            // document scroll, not the outer epub.js scroll container.
                             rendRef.current?.display(cfi);
                             setTimeout(() => {
                               for (const c of (rendRef.current?.getContents() ?? [])) {
                                 try {
                                   const range = c.range(cfi);
-                                  if (range?.startContainer) {
-                                    (range.startContainer.nodeType === 3
-                                      ? range.startContainer.parentElement
-                                      : range.startContainer)?.scrollIntoView({ block: 'start' });
-                                    break;
-                                  }
+                                  if (!range?.startContainer) continue;
+                                  const el = range.startContainer.nodeType === 3
+                                    ? range.startContainer.parentElement
+                                    : range.startContainer;
+                                  if (!el) continue;
+                                  const elRect = el.getBoundingClientRect();
+                                  const scrollRect = scrollEl.getBoundingClientRect();
+                                  scrollEl.scrollTop += elRect.top - scrollRect.top;
+                                  break;
                                 } catch {}
                               }
                             }, 400);
