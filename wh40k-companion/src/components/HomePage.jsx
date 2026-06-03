@@ -26,11 +26,58 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
     if (userId) sb.upsert("user_settings", { user_id: userId, hh_mode: next, updated_at: new Date().toISOString() }, "user_id");
   };
 
-  const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode), [statuses, hhMode]);
+  const lsKey = `wh40k_hh_shorts_${userId || 'guest'}`;
+  const [readShorts, setReadShorts] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
+  });
+  const toggleShort = (id) => setReadShorts(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    localStorage.setItem(lsKey, JSON.stringify([...next]));
+    return next;
+  });
+
+  const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode, readShorts), [statuses, hhMode, readShorts]);
   const [opening, setOpening] = useState(false);
   const isHH = suggestion?.reason === 'Next in Horus Heresy';
   if (!suggestion) return null;
-  if (activeBooks.some(b => b.id === suggestion.book.id)) return null;
+  if (!suggestion.isShort && activeBooks.some(b => b.id === suggestion.book.id)) return null;
+
+  const cardHeader = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>⚔ Next Up</div>
+      {isHH && (
+        <button onClick={toggleHhMode} style={{ background: "transparent", border: `1px solid ${C.gold}55`, borderRadius: 20, padding: "3px 10px", cursor: "pointer", display: "flex", gap: 0, overflow: "hidden", flexShrink: 0 }}>
+          {['full', 'essential'].map(m => (
+            <span key={m} style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 1, color: hhMode === m ? C.bg : C.muted, background: hhMode === m ? C.gold : "transparent", padding: "2px 8px", borderRadius: 12, transition: "all 0.15s" }}>{m === 'full' ? 'Full' : 'Essential'}</span>
+          ))}
+        </button>
+      )}
+    </div>
+  );
+
+  if (suggestion.isShort) {
+    return (
+      <div style={{ padding: "14px 16px 0" }}>
+        {cardHeader}
+        <div style={{ background: `linear-gradient(135deg,${C.gold}12,${C.card})`, border: `1px solid ${C.gold}44`, borderLeft: `3px solid ${C.gold}`, borderRadius: 10, padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ width: 44, height: 64, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+            {suggestion.entry.type === 'audio' ? '🎧' : '📄'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 1, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.reason.toUpperCase()}{suggestion.seriesProgress ? ` · ${suggestion.seriesProgress}` : ""}</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, marginBottom: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.entry.t}</div>
+            <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: suggestion.entry.src ? 2 : 0 }}>{suggestion.entry.a}</div>
+            {suggestion.entry.src && <div style={{ fontSize: 10, color: C.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.entry.src}</div>}
+          </div>
+          <button onClick={() => toggleShort(suggestion.shortId)}
+            style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}55`, borderRadius: 6, color: C.gold, padding: "6px 10px", cursor: "pointer", fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 1, flexShrink: 0 }}>
+            ✓
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handle = async () => {
     if (!onOpenBook) return setSection('library');
@@ -42,16 +89,7 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
 
   return (
     <div style={{ padding: "14px 16px 0" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>⚔ Next Up</div>
-        {isHH && (
-          <button onClick={toggleHhMode} style={{ background: "transparent", border: `1px solid ${C.gold}55`, borderRadius: 20, padding: "3px 10px", cursor: "pointer", display: "flex", gap: 0, overflow: "hidden", flexShrink: 0 }}>
-            {['full', 'essential'].map(m => (
-              <span key={m} style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 1, color: hhMode === m ? C.bg : C.muted, background: hhMode === m ? C.gold : "transparent", padding: "2px 8px", borderRadius: 12, transition: "all 0.15s" }}>{m === 'full' ? 'Full' : 'Essential'}</span>
-            ))}
-          </button>
-        )}
-      </div>
+      {cardHeader}
       <div style={{ background: `linear-gradient(135deg,${C.gold}12,${C.card})`, border: `1px solid ${C.gold}44`, borderLeft: `3px solid ${C.gold}`, borderRadius: 10, padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
         <CoverImage book={suggestion.book} width={44} height={64} radius={3} accentColor={FC[suggestion.book.faction] || C.dim} style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.5)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
