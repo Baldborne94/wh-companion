@@ -657,18 +657,28 @@ export default function EpubReader({
             }
           });
 
-          // Read selection immediately on mouseup (desktop/phone) and via
-          // selectionchange debounced (tablet — user drags handles after touchend).
-          const readSel = () => {
+          // mouseup: instant dictionary on desktop/phone
+          doc.addEventListener("mouseup", () => {
             const text = contents.window.getSelection()?.toString()?.trim() ?? "";
             const word = text.replace(/[^a-zA-Z'-]/g, "");
             if (word.length >= 2 && word.length < 40) setDictWord(word);
-          };
-          doc.addEventListener("mouseup", readSel);
+          });
+
+          // selectionchange: for tablet where Android clears the selection when its
+          // native menu appears. Store the word when selection exists; only start a
+          // new timer on a valid word so the timer survives the native-menu clear.
+          let pendingWord = "";
           let selTimer = null;
           doc.addEventListener("selectionchange", () => {
-            clearTimeout(selTimer);
-            selTimer = setTimeout(readSel, 300);
+            const text = contents.window.getSelection()?.toString()?.trim() ?? "";
+            const word = text.replace(/[^a-zA-Z'-]/g, "");
+            if (word.length >= 2 && word.length < 40) {
+              pendingWord = word;
+              clearTimeout(selTimer);
+              selTimer = setTimeout(() => { if (pendingWord) setDictWord(pendingWord); }, 350);
+            }
+            // Do NOT cancel timer on empty selection — Android native menu clears the
+            // iframe selection when it steals focus, but pendingWord is still valid.
           });
         });
 
