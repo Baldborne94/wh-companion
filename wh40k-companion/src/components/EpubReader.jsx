@@ -736,6 +736,32 @@ export default function EpubReader({
           if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
         }, 20000);
 
+        // Scroll mode: after a section renders, scroll to the exact saved CFI position.
+        // rend.display(savedCfi) navigates to the chapter but may not scroll to the
+        // exact paragraph — scrollIntoView on the CFI element fixes this.
+        if (!settingsRef.current.paginate && savedCfi) {
+          let scrolledOnLoad = false;
+          const onRendered = () => {
+            if (scrolledOnLoad || cancelled) return;
+            setTimeout(() => {
+              if (scrolledOnLoad || cancelled) return;
+              for (const c of (rend.getContents() ?? [])) {
+                try {
+                  const range = c.range(savedCfi);
+                  if (range?.startContainer) {
+                    (range.startContainer.nodeType === 3
+                      ? range.startContainer.parentElement
+                      : range.startContainer)?.scrollIntoView({ block: 'start' });
+                    scrolledOnLoad = true;
+                    break;
+                  }
+                } catch {}
+              }
+            }, 150);
+          };
+          rend.on("rendered", onRendered);
+        }
+
         book.ready
           .then(() => {
             clearTimeout(readyTimeout);
@@ -944,7 +970,10 @@ export default function EpubReader({
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const saveBookmark = useCallback(() => {
-    const cfi = cfiRef.current;
+    let cfi = cfiRef.current;
+    if (!settingsRef.current.paginate && rendRef.current) {
+      try { const loc = rendRef.current.currentLocation(); if (loc?.start?.cfi) cfi = loc.start.cfi; } catch {}
+    }
     if (!cfi) return;
     const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
@@ -1237,7 +1266,26 @@ export default function EpubReader({
                   <div key={i} style={{ display:"flex", alignItems:"stretch",
                                         borderBottom:`1px solid ${T.border}` }}>
                     <button
-                      onClick={() => { rendRef.current?.display(bm.cfi); setShowBookmarks(false); }}
+                      onClick={() => {
+                        const cfi = bm.cfi;
+                        rendRef.current?.display(cfi);
+                        if (!settingsRef.current.paginate && rendRef.current) {
+                          setTimeout(() => {
+                            for (const c of (rendRef.current?.getContents() ?? [])) {
+                              try {
+                                const range = c.range(cfi);
+                                if (range?.startContainer) {
+                                  (range.startContainer.nodeType === 3
+                                    ? range.startContainer.parentElement
+                                    : range.startContainer)?.scrollIntoView({ block: 'start' });
+                                  break;
+                                }
+                              } catch {}
+                            }
+                          }, 400);
+                        }
+                        setShowBookmarks(false);
+                      }}
                       style={{ flex:1, textAlign:"left", background:"transparent",
                                border:"none", padding:"12px 16px", cursor:"pointer" }}>
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>
