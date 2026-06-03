@@ -1,35 +1,41 @@
 import { HH_FULL, HH_MIN, findHHBook } from '../data/hhGuide';
 import { BOOKS } from '../data/books';
 
-export function getHHNextFromGuide(guide, statuses) {
+export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
   const isUnread = id => { const s = statuses[id]?.status || 'none'; return s === 'none' || s === 'want'; };
+  const eligibleNovels = () => guide.flatMap(p => p.books || [])
+    .filter(e => { const et = e.type || 'novel'; return et !== 'short' && et !== 'audio' && !e.b40k; })
+    .map(e => findHHBook(e)).filter(Boolean);
+  const seriesProgress = () => {
+    const el = eligibleNovels();
+    return `${el.filter(b => statuses[b.id]?.status === 'read').length}/${el.length} read`;
+  };
   for (const part of guide) {
     if (part.pickOne) continue;
-    const entries = part.books || [];
-    for (const entry of entries) {
-      const t = entry.type || 'novel';
-      if (t === 'short' || t === 'audio') continue;
+    for (const entry of (part.books || [])) {
       if (entry.b40k) continue;
-      const book = findHHBook(entry);
-      if (book && isUnread(book.id)) {
-        const eligible = guide.flatMap(p => p.books || [])
-          .filter(e => { const et = e.type || 'novel'; return et !== 'short' && et !== 'audio' && !e.b40k; })
-          .map(e => findHHBook(e)).filter(Boolean);
-        const hhRead = eligible.filter(b => statuses[b.id]?.status === 'read').length;
-        return { book, reason: 'Next in Horus Heresy', seriesProgress: `${hhRead}/${eligible.length} read`, priority: 0 };
+      const t = entry.type || 'novel';
+      if (t === 'short' || t === 'audio') {
+        const shortId = `${entry.t}__${entry.a}`;
+        if (!readShorts.has(shortId))
+          return { isShort: true, entry, shortId, reason: 'Next in Horus Heresy', seriesProgress: seriesProgress() };
+        continue;
       }
+      const book = findHHBook(entry);
+      if (book && isUnread(book.id))
+        return { book, reason: 'Next in Horus Heresy', seriesProgress: seriesProgress(), priority: 0 };
     }
   }
   return null;
 }
 
-export function getNextSuggestion(statuses, hhMode = 'full') {
+export function getNextSuggestion(statuses, hhMode = 'full', readShorts = new Set()) {
   const COLD_STARTS = ["Horus Rising", "Eisenhorn", "Gaunt's Ghosts", "Ultramarines: The Omnibus", "Night Lords: The Omnibus"];
 
   const hasReadAnyHH = BOOKS.some(b => b.series === 'Horus Heresy' && statuses[b.id]?.status === 'read');
   if (hasReadAnyHH || BOOKS.some(b => b.series === 'Horus Heresy' && statuses[b.id]?.status === 'reading')) {
     const guide = hhMode === 'essential' ? HH_MIN : HH_FULL;
-    const hhNext = getHHNextFromGuide(guide, statuses);
+    const hhNext = getHHNextFromGuide(guide, statuses, readShorts);
     if (hhNext) return hhNext;
   }
 
