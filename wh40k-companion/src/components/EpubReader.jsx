@@ -657,16 +657,19 @@ export default function EpubReader({
             }
           });
 
-          // Read selection at mouseup/touchend — before epub.js can clear it.
-          // The "selected" event fires too late in paginated mode (CSS columns cause
-          // epub.js to process the selection, clearing it before the handler runs).
+          // Read selection immediately on mouseup (desktop/phone) and via
+          // selectionchange debounced (tablet — user drags handles after touchend).
           const readSel = () => {
             const text = contents.window.getSelection()?.toString()?.trim() ?? "";
             const word = text.replace(/[^a-zA-Z'-]/g, "");
             if (word.length >= 2 && word.length < 40) setDictWord(word);
           };
           doc.addEventListener("mouseup", readSel);
-          doc.addEventListener("touchend", () => setTimeout(readSel, 50));
+          let selTimer = null;
+          doc.addEventListener("selectionchange", () => {
+            clearTimeout(selTimer);
+            selTimer = setTimeout(readSel, 300);
+          });
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
