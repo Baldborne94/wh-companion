@@ -727,18 +727,7 @@ export default function EpubReader({
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
-
-        // In scroll mode, preload savedScrollPct before deciding what to display.
-        // If we have it, open the book at position 0 (undefined) and restore via ratio —
-        // using rend.display(savedCfi) in scroll mode causes a race: epub.js sets its own
-        // scrollTop asynchronously after our restoration, overwriting it.
-        const scrollPctKey = `wh40k_scrollpct_${userId}_${bookId}`;
-        const savedScrollPct = !settingsRef.current.paginate ? (() => {
-          const n = parseFloat(localStorage.getItem(scrollPctKey) || '');
-          return isNaN(n) ? null : n;
-        })() : null;
-
-        rend.display((!settingsRef.current.paginate && savedScrollPct != null) ? undefined : (savedCfi || undefined));
+        rend.display(savedCfi || undefined);
 
         // loc.start.percentage uses spine position (chapter index / total) before
         // locations are generated — last chapter reads as ~100% regardless of actual
@@ -791,48 +780,18 @@ export default function EpubReader({
           if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
         }, 20000);
 
-        // Scroll mode: track pixel-accurate position via scrollTop/scrollHeight ratio.
-        // savedScrollPct was preloaded above; if present, rend.display() was called without
-        // a CFI so epub.js won't race-set its own scrollTop after our restoration.
-        if (!settingsRef.current.paginate) {
-          let scrollListenerAttached = false;
-          let scrollSaveTimer = null;
-
-          const attachScrollSaver = (scrollEl) => {
-            if (scrollListenerAttached) return;
-            scrollListenerAttached = true;
-            scrollEl.addEventListener('scroll', () => {
-              if (cancelled) return;
-              clearTimeout(scrollSaveTimer);
-              scrollSaveTimer = setTimeout(() => {
-                if (cancelled || !scrollEl.scrollHeight) return;
-                localStorage.setItem(scrollPctKey, String(scrollEl.scrollTop / scrollEl.scrollHeight));
-              }, 600);
-            });
-          };
-
-          // Retry restoration: scrollHeight may not be final on first render.
-          const tryRestore = (attempt = 0) => {
-            if (cancelled) return;
-            const scrollEl = getEpubScrollEl(rend, containerRef.current);
-            if (!scrollEl) {
-              if (attempt < 5) setTimeout(() => tryRestore(attempt + 1), 200);
-              return;
-            }
-            attachScrollSaver(scrollEl);
-            if (savedScrollPct != null) {
-              if (scrollEl.scrollHeight > scrollEl.clientHeight) {
-                scrollEl.scrollTop = savedScrollPct * scrollEl.scrollHeight;
-              } else if (attempt < 6) {
-                // scrollHeight not ready yet — retry
-                setTimeout(() => tryRestore(attempt + 1), 250);
-              }
-            } else if (savedCfi) {
-              scrollToCfi(rend, scrollEl, savedCfi);
-            }
-          };
-
-          rend.on("rendered", () => { if (!cancelled) setTimeout(() => tryRestore(0), 150); });
+        // Scroll mode: after epub.js finishes positioning ("relocated"), nudge to savedCfi.
+        // relocated fires AFTER epub.js has set scrollTop, so there is no race condition.
+        if (!settingsRef.current.paginate && savedCfi) {
+          let initialPositioned = false;
+          rend.on("relocated", () => {
+            if (cancelled || initialPositioned) return;
+            initialPositioned = true;
+            setTimeout(() => {
+              const scrollEl = getEpubScrollEl(rend, containerRef.current);
+              if (scrollEl) scrollToCfi(rend, scrollEl, savedCfi);
+            }, 100);
+          });
         }
 
         book.ready
@@ -1044,16 +1003,11 @@ export default function EpubReader({
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const saveBookmark = useCallback(() => {
     let cfi = cfiRef.current;
-    let scrollPct = null;
     if (!settingsRef.current.paginate && rendRef.current) {
       try { const loc = rendRef.current.currentLocation(); if (loc?.start?.cfi) cfi = loc.start.cfi; } catch {}
-      try {
-        const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
-        if (scrollEl?.scrollHeight > 0) scrollPct = scrollEl.scrollTop / scrollEl.scrollHeight;
-      } catch {}
     }
     if (!cfi) return;
-    const bm  = { cfi, scrollPct, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
+    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
     const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
@@ -1347,16 +1301,15 @@ export default function EpubReader({
                       onClick={() => {
                         const cfi = bm.cfi;
                         if (!settingsRef.current.paginate) {
+                          rendRef.current?.display(cfi);
                           const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
-                          if (scrollEl && bm.scrollPct != null) {
-                            scrollEl.scrollTop = bm.scrollPct * scrollEl.scrollHeight;
-                          } else if (scrollEl) {
-                            // No scrollPct (old bookmark / loaded from DB): navigate via CFI.
-                            // display(cfi) scrolls epub.js to the right section; then
-                            // scrollToCfi() computes the element's absolute Y in the outer
-                            // scroll container (accounting for iframe coordinate offset).
-                            rendRef.current?.display(cfi);
-                            setTimeout(() => scrollToCfi(rendRef.current, scrollEl, cfi), 400);
+                          if (scrollEl) {
+                            let attempts = 0;
+                            const tryNav = () => {
+                              if (attempts++ > 8) return;
+                              if (!scrollToCfi(rendRef.current, scrollEl, cfi)) setTimeout(tryNav, 150);
+                            };
+                            setTimeout(tryNav, 100);
                           }
                         } else {
                           rendRef.current?.display(cfi);
