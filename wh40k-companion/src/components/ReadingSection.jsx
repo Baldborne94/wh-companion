@@ -39,21 +39,10 @@ function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
   );
 }
 
-function HHGuideSection({ statuses, userId }) {
+function HHGuideSection({ statuses, readShorts, toggleShort }) {
   const [mode, setMode] = useState('minimalist');
   const [open, setOpen] = useState(new Set(['m1']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-
-  const lsKey = `wh40k_hh_shorts_${userId || 'guest'}`;
-  const [readShorts, setReadShorts] = useState(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
-  });
-  const toggleShort = (id) => setReadShorts(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    localStorage.setItem(lsKey, JSON.stringify([...next]));
-    return next;
-  });
 
   const parts = mode === 'minimalist' ? HH_MIN : HH_FULL;
 
@@ -158,6 +147,17 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   const [crusadeTab, setCrusadeTab] = useState('overview');
   const [expanded, setExpanded] = useState(null);
 
+  const lsKey = `wh40k_hh_shorts_${user?.id || 'guest'}`;
+  const [readShorts, setReadShorts] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
+  });
+  const toggleShort = (id) => setReadShorts(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    localStorage.setItem(lsKey, JSON.stringify([...next]));
+    return next;
+  });
+
   const readCount   = useMemo(() => Object.values(statuses).filter(s => s.status === 'read').length,    [statuses]);
   const readingCount= useMemo(() => Object.values(statuses).filter(s => s.status === 'reading').length, [statuses]);
   const wantCount   = useMemo(() => Object.values(statuses).filter(s => s.status === 'want').length,    [statuses]);
@@ -197,7 +197,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
     if (user?.id) sb.upsert("user_settings", { user_id: user.id, hh_mode: m, updated_at: new Date().toISOString() }, "user_id");
   };
 
-  const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode), [statuses, hhMode]);
+  const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode, readShorts), [statuses, hhMode, readShorts]);
   const [opening, setOpening] = useState(false);
 
   const handleReadNext = async (book) => {
@@ -217,7 +217,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
           </button>
         ))}
       </div>
-      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} userId={user?.id} />}
+      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} readShorts={readShorts} toggleShort={toggleShort} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
@@ -243,24 +243,42 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 1 }}>· {suggestion.reason}</span>
               {suggestion.seriesProgress && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, marginLeft: "auto" }}>{suggestion.seriesProgress}</span>}
             </div>
-            <div style={{ padding: "10px 14px 14px", display: "flex", gap: 14, alignItems: "center" }}>
-              <CoverImage book={suggestion.book} width={64} height={96} radius={4} accentColor={FC[suggestion.book.faction] || C.dim} style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.5)", flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 1, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.book.series}{suggestion.book.num > 0 ? ` #${suggestion.book.num}` : ""}</div>
-                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 15, color: C.text, lineHeight: 1.3, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.book.title}</div>
-                <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginBottom: 10 }}>{suggestion.book.author}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => handleReadNext(suggestion.book)} disabled={opening}
-                    style={{ flex: 1, padding: "9px 10px", borderRadius: 8, background: `linear-gradient(135deg,${C.gold},#8a6f28)`, border: "none", color: C.bg, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer", fontWeight: 700 }}>
-                    {opening ? "Opening…" : "📖 Read Next"}
-                  </button>
-                  <button onClick={() => setSection?.('library')}
-                    style={{ padding: "9px 12px", borderRadius: 8, background: "transparent", border: `1px solid ${C.dim}`, color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer" }}>
-                    Details
+            {suggestion.isShort ? (
+              <div style={{ padding: "10px 14px 14px", display: "flex", gap: 14, alignItems: "center" }}>
+                <div style={{ width: 64, height: 96, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}>
+                  {suggestion.entry.type === 'audio' ? '🎧' : '📄'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 2, marginBottom: 4, textTransform: "uppercase" }}>{suggestion.entry.type === 'audio' ? 'Audio Drama' : 'Short Story'}</div>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 14, color: C.text, lineHeight: 1.3, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.entry.t}</div>
+                  <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginBottom: suggestion.entry.src ? 2 : 10 }}>{suggestion.entry.a}</div>
+                  {suggestion.entry.src && <div style={{ fontSize: 10, color: C.dim, marginBottom: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>In: {suggestion.entry.src}</div>}
+                  <button onClick={() => toggleShort(suggestion.shortId)}
+                    style={{ padding: "9px 14px", borderRadius: 8, background: `linear-gradient(135deg,${C.gold},#8a6f28)`, border: "none", color: C.bg, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer", fontWeight: 700 }}>
+                    ✓ Mark as Read
                   </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ padding: "10px 14px 14px", display: "flex", gap: 14, alignItems: "center" }}>
+                <CoverImage book={suggestion.book} width={64} height={96} radius={4} accentColor={FC[suggestion.book.faction] || C.dim} style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.5)", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 1, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.book.series}{suggestion.book.num > 0 ? ` #${suggestion.book.num}` : ""}</div>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 15, color: C.text, lineHeight: 1.3, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.book.title}</div>
+                  <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginBottom: 10 }}>{suggestion.book.author}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => handleReadNext(suggestion.book)} disabled={opening}
+                      style={{ flex: 1, padding: "9px 10px", borderRadius: 8, background: `linear-gradient(135deg,${C.gold},#8a6f28)`, border: "none", color: C.bg, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer", fontWeight: 700 }}>
+                      {opening ? "Opening…" : "📖 Read Next"}
+                    </button>
+                    <button onClick={() => setSection?.('library')}
+                      style={{ padding: "9px 12px", borderRadius: 8, background: "transparent", border: `1px solid ${C.dim}`, color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer" }}>
+                      Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
