@@ -837,6 +837,20 @@ export default function EpubReader({
     const dx = e.changedTouches[0].clientX - swipeRef.current.x;
     const dy = e.changedTouches[0].clientY - swipeRef.current.y;
 
+    // Check if the long-press created a text selection in the iframe.
+    // This must run here because the overlay intercepts all touch events, so
+    // selectionchange listeners inside the iframe never fire on touch devices.
+    const iframe = containerRef.current?.querySelector('iframe');
+    if (iframe?.contentDocument) {
+      const sel = iframe.contentDocument.defaultView?.getSelection?.();
+      const selText = sel?.toString()?.trim() ?? "";
+      const selWord = selText.replace(/[^a-zA-Z'-]/g, "");
+      if (selWord.length >= 2 && selWord.length < 40) {
+        setDictWord(selWord);
+        return;
+      }
+    }
+
     // Pure tap — the overlay blocks touches from reaching epub iframes, so
     // forward manually: find the element under the touch in the iframe doc.
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
