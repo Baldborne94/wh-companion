@@ -656,6 +656,17 @@ export default function EpubReader({
               appWindow.open(wikiUrl(kw), "_blank", "noopener");
             }
           });
+
+          // Read selection at mouseup/touchend — before epub.js can clear it.
+          // The "selected" event fires too late in paginated mode (CSS columns cause
+          // epub.js to process the selection, clearing it before the handler runs).
+          const readSel = () => {
+            const text = contents.window.getSelection()?.toString()?.trim() ?? "";
+            const word = text.replace(/[^a-zA-Z'-]/g, "");
+            if (word.length >= 2 && word.length < 40) setDictWord(word);
+          };
+          doc.addEventListener("mouseup", readSel);
+          doc.addEventListener("touchend", () => setTimeout(readSel, 50));
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
@@ -704,21 +715,6 @@ export default function EpubReader({
               saveProgressToSupabase(userId, bookId, null, cfi);
             }, 1500);
           }
-        });
-
-        rend.on("selected", (cfiRange, contents) => {
-          if (cancelled) return;
-          let text = "";
-          try {
-            // In paginated mode css-columns shift visual positions; use CFI-based range
-            // to get the actual selected text instead of getSelection() which can misfire
-            const domRange = contents.range(cfiRange);
-            text = domRange?.toString()?.trim() ?? "";
-          } catch {
-            text = contents?.window?.getSelection?.()?.toString()?.trim() ?? "";
-          }
-          const word = text.replace(/[^a-zA-Z'-]/g, "");
-          if (word.length >= 2 && word.length < 40) setDictWord(word);
         });
 
         rend.on("click", () => revealUI());
