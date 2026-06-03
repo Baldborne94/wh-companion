@@ -78,22 +78,25 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
       if (key && key.startsWith(`wh40k_ebook_${user.id}_`)) {
         try {
           const meta = JSON.parse(localStorage.getItem(key));
-          if (meta?.book_id) { const book = BOOKS.find(b => b.id === meta.book_id); if (book) lsBooks.push({ ...book, _file: meta }); }
+          if (meta?.book_id) { const book = BOOKS.find(b => b.id === Number(meta.book_id)); if (book) lsBooks.push({ ...book, _file: meta }); }
         } catch {}
       }
     }
     if (lsBooks.length > 0) setShelfBooks(lsBooks);
   }, [user?.id]);
 
-  // Load shelf books from DB whenever tab switches to shelf
+  const [shelfSeed, setShelfSeed] = useState(0);
+  const refreshShelf = () => setShelfSeed(s => s + 1);
+
+  // Load shelf books from DB whenever tab switches to shelf (or after an upload)
   useEffect(() => {
     if (!user?.id) { setShelfBooks([]); setShelfLoading(false); return; }
     if (tab === "shelf") setShelfLoading(true);
     supabase.from("ebook_files").select("book_id,file_name,file_path,file_type").eq("user_id", user.id)
       .then(({ data: files }) => {
         if (files?.length) {
-          const ids = new Set(files.map(f => f.book_id));
-          setShelfBooks(BOOKS.filter(b => ids.has(b.id)).map(b => ({ ...b, _file: files.find(f => f.book_id === b.id) })));
+          const ids = new Set(files.map(f => Number(f.book_id)));
+          setShelfBooks(BOOKS.filter(b => ids.has(b.id)).map(b => ({ ...b, _file: files.find(f => Number(f.book_id) === b.id) })));
         } else {
           const lsBooks = [];
           for (let i = 0; i < localStorage.length; i++) {
@@ -101,7 +104,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
             if (key?.startsWith(`wh40k_ebook_${user.id}_`)) {
               try {
                 const meta = JSON.parse(localStorage.getItem(key));
-                if (meta?.book_id) { const book = BOOKS.find(b => b.id === meta.book_id); if (book) lsBooks.push({ ...book, _file: meta }); }
+                if (meta?.book_id) { const book = BOOKS.find(b => b.id === Number(meta.book_id)); if (book) lsBooks.push({ ...book, _file: meta }); }
               } catch {}
             }
           }
@@ -109,7 +112,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
         }
         setShelfLoading(false);
       });
-  }, [tab, user?.id]);
+  }, [tab, user?.id, shelfSeed]);
 
   const handleOpenReader = ({ book, url, fileType, progress, chapterIndex, pageIndex }) =>
     setReader({ book, url, fileType, progress, chapterIndex, pageIndex: pageIndex || 0 });
@@ -140,7 +143,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
       </Suspense>
     );
   }
-  if (detail) return <BookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange} />;
+  if (detail) return <BookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange} onEbookUploaded={refreshShelf} />;
 
   const isFiltered = series !== "All" || faction !== "All" || type !== "All" || era !== "All";
   const Chip = ({ label, active, onClick }) => (

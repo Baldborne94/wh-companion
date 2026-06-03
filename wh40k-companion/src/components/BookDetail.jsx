@@ -8,7 +8,7 @@ import { getBookRating, setBookRatingLS, getBookNotes, setBookNotesLS, setBookSt
 const EpubReader = lazy(() => import("./EpubReader"));
 const PdfReader  = lazy(() => import("./PdfReader"));
 
-export default function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
+export default function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange, onEbookUploaded }) {
   const fc = FC[book.faction] || C.dim;
   const inp = useRef(null);
   const [ebookMeta,    setEbookMeta]    = useState(null);
@@ -86,8 +86,8 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
         await supabase.from("ebook_files").delete().eq("user_id", user.id).eq("book_id", book.id);
         const { error:insErr } = await supabase.from("ebook_files").insert(meta);
         if (insErr) { setUploadMsg(`⚠️ File saved locally but DB error: ${insErr.message?.slice(0,80)}`); }
-        else { setUploadMsg("✅ Uploaded & synced!"); }
-      } else { setUploadMsg("✅ Uploaded & synced!"); }
+        else { setUploadMsg("✅ Uploaded & synced!"); onEbookUploaded?.(); }
+      } else { setUploadMsg("✅ Uploaded & synced!"); onEbookUploaded?.(); }
     } else { setUploadMsg("❌ Upload failed — check Supabase storage policy."); }
     setUploading(false); setTimeout(() => setUploadMsg(""), 3000);
   };
