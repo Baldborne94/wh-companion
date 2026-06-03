@@ -189,49 +189,6 @@ function applyTheme(rend, settings, T, fnt) {
 // ─────────────────────────────────────────────────────────────────────────────
 // In scrolled-doc mode epub.js creates a stage element (overflow:auto) inside
 // the container div.  That element is the true scroll root.
-// We try the epub.js manager's element first, then fall back to a DOM walk.
-function getEpubScrollEl(rend, container) {
-  const mgr = rend?.manager?.element || rend?.manager?.stage?.element;
-  if (mgr && mgr.scrollHeight > mgr.clientHeight) return mgr;
-  const walk = (el, d) => {
-    if (!el || d > 4) return null;
-    const ov = getComputedStyle(el).overflowY;
-    if ((ov === 'scroll' || ov === 'auto') && el.scrollHeight > el.clientHeight + 20) return el;
-    for (const c of el.children) { const f = walk(c, d + 1); if (f) return f; }
-    return null;
-  };
-  return walk(container, 0);
-}
-
-// Navigate to a CFI in scroll mode.
-// IMPORTANT: c.range(cfi) in epub.js ignores the chapter/section part of the CFI
-// and only uses the within-document position path. Without section filtering,
-// iterating all contents can match the wrong chapter and scroll to the wrong place.
-// We use spine.get(cfi) to identify the correct section, then only try that content.
-function scrollToCfi(rend, scrollEl, cfi) {
-  let targetIdx = null;
-  try { targetIdx = rend?.book?.spine?.get(cfi)?.index ?? null; } catch {}
-
-  for (const c of (rend?.getContents() ?? [])) {
-    if (targetIdx != null && c.section != null && c.section.index !== targetIdx) continue;
-    try {
-      const range = c.range(cfi);
-      if (!range?.startContainer) continue;
-      const el = range.startContainer.nodeType === 3
-        ? range.startContainer.parentElement
-        : range.startContainer;
-      if (!el) continue;
-      const iframe = el.ownerDocument?.defaultView?.frameElement;
-      if (!iframe) continue;
-      const iframeRect = iframe.getBoundingClientRect();
-      const elRect    = el.getBoundingClientRect();
-      const scrollRect = scrollEl.getBoundingClientRect();
-      scrollEl.scrollTop += (iframeRect.top + elRect.top) - scrollRect.top;
-      return true;
-    } catch {}
-  }
-  return false;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOC helpers
@@ -785,19 +742,6 @@ export default function EpubReader({
           if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
         }, 20000);
 
-        // Scroll mode: after epub.js finishes positioning ("relocated"), nudge to savedCfi.
-        // relocated fires AFTER epub.js has set scrollTop, so there is no race condition.
-        if (!settingsRef.current.paginate && savedCfi) {
-          let initialPositioned = false;
-          rend.on("relocated", () => {
-            if (cancelled || initialPositioned) return;
-            initialPositioned = true;
-            setTimeout(() => {
-              const scrollEl = getEpubScrollEl(rend, containerRef.current);
-              if (scrollEl) scrollToCfi(rend, scrollEl, savedCfi);
-            }, 100);
-          });
-        }
 
         book.ready
           .then(() => {
@@ -1304,21 +1248,7 @@ export default function EpubReader({
                                         borderBottom:`1px solid ${T.border}` }}>
                     <button
                       onClick={() => {
-                        const cfi = bm.cfi;
-                        if (!settingsRef.current.paginate) {
-                          rendRef.current?.display(cfi);
-                          const scrollEl = getEpubScrollEl(rendRef.current, containerRef.current);
-                          if (scrollEl) {
-                            let attempts = 0;
-                            const tryNav = () => {
-                              if (attempts++ > 8) return;
-                              if (!scrollToCfi(rendRef.current, scrollEl, cfi)) setTimeout(tryNav, 150);
-                            };
-                            setTimeout(tryNav, 100);
-                          }
-                        } else {
-                          rendRef.current?.display(cfi);
-                        }
+                        rendRef.current?.display(bm.cfi);
                         setShowBookmarks(false);
                       }}
                       style={{ flex:1, textAlign:"left", background:"transparent",
