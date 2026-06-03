@@ -878,22 +878,41 @@ export default function EpubReader({
           return;
         }
 
-        // 2. Any word → dictionary (use caretRangeFromPoint to get exact word)
+        // 2. Any word → dictionary
+        // Use Selection.modify to expand to word boundaries — more robust than
+        // manual text-node walking which fails at inline elements or line ends.
         const doc = iframe.contentDocument;
-        let node = null, off = 0;
+        const win = iframe.contentWindow;
+        const sel = win.getSelection();
+        sel.removeAllRanges();
+        let caretRange = null;
         if (doc.caretRangeFromPoint) {
-          const r = doc.caretRangeFromPoint(x, y);
-          if (r) { node = r.startContainer; off = r.startOffset; }
+          caretRange = doc.caretRangeFromPoint(x, y);
         } else if (doc.caretPositionFromPoint) {
           const p = doc.caretPositionFromPoint(x, y);
-          if (p) { node = p.offsetNode; off = p.offset; }
+          if (p) { caretRange = doc.createRange(); caretRange.setStart(p.offsetNode, p.offset); caretRange.collapse(true); }
         }
-        if (node?.nodeType === 3) {
-          const txt = node.textContent;
-          let s = off, e = off;
-          while (s > 0 && /[a-zA-Z'-]/.test(txt[s - 1])) s--;
-          while (e < txt.length && /[a-zA-Z'-]/.test(txt[e])) e++;
-          const word = txt.slice(s, e).replace(/[^a-zA-Z'-]/g, '');
+        if (caretRange) {
+          sel.addRange(caretRange);
+          if (sel.modify) {
+            sel.modify('move', 'backward', 'word');
+            sel.modify('extend', 'forward', 'word');
+          } else {
+            const node = caretRange.startContainer;
+            const off  = caretRange.startOffset;
+            if (node?.nodeType === 3) {
+              const txt = node.textContent;
+              let s = off, e = off;
+              while (s > 0 && /[a-zA-Z'-]/.test(txt[s - 1])) s--;
+              while (e < txt.length && /[a-zA-Z'-]/.test(txt[e])) e++;
+              caretRange.setStart(node, s);
+              caretRange.setEnd(node, e);
+              sel.removeAllRanges();
+              sel.addRange(caretRange);
+            }
+          }
+          const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, '');
+          sel.removeAllRanges();
           if (word.length >= 2 && word.length < 40) setDictWord(word);
         }
       }
