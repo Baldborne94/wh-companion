@@ -312,7 +312,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 }
 
 // ─── AoS HOME PAGE ────────────────────────────────────────────────────────────
-export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook }) {
+export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onShowHelp }) {
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -419,6 +419,9 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook }) {
       {/* Hero */}
       <div style={{ padding:"24px 16px 20px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})`, position:"relative" }}>
         <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:`linear-gradient(to right,transparent,${AOS.gold},transparent)`, animation:"aosGlow 3s ease-in-out infinite" }}/>
+        {onShowHelp && (
+          <button onClick={onShowHelp} style={{ position:"absolute", top:16, right:16, width:28, height:28, borderRadius:"50%", background:"transparent", border:`1px solid ${AOS.border}`, color:AOS.muted, fontSize:13, fontFamily:"'Cinzel',serif", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>?</button>
+        )}
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:4 }}>Age of Sigmar</div>
         <h1 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:26, color:AOS.text, lineHeight:1.1, marginBottom:4 }}>Mortal Realms</h1>
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3 }}>YOUR LIBRARY</div>

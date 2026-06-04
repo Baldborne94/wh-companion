@@ -24,6 +24,7 @@ const PdfReader         = lazy(() => import("./components/PdfReader"));
 const PaintingTracker   = lazy(() => import("./components/PaintingTracker"));
 const StatsModal        = lazy(() => import("./components/StatsModal"));
 const AchievementPopup  = lazy(() => import("./components/AchievementPopup"));
+const OnboardingModal   = lazy(() => import("./components/OnboardingModal"));
 const HomePage          = lazy(() => import("./components/HomePage"));
 const LibrarySection    = lazy(() => import("./components/LibrarySection"));
 const ReadingSection    = lazy(() => import("./components/ReadingSection"));
@@ -197,6 +198,9 @@ export default function App(){
     }
   },[user?.id, checkAoSReadingAchievements]);
 
+  // Onboarding — shown once on first launch, re-openable via ? button in Home
+  const [showOnboarding,setShowOnboarding]=useState(false);
+
   // Landing page: always shown first on each fresh session.
   const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
   const startApp=useCallback(()=>{
@@ -223,6 +227,11 @@ export default function App(){
       if(u){ localStorage.setItem('wh_universe',u); setUniverse(u); }
     });
   },[user?.id]);
+
+  // Show onboarding the first time the app fully loads (after universe selection)
+  useEffect(()=>{
+    if(universe&&!localStorage.getItem('wh40k_onboarding_done')) setShowOnboarding(true);
+  },[universe]);
 
   const selectUniverse=(u)=>{
     localStorage.setItem('wh_universe',u);
@@ -371,8 +380,8 @@ export default function App(){
             <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
               <ErrorBoundary>
                 <Suspense fallback={null}>
-                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook}/>}
-                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook}/>}
+                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onShowHelp={()=>setShowOnboarding(true)}/>}
+                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onShowHelp={()=>setShowOnboarding(true)}/>}
                   {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
                   {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus}/>}
                   {section==="lore"    &&<LoreSection universe={universe}/>}
@@ -419,6 +428,12 @@ export default function App(){
               universe={pendingAchievements[0]._universe||'wh40k'}
               onDismiss={()=>setPendingAchievements(q=>q.slice(1))}
             />
+          </Suspense>
+        )}
+        {/* ── ONBOARDING MODAL ── */}
+        {showOnboarding&&(
+          <Suspense fallback={null}>
+            <OnboardingModal onClose={()=>{ setShowOnboarding(false); localStorage.setItem('wh40k_onboarding_done','1'); }}/>
           </Suspense>
         )}
         {/* ── STATS MODAL ── */}
