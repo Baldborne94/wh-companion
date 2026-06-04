@@ -10,12 +10,30 @@ export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
     const el = eligibleNovels();
     return `${el.filter(b => statuses[b.id]?.status === 'read').length}/${el.length} read`;
   };
-  for (const part of guide) {
+
+  // Find the furthest part index where the user has read or is reading a novel.
+  // Shorts from parts strictly before this index are skipped — the user has already
+  // moved past that point in the reading order, so stale unread shorts shouldn't
+  // block the suggestion from advancing to the current part.
+  let currentPartIdx = -1;
+  guide.forEach((part, i) => {
+    if (part.pickOne) return;
+    const hasNovelProgress = (part.books || []).some(entry => {
+      if ((entry.type || 'novel') === 'short' || entry.type === 'audio' || entry.b40k) return false;
+      const book = findHHBook(entry);
+      const s = book && statuses[book.id]?.status;
+      return s === 'read' || s === 'reading';
+    });
+    if (hasNovelProgress) currentPartIdx = i;
+  });
+
+  for (const [i, part] of guide.entries()) {
     if (part.pickOne) continue;
     for (const entry of (part.books || [])) {
       if (entry.b40k) continue;
       const t = entry.type || 'novel';
       if (t === 'short' || t === 'audio') {
+        if (i < currentPartIdx) continue;
         const shortId = `${entry.t}__${entry.a}`;
         if (!readShorts.has(shortId))
           return { isShort: true, entry, shortId, reason: 'Next in Horus Heresy', seriesProgress: seriesProgress() };
