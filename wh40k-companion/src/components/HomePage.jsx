@@ -30,9 +30,28 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
   const [readShorts, setReadShorts] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem(lsKey) || '[]')); } catch { return new Set(); }
   });
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('hh_shorts').select('short_id').eq('user_id', userId).then(({ data }) => {
+      if (!data?.length) return;
+      setReadShorts(prev => {
+        const merged = new Set([...prev, ...data.map(r => r.short_id)]);
+        localStorage.setItem(lsKey, JSON.stringify([...merged]));
+        return merged;
+      });
+    });
+  }, [userId, lsKey]);
+
   const toggleShort = (id) => setReadShorts(prev => {
     const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+      if (userId) supabase.from('hh_shorts').delete().eq('user_id', userId).eq('short_id', id).then(() => {});
+    } else {
+      next.add(id);
+      if (userId) supabase.from('hh_shorts').upsert({ user_id: userId, short_id: id }).then(() => {});
+    }
     localStorage.setItem(lsKey, JSON.stringify([...next]));
     return next;
   });
