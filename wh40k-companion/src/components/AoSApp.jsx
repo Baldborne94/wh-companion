@@ -49,7 +49,7 @@ function setAoSBookStatusLS(uid, bid, s) {
 }
 
 // ─── NEXT-BOOK SUGGESTION ────────────────────────────────────────────────────
-function getAoSNextSuggestion(statuses) {
+function getAoSAllNextSuggestions(statuses) {
   const seriesNames = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
   const candidates = seriesNames.map(s => {
     const books = AOS_BOOKS.filter(b => b.series === s && b.num > 0).sort((a,b) => a.num - b.num);
@@ -61,17 +61,15 @@ function getAoSNextSuggestion(statuses) {
     return { name:s, books, isReading, readCount, next };
   }).filter(Boolean);
 
-  if (!candidates.length) return null;
+  if (!candidates.length) return [];
 
-  // Currently reading takes priority, then most books read
   candidates.sort((a,b) => {
     if (a.isReading && !b.isReading) return -1;
     if (b.isReading && !a.isReading) return 1;
     return b.readCount - a.readCount;
   });
 
-  const best = candidates[0];
-  return { book:best.next, reason:`Next in ${best.name}`, seriesProgress:`${best.readCount}/${best.books.length} read` };
+  return candidates.map(c => ({ book:c.next, reason:`Next in ${c.name}`, seriesProgress:`${c.readCount}/${c.books.length} read` }));
 }
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
@@ -359,7 +357,8 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook }) {
   }, [shelfBooks]);
 
   const activeBooks = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'reading');
-  const suggestion  = useMemo(() => getAoSNextSuggestion(statuses), [statuses]);
+  const allSuggestions = useMemo(() => getAoSAllNextSuggestions(statuses), [statuses]);
+  const suggestions = allSuggestions.filter(s => !activeBooks.some(b => b.id === s.book.id));
 
   const [opening, setOpening] = useState(false);
   const openBookHandle = async (book) => {
@@ -469,24 +468,26 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook }) {
         </div>
       )}
 
-      {/* Next Up */}
-      {suggestion && !activeBooks.some(b => b.id === suggestion.book.id) && (
+      {/* Next Up — one card per active AoS saga */}
+      {suggestions.length > 0 && (
         <div style={{ padding:"14px 16px 0" }}>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>⚔ Next Up</div>
-          <div style={{ background:`linear-gradient(135deg,${AOS.gold}12,${AOS.card})`, border:`1px solid ${AOS.gold}44`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:10, padding:"12px 14px", display:"flex", gap:12, alignItems:"center" }}>
-            <CoverImage book={suggestion.book} width={44} height={64} radius={3} accentColor={spineColor(suggestion.book)} style={{ boxShadow:"0 2px 8px rgba(0,0,0,0.5)" }}/>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:1, marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {suggestion.reason.toUpperCase()}{suggestion.seriesProgress ? ` · ${suggestion.seriesProgress}` : ""}
+          {suggestions.map(s => (
+            <div key={s.book.id} style={{ background:`linear-gradient(135deg,${AOS.gold}12,${AOS.card})`, border:`1px solid ${AOS.gold}44`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:10, padding:"12px 14px", display:"flex", gap:12, alignItems:"center", marginBottom:8 }}>
+              <CoverImage book={s.book} width={36} height={54} radius={3} accentColor={spineColor(s.book)} style={{ boxShadow:"0 2px 8px rgba(0,0,0,0.5)" }}/>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:1, marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {s.reason.toUpperCase()}{s.seriesProgress ? ` · ${s.seriesProgress}` : ""}
+                </div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, marginBottom:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.book.title}</div>
+                <div style={{ fontSize:11, color:AOS.muted, fontStyle:"italic" }}>{s.book.author}</div>
               </div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, marginBottom:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{suggestion.book.title}</div>
-              <div style={{ fontSize:11, color:AOS.muted, fontStyle:"italic" }}>{suggestion.book.author}</div>
+              <button onClick={() => openBookHandle(s.book)} disabled={opening}
+                style={{ flexShrink:0, padding:"6px 10px", borderRadius:6, background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}55`, color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1, cursor:"pointer" }}>
+                {opening ? "…" : "›"}
+              </button>
             </div>
-            <button onClick={() => openBookHandle(suggestion.book)} disabled={opening}
-              style={{ flexShrink:0, padding:"9px 12px", borderRadius:8, background:`linear-gradient(135deg,${AOS.gold},#7a6015)`, border:"none", color:AOS.bg, fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1, cursor:"pointer", fontWeight:700 }}>
-              {opening ? "…" : "Go ›"}
-            </button>
-          </div>
+          ))}
         </div>
       )}
 
