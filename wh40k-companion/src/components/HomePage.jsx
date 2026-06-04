@@ -120,7 +120,7 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
   );
 }
 
-export default function HomePage({ user, setSection, statuses = {}, onOpenBook }) {
+export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onShowHelp }) {
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -198,7 +198,10 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook }
 
   return (
     <div style={{ paddingBottom: 80 }}>
-      <div style={{ padding: "24px 16px 20px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg,${C.surface},${C.bg})` }}>
+      <div style={{ padding: "24px 16px 20px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg,${C.surface},${C.bg})`, position: "relative" }}>
+        {onShowHelp && (
+          <button onClick={onShowHelp} style={{ position: "absolute", top: 16, right: 16, width: 28, height: 28, borderRadius: "50%", background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 13, fontFamily: "'Cinzel',serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>?</button>
+        )}
         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>Welcome to the</div>
         <h1 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 26, color: C.text, lineHeight: 1.1, marginBottom: 4 }}>Scriptorium</h1>
         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 3 }}>YOUR IMPERIAL LIBRARY</div>
