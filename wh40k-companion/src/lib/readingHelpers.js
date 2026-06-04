@@ -6,9 +6,13 @@ export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
   const eligibleNovels = () => guide.flatMap(p => p.books || [])
     .filter(e => { const et = e.type || 'novel'; return et !== 'short' && et !== 'audio' && !e.b40k; })
     .map(e => findHHBook(e)).filter(Boolean);
+  const allShorts = guide.flatMap(p => p.books || [])
+    .filter(e => { const et = e.type || 'novel'; return (et === 'short' || et === 'audio') && !e.b40k; });
   const seriesProgress = () => {
     const el = eligibleNovels();
-    return `${el.filter(b => statuses[b.id]?.status === 'read').length}/${el.length} read`;
+    const novelsRead = el.filter(b => statuses[b.id]?.status === 'read').length;
+    const shortsRead = allShorts.filter(e => readShorts.has(`${e.t}__${e.a}`)).length;
+    return `${novelsRead + shortsRead}/${el.length + allShorts.length} read`;
   };
 
   // Find the furthest part index where the user has read or is reading a novel.
