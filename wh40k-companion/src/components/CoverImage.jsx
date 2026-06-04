@@ -2,15 +2,19 @@ import { useState, useEffect, useRef } from "react";
 
 // ─── COVER IMAGE ──────────────────────────────────────────────────────────────
 // v2 bumped to bust cached "not found" results from before the Various-author fix
+// isbn_ prefix: books with a known ISBN use a separate key to bypass any wrong cached result
+// v3_ prefix: "Various" author books re-fetch with series-aware queries (busts old wrong caches)
 export const COVER_CACHE_PREFIX = "wh40k_cover_v2_";
 
 export async function fetchBookCover(book) {
-  // ISBN books use a distinct cache key so a previously cached wrong result is bypassed.
-  const key = book.isbn ? `${COVER_CACHE_PREFIX}isbn_${book.id}` : COVER_CACHE_PREFIX + book.id;
+  const various = !book.author || /^various$/i.test(book.author.trim());
+  const key = book.isbn
+    ? `${COVER_CACHE_PREFIX}isbn_${book.id}`
+    : various
+      ? `${COVER_CACHE_PREFIX}v3_${book.id}`
+      : COVER_CACHE_PREFIX + book.id;
   const cached = localStorage.getItem(key);
   if(cached !== null) return cached; // "" = confirmed not found; url = cover
-
-  const various = !book.author || /^various$/i.test(book.author.trim());
 
   // 0. Open Library ISBN endpoint — most reliable when we have a known ISBN
   if(book.isbn){
@@ -24,10 +28,12 @@ export async function fetchBookCover(book) {
     }catch{}
   }
 
-  // 1. Try Open Library (better Black Library coverage, free, no key)
+  // 1. Try Open Library — add series name for anthologies to avoid wrong-book matches
   try{
-    const t = encodeURIComponent(book.title);
-    let olUrl = `https://openlibrary.org/search.json?title=${t}&limit=1&fields=cover_i`;
+    const titleQuery = various && book.series
+      ? encodeURIComponent(`${book.title} ${book.series}`)
+      : encodeURIComponent(book.title);
+    let olUrl = `https://openlibrary.org/search.json?title=${titleQuery}&limit=1&fields=cover_i`;
     if(!various) olUrl += `&author=${encodeURIComponent(book.author)}`;
     const r = await fetch(olUrl);
     if(r.ok){
@@ -41,11 +47,10 @@ export async function fetchBookCover(book) {
     }
   }catch{ /* fall through to Google Books */ }
 
-  // 2. Fallback: Google Books
+  // 2. Fallback: Google Books — include series name for anthologies
   try{
-    // For anthologies with no single author, use intitle: to avoid false positives
     const q = various
-      ? encodeURIComponent(`intitle:"${book.title}"`)
+      ? encodeURIComponent(`intitle:"${book.title}"${book.series ? ' "' + book.series + '"' : ''}`)
       : encodeURIComponent(`"${book.title}" ${book.author}`);
     const r = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1&fields=items(volumeInfo/imageLinks)`);
     if(!r.ok){ return r.status>=500 ? null : (localStorage.setItem(key,""), ""); }
@@ -70,7 +75,12 @@ export async function fetchBookCover(book) {
 export default function CoverImage({ book, width=60, height=90, radius=4, style={}, accentColor="#2a3850" }){
   const fc = accentColor;
   const [url, setUrl] = useState(()=> {
-    const k = book.isbn ? `${COVER_CACHE_PREFIX}isbn_${book.id}` : COVER_CACHE_PREFIX + book.id;
+    const various = !book.author || /^various$/i.test(book.author.trim());
+    const k = book.isbn
+      ? `${COVER_CACHE_PREFIX}isbn_${book.id}`
+      : various
+        ? `${COVER_CACHE_PREFIX}v3_${book.id}`
+        : COVER_CACHE_PREFIX + book.id;
     return localStorage.getItem(k) ?? null;
   });
   const ref = useRef(null);

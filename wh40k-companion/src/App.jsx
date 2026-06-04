@@ -199,10 +199,30 @@ export default function App(){
 
   // Landing page: always shown first on each fresh session.
   const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
-  const startApp=useCallback(()=>{ sessionStorage.setItem('wh_started','1'); localStorage.removeItem('wh_universe'); setUniverse(null); setAppStarted(true); },[]);
+  const startApp=useCallback(()=>{
+    sessionStorage.setItem('wh_started','1');
+    sessionStorage.setItem('wh_fresh_login','1'); // tells the DB-restore effect to skip
+    localStorage.removeItem('wh_universe');
+    setUniverse(null);
+    setAppStarted(true);
+  },[]);
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
 
+  // On a new device where localStorage has no universe, restore the saved preference from DB.
+  // Skip when wh_fresh_login is set (user just clicked Start → they should see the selector).
+  useEffect(()=>{
+    if(!user?.id||localStorage.getItem('wh_universe')) return;
+    if(sessionStorage.getItem('wh_fresh_login')==='1'){
+      sessionStorage.removeItem('wh_fresh_login');
+      return;
+    }
+    sb.get("user_settings",`user_id=eq.${user.id}&select=universe`).then(rows=>{
+      if(!rows?.length||rows._error) return;
+      const u=rows[0]?.universe;
+      if(u){ localStorage.setItem('wh_universe',u); setUniverse(u); }
+    });
+  },[user?.id]);
 
   const selectUniverse=(u)=>{
     localStorage.setItem('wh_universe',u);
