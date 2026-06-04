@@ -31,7 +31,7 @@ export const BOOKS=[
   {id:30,title:"The Damnation of Pythos",series:"Horus Heresy",num:30,author:"David Annandale",type:"Novel",faction:"Chaos",era:"Horus Heresy"},
   {id:31,title:"Legacies of Betrayal",series:"Horus Heresy",num:31,author:"Various",type:"Anthology",faction:"Various",era:"Horus Heresy"},
   {id:32,title:"Deathfire",series:"Horus Heresy",num:32,author:"Nick Kyme",type:"Novel",faction:"Space Marines",era:"Horus Heresy"},
-  {id:33,title:"War Without End",series:"Horus Heresy",num:33,author:"Various",type:"Anthology",faction:"Various",era:"Horus Heresy"},
+  {id:33,title:"War Without End",series:"Horus Heresy",num:33,author:"Various",type:"Anthology",faction:"Various",era:"Horus Heresy",isbn:"9781784961770"},
   {id:34,title:"Pharos",series:"Horus Heresy",num:34,author:"Guy Haley",type:"Novel",faction:"Space Marines",era:"Horus Heresy"},
   {id:35,title:"Eye of Terra",series:"Horus Heresy",num:35,author:"Various",type:"Anthology",faction:"Various",era:"Horus Heresy"},
   {id:36,title:"The Path of Heaven",series:"Horus Heresy",num:36,author:"Chris Wraight",type:"Novel",faction:"Space Marines",era:"Horus Heresy"},

@@ -203,14 +203,6 @@ export default function App(){
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
 
-  useEffect(()=>{
-    if(!user?.id||localStorage.getItem('wh_universe')) return;
-    sb.get("user_settings",`user_id=eq.${user.id}&select=universe`).then(rows=>{
-      if(!rows?.length||rows._error) return;
-      const u=rows[0]?.universe;
-      if(u){ localStorage.setItem('wh_universe',u); setUniverse(u); }
-    });
-  },[user?.id]);
 
   const selectUniverse=(u)=>{
     localStorage.setItem('wh_universe',u);
