@@ -5,7 +5,8 @@ import { useState, useEffect, useRef } from "react";
 export const COVER_CACHE_PREFIX = "wh40k_cover_v2_";
 
 export async function fetchBookCover(book) {
-  const key = COVER_CACHE_PREFIX + book.id;
+  // ISBN books use a distinct cache key so a previously cached wrong result is bypassed.
+  const key = book.isbn ? `${COVER_CACHE_PREFIX}isbn_${book.id}` : COVER_CACHE_PREFIX + book.id;
   const cached = localStorage.getItem(key);
   if(cached !== null) return cached; // "" = confirmed not found; url = cover
 
@@ -68,7 +69,10 @@ export async function fetchBookCover(book) {
  */
 export default function CoverImage({ book, width=60, height=90, radius=4, style={}, accentColor="#2a3850" }){
   const fc = accentColor;
-  const [url, setUrl] = useState(()=> localStorage.getItem(COVER_CACHE_PREFIX+book.id) ?? null);
+  const [url, setUrl] = useState(()=> {
+    const k = book.isbn ? `${COVER_CACHE_PREFIX}isbn_${book.id}` : COVER_CACHE_PREFIX + book.id;
+    return localStorage.getItem(k) ?? null;
+  });
   const ref = useRef(null);
 
   useEffect(()=>{
