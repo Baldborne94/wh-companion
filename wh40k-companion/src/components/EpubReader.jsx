@@ -147,7 +147,7 @@ function buildReaderCss(settings, T, fnt) {
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
-      margin: 0 !important; padding: 0 !important;
+      margin: 0 0 0.4em 0 !important; padding: 0 !important;
       text-indent: 1.5em !important;
       text-align: justify !important;
       hyphens: auto !important; -webkit-hyphens: auto !important;
@@ -161,8 +161,8 @@ function buildReaderCss(settings, T, fnt) {
       break-after: avoid !important;
     }
     p:empty, .epub-scene-break {
-      min-height: 1.5em !important;
-      margin: 0.6em 0 !important;
+      min-height: 1.2em !important;
+      margin: 1em 0 !important;
       text-indent: 0 !important;
     }
     hr { border: none !important; text-align: center !important; margin: 1em 0 !important; }
@@ -659,9 +659,21 @@ export default function EpubReader({
             node.parentNode?.replaceChild(frag, node);
           });
 
-          // Mark whitespace/nbsp-only paragraphs so they render as visible scene breaks
+            // Detect scene-break paragraphs (empty /   / decorative chars).
           doc.body.querySelectorAll('p').forEach(p => {
-            if (!p.textContent.replace(/[ \s]/g, '')) p.classList.add('epub-scene-break');
+            if (!p.textContent.replace(/[ \s *·•~\-]/g, '')) p.classList.add('epub-scene-break');
+          });
+
+          // Apply spacing via inline styles: overrides EPUB class-level !important rules
+          // (e.g. .calibre1 { margin:0 !important }) which beat our element-selector CSS.
+          doc.body.querySelectorAll('p').forEach(p => {
+            if (p.classList.contains('epub-scene-break')) {
+              p.style.setProperty('margin-top',    '1em',   'important');
+              p.style.setProperty('margin-bottom', '1em',   'important');
+              p.style.setProperty('min-height',    '1.2em', 'important');
+            } else {
+              p.style.setProperty('margin-bottom', '0.4em', 'important');
+            }
           });
 
           doc.addEventListener("click", (e) => {
