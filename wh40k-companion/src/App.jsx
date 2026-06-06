@@ -263,7 +263,15 @@ export default function App(){
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
-      const { data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",book.id).limit(1);
+      // Try integer comparison, then string, then fetch all and filter client-side
+      let { data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",book.id).limit(1);
+      if(!files?.length){
+        ({ data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",String(book.id)).limit(1));
+      }
+      if(!files?.length){
+        ({ data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid));
+        files = files?.filter(f=>String(f.book_id)===String(book.id));
+      }
       if(files?.length) meta=files[0];
     }
     if(!meta) return;

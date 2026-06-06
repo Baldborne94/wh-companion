@@ -162,6 +162,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
 
   const activeBooks = BOOKS.filter(b => statuses[b.id]?.status === 'reading');
   const [openingBookId, setOpeningBookId] = useState(null);
+  const [openErrorId, setOpenErrorId] = useState(null);
   const spineColor  = b => FC[b.faction] || C.dim;
 
   const ShelfRow = ({ books, label }) => {
@@ -228,9 +229,13 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                 onClick={async () => {
                   if (hasEbook && onOpenBook) {
                     setOpeningBookId(b.id);
+                    setOpenErrorId(null);
                     const ok = await onOpenBook(b);
                     setOpeningBookId(null);
-                    if (!ok) setSection('library');
+                    if (!ok) {
+                      setOpenErrorId(b.id);
+                      setTimeout(() => setOpenErrorId(null), 3000);
+                    }
                   } else {
                     setSection('library');
                   }
@@ -242,8 +247,8 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                   <div style={{ fontSize: 11, color: C.muted }}>{b.series}{b.num > 0 ? ` #${b.num}` : ""} · {b.author}</div>
                 </div>
                 {hasEbook
-                  ? <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1, flexShrink: 0 }}>
-                      {openingBookId === b.id ? "…" : "READ ›"}
+                  ? <span style={{ background: openErrorId === b.id ? `${C.red}22` : `${C.gold}22`, border: `1px solid ${openErrorId === b.id ? C.red : C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: openErrorId === b.id ? C.red : C.gold, letterSpacing: 1, flexShrink: 0 }}>
+                      {openingBookId === b.id ? "…" : openErrorId === b.id ? "ERR" : "READ ›"}
                     </span>
                   : <span style={{ color: C.blue, fontSize: 16, flexShrink: 0 }}>›</span>
                 }
