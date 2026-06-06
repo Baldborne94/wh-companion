@@ -26,7 +26,7 @@ export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
       if ((entry.type || 'novel') === 'short' || entry.type === 'audio' || entry.b40k) return false;
       const book = findHHBook(entry);
       const s = book && statuses[book.id]?.status;
-      return s === 'read' || s === 'reading';
+      return s === 'read';
     });
     if (hasNovelProgress) currentPartIdx = i;
   });

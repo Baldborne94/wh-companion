@@ -223,7 +223,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
             const hasEbook = uploadedIds.has(b.id);
             return (
               <div key={b.id} onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
-                style={{ background: `linear-gradient(135deg,${C.blue}18,${C.card})`, border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                style={{ background: `linear-gradient(135deg,${C.blue}18,${C.card})`, border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, touchAction: "manipulation", userSelect: "none" }}>
                 <CoverImage book={b} width={36} height={50} radius={3} accentColor={FC[b.faction] || C.dim} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</div>
