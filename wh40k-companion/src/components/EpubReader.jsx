@@ -147,7 +147,7 @@ function buildReaderCss(settings, T, fnt) {
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
-      margin: 0 0 0.4em 0 !important; padding: 0 !important;
+      margin-right: 0 !important; margin-left: 0 !important; padding: 0 !important;
       text-indent: 1.5em !important;
       text-align: justify !important;
       hyphens: auto !important; -webkit-hyphens: auto !important;
@@ -664,13 +664,21 @@ export default function EpubReader({
             if (!p.textContent.replace(/[ \s *·•~\-]/g, '')) p.classList.add('epub-scene-break');
           });
 
-          // Apply spacing via inline styles: overrides EPUB class-level !important rules
-          // (e.g. .calibre1 { margin:0 !important }) which beat our element-selector CSS.
+          // Apply spacing via inline styles: overrides EPUB class-level !important rules.
+          // margin-top is intentionally NOT zeroed in our CSS so EPUB section-break margins
+          // (e.g. a paragraph class with margin-top:2em) are preserved. We read the computed
+          // top margin AFTER our CSS is injected; if it's already large (≥ 0.8em ≈ 12px at
+          // 16px base) the EPUB is using it as a scene break — boost it further so it's clear.
           doc.body.querySelectorAll('p').forEach(p => {
+            const mt = parseFloat(contents.window.getComputedStyle(p).marginTop) || 0;
             if (p.classList.contains('epub-scene-break')) {
-              p.style.setProperty('margin-top',    '1em',   'important');
+              p.style.setProperty('margin-top',    '1.5em', 'important');
               p.style.setProperty('margin-bottom', '1em',   'important');
               p.style.setProperty('min-height',    '1.2em', 'important');
+            } else if (mt >= 12) {
+              // EPUB uses margin-top for section break — make it visually prominent
+              p.style.setProperty('margin-top', Math.max(mt, 24) + 'px', 'important');
+              p.style.setProperty('margin-bottom', '0.4em', 'important');
             } else {
               p.style.setProperty('margin-bottom', '0.4em', 'important');
             }
