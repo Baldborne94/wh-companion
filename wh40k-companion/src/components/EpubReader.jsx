@@ -87,7 +87,7 @@ async function deleteBookmarkFromDB(userId, bookId, cfi) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:false };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:false, themeId:"dark" };
 
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
@@ -285,7 +285,7 @@ function DictionaryPanel({ word, onClose, theme }) {
 // Settings bottom-sheet
 // ─────────────────────────────────────────────────────────────────────────────
 function SettingsPanel({ settings, onChange, onClose }) {
-  const T = THEMES["dark"];
+  const T = THEMES[settings.themeId] ?? THEMES.dark;
 
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick}
@@ -363,6 +363,12 @@ function SettingsPanel({ settings, onChange, onClose }) {
             <Chip label="Two-page" active={ settings.twoPage} onClick={() => onChange("twoPage",true)} />
           </Row>
         )}
+
+        <Row label="Theme">
+          {Object.values(THEMES).map(th => (
+            <Chip key={th.id} label={th.label} active={settings.themeId===th.id} onClick={() => onChange("themeId", th.id)} />
+          ))}
+        </Row>
       </div>
     </div>
   );
@@ -388,7 +394,7 @@ export default function EpubReader({
       return n;
     });
   }, []);
-  const T   = THEMES["dark"];
+  const T   = THEMES[settings.themeId] ?? THEMES.dark;
   const fnt = FONTS[settings.fontIndex];
 
   // ── Book state ─────────────────────────────────────────────────────────────
@@ -844,7 +850,7 @@ export default function EpubReader({
     if (!rendRef.current) return;
     applyTheme(rendRef.current, settings, T, fnt);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.fontSize, settings.fontIndex, settings.lineHeight]);
+  }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.themeId]);
 
   // ── Resize observer ───────────────────────────────────────────────────────
   useEffect(() => {
