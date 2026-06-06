@@ -15,29 +15,28 @@ export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
     return `${novelsRead + shortsRead}/${el.length + allShorts.length} read`;
   };
 
-  // Find the furthest part index where the user has read or is reading a novel.
-  // Shorts from parts strictly before this index are skipped — the user has already
-  // moved past that point in the reading order, so stale unread shorts shouldn't
-  // block the suggestion from advancing to the current part.
-  let currentPartIdx = -1;
-  guide.forEach((part, i) => {
-    if (part.pickOne) return;
-    const hasNovelProgress = (part.books || []).some(entry => {
-      if ((entry.type || 'novel') === 'short' || entry.type === 'audio' || entry.b40k) return false;
-      const book = findHHBook(entry);
-      const s = book && statuses[book.id]?.status;
-      return s === 'read';
-    });
-    if (hasNovelProgress) currentPartIdx = i;
-  });
-
   for (const [i, part] of guide.entries()) {
     if (part.pickOne) continue;
+
+    // Skip shorts only if this part itself has a novel already started or finished.
+    // Using a per-part check (not a global high-watermark) avoids the problem where
+    // a novel read out of order in a later part (e.g. Prospero Burns in Part 8)
+    // would cause unread shorts in an earlier part (e.g. The Kaban Project in Part 7)
+    // to be incorrectly skipped.
+    const skipShorts = (part.books || []).some(entry => {
+      if (entry.b40k || entry.opt) return false;
+      const t = entry.type || 'novel';
+      if (t === 'short' || t === 'audio') return false;
+      const book = findHHBook(entry);
+      const s = book && statuses[book.id]?.status;
+      return s === 'read' || s === 'reading';
+    });
+
     for (const entry of (part.books || [])) {
       if (entry.b40k) continue;
       const t = entry.type || 'novel';
       if (t === 'short' || t === 'audio') {
-        if (i < currentPartIdx) continue;
+        if (skipShorts) continue;
         const shortId = `${entry.t}__${entry.a}`;
         if (!readShorts.has(shortId))
           return { isShort: true, entry, shortId, reason: 'Next in Horus Heresy', seriesProgress: seriesProgress() };
