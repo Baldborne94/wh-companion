@@ -160,7 +160,12 @@ function buildReaderCss(settings, T, fnt) {
       margin: 0 !important; padding: 0.6em 0 0.3em !important;
       break-after: avoid !important;
     }
-    hr { border: none !important; text-align: center !important; margin: 0.3em 0 !important; }
+    p:empty, .epub-scene-break {
+      min-height: 1.5em !important;
+      margin: 0.6em 0 !important;
+      text-indent: 0 !important;
+    }
+    hr { border: none !important; text-align: center !important; margin: 1em 0 !important; }
     hr::after { content: "· · ·" !important; opacity: 0.4 !important; }
     img { max-width: 100% !important; height: auto !important; display: block !important; margin: 1em auto !important; }
     blockquote { border-left: 3px solid #c9a84c55 !important; padding-left: 1em !important; margin: 0.5em 0 !important; }
@@ -653,6 +658,12 @@ export default function EpubReader({
             if (last < text.length) frag.appendChild(doc.createTextNode(text.slice(last)));
             node.parentNode?.replaceChild(frag, node);
           });
+
+          // Mark whitespace/nbsp-only paragraphs so they render as visible scene breaks
+          doc.body.querySelectorAll('p').forEach(p => {
+            if (!p.textContent.replace(/[ \s]/g, '')) p.classList.add('epub-scene-break');
+          });
+
           doc.addEventListener("click", (e) => {
             const kw = e.target?.getAttribute?.("data-kw");
             if (kw && LORE_DB[kw]) {
