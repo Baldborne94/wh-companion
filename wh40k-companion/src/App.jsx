@@ -334,6 +334,22 @@ export default function App(){
                 {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {nowPlaying&&section!=="music"&&!appReader&&(<>
+                  <button onClick={()=>setSection("music")} title={nowPlaying.title}
+                    style={{background:"transparent",border:"none",cursor:"pointer",padding:"3px 2px",maxWidth:72,overflow:"hidden",flexShrink:0}}>
+                    <span style={{fontSize:9,color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>
+                      {nowPlaying.title}
+                    </span>
+                  </button>
+                  <button onClick={toggleMusicPause} title={musicPaused?"Resume":"Pause"}
+                    style={{background:"transparent",border:"none",cursor:"pointer",color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",fontSize:13,lineHeight:1,padding:"3px 3px",flexShrink:0}}>
+                    {musicPaused?"▶":"⏸"}
+                  </button>
+                  <button onClick={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} title="Stop music"
+                    style={{background:"transparent",border:"none",cursor:"pointer",color:`${hMuted}99`,fontSize:14,lineHeight:1,padding:"3px 4px",flexShrink:0}}>
+                    ✕
+                  </button>
+                </>)}
                 <button onClick={()=>setShowStats(true)} title="Achievements & Stats"
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>🏆</button>
                 {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
@@ -397,27 +413,6 @@ export default function App(){
             </div>
           )}
         </div>
-        {/* ── MINI PLAYER ── */}
-        {nowPlaying&&section!=="music"&&!appReader&&(
-          <div onClick={()=>setSection("music")}
-            style={{position:"fixed",bottom:"var(--nav-h,56px)",left:0,right:0,zIndex:9999,maxWidth:1100,margin:"0 auto",background:C.surface,borderTop:`2px solid ${nowPlaying.type==="youtube"?"#FF000066":"#1DB95466"}`,display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",boxShadow:"0 -2px 12px rgba(0,0,0,0.6)"}}>
-            {nowPlaying.type==="spotify"&&nowPlaying.albumArt&&<img src={nowPlaying.albumArt} width={36} height={36} style={{borderRadius:4,flexShrink:0}}/>}
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:12,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.title}</div>
-              {nowPlaying.subtitle&&<div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nowPlaying.subtitle}</div>}
-            </div>
-            <button
-              onClick={(e)=>{e.stopPropagation();toggleMusicPause();}}
-              style={{background:"transparent",border:"none",color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",cursor:"pointer",fontSize:16,lineHeight:1,padding:"4px 6px",flexShrink:0}}
-              title={musicPaused?"Resume":"Pause"}
-            >{musicPaused?"▶":"⏸"}</button>
-            <button
-              onClick={(e)=>{e.stopPropagation();musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}}
-              style={{background:"transparent",border:"none",color:C.muted,cursor:"pointer",fontSize:18,lineHeight:1,padding:"4px 6px",flexShrink:0}}
-              title="Stop music"
-            >✕</button>
-          </div>
-        )}
         {/* ── ACHIEVEMENT POPUP ── */}
         {pendingAchievements.length>0&&(
           <Suspense fallback={null}>

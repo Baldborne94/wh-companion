@@ -161,6 +161,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
   }, [shelfBooks]);
 
   const activeBooks = BOOKS.filter(b => statuses[b.id]?.status === 'reading');
+  const [openingBookId, setOpeningBookId] = useState(null);
   const spineColor  = b => FC[b.faction] || C.dim;
 
   const ShelfRow = ({ books, label }) => {
@@ -222,7 +223,18 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
           {activeBooks.map(b => {
             const hasEbook = uploadedIds.has(b.id);
             return (
-              <button key={b.id} type="button" onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
+              <button key={b.id} type="button"
+                disabled={openingBookId === b.id}
+                onClick={async () => {
+                  if (hasEbook && onOpenBook) {
+                    setOpeningBookId(b.id);
+                    const ok = await onOpenBook(b);
+                    setOpeningBookId(null);
+                    if (!ok) setSection('library');
+                  } else {
+                    setSection('library');
+                  }
+                }}
                 style={{ background: `linear-gradient(135deg,${C.blue}18,${C.card})`, border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", touchAction: "manipulation" }}>
                 <CoverImage book={b} width={36} height={50} radius={3} accentColor={FC[b.faction] || C.dim} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -230,7 +242,9 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                   <div style={{ fontSize: 11, color: C.muted }}>{b.series}{b.num > 0 ? ` #${b.num}` : ""} · {b.author}</div>
                 </div>
                 {hasEbook
-                  ? <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1, flexShrink: 0 }}>READ ›</span>
+                  ? <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1, flexShrink: 0 }}>
+                      {openingBookId === b.id ? "…" : "READ ›"}
+                    </span>
                   : <span style={{ color: C.blue, fontSize: 16, flexShrink: 0 }}>›</span>
                 }
               </button>
