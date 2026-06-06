@@ -920,7 +920,14 @@ export default function EpubReader({
           return;
         }
 
-        // 2. Any word → dictionary
+        // 2. Anchor link → let epub.js handle internal navigation or open external URL
+        const anchor = el?.closest?.('a') ?? (el?.tagName === 'A' ? el : null);
+        if (anchor) {
+          anchor.click();
+          return;
+        }
+
+        // 3. Any word → dictionary
         // Use Selection.modify to expand to word boundaries — more robust than
         // manual text-node walking which fails at inline elements or line ends.
         const doc = iframe.contentDocument;
