@@ -147,7 +147,7 @@ function buildReaderCss(settings, T, fnt) {
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
-      margin: 0 0 0.4em 0 !important; padding: 0 !important;
+      margin-right: 0 !important; margin-left: 0 !important; padding: 0 !important;
       text-indent: 1.5em !important;
       text-align: justify !important;
       hyphens: auto !important; -webkit-hyphens: auto !important;
@@ -664,15 +664,21 @@ export default function EpubReader({
             if (!p.textContent.replace(/[ \s *·•~\-]/g, '')) p.classList.add('epub-scene-break');
           });
 
-          // Apply spacing via inline styles: overrides EPUB class-level !important rules
-          // (e.g. .calibre1 { margin:0 !important }) which beat our element-selector CSS.
+          // Only add spacing where the EPUB has explicit scene breaks — do NOT touch
+          // normal paragraphs so the book's own typography is preserved.
+          // Two cases:
+          //   1. Empty/nbsp paragraphs detected above → force visible height+margin
+          //   2. Paragraphs the EPUB already gives a large margin-top (≥12px) → boost them
           doc.body.querySelectorAll('p').forEach(p => {
             if (p.classList.contains('epub-scene-break')) {
-              p.style.setProperty('margin-top',    '1em',   'important');
-              p.style.setProperty('margin-bottom', '1em',   'important');
+              p.style.setProperty('margin-top',    '1.5em', 'important');
+              p.style.setProperty('margin-bottom', '1.5em', 'important');
               p.style.setProperty('min-height',    '1.2em', 'important');
             } else {
-              p.style.setProperty('margin-bottom', '0.4em', 'important');
+              const mt = parseFloat(contents.window.getComputedStyle(p).marginTop) || 0;
+              if (mt >= 12) {
+                p.style.setProperty('margin-top', Math.max(mt, 24) + 'px', 'important');
+              }
             }
           });
 
