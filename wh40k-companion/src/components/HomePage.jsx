@@ -222,8 +222,8 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
           {activeBooks.map(b => {
             const hasEbook = uploadedIds.has(b.id);
             return (
-              <div key={b.id} onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
-                style={{ background: `linear-gradient(135deg,${C.blue}18,${C.card})`, border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, touchAction: "manipulation", userSelect: "none" }}>
+              <button key={b.id} type="button" onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
+                style={{ background: `linear-gradient(135deg,${C.blue}18,${C.card})`, border: `1px solid ${C.blue}44`, borderLeft: `3px solid ${C.blue}`, borderRadius: 10, padding: "12px 14px", cursor: "pointer", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", touchAction: "manipulation" }}>
                 <CoverImage book={b} width={36} height={50} radius={3} accentColor={FC[b.faction] || C.dim} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</div>
@@ -233,7 +233,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                   ? <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1, flexShrink: 0 }}>READ ›</span>
                   : <span style={{ color: C.blue, fontSize: 16, flexShrink: 0 }}>›</span>
                 }
-              </div>
+              </button>
             );
           })}
         </div>
