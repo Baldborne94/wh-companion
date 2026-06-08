@@ -140,7 +140,6 @@ function buildReaderCss(settings, T, fnt) {
     *, *::before, *::after { box-sizing: border-box; }
     html { background: ${T.bg} !important; }
     html, body { background: ${T.bg} !important; color: ${T.text} !important; }
-    ${!settings.twoPage ? `html { -webkit-column-count: 1 !important; column-count: 1 !important; }` : ""}
     html body * { color: ${T.text} !important; background-color: transparent !important; }
     body {
       font-family: ${fnt.value} !important;
@@ -538,7 +537,6 @@ export default function EpubReader({
   const bookRef       = useRef(null);
   const rendRef       = useRef(null);
   const cfiRef        = useRef(null);
-  const pageRef       = useRef(null); // mirrors pageDisplay but as a ref — always in sync with cfiRef
   const tocRef        = useRef([]);
   const saveTimer     = useRef(null);
   // CFI queued while book is still loading — executed once renderer is ready
@@ -626,7 +624,7 @@ export default function EpubReader({
           height:         "100%",
           spread,
           flow,
-          minSpreadWidth: settings.twoPage ? 0 : 9999,
+          minSpreadWidth: 900,
           manager:        "default",
         });
         rendRef.current = rend;
@@ -765,11 +763,7 @@ export default function EpubReader({
           // Paginated screen pages — chapter-relative, available immediately (no locations needed)
           const dPage = loc.start?.displayed?.page;
           const dTotal = loc.start?.displayed?.total;
-          if (dPage && dTotal > 0) {
-            pageRef.current = { page: dPage, total: dTotal };
-            setPageDisplay({ page: dPage, total: dTotal });
-            console.log("[relocated]", dPage, "/", dTotal);
-          }
+          if (dPage && dTotal > 0) setPageDisplay({ page: dPage, total: dTotal });
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
@@ -1016,8 +1010,7 @@ export default function EpubReader({
   const saveBookmark = useCallback(() => {
     const cfi = cfiRef.current;
     if (!cfi) return;
-    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageRef.current?.page ?? null, createdAt: new Date().toISOString() };
-    console.log("[BM save]", { page: bm.page, pct: bm.pct, cfi: bm.cfi?.slice(-30) });
+    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, createdAt: new Date().toISOString() };
     const upd = addBookmark(bookmarks, bm);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));

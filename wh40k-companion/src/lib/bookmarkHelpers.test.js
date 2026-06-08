@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, resolveNavCfi, MAX_BOOKMARKS } from './bookmarkHelpers.js';
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, MAX_BOOKMARKS } from './bookmarkHelpers.js';
 
 const bm = (cfi, label = 'B', pct = 10) => ({ cfi, label, pct, createdAt: new Date().toISOString() });
 
@@ -25,7 +25,7 @@ describe('addBookmark', () => {
     const result = addBookmark(existing, updated);
     expect(result[0].cfi).toBe('cfi1');
     expect(result[0].label).toBe('Updated');
-    expect(result).toHaveLength(2); // no duplicates
+    expect(result).toHaveLength(2);
   });
 
   it('caps at MAX_BOOKMARKS', () => {
@@ -130,7 +130,6 @@ describe('mergeBookmarks', () => {
   });
 
   it('user saves bookmark, exits, reopens: bookmark is present in merged result', () => {
-    // Simulates: user saved bm at cfi-saved, DB has it, local also has it
     const saved = bm('cfi-saved', 'My place', 55);
     const local  = [saved];
     const dbBms  = [saved];
@@ -144,31 +143,11 @@ describe('mergeBookmarks', () => {
 // ─── bookmarkPageLabel ────────────────────────────────────────────────────────
 
 describe('bookmarkPageLabel', () => {
-  it('returns exact page when bm.page is set', () => {
-    expect(bookmarkPageLabel({ page: 42, pct: 50 })).toBe('Pag. 42');
+  it('returns percentage string when pct > 0', () => {
+    expect(bookmarkPageLabel({ pct: 34 })).toBe('34%');
   });
 
-  it('returns estimated page from pct when pageDisplay.total is available', () => {
-    expect(bookmarkPageLabel({ pct: 50 }, { total: 100 })).toBe('Pag. ~50');
-  });
-
-  it('rounds the estimated page correctly', () => {
-    expect(bookmarkPageLabel({ pct: 33 }, { total: 100 })).toBe('Pag. ~33');
-  });
-
-  it('returns at least page 1 for very small pct', () => {
-    expect(bookmarkPageLabel({ pct: 0.1 }, { total: 1000 })).toBe('Pag. ~1');
-  });
-
-  it('falls back to raw percent when no pageDisplay', () => {
-    expect(bookmarkPageLabel({ pct: 30 })).toBe('30%');
-  });
-
-  it('falls back to raw percent when pageDisplay has no total', () => {
-    expect(bookmarkPageLabel({ pct: 30 }, { total: null })).toBe('30%');
-  });
-
-  it('returns dash when pct is 0 and no page', () => {
+  it('returns dash when pct is 0', () => {
     expect(bookmarkPageLabel({ pct: 0 })).toBe('–');
   });
 
@@ -176,36 +155,7 @@ describe('bookmarkPageLabel', () => {
     expect(bookmarkPageLabel({})).toBe('–');
   });
 
-  it('page takes priority over pct + pageDisplay', () => {
-    expect(bookmarkPageLabel({ page: 7, pct: 50 }, { total: 100 })).toBe('Pag. 7');
-  });
-});
-
-// ─── resolveNavCfi ────────────────────────────────────────────────────────────
-
-const mockBook = (total, pctCfi) => ({
-  locations: { total, cfiFromPercentage: () => pctCfi },
-});
-
-describe('resolveNavCfi', () => {
-  it('returns bm.cfi when book is null', () => {
-    expect(resolveNavCfi({ cfi: 'cfi1', pct: 50 }, null)).toBe('cfi1');
-  });
-
-  it('returns bm.cfi when locations not loaded (total=0)', () => {
-    expect(resolveNavCfi({ cfi: 'cfi1', pct: 50 }, mockBook(0, 'pct-cfi'))).toBe('cfi1');
-  });
-
-  it('returns bm.cfi when pct is 0 (no percentage info)', () => {
-    expect(resolveNavCfi({ cfi: 'cfi1', pct: 0 }, mockBook(100, 'pct-cfi'))).toBe('cfi1');
-  });
-
-  it('returns percentage-based CFI when locations loaded and pct > 0', () => {
-    expect(resolveNavCfi({ cfi: 'cfi1', pct: 42 }, mockBook(100, 'pct-cfi'))).toBe('pct-cfi');
-  });
-
-  it('falls back to bm.cfi when cfiFromPercentage returns null', () => {
-    const book = { locations: { total: 100, cfiFromPercentage: () => null } };
-    expect(resolveNavCfi({ cfi: 'cfi1', pct: 42 }, book)).toBe('cfi1');
+  it('returns dash when pct is undefined', () => {
+    expect(bookmarkPageLabel({ cfi: 'x' })).toBe('–');
   });
 });
