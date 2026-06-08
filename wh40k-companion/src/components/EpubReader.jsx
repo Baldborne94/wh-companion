@@ -3,7 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-import { addBookmark, removeBookmark, mergeBookmarks } from "../lib/bookmarkHelpers";
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel } from "../lib/bookmarkHelpers";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -1023,13 +1023,6 @@ export default function EpubReader({
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bookmarks, userId, bookId, pageDisplay]);
 
-  const bmPageLabel = useCallback((bm) => {
-    if (bm.page) return `Pag. ${bm.page}`;
-    if (pageDisplay?.total && bm.pct > 0) return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
-    if (bm.pct > 0) return `${bm.pct}%`;
-    return "–";
-  }, [pageDisplay]);
-
   const deleteBookmark = useCallback((cfi) => {
     const upd = removeBookmark(bookmarks, cfi);
     setBookmarks(upd);
@@ -1358,8 +1351,8 @@ export default function EpubReader({
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>
                         {bm.label}
                       </div>
-                      <div style={{ fontSize:10, color:T.muted }}>
-                        {bmPageLabel(bm)}
+                      <div style={{ fontSize:12, color:C.gold, fontFamily:"'Cinzel',serif", letterSpacing:0.5 }}>
+                        {bookmarkPageLabel(bm, pageDisplay)}
                       </div>
                     </button>
                     <button
