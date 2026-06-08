@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { supabase, signOut } from "./lib/supabase";
 import { sb } from "./lib/sb";
+import { resolveBookUrl } from "./lib/openBook";
 import { C } from "./data/constants";
 import { BOOKS } from "./data/books";
 import MusicPlayer from "./components/MusicPlayer";
@@ -260,57 +261,17 @@ export default function App(){
   const [appReader,setAppReader]=useState(null);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
-    // Refresh session and capture the fresh token directly from the result.
-    // On tablet PWA, getSession() may still return a stale token immediately after
-    // refreshSession() because the client's internal cache updates asynchronously.
-    let freshToken = null;
-    try{
-      const { data } = await supabase.auth.refreshSession();
-      freshToken = data?.session?.access_token ?? null;
-    }catch{}
-    if(!freshToken){
-      try{ const { data } = await supabase.auth.getSession(); freshToken=data?.session?.access_token??null; }catch{}
+    const result = await resolveBookUrl({ uid, book, supabase, sb });
+    if(result.error){
+      console.error("[openBook]", result.error, "book:", book.id);
+      return result.error;
     }
-    // If no valid token at all, session is expired — user must re-login
-    if(!freshToken){ console.error("[openBook] no valid session token"); return 'no_session'; }
-    let meta=null;
-    try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
-    if(!meta){
-      // Use sb.get (explicit auth header) instead of supabase.from (internal client token)
-      let rows=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${book.id}&limit=1`);
-      if(!rows?.length||rows._error)
-        rows=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${String(book.id)}&limit=1`);
-      if(!rows?.length||rows._error){
-        const all=await sb.get("ebook_files",`user_id=eq.${uid}`);
-        rows=Array.isArray(all)?all.filter(f=>String(f.book_id)===String(book.id)):[];
-      }
-      if(rows?.length&&!rows._error){
-        meta=rows[0];
-        try{ localStorage.setItem(`wh40k_ebook_${uid}_${book.id}`,JSON.stringify(meta)); }catch{}
-      }
-    }
-    if(!meta){ console.error("[openBook] no metadata for book",book.id); return 'no_meta'; }
-    let urlErr={};
-    let url=await sb.storage.signedUrl(meta.file_path, freshToken, e=>{urlErr=e;});
-    if(!url){
-      console.warn("[openBook] signedUrl failed (status:",urlErr.status,"), trying REST download. path:",meta.file_path,"hasToken:",!!freshToken);
-      // Direct REST download with explicit freshToken — bypasses JS client stale session state
-      const { blob, status:dlStatus } = await sb.storage.download(meta.file_path, freshToken);
-      if(blob){
-        url = URL.createObjectURL(blob);
-        console.log("[openBook] REST download fallback succeeded, size:", blob.size);
-      } else {
-        console.error("[openBook] all URL methods failed. signedUrl:",urlErr.status,"download:",dlStatus,"path:",meta.file_path);
-        return `no_url_s${urlErr.status??'x'}_d${dlStatus??'x'}`;
-      }
-    }
-    if(!url){ return `no_url_${urlErr.status??'x'}`; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
       if(p){ progress=p.progress_pct||0; chapterIndex=p.chapter_index||0; pageIndex=p.page_index||0; }
     }catch{}
-    setAppReader({book,url,fileType:meta.file_type||'epub',progress,chapterIndex,pageIndex});
+    setAppReader({book, url:result.url, fileType:result.meta.file_type||'epub', progress, chapterIndex, pageIndex});
     return true;
   },[user?.id]);
 
