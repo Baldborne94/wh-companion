@@ -1156,6 +1156,24 @@ export default function EpubReader({
             </>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
+          <IBtn
+            onClick={() => {
+              if (bookmarks.length > 0) {
+                const bm = bookmarks[0];
+                if (rendRef.current) {
+                  rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
+                } else {
+                  pendingNavRef.current = bm.cfi;
+                }
+              } else {
+                saveBookmark();
+              }
+            }}
+            color={bookmarks.length > 0 ? C.gold : T.muted}
+            title={bookmarks.length > 0
+              ? `Vai al segnalibro${bookmarks[0]?.page ? ` (pag. ${bookmarks[0].page})` : ""}`
+              : "Segna posizione attuale"}
+          >🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
@@ -1165,6 +1183,18 @@ export default function EpubReader({
           )}
         </div>
       </div>
+
+      {/* Always-visible page number — shown regardless of uiVisible */}
+      {settings.paginate && pageDisplay && pageDisplay.total > 1 && (
+        <div style={{
+          position:"absolute", bottom:58, left:0, right:0, zIndex:18,
+          textAlign:"center", pointerEvents:"none",
+          fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+          color:`${T.muted}cc`,
+        }}>
+          {pageDisplay.page} / {pageDisplay.total}
+        </div>
+      )}
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div style={{
