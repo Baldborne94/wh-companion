@@ -3,7 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-import { addBookmark, removeBookmark, mergeBookmarks } from "../lib/bookmarkHelpers";
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel } from "../lib/bookmarkHelpers";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -1023,13 +1023,6 @@ export default function EpubReader({
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bookmarks, userId, bookId, pageDisplay]);
 
-  const bmPageLabel = useCallback((bm) => {
-    if (bm.page) return `Pag. ${bm.page}`;
-    if (pageDisplay?.total && bm.pct > 0) return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
-    if (bm.pct > 0) return `${bm.pct}%`;
-    return "–";
-  }, [pageDisplay]);
-
   const deleteBookmark = useCallback((cfi) => {
     const upd = removeBookmark(bookmarks, cfi);
     setBookmarks(upd);
@@ -1156,6 +1149,24 @@ export default function EpubReader({
             </>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
+          <IBtn
+            onClick={() => {
+              if (bookmarks.length > 0) {
+                const bm = bookmarks[0];
+                if (rendRef.current) {
+                  rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
+                } else {
+                  pendingNavRef.current = bm.cfi;
+                }
+              } else {
+                saveBookmark();
+              }
+            }}
+            color={bookmarks.length > 0 ? C.gold : T.muted}
+            title={bookmarks.length > 0
+              ? `Vai al segnalibro${bookmarks[0]?.page ? ` (pag. ${bookmarks[0].page})` : ""}`
+              : "Segna posizione attuale"}
+          >🔖</IBtn>
           <IBtn onClick={() => setShowBookmarks(v=>!v)}   color={T.muted}                title="Bookmarks">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
@@ -1165,6 +1176,18 @@ export default function EpubReader({
           )}
         </div>
       </div>
+
+      {/* Always-visible page number — shown regardless of uiVisible */}
+      {settings.paginate && pageDisplay && pageDisplay.total > 1 && (
+        <div style={{
+          position:"absolute", bottom:58, left:0, right:0, zIndex:18,
+          textAlign:"center", pointerEvents:"none",
+          fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+          color:`${T.muted}cc`,
+        }}>
+          {pageDisplay.page} / {pageDisplay.total}
+        </div>
+      )}
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div style={{
@@ -1328,8 +1351,8 @@ export default function EpubReader({
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>
                         {bm.label}
                       </div>
-                      <div style={{ fontSize:10, color:T.muted }}>
-                        {bmPageLabel(bm)}
+                      <div style={{ fontSize:12, color:C.gold, fontFamily:"'Cinzel',serif", letterSpacing:0.5 }}>
+                        {bookmarkPageLabel(bm, pageDisplay)}
                       </div>
                     </button>
                     <button

@@ -38,3 +38,18 @@ export function mergeBookmarks(local, dbBms, pendingDels = []) {
   const localOnly = local.filter(b => !dbCfis.has(b.cfi) && !deletedSet.has(b.cfi));
   return [...filtered, ...localOnly].slice(0, MAX_BOOKMARKS);
 }
+
+/**
+ * Human-readable page label for a bookmark.
+ * Priority: exact page number → estimated from % → raw % → "–"
+ * @param {{ page?: number|null, pct?: number }} bm
+ * @param {{ total?: number }|null} pageDisplay  - current book page info (optional)
+ * @returns {string}
+ */
+export function bookmarkPageLabel(bm, pageDisplay = null) {
+  if (bm.page) return `Pag. ${bm.page}`;
+  if (pageDisplay?.total && bm.pct > 0)
+    return `Pag. ~${Math.max(1, Math.round(bm.pct / 100 * pageDisplay.total))}`;
+  if (bm.pct > 0) return `${bm.pct}%`;
+  return '–';
+}

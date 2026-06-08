@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addBookmark, removeBookmark, mergeBookmarks, MAX_BOOKMARKS } from './bookmarkHelpers.js';
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, MAX_BOOKMARKS } from './bookmarkHelpers.js';
 
 const bm = (cfi, label = 'B', pct = 10) => ({ cfi, label, pct, createdAt: new Date().toISOString() });
 
@@ -138,5 +138,45 @@ describe('mergeBookmarks', () => {
     expect(result).toHaveLength(1);
     expect(result[0].cfi).toBe('cfi-saved');
     expect(result[0].pct).toBe(55);
+  });
+});
+
+// ─── bookmarkPageLabel ────────────────────────────────────────────────────────
+
+describe('bookmarkPageLabel', () => {
+  it('returns exact page when bm.page is set', () => {
+    expect(bookmarkPageLabel({ page: 42, pct: 50 })).toBe('Pag. 42');
+  });
+
+  it('returns estimated page from pct when pageDisplay.total is available', () => {
+    expect(bookmarkPageLabel({ pct: 50 }, { total: 100 })).toBe('Pag. ~50');
+  });
+
+  it('rounds the estimated page correctly', () => {
+    expect(bookmarkPageLabel({ pct: 33 }, { total: 100 })).toBe('Pag. ~33');
+  });
+
+  it('returns at least page 1 for very small pct', () => {
+    expect(bookmarkPageLabel({ pct: 0.1 }, { total: 1000 })).toBe('Pag. ~1');
+  });
+
+  it('falls back to raw percent when no pageDisplay', () => {
+    expect(bookmarkPageLabel({ pct: 30 })).toBe('30%');
+  });
+
+  it('falls back to raw percent when pageDisplay has no total', () => {
+    expect(bookmarkPageLabel({ pct: 30 }, { total: null })).toBe('30%');
+  });
+
+  it('returns dash when pct is 0 and no page', () => {
+    expect(bookmarkPageLabel({ pct: 0 })).toBe('–');
+  });
+
+  it('returns dash for empty bookmark', () => {
+    expect(bookmarkPageLabel({})).toBe('–');
+  });
+
+  it('page takes priority over pct + pageDisplay', () => {
+    expect(bookmarkPageLabel({ page: 7, pct: 50 }, { total: 100 })).toBe('Pag. 7');
   });
 });
