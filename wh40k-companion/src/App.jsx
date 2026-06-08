@@ -40,9 +40,10 @@ export default function App(){
   const [user,setUser]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
   useEffect(()=>{
-    supabase.auth.getSession().then(({data:{session}})=>{
-      setUser(session?.user??null);setAuthLoading(false);
-    });
+    const timer = setTimeout(()=>setAuthLoading(false), 8000);
+    supabase.auth.getSession()
+      .then(({data:{session}})=>setUser(session?.user??null))
+      .finally(()=>{ clearTimeout(timer); setAuthLoading(false); });
     const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
   },[]);
