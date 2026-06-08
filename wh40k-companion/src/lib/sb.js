@@ -19,13 +19,24 @@ export const sb = {
   },
   async upsert(t, d, conflict="user_id,book_id") {
     try {
+      const h = await this._h();
       const r = await fetch(`${SB_URL}/rest/v1/${t}?on_conflict=${conflict}`, {
         method:"POST",
-        headers:{...await this._h(), Prefer:"resolution=merge-duplicates,return=representation"},
+        headers:{...h, Prefer:"resolution=merge-duplicates,return=representation"},
         body:JSON.stringify(d)
       });
-      if(!r.ok){ const body=await r.text(); console.error(`[sb.upsert] ${t} → HTTP ${r.status}`,body); return {_error:r.status,_body:body}; }
-      return r.json();
+      if(r.ok) return r.json();
+      // on_conflict failed (no unique constraint) — fall back to PATCH then INSERT
+      const conds = conflict.split(',').map(c => `${c}=eq.${encodeURIComponent(d[c])}`).join('&');
+      const patch = await fetch(`${SB_URL}/rest/v1/${t}?${conds}`, {
+        method:"PATCH", headers:{...h, Prefer:"return=representation"}, body:JSON.stringify(d)
+      });
+      if(patch.ok){ const rows=await patch.json(); if(rows.length>0) return rows; }
+      const ins = await fetch(`${SB_URL}/rest/v1/${t}`, {
+        method:"POST", headers:{...h, Prefer:"return=representation"}, body:JSON.stringify(d)
+      });
+      if(!ins.ok){ const body=await ins.text(); console.error(`[sb.upsert] ${t} insert → HTTP ${ins.status}`,body); return {_error:ins.status}; }
+      return ins.json();
     } catch(e){ console.error(`[sb.upsert] ${t} exception`,e); return null; }
   },
   async del(t, q="") {
