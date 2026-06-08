@@ -271,6 +271,8 @@ export default function App(){
     if(!freshToken){
       try{ const { data } = await supabase.auth.getSession(); freshToken=data?.session?.access_token??null; }catch{}
     }
+    // If no valid token at all, session is expired — user must re-login
+    if(!freshToken){ console.error("[openBook] no valid session token"); return 'no_session'; }
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){

@@ -237,8 +237,14 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                     if (elapsed < 400) await new Promise(r => setTimeout(r, 400 - elapsed));
                     setOpeningBookId(null);
                     if (ok !== true) {
-                      setOpenErrorId({ id: b.id, code: typeof ok === 'string' ? ok : 'err' });
-                      setTimeout(() => setOpenErrorId(null), 5000);
+                      const code = typeof ok === 'string' ? ok : 'err';
+                      setOpenErrorId({ id: b.id, code });
+                      if (code === 'no_session') {
+                        // Session expired — sign out so user lands on login page
+                        setTimeout(() => supabase.auth.signOut(), 1500);
+                      } else {
+                        setTimeout(() => setOpenErrorId(null), 5000);
+                      }
                     }
                   } else {
                     setSection('library');
@@ -253,7 +259,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                 {hasEbook
                   ? (() => { const errCode = openErrorId?.id === b.id ? openErrorId.code : null; return (
                     <span style={{ background: errCode ? `${C.red}22` : `${C.gold}22`, border: `1px solid ${errCode ? C.red : C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: errCode ? C.red : C.gold, letterSpacing: 1, flexShrink: 0 }}>
-                      {openingBookId === b.id ? "…" : errCode === 'no_meta' ? "ERR-M" : errCode?.startsWith('no_url_s') ? `${errCode.slice(7).replace('_d','/').replace('s','')}` : errCode?.startsWith('no_url') ? `U-${errCode.slice(7)||'?'}` : errCode ? "ERR" : "READ ›"}
+                      {openingBookId === b.id ? "…" : errCode === 'no_session' ? "SESSION" : errCode === 'no_meta' ? "ERR-M" : errCode?.startsWith('no_url_s') ? `${errCode.slice(7).replace('_d','/').replace('s','')}` : errCode?.startsWith('no_url') ? `U-${errCode.slice(7)||'?'}` : errCode ? "ERR" : "READ ›"}
                     </span>
                   ); })()
 
