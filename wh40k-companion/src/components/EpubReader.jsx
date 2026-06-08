@@ -537,6 +537,7 @@ export default function EpubReader({
   const bookRef       = useRef(null);
   const rendRef       = useRef(null);
   const cfiRef        = useRef(null);
+  const pageRef       = useRef(null); // mirrors pageDisplay but as a ref — always in sync with cfiRef
   const tocRef        = useRef([]);
   const saveTimer     = useRef(null);
   // CFI queued while book is still loading — executed once renderer is ready
@@ -763,7 +764,10 @@ export default function EpubReader({
           // Paginated screen pages — chapter-relative, available immediately (no locations needed)
           const dPage = loc.start?.displayed?.page;
           const dTotal = loc.start?.displayed?.total;
-          if (dPage && dTotal > 0) setPageDisplay({ page: dPage, total: dTotal });
+          if (dPage && dTotal > 0) {
+            pageRef.current = { page: dPage, total: dTotal };
+            setPageDisplay({ page: dPage, total: dTotal });
+          }
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
@@ -1010,14 +1014,14 @@ export default function EpubReader({
   const saveBookmark = useCallback(() => {
     const cfi = cfiRef.current;
     if (!cfi) return;
-    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
+    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageRef.current?.page ?? null, createdAt: new Date().toISOString() };
     const upd = addBookmark(bookmarks, bm);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
     saveBookmarkToDB(userId, bookId, bm);
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
-  }, [chLabel, progress, pageDisplay, bookmarks, userId, bookId]);
+  }, [chLabel, progress, bookmarks, userId, bookId]);
 
   const deleteBookmark = useCallback((cfi) => {
     const upd = removeBookmark(bookmarks, cfi);
