@@ -140,6 +140,7 @@ function buildReaderCss(settings, T, fnt) {
     *, *::before, *::after { box-sizing: border-box; }
     html { background: ${T.bg} !important; }
     html, body { background: ${T.bg} !important; color: ${T.text} !important; }
+    ${!settings.twoPage ? `html { -webkit-column-count: 1 !important; column-count: 1 !important; }` : ""}
     html body * { color: ${T.text} !important; background-color: transparent !important; }
     body {
       font-family: ${fnt.value} !important;
@@ -767,6 +768,7 @@ export default function EpubReader({
           if (dPage && dTotal > 0) {
             pageRef.current = { page: dPage, total: dTotal };
             setPageDisplay({ page: dPage, total: dTotal });
+            console.log("[relocated]", dPage, "/", dTotal);
           }
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
@@ -1015,6 +1017,7 @@ export default function EpubReader({
     const cfi = cfiRef.current;
     if (!cfi) return;
     const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageRef.current?.page ?? null, createdAt: new Date().toISOString() };
+    console.log("[BM save]", { page: bm.page, pct: bm.pct, cfi: bm.cfi?.slice(-30) });
     const upd = addBookmark(bookmarks, bm);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
