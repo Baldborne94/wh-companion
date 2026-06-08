@@ -288,8 +288,9 @@ export default function App(){
       }
     }
     if(!meta){ console.error("[openBook] no metadata for book",book.id); return 'no_meta'; }
-    const url=await sb.storage.signedUrl(meta.file_path, freshToken);
-    if(!url){ console.error("[openBook] signed URL failed, path:",meta.file_path,"hasToken:",!!freshToken); return 'no_url'; }
+    let urlErr={};
+    const url=await sb.storage.signedUrl(meta.file_path, freshToken, e=>{urlErr=e;});
+    if(!url){ console.error("[openBook] signedUrl failed",urlErr,"path:",meta.file_path,"hasToken:",!!freshToken); return `no_url_${urlErr.status??'x'}`; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
