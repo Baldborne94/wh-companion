@@ -3,6 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
+import { addBookmark, removeBookmark, mergeBookmarks } from "../lib/bookmarkHelpers";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -495,11 +496,7 @@ export default function EpubReader({
       else localStorage.setItem(delKey, JSON.stringify(failedDels));
 
       setBookmarks(prev => {
-        // Exclude DB bookmarks that are pending deletion, even if DB delete failed
-        const filteredBms = bms.filter(b => !deletedSet.has(b.cfi));
-        const dbCfis = new Set(filteredBms.map(b => b.cfi));
-        const localOnly = prev.filter(b => !dbCfis.has(b.cfi) && !deletedSet.has(b.cfi));
-        const merged = [...filteredBms, ...localOnly];
+        const merged = mergeBookmarks(prev, bms, pendingDels);
         localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
         if (showStatus) {
           const n = merged.length;
@@ -536,12 +533,14 @@ export default function EpubReader({
   }, [syncBookmarksFromDB]);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
-  const containerRef = useRef(null);
-  const bookRef      = useRef(null);
-  const rendRef      = useRef(null);
-  const cfiRef       = useRef(null);
-  const tocRef       = useRef([]);
-  const saveTimer    = useRef(null);
+  const containerRef  = useRef(null);
+  const bookRef       = useRef(null);
+  const rendRef       = useRef(null);
+  const cfiRef        = useRef(null);
+  const tocRef        = useRef([]);
+  const saveTimer     = useRef(null);
+  // CFI queued while book is still loading — executed once renderer is ready
+  const pendingNavRef = useRef(null);
   const hideTimer    = useRef(null);
   const isTouch      = useRef(window.matchMedia("(pointer:coarse)").matches);
   const themeRef     = useRef(T);
@@ -629,6 +628,13 @@ export default function EpubReader({
           manager:        "default",
         });
         rendRef.current = rend;
+
+        // Execute any navigation queued before the renderer was ready
+        if (pendingNavRef.current) {
+          const queuedCfi = pendingNavRef.current;
+          pendingNavRef.current = null;
+          rend.display(queuedCfi).catch(() => setTimeout(() => rend.display(queuedCfi), 600));
+        }
 
         applyTheme(rend, settings, T, fnt);
 
@@ -1009,7 +1015,7 @@ export default function EpubReader({
     }
     if (!cfi) return;
     const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
-    const upd = [bm, ...bookmarks.filter(b => b.cfi !== cfi)].slice(0, 30);
+    const upd = addBookmark(bookmarks, bm);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
     saveBookmarkToDB(userId, bookId, bm);
@@ -1025,7 +1031,7 @@ export default function EpubReader({
   }, [pageDisplay]);
 
   const deleteBookmark = useCallback((cfi) => {
-    const upd = bookmarks.filter(b => b.cfi !== cfi);
+    const upd = removeBookmark(bookmarks, cfi);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
     // Track deletion so syncBookmarksFromDB can re-apply it if the DB call fails now
@@ -1306,7 +1312,15 @@ export default function EpubReader({
                                         borderBottom:`1px solid ${T.border}` }}>
                     <button
                       onClick={() => {
-                        rendRef.current?.display(bm.cfi);
+                        if (rendRef.current) {
+                          rendRef.current.display(bm.cfi).catch(() => {
+                            // Retry once after 600ms if display fails (e.g. locations not ready)
+                            setTimeout(() => rendRef.current?.display(bm.cfi), 600);
+                          });
+                        } else {
+                          // Book not yet loaded — queue for execution after renderer is ready
+                          pendingNavRef.current = bm.cfi;
+                        }
                         setShowBookmarks(false);
                       }}
                       style={{ flex:1, textAlign:"left", background:"transparent",
