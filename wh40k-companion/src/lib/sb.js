@@ -43,19 +43,22 @@ export const sb = {
         return r.ok;
       } catch{ return false; }
     },
-    async signedUrl(path) {
+    async signedUrl(path, explicitToken) {
       try {
-        // Use REST API directly so the fresh token from _h() is sent explicitly.
-        // supabase.storage.createSignedUrl uses the JS-client internal token which
-        // may lag behind a just-completed refreshSession on tablet PWA.
+        // Accept an explicit token captured from refreshSession() to avoid any
+        // staleness in the JS-client's internal getSession() cache on tablet PWA.
+        let tok = explicitToken;
+        if (!tok) {
+          const { data } = await supabase.auth.getSession();
+          tok = data?.session?.access_token ?? SB_KEY;
+        }
         const r = await fetch(`${SB_URL}/storage/v1/object/sign/ebooks/${path}`, {
           method: "POST",
-          headers: await sb._h(),
+          headers: { apikey:SB_KEY, Authorization:`Bearer ${tok}`, "Content-Type":"application/json" },
           body: JSON.stringify({ expiresIn: 7200 }),
         });
-        if (!r.ok) { console.warn("[sb.signedUrl] HTTP", r.status, await r.text()); return null; }
+        if (!r.ok) { console.warn("[sb.signedUrl] HTTP", r.status, path); return null; }
         const json = await r.json();
-        // REST API returns { signedURL: "/storage/v1/object/sign/..." }
         return json?.signedURL ? `${SB_URL}${json.signedURL}` : null;
       } catch(e){ console.warn("[sb.signedUrl]", e?.message); return null; }
     },

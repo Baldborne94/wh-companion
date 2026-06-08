@@ -260,8 +260,17 @@ export default function App(){
   const [appReader,setAppReader]=useState(null);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
-    // Refresh session first — tablet PWA suspends JS timers in background, leaving stale JWT
-    try{ await supabase.auth.refreshSession(); }catch{}
+    // Refresh session and capture the fresh token directly from the result.
+    // On tablet PWA, getSession() may still return a stale token immediately after
+    // refreshSession() because the client's internal cache updates asynchronously.
+    let freshToken = null;
+    try{
+      const { data } = await supabase.auth.refreshSession();
+      freshToken = data?.session?.access_token ?? null;
+    }catch{}
+    if(!freshToken){
+      try{ const { data } = await supabase.auth.getSession(); freshToken=data?.session?.access_token??null; }catch{}
+    }
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
@@ -279,8 +288,8 @@ export default function App(){
       }
     }
     if(!meta){ console.error("[openBook] no metadata for book",book.id); return 'no_meta'; }
-    const url=await sb.storage.signedUrl(meta.file_path);
-    if(!url){ console.error("[openBook] signed URL failed for path",meta.file_path); return 'no_url'; }
+    const url=await sb.storage.signedUrl(meta.file_path, freshToken);
+    if(!url){ console.error("[openBook] signed URL failed, path:",meta.file_path,"hasToken:",!!freshToken); return 'no_url'; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
