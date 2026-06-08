@@ -1059,17 +1059,6 @@ export default function EpubReader({
         </div>
       </div>
 
-      {/* Always-visible page number — shown regardless of uiVisible */}
-      {settings.paginate && pageDisplay && pageDisplay.total > 1 && (
-        <div style={{
-          position:"absolute", bottom:58, left:0, right:0, zIndex:18,
-          textAlign:"center", pointerEvents:"none",
-          fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
-          color:`${T.muted}cc`,
-        }}>
-          {pageDisplay.page} / {pageDisplay.total}
-        </div>
-      )}
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div style={{
@@ -1108,11 +1097,6 @@ export default function EpubReader({
                            overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
               {chLabel}
             </span>
-            {settings.paginate && pageDisplay && pageDisplay.total > 1 && (
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, flexShrink:0 }}>
-                · {pageDisplay.page}/{pageDisplay.total}
-              </span>
-            )}
           </div>
         </div>
 
