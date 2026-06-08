@@ -44,19 +44,8 @@ export default function App(){
     supabase.auth.getSession()
       .then(({data:{session}})=>setUser(session?.user??null))
       .finally(()=>{ clearTimeout(timer); setAuthLoading(false); });
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,s)=>{
-      setUser(s?.user??null);
-      setAuthLoading(false);
-      // After Google OAuth, the browser may have cleared sessionStorage (new tab / Custom Tab).
-      // Auto-enter the app on SIGNED_IN so the user doesn't get stuck in a login loop.
-      if(event==='SIGNED_IN' && s?.user && !sessionStorage.getItem('wh_started')){
-        sessionStorage.setItem('wh_started','1');
-        sessionStorage.setItem('wh_fresh_login','1');
-        setAppStarted(true);
-      }
-    });
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
     return ()=>subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   // ── Global statuses — single source of truth ──────────────────────────────
@@ -215,7 +204,14 @@ export default function App(){
   const [showOnboarding,setShowOnboarding]=useState(false);
 
   // Landing page: always shown first on each fresh session.
-  const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
+  // Also auto-start if URL contains OAuth callback params (sessionStorage is cleared by the
+  // OAuth redirect on tablet, so we detect the return via URL instead).
+  const [appStarted,setAppStarted]=useState(()=>{
+    if(sessionStorage.getItem('wh_started')==='1') return true;
+    const p=new URLSearchParams(window.location.search);
+    if(p.has('code')||p.has('access_token')||window.location.hash.includes('access_token')) return true;
+    return false;
+  });
   const startApp=useCallback(()=>{
     sessionStorage.setItem('wh_started','1');
     sessionStorage.setItem('wh_fresh_login','1'); // tells the DB-restore effect to skip
