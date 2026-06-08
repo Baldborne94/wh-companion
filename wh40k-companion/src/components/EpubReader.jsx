@@ -34,25 +34,28 @@ async function loadCfiFromDB(userId, bookId) {
   } catch { return null; }
 }
 
-async function loadBookmarkFromDB(userId, bookId) {
-  if (!userId || !bookId) return null;
+async function loadBookmarksFromDB(userId, bookId) {
+  if (!userId || !bookId) return [];
   try {
     const { data } = await supabase.from("bookmarks")
       .select("epub_cfi,label,progress,created_at")
       .eq("user_id", userId).eq("book_id", bookId)
       .not("epub_cfi", "is", null)
       .order("created_at", { ascending: false })
-      .limit(1).single();
-    if (!data?.epub_cfi) return null;
-    return { cfi: data.epub_cfi, label: data.label || "Bookmark", pct: data.progress || 0, createdAt: data.created_at };
-  } catch { return null; }
+      .limit(10);
+    return (data || []).map(b => ({ cfi: b.epub_cfi, label: b.label || "Bookmark", pct: b.progress || 0, createdAt: b.created_at }));
+  } catch { return []; }
 }
 
-async function saveBookmarkToDB(userId, bookId, bm) {
-  if (!userId || !bookId || !bm?.cfi) return;
+async function saveAllBookmarksToDB(userId, bookId, bms) {
+  if (!userId || !bookId) return;
   try {
     await supabase.from("bookmarks").delete().eq("user_id", userId).eq("book_id", bookId);
-    await supabase.from("bookmarks").insert({ user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0 });
+    if (bms.length > 0) {
+      await supabase.from("bookmarks").insert(
+        bms.map(b => ({ user_id:userId, book_id:bookId, epub_cfi:b.cfi, label:b.label, progress:b.pct|0 }))
+      );
+    }
   } catch {}
 }
 
@@ -408,17 +411,18 @@ export default function EpubReader({
     };
   }, []);
   const bmKey = `wh40k_bm_${userId}_${bookId}`;
-  const [bookmark, setBookmark] = useState(() => {
+  const [bookmarks, setBookmarks] = useState(() => {
     try {
       const raw = localStorage.getItem(bmKey);
-      if (!raw) return null;
+      if (!raw) return [];
       const parsed = JSON.parse(raw);
-      // Support old array format from before the simplification
-      return Array.isArray(parsed) ? (parsed[0] ?? null) : parsed;
-    } catch { return null; }
+      // Support old single-object format
+      return Array.isArray(parsed) ? parsed : (parsed?.cfi ? [parsed] : []);
+    } catch { return []; }
   });
+  const [showBookmarks, setShowBookmarks] = useState(false);
 
-  // Pre-load CFI + bookmark from DB if nothing in localStorage (new device)
+  // Pre-load CFI + bookmarks from DB if nothing in localStorage (new device)
   useEffect(() => {
     const cfiKey = `wh40k_cfi_${userId}_${bookId}`;
     const hasCfi = !!localStorage.getItem(cfiKey);
@@ -433,10 +437,10 @@ export default function EpubReader({
       });
     }
     if (!hasBm) {
-      loadBookmarkFromDB(userId, bookId).then(bm => {
-        if (!bm) return;
-        setBookmark(bm);
-        localStorage.setItem(bmKey, JSON.stringify(bm));
+      loadBookmarksFromDB(userId, bookId).then(bms => {
+        if (!bms.length) return;
+        setBookmarks(bms);
+        localStorage.setItem(bmKey, JSON.stringify(bms));
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -471,11 +475,11 @@ export default function EpubReader({
 
   // Keep UI visible while a panel is open
   useEffect(() => {
-    if (showSettings || showToc) {
+    if (showSettings || showToc || showBookmarks) {
       clearTimeout(hideTimer.current);
       setShowUI(true);
     }
-  }, [showSettings, showToc]);
+  }, [showSettings, showToc, showBookmarks]);
 
   // ── Book init / layout change ─────────────────────────────────────────────
   useEffect(() => {
@@ -895,24 +899,39 @@ export default function EpubReader({
         if      (dictWord)        setDictWord(null);
         else if (showSettings)    setShowSettings(false);
         else if (showToc)         setShowToc(false);
+        else if (showBookmarks)   setShowBookmarks(false);
         else                      onClose?.();
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [next, prev, dictWord, showSettings, showToc, onClose]);
+  }, [next, prev, dictWord, showSettings, showToc, showBookmarks, onClose]);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
+  const MAX_BM = 10;
   const saveBookmark = useCallback(() => {
     const cfi = cfiRef.current;
     if (!cfi) return;
     const bm = { cfi, label: chLabel || "Bookmark", pct: progress, createdAt: new Date().toISOString() };
-    setBookmark(bm);
-    localStorage.setItem(bmKey, JSON.stringify(bm));
-    saveBookmarkToDB(userId, bookId, bm);
+    setBookmarks(prev => {
+      const deduped = prev.filter(b => b.cfi !== cfi);
+      const next = [bm, ...deduped].slice(0, MAX_BM);
+      localStorage.setItem(bmKey, JSON.stringify(next));
+      saveAllBookmarksToDB(userId, bookId, next);
+      return next;
+    });
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bmKey, userId, bookId]);
+
+  const deleteBookmark = useCallback((cfi) => {
+    setBookmarks(prev => {
+      const next = prev.filter(b => b.cfi !== cfi);
+      localStorage.setItem(bmKey, JSON.stringify(next));
+      saveAllBookmarksToDB(userId, bookId, next);
+      return next;
+    });
+  }, [bmKey, userId, bookId]);
 
   // ── Search ────────────────────────────────────────────────────────────────
   // ── Error screen ──────────────────────────────────────────────────────────
@@ -962,7 +981,7 @@ export default function EpubReader({
           onTouchStart={onSwipeStart}
           onTouchEnd={onSwipeEnd}
           style={{ position:"absolute", top:54, bottom:54, left:0, right:0, zIndex:10,
-                   pointerEvents: (!settings.paginate || showSettings || showToc || dictWord) ? "none" : "auto" }}
+                   pointerEvents: (!settings.paginate || showSettings || showToc || showBookmarks || dictWord) ? "none" : "auto" }}
         />
       )}
 
@@ -1016,22 +1035,21 @@ export default function EpubReader({
           <IBtn onClick={() => setShowToc(v=>!v)}         color={T.muted}                title="Contents">☰</IBtn>
           <IBtn
             onClick={() => {
-              if (bookmark) {
+              if (bookmarks.length > 0) {
+                const bm = bookmarks[0];
                 if (rendRef.current) {
-                  rendRef.current.display(bookmark.cfi).catch(() => setTimeout(() => rendRef.current?.display(bookmark.cfi), 600));
+                  rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
                 } else {
-                  pendingNavRef.current = bookmark.cfi;
+                  pendingNavRef.current = bm.cfi;
                 }
               } else {
                 saveBookmark();
               }
             }}
-            color={bookmark ? C.gold : T.muted}
-            title={bookmark ? `Vai al segnalibro (${bookmark.pct}%)` : "Segna posizione attuale"}
+            color={bookmarks.length > 0 ? C.gold : T.muted}
+            title={bookmarks.length > 0 ? `Vai all'ultimo segnalibro (${bookmarks[0]?.pct}%)` : "Segna posizione attuale"}
           >🔖</IBtn>
-          {bookmark && (
-            <IBtn onClick={saveBookmark} color={bmSaved ? C.gold : T.muted} title="Aggiorna segnalibro">↻</IBtn>
-          )}
+          <IBtn onClick={() => setShowBookmarks(v => !v)} color={T.muted} title="Segnalibri">📑</IBtn>
           <IBtn onClick={() => setShowSettings(true)}     color={T.muted}                title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
             <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?"Exit fullscreen":"Fullscreen"}>
@@ -1152,6 +1170,63 @@ export default function EpubReader({
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bookmarks panel ────────────────────────────────────────────────── */}
+      {showBookmarks && (
+        <div onClick={() => setShowBookmarks(false)}
+          style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position:"absolute", right:0, top:0, bottom:0,
+                     width:Math.min(300, window.innerWidth * 0.85),
+                     background:T.surface, borderLeft:`1px solid ${T.border}`,
+                     animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${T.border}`,
+                          display:"flex", justifyContent:"space-between", alignItems:"center",
+                          flexShrink:0 }}>
+              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Segnalibri</span>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <button onClick={() => { saveBookmark(); }}
+                  style={{ background:"transparent", border:`1px solid ${C.gold}55`, borderRadius:4,
+                           color:C.gold, cursor:"pointer", fontSize:10, padding:"4px 8px",
+                           fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+                  + Salva qui
+                </button>
+                <button onClick={() => setShowBookmarks(false)}
+                  style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
+              </div>
+            </div>
+            {bookmarks.length === 0 ? (
+              <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"28px 16px", fontStyle:"italic" }}>
+                Nessun segnalibro.<br />Usa "+ Salva qui" per aggiungerne uno.
+              </p>
+            ) : (
+              <div style={{ overflowY:"auto", flex:1 }}>
+                {bookmarks.map((bm, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"stretch", borderBottom:`1px solid ${T.border}` }}>
+                    <button
+                      onClick={() => {
+                        if (rendRef.current) {
+                          rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
+                        } else {
+                          pendingNavRef.current = bm.cfi;
+                        }
+                        setShowBookmarks(false);
+                      }}
+                      style={{ flex:1, textAlign:"left", background:"transparent", border:"none", padding:"12px 16px", cursor:"pointer" }}>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text, marginBottom:3 }}>{bm.label}</div>
+                      <div style={{ fontSize:12, color:C.gold, fontFamily:"'Cinzel',serif" }}>{bookmarkPageLabel(bm)}</div>
+                    </button>
+                    <button onClick={() => deleteBookmark(bm.cfi)} title="Elimina"
+                      style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
+                               color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
+                               flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
