@@ -211,8 +211,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                       const bst = statuses[book.id]?.status || 'none';
                       const bstCfg = STATUS_CFG[bst];
                       return (
-                        <div key={book.id} onClick={() => setDetail(book)}
-                          style={{ background: `linear-gradient(135deg,${fc2}22,${C.card})`, border: `1px solid ${C.gold}55`, borderLeft: `3px solid ${C.gold}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <button key={book.id} type="button" onClick={() => setDetail(book)}
+                          style={{ background: `linear-gradient(135deg,${fc2}22,${C.card})`, border: `1px solid ${C.gold}55`, borderLeft: `3px solid ${C.gold}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start", width: "100%", textAlign: "left" }}>
                           <CoverImage book={book} width={54} height={80} radius={3} accentColor={fc2} />
                           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -225,7 +225,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                             <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.3, fontFamily: "'Cinzel',serif" }}>{book.title}</div>
                             <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>{book.author}</div>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -237,8 +237,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                       const bst = statuses[book.id]?.status || 'none';
                       const bstCfg = STATUS_CFG[bst];
                       return (
-                        <div key={book.id} onClick={() => setDetail(book)}
-                          style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}44`, cursor: "pointer" }}>
+                        <button key={book.id} type="button" onClick={() => setDetail(book)}
+                          style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", width: "100%", textAlign: "left", border: "none", borderBottom: `1px solid ${C.border}44`, background: "transparent" }}>
                           <CoverImage book={book} width={36} height={52} radius={2} accentColor={fc2} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
@@ -246,7 +246,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                           </div>
                           {bst !== 'none' && <span style={{ fontSize: 14, flexShrink: 0 }}>{bstCfg.icon}</span>}
                           <span style={{ color: C.dim, fontSize: 14, flexShrink: 0 }}>›</span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -266,8 +266,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                               const bst = statuses[book.id]?.status || 'none';
                               const bstCfg = STATUS_CFG[bst];
                               return (
-                                <div key={book.id} onClick={() => setDetail(book)} title={book.title}
-                                  style={{ flexShrink: 0, width: 24, height: 110, background: `linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`, borderRadius: "3px 3px 0 0", cursor: "pointer", position: "relative", boxShadow: `inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`, border: `1px solid ${C.gold}66`, borderBottom: "none", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "transform 0.12s" }}
+                                <button key={book.id} type="button" onClick={() => setDetail(book)} title={book.title}
+                                  style={{ flexShrink: 0, width: 24, height: 110, background: `linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`, borderRadius: "3px 3px 0 0", cursor: "pointer", position: "relative", boxShadow: `inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`, border: `1px solid ${C.gold}66`, borderBottom: "none", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "transform 0.12s", padding: 0 }}
                                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-5px)"}
                                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                                   <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: "'Cinzel',serif", fontSize: 6, color: "rgba(255,255,255,0.85)", letterSpacing: 0.8, overflow: "hidden", maxHeight: "90%", padding: "3px 2px", textShadow: "0 1px 2px rgba(0,0,0,0.9)", lineHeight: 1.1, textAlign: "center" }}>
@@ -275,7 +275,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                                   </div>
                                   {bst !== 'none' && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: bstCfg.color }} />}
                                   <div style={{ position: "absolute", inset: 0, border: `1px solid ${C.gold}44`, borderRadius: "3px 3px 0 0", pointerEvents: "none" }} />
-                                </div>
+                                </button>
                               );
                             })}
                           </div>

@@ -305,6 +305,13 @@ export default function App(){
     return () => { window.removeEventListener('online', go); window.removeEventListener('offline', stop); };
   }, []);
 
+  // ── Session refresh on foreground (tablet PWA: JS timers stop in background) ─
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') supabase.auth.refreshSession().catch(()=>{}); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   if(!appStarted) return <LoginPage onEnter={startApp} user={user} authLoading={authLoading}/>;
   if(authLoading) return <LoginPage authLoading/>;
   if(!user) return <LoginPage/>;
@@ -316,6 +323,7 @@ export default function App(){
         *{margin:0;padding:0;box-sizing:border-box;}
         html,body{height:100%;background:${universe==='aos'?AOS.bg:C.bg};color:${universe==='aos'?AOS.text:C.text};font-family:system-ui,-apple-system,sans-serif;}
         input,select,button{font-family:inherit;}
+        button{touch-action:manipulation;}
         ::-webkit-scrollbar{width:3px;height:3px;}
         ::-webkit-scrollbar-thumb{background:${C.dim};border-radius:2px;}
         @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
