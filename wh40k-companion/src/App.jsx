@@ -260,6 +260,8 @@ export default function App(){
   const [appReader,setAppReader]=useState(null);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
+    // Refresh session — PWA on tablet may have stale token after backgrounding
+    try{ await supabase.auth.refreshSession(); }catch{}
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
@@ -272,7 +274,11 @@ export default function App(){
         ({ data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid));
         files = files?.filter(f=>String(f.book_id)===String(book.id));
       }
-      if(files?.length) meta=files[0];
+      if(files?.length){
+        meta=files[0];
+        // Cache for future opens (avoids DB round-trip and works offline)
+        try{ localStorage.setItem(`wh40k_ebook_${uid}_${book.id}`,JSON.stringify(meta)); }catch{}
+      }
     }
     if(!meta) return;
     const url=await sb.storage.signedUrl(meta.file_path);

@@ -73,15 +73,16 @@ async function saveBookmarkToDB(userId, bookId, bm) {
 }
 
 async function deleteBookmarkFromDB(userId, bookId, cfi) {
-  if (!userId || !bookId || !cfi) return;
+  if (!userId || !bookId || !cfi) return false;
   try {
-    await supabase
+    const { error } = await supabase
       .from("bookmarks")
       .delete()
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .eq("epub_cfi", cfi);
-  } catch {}
+    return !error;
+  } catch { return false; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -457,40 +458,57 @@ export default function EpubReader({
 
   const [syncStatus, setSyncStatus] = useState(null);
 
-  // Sync bookmarks: push all local → pull all from DB → merge (never lose local data)
+  // Sync bookmarks: push locals → apply pending deletes → pull from DB → merge
+  // Pending deletes are tracked in localStorage so they survive re-opens when DB delete fails
   const syncBookmarksFromDB = useCallback((showStatus = false) => {
     if (!userId || !bookId) return;
     if (showStatus) setSyncStatus("syncing…");
-    const local = bookmarksRef.current;
-    Promise.all(local.map(b => saveBookmarkToDB(userId, bookId, b)))
-      .then(errs => {
-        const uploadErr = errs.find(Boolean);
-        if (uploadErr && showStatus) {
-          setSyncStatus(`✗ upload: ${uploadErr}`);
-          setTimeout(() => setSyncStatus(null), 6000);
-          return Promise.reject("upload-failed");
+
+    (async () => {
+      const local = bookmarksRef.current;
+      const delKey = `wh40k_bm_del_${userId}_${bookId}`;
+      let pendingDels = [];
+      try { pendingDels = JSON.parse(localStorage.getItem(delKey) || '[]'); } catch {}
+
+      // Push local bookmarks to DB
+      const errs = await Promise.all(local.map(b => saveBookmarkToDB(userId, bookId, b)));
+      const uploadErr = errs.find(Boolean);
+      if (uploadErr) {
+        if (showStatus) { setSyncStatus(`✗ upload: ${uploadErr}`); setTimeout(() => setSyncStatus(null), 6000); }
+        return;
+      }
+
+      // Apply pending deletions to DB
+      const delResults = await Promise.all(pendingDels.map(cfi => deleteBookmarkFromDB(userId, bookId, cfi)));
+      const failedDels = pendingDels.filter((_, i) => !delResults[i]);
+      const deletedSet = new Set(pendingDels);
+
+      // Load fresh snapshot from DB
+      const { ok, bms, msg } = await loadBookmarksFromDB(userId, bookId);
+      if (!ok) {
+        if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 4000); }
+        return;
+      }
+
+      // Persist remaining failed deletes (retry next sync)
+      if (failedDels.length === 0) localStorage.removeItem(delKey);
+      else localStorage.setItem(delKey, JSON.stringify(failedDels));
+
+      setBookmarks(prev => {
+        // Exclude DB bookmarks that are pending deletion, even if DB delete failed
+        const filteredBms = bms.filter(b => !deletedSet.has(b.cfi));
+        const dbCfis = new Set(filteredBms.map(b => b.cfi));
+        const localOnly = prev.filter(b => !dbCfis.has(b.cfi) && !deletedSet.has(b.cfi));
+        const merged = [...filteredBms, ...localOnly];
+        localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
+        if (showStatus) {
+          const n = merged.length;
+          setSyncStatus(`✓ ${n} bookmark${n !== 1 ? "s" : ""}`);
+          setTimeout(() => setSyncStatus(null), 3000);
         }
-        return loadBookmarksFromDB(userId, bookId);
-      })
-      .then(({ ok, bms, msg }) => {
-        if (!ok) {
-          if (showStatus) { setSyncStatus(`✗ ${msg}`); setTimeout(() => setSyncStatus(null), 4000); }
-          return;
-        }
-        setBookmarks(prev => {
-          const dbCfis = new Set(bms.map(b => b.cfi));
-          const localOnly = prev.filter(b => !dbCfis.has(b.cfi));
-          const merged = [...bms, ...localOnly];
-          localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(merged));
-          if (showStatus) {
-            const n = merged.length;
-            setSyncStatus(`✓ ${n} bookmark${n !== 1 ? "s" : ""}`);
-            setTimeout(() => setSyncStatus(null), 3000);
-          }
-          return merged;
-        });
-      })
-      .catch(e => { if (e !== "upload-failed") console.warn("[BM] sync:", e); });
+        return merged;
+      });
+    })().catch(e => console.warn("[BM] sync:", e));
   }, [userId, bookId]);
 
   useEffect(() => { syncBookmarksFromDB(); }, [syncBookmarksFromDB]);
@@ -1018,6 +1036,12 @@ export default function EpubReader({
     const upd = bookmarks.filter(b => b.cfi !== cfi);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
+    // Track deletion so syncBookmarksFromDB can re-apply it if the DB call fails now
+    try {
+      const delKey = `wh40k_bm_del_${userId}_${bookId}`;
+      const dels = JSON.parse(localStorage.getItem(delKey) || '[]');
+      if (!dels.includes(cfi)) { dels.push(cfi); localStorage.setItem(delKey, JSON.stringify(dels)); }
+    } catch {}
     deleteBookmarkFromDB(userId, bookId, cfi);
   }, [bookmarks, userId, bookId]);
 
