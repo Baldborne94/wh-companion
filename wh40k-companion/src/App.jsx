@@ -289,8 +289,20 @@ export default function App(){
     }
     if(!meta){ console.error("[openBook] no metadata for book",book.id); return 'no_meta'; }
     let urlErr={};
-    const url=await sb.storage.signedUrl(meta.file_path, freshToken, e=>{urlErr=e;});
-    if(!url){ console.error("[openBook] signedUrl failed",urlErr,"path:",meta.file_path,"hasToken:",!!freshToken); return `no_url_${urlErr.status??'x'}`; }
+    let url=await sb.storage.signedUrl(meta.file_path, freshToken, e=>{urlErr=e;});
+    if(!url){
+      console.warn("[openBook] signedUrl failed, trying blob download. path:",meta.file_path,"err:",urlErr);
+      try{
+        const { data:blob, error:dlErr } = await supabase.storage.from("ebooks").download(meta.file_path);
+        if(blob && !dlErr){
+          url = URL.createObjectURL(blob);
+          console.log("[openBook] blob fallback succeeded, size:", blob.size);
+        } else {
+          console.error("[openBook] blob download failed:", dlErr?.message);
+        }
+      }catch(e){ console.error("[openBook] blob exception:", e?.message); }
+    }
+    if(!url){ console.error("[openBook] all URL methods failed","path:",meta.file_path,"hasToken:",!!freshToken); return `no_url_${urlErr.status??'x'}`; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
