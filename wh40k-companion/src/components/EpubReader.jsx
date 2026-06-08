@@ -625,7 +625,7 @@ export default function EpubReader({
           height:         "100%",
           spread,
           flow,
-          minSpreadWidth: 900,
+          minSpreadWidth: settings.twoPage ? 0 : 9999,
           manager:        "default",
         });
         rendRef.current = rend;
