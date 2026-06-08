@@ -121,14 +121,14 @@ export default function LoreSection({ universe }) {
           <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>The Mortal Realms</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {AOS_REALMS.map(r=>(
-              <div key={r.name} onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name.replace(/ /g,'_'),'_blank')}
-                style={{background:`linear-gradient(135deg,${r.color}18,${C.card})`,border:`1px solid ${r.color}44`,borderLeft:`3px solid ${r.color}`,borderRadius:10,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+              <button key={r.name} type="button" onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name.replace(/ /g,'_'),'_blank')}
+                style={{background:`linear-gradient(135deg,${r.color}18,${C.card})`,border:`1px solid ${r.color}44`,borderLeft:`3px solid ${r.color}`,borderRadius:10,padding:"12px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left",width:"100%"}}>
                 <span style={{fontSize:22}}>{r.icon}</span>
                 <div>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:12,color:C.text}}>{r.name}</div>
                   <div style={{fontSize:10,color:r.color,letterSpacing:0.5}}>{r.sub}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>

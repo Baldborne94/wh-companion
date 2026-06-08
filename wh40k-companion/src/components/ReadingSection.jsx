@@ -61,7 +61,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort }) {
     const accentColor = dimmed ? C.dim : allRead ? C.green : C.dim;
     return (
       <div style={{ background: C.card, border: `1px solid ${dimmed ? C.dim + "33" : C.border}`, borderLeft: `3px solid ${accentColor}`, borderRadius: 10, overflow: "hidden", opacity: dimmed ? 0.85 : 1 }}>
-        <div onClick={() => toggle(part.id)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+        <button type="button" onClick={() => toggle(part.id)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "transparent", border: "none" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: dimmed ? C.muted : C.goldDim, letterSpacing: 2, flexShrink: 0 }}>{part.label}</span>
@@ -77,7 +77,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort }) {
             </div>
           </div>
           <span style={{ color: C.goldDim, fontSize: 16, flexShrink: 0, transition: "transform 0.2s", transform: isOpen ? "rotate(90deg)" : "none" }}>›</span>
-        </div>
+        </button>
         {isOpen && (
           <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 14px 12px" }}>
             {part.note && <div style={{ fontSize: 11, color: C.gold, fontStyle: "italic", marginBottom: 10, padding: "6px 10px", background: `${C.gold}0a`, borderRadius: 6, borderLeft: `2px solid ${C.gold}44` }}>{part.note}</div>}
@@ -308,7 +308,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
             const isExp = expanded === serie.name;
             return (
               <div key={serie.name} style={{ background: C.card, border: `1px solid ${serie.readingCount > 0 ? C.blue : C.border}`, borderLeft: `3px solid ${serie.readingCount > 0 ? C.blue : serie.readCount === serie.total && serie.total > 0 ? C.green : C.dim}`, borderRadius: 10, overflow: "hidden" }}>
-                <div onClick={() => setExpanded(isExp ? null : serie.name)} style={{ padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
+                <button type="button" onClick={() => setExpanded(isExp ? null : serie.name)} style={{ padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: "transparent", border: "none" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{serie.name}</div>
                     <div style={{ height: 4, background: C.dim, borderRadius: 2, overflow: "hidden", marginTop: 6 }}>
@@ -321,7 +321,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
                     </div>
                   </div>
                   <span style={{ color: C.goldDim, fontSize: 16, flexShrink: 0, transition: "transform 0.2s", transform: isExp ? "rotate(90deg)" : "none" }}>›</span>
-                </div>
+                </button>
                 {isExp && (
                   <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 14px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
                     {serie.books.map(b => {

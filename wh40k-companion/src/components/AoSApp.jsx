@@ -454,8 +454,8 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onSho
           {activeBooks.map(b => {
             const hasEbook = uploadedIds.has(b.id);
             return (
-              <div key={b.id} onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
-                style={{ background:`linear-gradient(135deg,${AOS.blue}18,${AOS.card})`, border:`1px solid ${AOS.blue}44`, borderLeft:`3px solid ${AOS.blue}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", gap:12 }}>
+              <button key={b.id} type="button" onClick={() => hasEbook && onOpenBook ? onOpenBook(b) : setSection('library')}
+                style={{ background:`linear-gradient(135deg,${AOS.blue}18,${AOS.card})`, border:`1px solid ${AOS.blue}44`, borderLeft:`3px solid ${AOS.blue}`, borderRadius:10, padding:"12px 14px", cursor:"pointer", marginBottom:8, display:"flex", alignItems:"center", gap:12, width:"100%", textAlign:"left" }}>
                 <CoverImage book={b} width={36} height={50} radius={3} accentColor={spineColor(b)}/>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{b.title}</div>
@@ -465,7 +465,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onSho
                   ? <span style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}55`, borderRadius:6, padding:"4px 8px", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:1, flexShrink:0 }}>READ ›</span>
                   : <span style={{ color:AOS.blue, fontSize:16, flexShrink:0 }}>›</span>
                 }
-              </div>
+              </button>
             );
           })}
         </div>
@@ -688,8 +688,8 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                       const bst = statuses[book.id]?.status || 'none';
                       const bstCfg = STATUS_CFG[bst];
                       return (
-                        <div key={book.id} onClick={() => setDetail(book)}
-                          style={{ background:`linear-gradient(135deg,${sc}22,${AOS.card})`, border:`1px solid ${AOS.gold}55`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:8, padding:"10px", cursor:"pointer", display:"flex", gap:10, alignItems:"flex-start" }}>
+                        <button key={book.id} type="button" onClick={() => setDetail(book)}
+                          style={{ background:`linear-gradient(135deg,${sc}22,${AOS.card})`, border:`1px solid ${AOS.gold}55`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:8, padding:"10px", cursor:"pointer", display:"flex", gap:10, alignItems:"flex-start", width:"100%", textAlign:"left" }}>
                           <CoverImage book={book} width={54} height={80} radius={3} accentColor={sc}/>
                           <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
                             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
@@ -702,7 +702,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                             <div style={{ fontSize:14, fontWeight:700, color:AOS.text, lineHeight:1.3, fontFamily:"'Cinzel',serif" }}>{book.title}</div>
                             <div style={{ fontSize:12, color:AOS.muted, fontStyle:"italic" }}>{book.author}</div>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -715,8 +715,8 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                       const bst = statuses[book.id]?.status || 'none';
                       const bstCfg = STATUS_CFG[bst];
                       return (
-                        <div key={book.id} onClick={() => setDetail(book)}
-                          style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:`1px solid ${AOS.border}44`, cursor:"pointer" }}>
+                        <button key={book.id} type="button" onClick={() => setDetail(book)}
+                          style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", cursor:"pointer", width:"100%", textAlign:"left", border:"none", borderBottom:`1px solid ${AOS.border}44`, background:"transparent" }}>
                           <CoverImage book={book} width={36} height={52} radius={2} accentColor={sc}/>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{book.title}</div>
@@ -724,7 +724,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                           </div>
                           {bst !== 'none' && <span style={{ fontSize:14, flexShrink:0 }}>{bstCfg.icon}</span>}
                           <span style={{ color:AOS.dim, fontSize:14, flexShrink:0 }}>›</span>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -745,8 +745,8 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                               const bst = statuses[book.id]?.status || 'none';
                               const bstCfg = STATUS_CFG[bst];
                               return (
-                                <div key={book.id} onClick={() => setDetail(book)} title={book.title}
-                                  style={{ flexShrink:0, width:24, height:110, background:`linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`, borderRadius:"3px 3px 0 0", cursor:"pointer", position:"relative", boxShadow:`inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`, border:`1px solid ${AOS.gold}66`, borderBottom:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", transition:"transform 0.12s" }}
+                                <button key={book.id} type="button" onClick={() => setDetail(book)} title={book.title}
+                                  style={{ flexShrink:0, width:24, height:110, background:`linear-gradient(to right,${sc}ee,${sc}88,${sc}bb)`, borderRadius:"3px 3px 0 0", cursor:"pointer", position:"relative", boxShadow:`inset -2px 0 3px rgba(0,0,0,0.4),2px 0 2px rgba(0,0,0,0.3)`, border:`1px solid ${AOS.gold}66`, borderBottom:"none", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", transition:"transform 0.12s", padding:0 }}
                                   onMouseEnter={e => e.currentTarget.style.transform="translateY(-5px)"}
                                   onMouseLeave={e => e.currentTarget.style.transform="none"}>
                                   <div style={{ writingMode:"vertical-rl", transform:"rotate(180deg)", fontFamily:"'Cinzel',serif", fontSize:6, color:"rgba(255,255,255,0.85)", letterSpacing:0.8, overflow:"hidden", maxHeight:"90%", padding:"3px 2px", textShadow:"0 1px 2px rgba(0,0,0,0.9)", lineHeight:1.1, textAlign:"center" }}>
@@ -754,7 +754,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                                   </div>
                                   {bst !== 'none' && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:bstCfg.color }}/>}
                                   <div style={{ position:"absolute", inset:0, border:`1px solid ${AOS.gold}44`, borderRadius:"3px 3px 0 0", pointerEvents:"none" }}/>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
