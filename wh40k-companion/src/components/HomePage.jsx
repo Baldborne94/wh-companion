@@ -253,7 +253,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                 {hasEbook
                   ? (() => { const errCode = openErrorId?.id === b.id ? openErrorId.code : null; return (
                     <span style={{ background: errCode ? `${C.red}22` : `${C.gold}22`, border: `1px solid ${errCode ? C.red : C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: errCode ? C.red : C.gold, letterSpacing: 1, flexShrink: 0 }}>
-                      {openingBookId === b.id ? "…" : errCode === 'no_meta' ? "ERR-M" : errCode === 'no_url' ? "ERR-U" : errCode ? "ERR" : "READ ›"}
+                      {openingBookId === b.id ? "…" : errCode === 'no_meta' ? "ERR-M" : errCode?.startsWith('no_url') ? `U-${errCode.slice(7)||'?'}` : errCode ? "ERR" : "READ ›"}
                     </span>
                   ); })()
 
