@@ -1008,24 +1008,16 @@ export default function EpubReader({
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const saveBookmark = useCallback(() => {
-    let cfi = cfiRef.current;
-    let capturedPage = null;
-    try {
-      const loc = rendRef.current?.currentLocation();
-      if (loc?.start?.cfi) cfi = loc.start.cfi;
-      const dPage = loc?.start?.displayed?.page;
-      const dTotal = loc?.start?.displayed?.total;
-      if (dPage && dTotal > 0) capturedPage = dPage;
-    } catch {}
+    const cfi = cfiRef.current;
     if (!cfi) return;
-    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: capturedPage, createdAt: new Date().toISOString() };
+    const bm  = { cfi, label: chLabel || "Bookmark", pct: progress, page: pageDisplay?.page ?? null, createdAt: new Date().toISOString() };
     const upd = addBookmark(bookmarks, bm);
     setBookmarks(upd);
     localStorage.setItem(`wh40k_bm_${userId}_${bookId}`, JSON.stringify(upd));
     saveBookmarkToDB(userId, bookId, bm);
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
-  }, [chLabel, progress, bookmarks, userId, bookId]);
+  }, [chLabel, progress, pageDisplay, bookmarks, userId, bookId]);
 
   const deleteBookmark = useCallback((cfi) => {
     const upd = removeBookmark(bookmarks, cfi);
