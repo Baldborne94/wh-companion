@@ -1,8 +1,10 @@
 /**
- * Pure function: resolve a signed/blob URL for a book's ebook file.
+ * Download the ebook file as an ArrayBuffer, ready to pass directly to epubjs.
  *
- * Returns { url, meta } on success or { error: string } on failure.
- * All side-effects (localStorage, setAppReader) stay in the caller (App.jsx).
+ * Returns { arrayBuffer, meta } on success or { error: string } on failure.
+ * We never pass a URL to EpubReader — fetching from inside the reader can fail
+ * with CORS or service-worker errors on tablet. Downloading here uses explicit
+ * auth headers that we control and avoids any secondary fetch inside the reader.
  */
 export async function resolveBookUrl({ uid, book, supabase, sb }) {
   // Step 1: get a fresh access token
@@ -30,17 +32,14 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
   if (!rows?.length || rows._error) return { error: 'no_meta' };
   const meta = rows[0];
 
-  // Step 3: try signed URL
-  let urlErr = {};
-  const signedUrl = await sb.storage.signedUrl(meta.file_path, freshToken, e => { urlErr = e; });
-  if (signedUrl) return { url: signedUrl, meta };
-
-  // Step 4: direct REST download with explicit token (bypasses JS-client stale state)
+  // Step 3: download file bytes directly via REST with explicit freshToken.
+  // This is the only download path — no signed URL, no URL.createObjectURL.
+  // Bypasses CORS issues that occur when EpubReader tries to fetch a signed URL.
   const { blob, status: dlStatus } = await sb.storage.download(meta.file_path, freshToken);
   if (blob) {
-    const url = URL.createObjectURL(blob);
-    return { url, meta };
+    const arrayBuffer = await blob.arrayBuffer();
+    return { arrayBuffer, meta };
   }
 
-  return { error: `no_url_s${urlErr.status ?? 'x'}_d${dlStatus ?? 'x'}` };
+  return { error: `no_dl_${dlStatus ?? 'x'}` };
 }

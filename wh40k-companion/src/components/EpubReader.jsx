@@ -379,7 +379,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 // Main EpubReader
 // ─────────────────────────────────────────────────────────────────────────────
 export default function EpubReader({
-  url, title, bookId, userId,
+  arrayBuffer, url, title, bookId, userId,
   initProgress, initChapterIndex, initPageIndex,
   onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
@@ -571,7 +571,7 @@ export default function EpubReader({
   // ── Book init / layout change ─────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
-    if (!url) {
+    if (!arrayBuffer && !url) {
       setError("No download link — please close and reopen the book.");
       setLoading(false);
       return;
@@ -600,27 +600,19 @@ export default function EpubReader({
     (async () => {
       if (cancelled || !containerRef.current) return;
 
-      // Pre-fetch to ArrayBuffer for clear HTTP error messages, then pass the
-      // buffer directly to ePub() WITHOUT openAs.
-      //
-      // epub.js's Path constructor strips any URL to just its pathname:
-      //   pathString = new URL(pathString).pathname  // loses origin → "Invalid URL" later
-      // This breaks both HTTPS and blob URLs passed as the book path.
-      //
-      // With openAs:'epub' + ArrayBuffer: epub.js treats the ArrayBuffer as a URL
-      // string (toString() → "[object ArrayBuffer]"), tries to fetch that → 404.
-      //
-      // WITHOUT openAs: epub.js detects a non-string input → uses INPUT_TYPE.BINARY
-      // mode, sets path to "/" and reads all files directly from the JSZip archive.
-      // This is the officially documented way to load epub from binary in 0.3.x.
-      let epubBuf;
-      try {
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
-        epubBuf = await resp.arrayBuffer();
-      } catch (fetchErr) {
-        if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
-        return;
+      // Use pre-downloaded ArrayBuffer when available (avoids CORS/network issues
+      // that can occur when fetching a signed URL from inside an iframe/tablet PWA).
+      // Fall back to fetching the URL only when no ArrayBuffer was passed.
+      let epubBuf = arrayBuffer ?? null;
+      if (!epubBuf) {
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
+          epubBuf = await resp.arrayBuffer();
+        } catch (fetchErr) {
+          if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
+          return;
+        }
       }
       if (cancelled || !containerRef.current) return;
 
@@ -861,7 +853,7 @@ export default function EpubReader({
     };
   // Re-create rendition only when URL or layout settings change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url, settings.paginate, settings.twoPage]);
+  }, [arrayBuffer, url, settings.paginate, settings.twoPage]);
 
   // ── Typography updates ────────────────────────────────────────────────────
   useEffect(() => {
