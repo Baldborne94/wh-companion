@@ -203,15 +203,11 @@ export default function App(){
   // Onboarding — shown once on first launch, re-openable via ? button in Home
   const [showOnboarding,setShowOnboarding]=useState(false);
 
-  // Landing page: always shown first on each fresh session.
-  // Also auto-start if URL contains OAuth callback params (sessionStorage is cleared by the
-  // OAuth redirect on tablet, so we detect the return via URL instead).
-  const [appStarted,setAppStarted]=useState(()=>{
-    if(sessionStorage.getItem('wh_started')==='1') return true;
-    const p=new URLSearchParams(window.location.search);
-    if(p.has('code')||p.has('access_token')||window.location.hash.includes('access_token')) return true;
-    return false;
-  });
+  // Landing page shown on first visit; auto-entered once user is authenticated.
+  const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
+  // Auto-enter as soon as we know the user is authenticated.
+  // This handles OAuth redirects where sessionStorage is lost (Custom Tab / new tab on tablet).
+  useEffect(()=>{ if(user) setAppStarted(true); },[user]);
   const startApp=useCallback(()=>{
     sessionStorage.setItem('wh_started','1');
     sessionStorage.setItem('wh_fresh_login','1'); // tells the DB-restore effect to skip
