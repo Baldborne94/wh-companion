@@ -291,18 +291,18 @@ export default function App(){
     let urlErr={};
     let url=await sb.storage.signedUrl(meta.file_path, freshToken, e=>{urlErr=e;});
     if(!url){
-      console.warn("[openBook] signedUrl failed, trying blob download. path:",meta.file_path,"err:",urlErr);
-      try{
-        const { data:blob, error:dlErr } = await supabase.storage.from("ebooks").download(meta.file_path);
-        if(blob && !dlErr){
-          url = URL.createObjectURL(blob);
-          console.log("[openBook] blob fallback succeeded, size:", blob.size);
-        } else {
-          console.error("[openBook] blob download failed:", dlErr?.message);
-        }
-      }catch(e){ console.error("[openBook] blob exception:", e?.message); }
+      console.warn("[openBook] signedUrl failed (status:",urlErr.status,"), trying REST download. path:",meta.file_path,"hasToken:",!!freshToken);
+      // Direct REST download with explicit freshToken — bypasses JS client stale session state
+      const { blob, status:dlStatus } = await sb.storage.download(meta.file_path, freshToken);
+      if(blob){
+        url = URL.createObjectURL(blob);
+        console.log("[openBook] REST download fallback succeeded, size:", blob.size);
+      } else {
+        console.error("[openBook] all URL methods failed. signedUrl:",urlErr.status,"download:",dlStatus,"path:",meta.file_path);
+        return `no_url_s${urlErr.status??'x'}_d${dlStatus??'x'}`;
+      }
     }
-    if(!url){ console.error("[openBook] all URL methods failed","path:",meta.file_path,"hasToken:",!!freshToken); return `no_url_${urlErr.status??'x'}`; }
+    if(!url){ return `no_url_${urlErr.status??'x'}`; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
