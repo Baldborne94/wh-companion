@@ -1,14 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveBookUrl } from './openBook.js';
 
-// Mock URL.createObjectURL (not available in jsdom)
-globalThis.URL.createObjectURL = vi.fn(blob => `blob:mock-${blob.size}`);
-
-const FAKE_TOKEN = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.mock';
-const FAKE_PATH  = 'user-123/42/my-book.epub';
-const FAKE_META  = { id: 1, user_id: 'user-123', book_id: 42, file_path: FAKE_PATH, file_type: 'epub', file_name: 'my-book.epub' };
-const FAKE_BOOK  = { id: 42, title: 'Test Book' };
-const UID        = 'user-123';
+const FAKE_TOKEN  = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.mock';
+const FAKE_PATH   = 'user-123/42/my-book.epub';
+const FAKE_META   = { id: 1, user_id: 'user-123', book_id: 42, file_path: FAKE_PATH, file_type: 'epub', file_name: 'my-book.epub' };
+const FAKE_BOOK   = { id: 42, title: 'Test Book' };
+const UID         = 'user-123';
+const EPUB_BYTES  = new Uint8Array([80, 75, 3, 4]).buffer; // fake epub header
 
 function makeSupabase({ token = FAKE_TOKEN } = {}) {
   return {
@@ -19,17 +17,17 @@ function makeSupabase({ token = FAKE_TOKEN } = {}) {
   };
 }
 
-function makeSb({ rows = [FAKE_META], signedUrl = 'https://sb.co/signed', download = null } = {}) {
+function makeBlob() {
+  return new Blob([EPUB_BYTES], { type: 'application/epub+zip' });
+}
+
+function makeSb({ rows = [FAKE_META], dlOk = true } = {}) {
   return {
     get: vi.fn().mockResolvedValue(rows),
     storage: {
-      signedUrl: vi.fn().mockImplementation(async (_path, _tok, onError) => {
-        if (signedUrl === null) { onError?.({ status: 400 }); return null; }
-        return signedUrl;
-      }),
       download: vi.fn().mockResolvedValue(
-        download !== null
-          ? { blob: new Blob(['epub data'], { type: 'application/epub+zip' }), status: 200 }
+        dlOk
+          ? { blob: makeBlob(), status: 200 }
           : { blob: null, status: 400 }
       ),
     },
@@ -39,25 +37,18 @@ function makeSb({ rows = [FAKE_META], signedUrl = 'https://sb.co/signed', downlo
 describe('resolveBookUrl', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns signed URL when storage sign succeeds', async () => {
+  it('returns arrayBuffer when download succeeds', async () => {
     const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb: makeSb() });
-    expect(result.url).toBe('https://sb.co/signed');
+    expect(result.arrayBuffer).toBeInstanceOf(ArrayBuffer);
     expect(result.meta).toEqual(FAKE_META);
     expect(result.error).toBeUndefined();
   });
 
-  it('falls back to blob URL when sign returns 400 but download succeeds', async () => {
-    const sb = makeSb({ signedUrl: null, download: true });
+  it('returns no_dl error when download returns 400', async () => {
+    const sb = makeSb({ dlOk: false });
     const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
-    expect(result.url).toMatch(/^blob:/);
-    expect(result.error).toBeUndefined();
-  });
-
-  it('returns no_url error when both sign and download return 400', async () => {
-    const sb = makeSb({ signedUrl: null, download: null });
-    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
-    expect(result.error).toBe('no_url_s400_d400');
-    expect(result.url).toBeUndefined();
+    expect(result.error).toBe('no_dl_400');
+    expect(result.arrayBuffer).toBeUndefined();
   });
 
   it('returns no_meta when ebook_files has no rows for this book', async () => {
@@ -66,7 +57,7 @@ describe('resolveBookUrl', () => {
     expect(result.error).toBe('no_meta');
   });
 
-  it('returns no_session when refreshSession and getSession both return null token', async () => {
+  it('returns no_session when both refreshSession and getSession return null token', async () => {
     const supabase = {
       auth: {
         refreshSession: vi.fn().mockResolvedValue({ data: { session: null } }),
@@ -84,12 +75,11 @@ describe('resolveBookUrl', () => {
         getSession:     vi.fn().mockResolvedValue({ data: { session: { access_token: FAKE_TOKEN } } }),
       },
     };
-    const sb = makeSb();
-    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase, sb });
-    expect(result.url).toBe('https://sb.co/signed');
+    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase, sb: makeSb() });
+    expect(result.arrayBuffer).toBeInstanceOf(ArrayBuffer);
   });
 
-  it('fetches metadata from DB (never uses stale cache)', async () => {
+  it('fetches metadata from DB always (never reads stale localStorage)', async () => {
     const sb = makeSb();
     await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
     expect(sb.get).toHaveBeenCalledWith('ebook_files', expect.stringContaining('user_id=eq.user-123'));
@@ -98,13 +88,18 @@ describe('resolveBookUrl', () => {
   it('retries with string book_id when first DB query returns empty', async () => {
     let callCount = 0;
     const sb = makeSb();
-    sb.get = vi.fn().mockImplementation(async (_t, q) => {
+    sb.get = vi.fn().mockImplementation(async () => {
       callCount++;
-      if (callCount === 1) return []; // first call: empty
-      return [FAKE_META];             // second call: found
+      return callCount === 1 ? [] : [FAKE_META];
     });
     const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
-    expect(result.url).toBe('https://sb.co/signed');
+    expect(result.arrayBuffer).toBeInstanceOf(ArrayBuffer);
     expect(callCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('passes freshToken explicitly to download (not stale JS-client session)', async () => {
+    const sb = makeSb();
+    await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+    expect(sb.storage.download).toHaveBeenCalledWith(FAKE_PATH, FAKE_TOKEN);
   });
 });
