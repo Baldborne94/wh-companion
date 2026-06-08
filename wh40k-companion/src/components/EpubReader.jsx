@@ -760,15 +760,16 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
+          // Paginated screen pages — chapter-relative, available immediately (no locations needed)
+          const dPage = loc.start?.displayed?.page;
+          const dTotal = loc.start?.displayed?.total;
+          if (dPage && dTotal > 0) setPageDisplay({ page: dPage, total: dTotal });
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
             const endCfi = loc.end?.cfi;
             const endPct = endCfi ? (book.locations.percentageFromCfi(endCfi) ?? pct) : pct;
             setPageRange({ start: pct * 100, end: Math.max(pct * 100 + 0.05, endPct * 100) });
-            const locIdx = book.locations.locationFromCfi(cfi);
-            const locTotal = book.locations.total;
-            if (locIdx != null && locTotal > 0) setPageDisplay({ page: locIdx + 1, total: locTotal });
             clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
               if (cancelled) return;
@@ -828,10 +829,8 @@ export default function EpubReader({
             onProgress?.(pct);
             saveProgressToSupabase(userId, bookId, pct, cfi || undefined);
           }
-          const locIdx = cfi ? book.locations.locationFromCfi(cfi) : null;
+          // Enrich old DB bookmarks that have no page number yet
           const locTotal = book.locations.total;
-          if (locIdx != null && locTotal > 0) setPageDisplay({ page: locIdx + 1, total: locTotal });
-          // Compute page number for bookmarks that don't have it (loaded from DB)
           if (locTotal > 0) {
             setBookmarks(prev => prev.map(bm => {
               if (bm.page || !bm.cfi) return bm;
@@ -1036,7 +1035,7 @@ export default function EpubReader({
     deleteBookmarkFromDB(userId, bookId, cfi);
   }, [bookmarks, userId, bookId]);
 
-  const pageHasBookmark = pageDisplay?.page != null && bookmarks.some(b => b.page === pageDisplay.page);
+  const pageHasBookmark = pageRange != null && bookmarks.some(b => b.pct >= pageRange.start && b.pct <= pageRange.end);
 
   // ── Search ────────────────────────────────────────────────────────────────
   // ── Error screen ──────────────────────────────────────────────────────────
@@ -1352,7 +1351,7 @@ export default function EpubReader({
                         {bm.label}
                       </div>
                       <div style={{ fontSize:12, color:C.gold, fontFamily:"'Cinzel',serif", letterSpacing:0.5 }}>
-                        {bookmarkPageLabel(bm, pageDisplay)}
+                        {bookmarkPageLabel(bm)}
                       </div>
                     </button>
                     <button
