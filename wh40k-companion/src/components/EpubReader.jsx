@@ -462,6 +462,7 @@ export default function EpubReader({
   const settingsRef  = useRef(settings);
   settingsRef.current = settings;
   const swipeRef     = useRef({ x:0, y:0, active:false });
+  const locReadyRef  = useRef(false);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
@@ -732,6 +733,7 @@ export default function EpubReader({
         book.locations.generate(1536).then(() => {
           if (cancelled) return;
           locationsReady = true;
+          locReadyRef.current = true;
           const cfi = cfiRef.current;
           const pct = cfi ? (book.locations.percentageFromCfi(cfi) ?? 0) : 0;
           if (pct != null) {
@@ -756,6 +758,7 @@ export default function EpubReader({
       clearTimeout(hideTimer.current);
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
+      locReadyRef.current = false;
     };
   // Re-create rendition only when URL or layout settings change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -910,13 +913,14 @@ export default function EpubReader({
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const MAX_BM = 10;
   const saveBookmark = useCallback(() => {
-    let cfi = cfiRef.current;
-    try {
-      const loc = rendRef.current?.currentLocation();
-      if (loc?.start?.cfi) cfi = loc.start.cfi;
-    } catch {}
+    const cfi = cfiRef.current;
     if (!cfi) return;
-    const bm = { cfi, label: chLabel || "Bookmark", pct: progress, createdAt: new Date().toISOString() };
+    let pct = progress;
+    if (locReadyRef.current && bookRef.current?.locations?.total > 0) {
+      const raw = bookRef.current.locations.percentageFromCfi(cfi);
+      if (raw != null) pct = Math.round(raw * 100);
+    }
+    const bm = { cfi, label: chLabel || "Bookmark", pct, createdAt: new Date().toISOString() };
     setBookmarks(prev => {
       const deduped = prev.filter(b => b.cfi !== cfi);
       const next = [bm, ...deduped].slice(0, MAX_BM);
@@ -927,6 +931,19 @@ export default function EpubReader({
     setBmSaved(true);
     setTimeout(() => setBmSaved(false), 2000);
   }, [chLabel, progress, bmKey, userId, bookId]);
+
+  const navigateToBookmark = useCallback((bm) => {
+    const cfi = (locReadyRef.current && bm.pct > 0 && bookRef.current?.locations?.total > 0)
+      ? (bookRef.current.locations.cfiFromPercentage(bm.pct / 100) ?? bm.cfi)
+      : bm.cfi;
+    if (rendRef.current) {
+      rendRef.current.display(cfi)
+        .catch(() => setTimeout(() => rendRef.current?.display(cfi)
+          .catch(() => setTimeout(() => rendRef.current?.display(cfi), 600)), 400));
+    } else {
+      pendingNavRef.current = cfi;
+    }
+  }, []);
 
   const deleteBookmark = useCallback((cfi) => {
     setBookmarks(prev => {
@@ -1051,14 +1068,7 @@ export default function EpubReader({
           <IBtn
             onClick={() => {
               if (bookmarks.length > 0) {
-                const bm = bookmarks[0];
-                if (rendRef.current) {
-                  rendRef.current.display(bm.cfi)
-                    .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi)
-                      .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600)), 400));
-                } else {
-                  pendingNavRef.current = bm.cfi;
-                }
+                navigateToBookmark(bookmarks[0]);
               } else {
                 saveBookmark();
               }
@@ -1209,13 +1219,7 @@ export default function EpubReader({
                   <div key={i} style={{ display:"flex", alignItems:"stretch", borderBottom:`1px solid ${T.border}` }}>
                     <button
                       onClick={() => {
-                        if (rendRef.current) {
-                          rendRef.current.display(bm.cfi)
-                            .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi)
-                              .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600)), 400));
-                        } else {
-                          pendingNavRef.current = bm.cfi;
-                        }
+                        navigateToBookmark(bm);
                         setShowBookmarks(false);
                       }}
                       style={{ flex:1, textAlign:"left", background:"transparent", border:"none", padding:"12px 16px", cursor:"pointer" }}>
