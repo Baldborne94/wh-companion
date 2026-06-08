@@ -910,7 +910,11 @@ export default function EpubReader({
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const MAX_BM = 10;
   const saveBookmark = useCallback(() => {
-    const cfi = cfiRef.current;
+    let cfi = cfiRef.current;
+    try {
+      const loc = rendRef.current?.currentLocation();
+      if (loc?.start?.cfi) cfi = loc.start.cfi;
+    } catch {}
     if (!cfi) return;
     const bm = { cfi, label: chLabel || "Bookmark", pct: progress, createdAt: new Date().toISOString() };
     setBookmarks(prev => {
@@ -985,6 +989,17 @@ export default function EpubReader({
         />
       )}
 
+      {/* Bookmark saved toast */}
+      {bmSaved && (
+        <div style={{ position:"absolute", top:62, left:"50%", transform:"translateX(-50%)",
+                      zIndex:200, background:C.gold, color:"#0a0905",
+                      fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+                      padding:"6px 16px", borderRadius:20, pointerEvents:"none",
+                      animation:"rdrIn .2s ease" }}>
+          ✓ Segnalibro salvato
+        </div>
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
         position:"absolute", top:0, left:0, right:0, height:54,
@@ -1038,7 +1053,9 @@ export default function EpubReader({
               if (bookmarks.length > 0) {
                 const bm = bookmarks[0];
                 if (rendRef.current) {
-                  rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
+                  rendRef.current.display(bm.cfi)
+                    .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi)
+                      .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600)), 400));
                 } else {
                   pendingNavRef.current = bm.cfi;
                 }
@@ -1193,7 +1210,9 @@ export default function EpubReader({
                     <button
                       onClick={() => {
                         if (rendRef.current) {
-                          rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
+                          rendRef.current.display(bm.cfi)
+                            .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi)
+                              .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600)), 400));
                         } else {
                           pendingNavRef.current = bm.cfi;
                         }
