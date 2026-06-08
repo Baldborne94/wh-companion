@@ -3,7 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, resolveNavCfi } from "../lib/bookmarkHelpers";
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel } from "../lib/bookmarkHelpers";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -1157,11 +1157,10 @@ export default function EpubReader({
             onClick={() => {
               if (bookmarks.length > 0) {
                 const bm = bookmarks[0];
-                const cfi = resolveNavCfi(bm, bookRef.current);
                 if (rendRef.current) {
-                  rendRef.current.display(cfi).catch(() => setTimeout(() => rendRef.current?.display(cfi), 600));
+                  rendRef.current.display(bm.cfi).catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600));
                 } else {
-                  pendingNavRef.current = cfi;
+                  pendingNavRef.current = bm.cfi;
                 }
               } else {
                 saveBookmark();
@@ -1340,13 +1339,12 @@ export default function EpubReader({
                                         borderBottom:`1px solid ${T.border}` }}>
                     <button
                       onClick={() => {
-                        const cfi = resolveNavCfi(bm, bookRef.current);
                         if (rendRef.current) {
-                          rendRef.current.display(cfi).catch(() => {
-                            setTimeout(() => rendRef.current?.display(cfi), 600);
+                          rendRef.current.display(bm.cfi).catch(() => {
+                            setTimeout(() => rendRef.current?.display(bm.cfi), 600);
                           });
                         } else {
-                          pendingNavRef.current = cfi;
+                          pendingNavRef.current = bm.cfi;
                         }
                         setShowBookmarks(false);
                       }}
