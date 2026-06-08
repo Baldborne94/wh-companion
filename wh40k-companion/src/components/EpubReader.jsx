@@ -72,10 +72,18 @@ function loadSettings() {
 function useReaderViewport() {
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
-    if (!meta) return;
-    const prev = meta.content;
-    meta.content = "width=device-width,initial-scale=1,user-scalable=no";
-    return () => { meta.content = prev; };
+    if (meta) {
+      const prev = meta.content;
+      meta.content = "width=device-width,initial-scale=1,user-scalable=no";
+      // Suspend body zoom so epub.js measures the real viewport.
+      // The zoom stylesheet rule (body{zoom:N}) is overridden by this inline style;
+      // removing the inline property restores the rule when the reader closes.
+      document.body.style.zoom = "1";
+      return () => {
+        meta.content = prev;
+        document.body.style.removeProperty("zoom");
+      };
+    }
   }, []);
 }
 
