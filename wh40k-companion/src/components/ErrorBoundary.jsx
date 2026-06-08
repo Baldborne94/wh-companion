@@ -1,5 +1,10 @@
 import { Component } from 'react';
 
+function isChunkError(error) {
+  const msg = error?.message ?? '';
+  return msg.includes('dynamically imported module') || msg.includes('Loading chunk') || msg.includes('Loading CSS chunk');
+}
+
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -10,9 +15,14 @@ export default class ErrorBoundary extends Component {
   }
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary]', error, info);
+    // Stale service worker served old chunk hashes — force reload to pick up new build
+    if (isChunkError(error)) {
+      window.location.reload();
+    }
   }
   render() {
     if (this.state.hasError) {
+      const chunkErr = isChunkError(this.state.error);
       return (
         <div style={{
           display:'flex', flexDirection:'column', alignItems:'center',
@@ -26,7 +36,7 @@ export default class ErrorBoundary extends Component {
             {this.state.error?.message || 'An unexpected error occurred.'}
           </div>
           <button
-            onClick={() => this.setState({ hasError:false, error:null })}
+            onClick={() => chunkErr ? window.location.reload() : this.setState({ hasError:false, error:null })}
             style={{background:'transparent', border:'1px solid #c9a84c55', borderRadius:8,
                     padding:'8px 20px', color:'#c9a84c', fontFamily:"'Cinzel',serif",
                     fontSize:11, letterSpacing:2, cursor:'pointer', textTransform:'uppercase'}}
