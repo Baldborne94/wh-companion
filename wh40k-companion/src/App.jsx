@@ -260,29 +260,27 @@ export default function App(){
   const [appReader,setAppReader]=useState(null);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
-    // Refresh session — PWA on tablet may have stale token after backgrounding
+    // Refresh session first — tablet PWA suspends JS timers in background, leaving stale JWT
     try{ await supabase.auth.refreshSession(); }catch{}
     let meta=null;
     try{ meta=JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`)||'null'); }catch{}
     if(!meta){
-      // Try integer comparison, then string, then fetch all and filter client-side
-      let { data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",book.id).limit(1);
-      if(!files?.length){
-        ({ data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid).eq("book_id",String(book.id)).limit(1));
+      // Use sb.get (explicit auth header) instead of supabase.from (internal client token)
+      let rows=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${book.id}&limit=1`);
+      if(!rows?.length||rows._error)
+        rows=await sb.get("ebook_files",`user_id=eq.${uid}&book_id=eq.${String(book.id)}&limit=1`);
+      if(!rows?.length||rows._error){
+        const all=await sb.get("ebook_files",`user_id=eq.${uid}`);
+        rows=Array.isArray(all)?all.filter(f=>String(f.book_id)===String(book.id)):[];
       }
-      if(!files?.length){
-        ({ data:files } = await supabase.from("ebook_files").select("*").eq("user_id",uid));
-        files = files?.filter(f=>String(f.book_id)===String(book.id));
-      }
-      if(files?.length){
-        meta=files[0];
-        // Cache for future opens (avoids DB round-trip and works offline)
+      if(rows?.length&&!rows._error){
+        meta=rows[0];
         try{ localStorage.setItem(`wh40k_ebook_${uid}_${book.id}`,JSON.stringify(meta)); }catch{}
       }
     }
-    if(!meta) return;
+    if(!meta){ console.error("[openBook] no metadata for book",book.id); return 'no_meta'; }
     const url=await sb.storage.signedUrl(meta.file_path);
-    if(!url) return;
+    if(!url){ console.error("[openBook] signed URL failed for path",meta.file_path); return 'no_url'; }
     let progress=0,chapterIndex=0,pageIndex=0;
     try{
       const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');

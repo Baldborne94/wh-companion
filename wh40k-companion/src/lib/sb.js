@@ -45,10 +45,18 @@ export const sb = {
     },
     async signedUrl(path) {
       try {
-        // PWA on tablet may have a stale token after being backgrounded; refresh first
-        await supabase.auth.refreshSession();
-        const { data } = await supabase.storage.from("ebooks").createSignedUrl(path, 7200);
-        return data?.signedUrl ?? null;
+        // Use REST API directly so the fresh token from _h() is sent explicitly.
+        // supabase.storage.createSignedUrl uses the JS-client internal token which
+        // may lag behind a just-completed refreshSession on tablet PWA.
+        const r = await fetch(`${SB_URL}/storage/v1/object/sign/ebooks/${path}`, {
+          method: "POST",
+          headers: await sb._h(),
+          body: JSON.stringify({ expiresIn: 7200 }),
+        });
+        if (!r.ok) { console.warn("[sb.signedUrl] HTTP", r.status, await r.text()); return null; }
+        const json = await r.json();
+        // REST API returns { signedURL: "/storage/v1/object/sign/..." }
+        return json?.signedURL ? `${SB_URL}${json.signedURL}` : null;
       } catch(e){ console.warn("[sb.signedUrl]", e?.message); return null; }
     },
     async remove(path) {
