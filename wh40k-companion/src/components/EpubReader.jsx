@@ -916,11 +916,16 @@ export default function EpubReader({
     const cfi = cfiRef.current;
     if (!cfi) return;
     let pct = progress;
+    // loc is the high-precision fraction (0–1) used for navigation — ReadEra-style character position
+    let loc = null;
     if (locReadyRef.current && bookRef.current?.locations?.total > 0) {
       const raw = bookRef.current.locations.percentageFromCfi(cfi);
-      if (raw != null) pct = Math.round(raw * 100);
+      if (raw != null) {
+        pct = Math.round(raw * 100);
+        loc = parseFloat(raw.toFixed(6));
+      }
     }
-    const bm = { cfi, label: chLabel || "Bookmark", pct, createdAt: new Date().toISOString() };
+    const bm = { cfi, label: chLabel || "Bookmark", pct, ...(loc !== null ? { loc } : {}), createdAt: new Date().toISOString() };
     setBookmarks(prev => {
       const deduped = prev.filter(b => b.cfi !== cfi);
       const next = [bm, ...deduped].slice(0, MAX_BM);
@@ -933,15 +938,21 @@ export default function EpubReader({
   }, [chLabel, progress, bmKey, userId, bookId]);
 
   const navigateToBookmark = useCallback((bm) => {
-    const cfi = (locReadyRef.current && bm.pct > 0 && bookRef.current?.locations?.total > 0)
-      ? (bookRef.current.locations.cfiFromPercentage(bm.pct / 100) ?? bm.cfi)
-      : bm.cfi;
+    if (!bm?.cfi && bm?.loc == null) return;
+    // Prefer high-precision character-position navigation (ReadEra-style) when available.
+    // Subtract a tiny epsilon to counteract epubjs Math.ceil rounding in cfiFromPercentage.
+    let target = bm.cfi;
+    if (bm.loc != null && locReadyRef.current && bookRef.current?.locations?.total > 0) {
+      const navCfi = bookRef.current.locations.cfiFromPercentage(Math.max(0, bm.loc - 1e-6));
+      if (navCfi) target = navCfi;
+    }
+    if (!target) return;
     if (rendRef.current) {
-      rendRef.current.display(cfi)
-        .catch(() => setTimeout(() => rendRef.current?.display(cfi)
-          .catch(() => setTimeout(() => rendRef.current?.display(cfi), 600)), 400));
+      rendRef.current.display(target)
+        .catch(() => setTimeout(() => rendRef.current?.display(target)
+          .catch(() => setTimeout(() => rendRef.current?.display(target), 600)), 400));
     } else {
-      pendingNavRef.current = cfi;
+      pendingNavRef.current = target;
     }
   }, []);
 
