@@ -938,21 +938,13 @@ export default function EpubReader({
   }, [chLabel, progress, bmKey, userId, bookId]);
 
   const navigateToBookmark = useCallback((bm) => {
-    if (!bm?.cfi && bm?.loc == null) return;
-    // Prefer high-precision character-position navigation (ReadEra-style) when available.
-    // Subtract a tiny epsilon to counteract epubjs Math.ceil rounding in cfiFromPercentage.
-    let target = bm.cfi;
-    if (bm.loc != null && locReadyRef.current && bookRef.current?.locations?.total > 0) {
-      const navCfi = bookRef.current.locations.cfiFromPercentage(Math.max(0, bm.loc - 1e-6));
-      if (navCfi) target = navCfi;
-    }
-    if (!target) return;
+    if (!bm?.cfi) return;
     if (rendRef.current) {
-      rendRef.current.display(target)
-        .catch(() => setTimeout(() => rendRef.current?.display(target)
-          .catch(() => setTimeout(() => rendRef.current?.display(target), 600)), 400));
+      rendRef.current.display(bm.cfi)
+        .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi)
+          .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 600)), 400));
     } else {
-      pendingNavRef.current = target;
+      pendingNavRef.current = bm.cfi;
     }
   }, []);
 
