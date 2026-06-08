@@ -71,6 +71,22 @@ export const sb = {
         return null;
       } catch(e){ onError?.({ status:0, jsErr:e?.message }); console.warn("[sb.signedUrl]",e?.message); return null; }
     },
+    async download(path, explicitToken) {
+      try {
+        let tok = explicitToken;
+        if (!tok) {
+          const { data } = await supabase.auth.getSession();
+          tok = data?.session?.access_token ?? SB_KEY;
+        }
+        const encodedPath = path.split('/').map(s => encodeURIComponent(s)).join('/');
+        const r = await fetch(`${SB_URL}/storage/v1/object/ebooks/${encodedPath}`, {
+          headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}` }
+        });
+        if (r.ok) return { blob: await r.blob(), status: r.status };
+        console.warn("[sb.download] HTTP", r.status, path);
+        return { blob: null, status: r.status };
+      } catch(e){ console.warn("[sb.download] exception", e?.message); return { blob: null, status: 0 }; }
+    },
     async remove(path) {
       try {
         const { error } = await supabase.storage.from("ebooks").remove([path]);
