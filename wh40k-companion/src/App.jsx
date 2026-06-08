@@ -44,8 +44,19 @@ export default function App(){
     supabase.auth.getSession()
       .then(({data:{session}})=>setUser(session?.user??null))
       .finally(()=>{ clearTimeout(timer); setAuthLoading(false); });
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,s)=>{
+      setUser(s?.user??null);
+      setAuthLoading(false);
+      // After Google OAuth, the browser may have cleared sessionStorage (new tab / Custom Tab).
+      // Auto-enter the app on SIGNED_IN so the user doesn't get stuck in a login loop.
+      if(event==='SIGNED_IN' && s?.user && !sessionStorage.getItem('wh_started')){
+        sessionStorage.setItem('wh_started','1');
+        sessionStorage.setItem('wh_fresh_login','1');
+        setAppStarted(true);
+      }
+    });
     return ()=>subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   // ── Global statuses — single source of truth ──────────────────────────────
