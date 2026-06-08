@@ -40,6 +40,20 @@ export function mergeBookmarks(local, dbBms, pendingDels = []) {
 }
 
 /**
+ * Resolve the best CFI to navigate to for a bookmark.
+ * Prefers percentage-based CFI (stable across re-renders) when book locations are loaded.
+ * @param {{ cfi: string, pct?: number }} bm
+ * @param {{ locations?: { total: number, cfiFromPercentage: (n:number)=>string } }|null} book
+ * @returns {string}
+ */
+export function resolveNavCfi(bm, book) {
+  if (book?.locations?.total > 0 && bm?.pct > 0) {
+    return book.locations.cfiFromPercentage(bm.pct / 100) ?? bm.cfi;
+  }
+  return bm.cfi;
+}
+
+/**
  * Human-readable page label for a bookmark.
  * Priority: exact page number → estimated from % → raw % → "–"
  * @param {{ page?: number|null, pct?: number }} bm

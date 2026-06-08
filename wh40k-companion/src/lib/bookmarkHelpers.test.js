@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, MAX_BOOKMARKS } from './bookmarkHelpers.js';
+import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, resolveNavCfi, MAX_BOOKMARKS } from './bookmarkHelpers.js';
 
 const bm = (cfi, label = 'B', pct = 10) => ({ cfi, label, pct, createdAt: new Date().toISOString() });
 
@@ -178,5 +178,34 @@ describe('bookmarkPageLabel', () => {
 
   it('page takes priority over pct + pageDisplay', () => {
     expect(bookmarkPageLabel({ page: 7, pct: 50 }, { total: 100 })).toBe('Pag. 7');
+  });
+});
+
+// ─── resolveNavCfi ────────────────────────────────────────────────────────────
+
+const mockBook = (total, pctCfi) => ({
+  locations: { total, cfiFromPercentage: () => pctCfi },
+});
+
+describe('resolveNavCfi', () => {
+  it('returns bm.cfi when book is null', () => {
+    expect(resolveNavCfi({ cfi: 'cfi1', pct: 50 }, null)).toBe('cfi1');
+  });
+
+  it('returns bm.cfi when locations not loaded (total=0)', () => {
+    expect(resolveNavCfi({ cfi: 'cfi1', pct: 50 }, mockBook(0, 'pct-cfi'))).toBe('cfi1');
+  });
+
+  it('returns bm.cfi when pct is 0 (no percentage info)', () => {
+    expect(resolveNavCfi({ cfi: 'cfi1', pct: 0 }, mockBook(100, 'pct-cfi'))).toBe('cfi1');
+  });
+
+  it('returns percentage-based CFI when locations loaded and pct > 0', () => {
+    expect(resolveNavCfi({ cfi: 'cfi1', pct: 42 }, mockBook(100, 'pct-cfi'))).toBe('pct-cfi');
+  });
+
+  it('falls back to bm.cfi when cfiFromPercentage returns null', () => {
+    const book = { locations: { total: 100, cfiFromPercentage: () => null } };
+    expect(resolveNavCfi({ cfi: 'cfi1', pct: 42 }, book)).toBe('cfi1');
   });
 });
