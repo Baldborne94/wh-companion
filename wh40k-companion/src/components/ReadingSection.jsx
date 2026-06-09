@@ -40,12 +40,11 @@ function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
   );
 }
 
-function HHGuideSection({ statuses, readShorts, toggleShort }) {
-  const [mode, setMode] = useState('minimalist');
-  const [open, setOpen] = useState(new Set(['m1']));
+function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }) {
+  const [open, setOpen] = useState(new Set([hhMode === 'essential' ? 'm1' : 'p0']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
-  const parts = mode === 'minimalist' ? HH_MIN : HH_FULL;
+  const parts = hhMode === 'essential' ? HH_MIN : HH_FULL;
 
   const PartCard = ({ part, dimmed }) => {
     const isOpen = open.has(part.id);
@@ -118,9 +117,9 @@ function HHGuideSection({ statuses, readShorts, toggleShort }) {
         <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text, marginBottom: 4 }}>Heresy Reading Guide</div>
         <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>Curated by Reddit user <span style={{ color: C.gold }}>cd8d</span> — organises 60+ books into readable story arcs</div>
         <div style={{ display: "flex", gap: 4, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2, alignSelf: "flex-start", width: "fit-content" }}>
-          {[{ id: 'minimalist', label: '⚡ Essential (~25 books)' }, { id: 'full', label: '📚 Full Guide' }].map(m => (
-            <button key={m.id} onClick={() => { setMode(m.id); setOpen(new Set([m.id === 'minimalist' ? 'm1' : 'p0'])); }}
-              style={{ background: mode === m.id ? `${C.gold}33` : "transparent", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", color: mode === m.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, whiteSpace: "nowrap" }}>
+          {[{ id: 'essential', label: '⚡ Essential (~25 books)' }, { id: 'full', label: '📚 Full Guide' }].map(m => (
+            <button key={m.id} onClick={() => { setHhMode(m.id); setOpen(new Set([m.id === 'essential' ? 'm1' : 'p0'])); }}
+              style={{ background: hhMode === m.id ? `${C.gold}33` : "transparent", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", color: hhMode === m.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, whiteSpace: "nowrap" }}>
               {m.label}
             </button>
           ))}
@@ -128,7 +127,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort }) {
       </div>
       <div style={{ padding: "10px 16px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
         {parts.map(part => <PartCard key={part.id} part={part} />)}
-        {mode === 'full' && (
+        {hhMode === 'full' && (
           <>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 3, textTransform: "uppercase", marginTop: 10, marginBottom: 4, padding: "0 2px" }}>Optional Arcs</div>
             {HH_OPTIONAL.map(part => <PartCard key={part.id} part={part} dimmed />)}
@@ -199,7 +198,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
     });
   }, [statuses]);
 
-  const [hhMode, setHhMode] = useState(() => localStorage.getItem('wh40k_hh_mode') || 'full');
+  const [hhMode, setHhMode] = useState(() => localStorage.getItem('wh40k_hh_mode') || 'essential');
 
   useEffect(() => {
     if (!user?.id) return;
@@ -211,10 +210,10 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const setHhModeSync = (m) => {
-    localStorage.setItem('wh40k_hh_mode', m);
+  const handleSetHhMode = (m) => {
     setHhMode(m);
-    if (user?.id) sb.upsert("user_settings", { user_id: user.id, hh_mode: m, updated_at: new Date().toISOString() }, "user_id");
+    localStorage.setItem('wh40k_hh_mode', m);
+    if (user?.id) sb.upsert('user_settings', { user_id: user.id, hh_mode: m });
   };
 
   const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode, readShorts), [statuses, hhMode, readShorts]);
@@ -237,7 +236,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
           </button>
         ))}
       </div>
-      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} readShorts={readShorts} toggleShort={toggleShort} />}
+      {crusadeTab === "guide" && <HHGuideSection statuses={statuses} readShorts={readShorts} toggleShort={toggleShort} hhMode={hhMode} setHhMode={handleSetHhMode} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
