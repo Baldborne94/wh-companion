@@ -211,12 +211,6 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const setHhModeSync = (m) => {
-    localStorage.setItem('wh40k_hh_mode', m);
-    setHhMode(m);
-    if (user?.id) sb.upsert("user_settings", { user_id: user.id, hh_mode: m, updated_at: new Date().toISOString() }, "user_id");
-  };
-
   const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode, readShorts), [statuses, hhMode, readShorts]);
   const [opening, setOpening] = useState(false);
 
