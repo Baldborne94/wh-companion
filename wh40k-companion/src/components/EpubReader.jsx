@@ -3,6 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
+import { displayTarget } from "../lib/readerNav";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -431,7 +432,7 @@ export default function EpubReader({
       if (!cfi) return;
       localStorage.setItem(cfiKey, cfi);
       cfiRef.current = cfi;
-      if (rendRef.current) rendRef.current.display(cfi);
+      if (rendRef.current) displayCfi(cfi);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
@@ -471,6 +472,16 @@ export default function EpubReader({
   const navLockTimer = useRef(null);
   // Track start-of-book so prev() doesn't fire when there is no prev chapter.
   const atStartRef   = useRef(false);
+
+  // Display a CFI/href reliably in both flows (see lib/readerNav).
+  const displayCfi = useCallback((cfi) => {
+    if (!rendRef.current || !cfi) return;
+    displayTarget({
+      display: (t) => rendRef.current.display(t),
+      target: cfi,
+      paginated: settingsRef.current.paginate,
+    });
+  }, []);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
@@ -738,6 +749,12 @@ export default function EpubReader({
             clearTimeout(readyTimeout);
             if (cancelled) return;
             setLoading(false);
+            // Continuous (scroll) manager doesn't scroll to the saved CFI on the
+            // initial pre-ready display — re-issue it now that the section can be
+            // measured so the book resumes at the exact saved position.
+            if (manager === "continuous" && savedCfi) {
+              setTimeout(() => { if (!cancelled) rendRef.current?.display(savedCfi).catch(() => {}); }, 250);
+            }
             return book.loaded.navigation;
           })
           .then(nav => {
@@ -977,11 +994,10 @@ export default function EpubReader({
   }, [chLabel, progress, bmKey, userId, bookId]);
 
   const goToBookmark = useCallback((bm) => {
-    if (!bm?.cfi || !rendRef.current) return;
-    rendRef.current.display(bm.cfi)
-      .catch(() => setTimeout(() => rendRef.current?.display(bm.cfi), 800));
+    if (!bm?.cfi) return;
+    displayCfi(bm.cfi);
     setShowBmPanel(false);
-  }, []);
+  }, [displayCfi]);
 
   const deleteBookmark = useCallback((cfi) => {
     setBookmarks(prev => {
@@ -1147,7 +1163,7 @@ export default function EpubReader({
                 </p>
               ) : toc.map((ch, i) => (
                 <button key={i}
-                  onClick={() => { rendRef.current?.display(ch.href); setShowToc(false); }}
+                  onClick={() => { displayCfi(ch.href); setShowToc(false); }}
                   style={{ display:"block", width:"100%", textAlign:"left",
                            background:"transparent", border:"none",
                            borderLeft:`3px solid ${chLabel===ch.label?C.gold:"transparent"}`,
