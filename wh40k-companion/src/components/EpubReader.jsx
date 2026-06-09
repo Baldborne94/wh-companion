@@ -360,7 +360,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function EpubReader({
   arrayBuffer, url, title, bookId, userId,
-  initProgress, initChapterIndex, initPageIndex,
+  initProgress,
   onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
   useReaderViewport();
@@ -390,7 +390,6 @@ export default function EpubReader({
   const [showSettings,  setShowSettings]  = useState(false);
   const [showToc,       setShowToc]       = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
-  const [pageDisplay,   setPageDisplay]   = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
@@ -578,7 +577,6 @@ export default function EpubReader({
     setError(null);
     setChLabel("");
     setProgress(0);
-    setPageDisplay(null);
 
     // Destroy previous instance
     if (bookRef.current) {
@@ -777,10 +775,6 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
-          // Paginated screen pages — chapter-relative, available immediately (no locations needed)
-          const dPage = loc.start?.displayed?.page;
-          const dTotal = loc.start?.displayed?.total;
-          if (dPage && dTotal > 0) setPageDisplay({ page: dPage, total: dTotal });
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));

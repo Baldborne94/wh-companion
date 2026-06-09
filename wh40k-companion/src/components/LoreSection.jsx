@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { C } from "../data/constants";
-import { AOS } from "../data/aosBooks";
 
 const AOS_REALMS = [
   {name:"Realm of Aqshy", sub:"Fire",    color:"#C0392B", icon:"🔥"},

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase, signInWithGoogle } from "../lib/supabase";
 import { sb } from "../lib/sb";
 import { C, FC, STATUS_CFG } from "../data/constants";
@@ -6,9 +6,6 @@ import CoverImage from "./CoverImage";
 import { getBookRating, setBookRatingLS, getBookNotes, setBookNotesLS, setBookStatusLS } from "../lib/bookStatus";
 import { resolveBookUrl } from "../lib/openBook";
 import { cacheHas, cacheRemove } from "../lib/ebookCache";
-
-const EpubReader = lazy(() => import("./EpubReader"));
-const PdfReader  = lazy(() => import("./PdfReader"));
 
 export default function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange, onEbookUploaded }) {
   const fc = FC[book.faction] || C.dim;

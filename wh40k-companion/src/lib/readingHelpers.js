@@ -15,7 +15,7 @@ export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
     return `${novelsRead + shortsRead}/${el.length + allShorts.length} read`;
   };
 
-  for (const [i, part] of guide.entries()) {
+  for (const part of guide) {
     if (part.pickOne) continue;
 
     // Skip shorts only if this part itself has a novel already started or finished.

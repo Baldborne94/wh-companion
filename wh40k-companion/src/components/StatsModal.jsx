@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
-  AOS_READING_ACHIEVEMENTS, computeAoSReadingAchievements,
+  AOS_READING_ACHIEVEMENTS,
   getConsecutiveMonthStreak, achievementFromId,
 } from "../lib/achievements";
 import { AOS_BOOKS } from "../data/aosBooks";
