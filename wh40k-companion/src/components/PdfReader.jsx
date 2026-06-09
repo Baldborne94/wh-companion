@@ -32,9 +32,23 @@ async function saveProgress(userId, bookId, page, total) {
     await fetch(`${SB_URL}/rest/v1/reading_progress?on_conflict=user_id,book_id`, {
       method: "POST",
       headers: { apikey: SB_KEY, Authorization: `Bearer ${tok}`, "Content-Type": "application/json", Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ user_id: userId, book_id: bookId, progress_pct: pct, last_read: new Date().toISOString() }),
+      // epub_cfi stores the page number using the same "pdf:{n}" convention as bookmarks
+      body: JSON.stringify({ user_id: userId, book_id: bookId, progress_pct: pct, epub_cfi: `pdf:${page}`, last_read: new Date().toISOString() }),
     });
   } catch {}
+}
+
+async function loadPdfProgressFromDB(userId, bookId) {
+  if (!userId || !bookId) return null;
+  try {
+    const { data } = await supabase.from("reading_progress")
+      .select("epub_cfi,progress_pct")
+      .eq("user_id", userId).eq("book_id", bookId)
+      .maybeSingle();
+    if (!data) return null;
+    if (data.epub_cfi?.startsWith("pdf:")) return parseInt(data.epub_cfi.slice(4), 10) || null;
+    return null;
+  } catch { return null; }
 }
 
 const bmKey = (uid, bid) => `wh40k_bm_${uid || "anon"}_${bid}`;
@@ -145,11 +159,34 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   // Scroll mode per-page task map
   const scrollTasks = useRef(new Map());
   const isDesktop   = useRef(window.matchMedia("(pointer:fine)").matches).current;
+  const pendingDbPage = useRef(null);
 
   // Keep refs in sync with state (used in event handlers / observers)
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { pageRef.current = page; }, [page]);
   useEffect(() => { viewRef.current = viewMode; }, [viewMode]);
+
+  // On new device (no localStorage), restore position from DB
+  useEffect(() => {
+    if (!userId || !bookId) return;
+    const key = `wh40k_prog_${userId}_${bookId}`;
+    if (localStorage.getItem(key)) return;
+    loadPdfProgressFromDB(userId, bookId).then(pg => {
+      if (!pg || pg <= 1) return;
+      if (total > 0) goTo(pg);
+      else pendingDbPage.current = pg;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, bookId]);
+
+  // Apply pending DB page once the PDF is loaded and we know total pages
+  useEffect(() => {
+    if (!doc || !total || !pendingDbPage.current) return;
+    const pg = pendingDbPage.current;
+    pendingDbPage.current = null;
+    if (pg > 1 && pg <= total) goTo(pg);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, total]);
 
   // ── load PDF ─────────────────────────────────────────────────────────────
   useEffect(() => {
