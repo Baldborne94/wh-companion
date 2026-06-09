@@ -1,3 +1,5 @@
+import { cacheGet, cachePut } from './ebookCache';
+
 /**
  * Download the ebook file as an ArrayBuffer, ready to pass directly to epubjs.
  *
@@ -5,8 +7,22 @@
  * We never pass a URL to EpubReader — fetching from inside the reader can fail
  * with CORS or service-worker errors on tablet. Downloading here uses explicit
  * auth headers that we control and avoids any secondary fetch inside the reader.
+ *
+ * Offline: returns cached ArrayBuffer from IndexedDB if available.
+ * Online: downloads from Supabase then saves to IndexedDB for future offline use.
  */
 export async function resolveBookUrl({ uid, book, supabase, sb }) {
+  // Offline path: use IndexedDB cache + localStorage meta
+  if (!navigator.onLine) {
+    const cached = await cacheGet(uid, book.id);
+    if (cached) {
+      let meta = { file_type: 'epub' };
+      try { meta = JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`) || '{}') || meta; } catch {}
+      return { arrayBuffer: cached, meta, fromCache: true };
+    }
+    return { error: 'offline_no_cache' };
+  }
+
   // Step 1: get a fresh access token
   let freshToken = null;
   try {
@@ -38,6 +54,7 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
   const { blob, status: dlStatus } = await sb.storage.download(meta.file_path, freshToken);
   if (blob) {
     const arrayBuffer = await blob.arrayBuffer();
+    cachePut(uid, book.id, arrayBuffer); // fire-and-forget: cache for offline use
     return { arrayBuffer, meta };
   }
 

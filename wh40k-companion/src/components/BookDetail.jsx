@@ -4,6 +4,8 @@ import { sb } from "../lib/sb";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import CoverImage from "./CoverImage";
 import { getBookRating, setBookRatingLS, getBookNotes, setBookNotesLS, setBookStatusLS } from "../lib/bookStatus";
+import { resolveBookUrl } from "../lib/openBook";
+import { cacheHas, cacheRemove } from "../lib/ebookCache";
 
 const EpubReader = lazy(() => import("./EpubReader"));
 const PdfReader  = lazy(() => import("./PdfReader"));
@@ -24,8 +26,13 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
   const [notes,     setNotes]     = useState(() => getBookNotes(user?.id, book.id));
   const [notesSaved,setNotesSaved]= useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [isCached,      setIsCached]      = useState(false);
 
   useEffect(() => { setCurStatus(status?.status || 'none'); }, [status]);
+
+  useEffect(() => {
+    if (user?.id) cacheHas(user.id, book.id).then(setIsCached);
+  }, [user?.id, book.id]);
 
   const changeStatus = (s) => {
     setCurStatus(s);
@@ -93,12 +100,18 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
   };
 
   const handleOpenReader = async () => {
-    if (!ebookMeta) return;
+    if (!ebookMeta && !isCached) return;
     setUploadMsg("Opening…");
-    const url = await sb.storage.signedUrl(ebookMeta.file_path);
-    if (!url) { setUploadMsg("❌ Could not open file — try re-uploading."); return; }
+    const result = await resolveBookUrl({ uid: user.id, book, supabase, sb });
+    if (result.error) {
+      setUploadMsg(result.error === 'offline_no_cache'
+        ? "❌ Offline — open the book online first to enable offline reading."
+        : "❌ Could not open file — try re-uploading.");
+      return;
+    }
+    if (!isCached) setIsCached(true);
     setUploadMsg("");
-    onOpenReader({ book, url, fileType:ebookMeta.file_type, progress, chapterIndex, pageIndex });
+    onOpenReader({ book, arrayBuffer: result.arrayBuffer, fileType: result.meta.file_type || 'epub', progress, chapterIndex, pageIndex });
   };
 
   const handleDeleteEbook = async () => {
@@ -107,8 +120,9 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
     setUploadMsg("Removing…");
     if (ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
     if (user?.id) await supabase.from("ebook_files").delete().eq("user_id", user.id).eq("book_id", book.id);
-    if (user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
+    if (user?.id) { localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`); cacheRemove(user.id, book.id); }
     setEbookMeta(null);
+    setIsCached(false);
     setUploadMsg("✅ Ebook removed.");
     setTimeout(() => setUploadMsg(""), 2500);
   };
@@ -140,7 +154,10 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
           <div style={{background:ebookMeta?`${C.gold}18`:C.surface,padding:"14px 16px",borderBottom:`1px solid ${ebookMeta?C.gold+"44":C.border}`,display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:20}}>{ebookMeta?"📖":"📂"}</span>
             <div>
-              <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:ebookMeta?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":"No Ebook Loaded"}</div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:ebookMeta?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":"No Ebook Loaded"}</div>
+                {isCached&&<div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.green,letterSpacing:1,background:`${C.green}18`,border:`1px solid ${C.green}44`,borderRadius:4,padding:"2px 6px"}}>📲 OFFLINE</div>}
+              </div>
               {ebookMeta&&<div style={{fontSize:11,color:C.goldDim,marginTop:1}}>{ebookMeta.file_name}</div>}
             </div>
           </div>
