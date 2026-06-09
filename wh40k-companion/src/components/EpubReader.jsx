@@ -559,6 +559,10 @@ export default function EpubReader({
           if (!doc?.body) return;
           // Read current settings/theme via refs so hook always uses the latest values
           const s = settingsRef.current;
+          // Set bg inline before stylesheet lands — eliminates the white flash during chapter load
+          const bg = themeRef.current.bg;
+          if (doc.documentElement) doc.documentElement.style.background = bg;
+          doc.body.style.background = bg;
           contents.addStylesheetCss(buildReaderCss(s, themeRef.current, FONTS[s.fontIndex]), 'wh40k-reader');
           const walker = doc.createTreeWalker(doc.body, 4, null);
           const textNodes = [];
@@ -990,7 +994,7 @@ export default function EpubReader({
       )}
 
       {/* epub.js renders here */}
-      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0 }} />
+      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg }} />
 
       {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
       {isTouch.current && (
