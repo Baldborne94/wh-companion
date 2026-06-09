@@ -115,9 +115,9 @@ export const HH_FULL = [
     {t:"Warhawk",a:"Chris Wraight"},
     {t:"Echoes of Eternity",a:"Aaron Dembski-Bowden"},
     {t:"Garro: Knight of the Grey",a:"James Swallow",type:"novella"},
-    {t:"The End and the Death Volume 1",a:"Dan Abnett"},
-    {t:"The End and the Death Volume 2",a:"Dan Abnett"},
-    {t:"The End and the Death Volume 3",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume I",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume II",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume III",a:"Dan Abnett"},
   ]},
 ];
 
@@ -200,9 +200,9 @@ export const HH_MIN = [
     {t:"Mortis",a:"John French"},
     {t:"Warhawk",a:"Chris Wraight"},
     {t:"Echoes of Eternity",a:"Aaron Dembski-Bowden"},
-    {t:"The End and the Death Volume 1",a:"Dan Abnett"},
-    {t:"The End and the Death Volume 2",a:"Dan Abnett"},
-    {t:"The End and the Death Volume 3",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume I",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume II",a:"Dan Abnett"},
+    {t:"The End and the Death: Volume III",a:"Dan Abnett"},
   ]},
 ];
 
@@ -210,5 +210,5 @@ export function findHHBook(entry) {
   const tl = entry.t.toLowerCase();
   return BOOKS.find(b => b.title.toLowerCase() === tl) ||
          BOOKS.find(b => b.title.toLowerCase().includes(tl)) ||
-         BOOKS.find(b => tl.includes(b.title.toLowerCase())) || null;
+         BOOKS.find(b => b.title.length >= 12 && tl.includes(b.title.toLowerCase())) || null;
 }
