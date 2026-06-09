@@ -1163,7 +1163,6 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
         await sb.del("miniature_paints", `miniature_id=eq.${miniId}`);
         // Insert all current paints
         for (const p of paints) {
-          // eslint-disable-next-line no-unused-vars
           const { id: _id, _new, ...rest } = p;
           await db.insert("miniature_paints", { ...rest, miniature_id: miniId });
         }

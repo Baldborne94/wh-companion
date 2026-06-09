@@ -680,9 +680,9 @@ export default function EpubReader({
             node.parentNode?.replaceChild(frag, node);
           });
 
-            // Detect scene-break paragraphs (empty /   / decorative chars).
+            // Detect scene-break paragraphs (empty or decorative-only).
           doc.body.querySelectorAll('p').forEach(p => {
-            if (!p.textContent.replace(/[ \s *·•~\-]/g, '')) p.classList.add('epub-scene-break');
+            if (!p.textContent.replace(/[\u00A0\s *·•~-]/g, '')) p.classList.add('epub-scene-break');
           });
 
           // Only add spacing where the EPUB has explicit scene breaks — do NOT touch
