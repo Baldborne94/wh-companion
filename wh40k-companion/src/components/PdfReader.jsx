@@ -41,6 +41,31 @@ const bmKey = (uid, bid) => `wh40k_bm_${uid || "anon"}_${bid}`;
 const loadBm = (uid, bid) => { try { return JSON.parse(localStorage.getItem(bmKey(uid, bid)) || "[]"); } catch { return []; } };
 const saveBm = (uid, bid, bms) => localStorage.setItem(bmKey(uid, bid), JSON.stringify(bms));
 
+// PDF bookmarks are stored in the bookmarks table using epub_cfi="pdf:{page}"
+// so they share the table with EPUB bookmarks without needing a schema change.
+async function loadPdfBmsFromDB(userId, bookId) {
+  if (!userId || !bookId) return [];
+  try {
+    const { data } = await supabase.from("bookmarks")
+      .select("epub_cfi,created_at")
+      .eq("user_id", userId).eq("book_id", bookId)
+      .like("epub_cfi", "pdf:%")
+      .order("created_at", { ascending: true });
+    return (data || [])
+      .map(b => ({ page: parseInt(b.epub_cfi.slice(4), 10), addedAt: b.created_at }))
+      .filter(b => b.page > 0);
+  } catch { return []; }
+}
+
+async function savePdfBmsToDB(userId, bookId, bms) {
+  if (!userId || !bookId) return;
+  try {
+    await supabase.from("bookmarks").delete().eq("user_id", userId).eq("book_id", bookId).like("epub_cfi", "pdf:%");
+    if (bms.length) await supabase.from("bookmarks").insert(
+      bms.map(b => ({ user_id: userId, book_id: bookId, epub_cfi: `pdf:${b.page}`, label: `Pagina ${b.page}`, progress: 0 }))
+    );
+  } catch {}
+}
 
 // Render one page onto a canvas, fit to available space × zoom
 async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
@@ -89,6 +114,16 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [showNav,   setShowNav]  = useState(true);
   const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
   const [showBm,    setShowBm]   = useState(false);
+
+  // Sync bookmarks from DB on new device (localStorage empty)
+  useEffect(() => {
+    if (!userId || !bookId || localStorage.getItem(bmKey(userId, bookId))) return;
+    loadPdfBmsFromDB(userId, bookId).then(dbBms => {
+      if (!dbBms.length) return;
+      setBookmarks(dbBms);
+      saveBm(userId, bookId, dbBms);
+    });
+  }, [userId, bookId]);
 
   // ── refs ─────────────────────────────────────────────────────────────────
   const canvasRef  = useRef(null);
@@ -321,6 +356,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       : [...bookmarks, { page, addedAt: new Date().toISOString() }].sort((a, b) => a.page - b.page);
     setBookmarks(next);
     saveBm(userId, bookId, next);
+    savePdfBmsToDB(userId, bookId, next);
   };
 
   // ── toolbar button ────────────────────────────────────────────────────────
