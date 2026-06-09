@@ -95,10 +95,13 @@ describe('displayTarget — paginated', () => {
 
 // ─── runScrollNav (continuous mode) ───────────────────────────────────────────
 
-function makeScrollHarness({ displayImpl } = {}) {
+// scrollToTarget returns true once stable. `stableAfter` = how many snaps until
+// it reports stable (simulating epub.js prepending more sections each frame).
+function makeScrollHarness({ displayImpl, stableAfter = 1 } = {}) {
   const order = [];
+  let snaps = 0;
   const display = vi.fn(() => { order.push('display'); return displayImpl ? displayImpl() : Promise.resolve(); });
-  const scrollToTarget = vi.fn(() => order.push('scroll'));
+  const scrollToTarget = vi.fn(() => { order.push('scroll'); snaps += 1; return snaps >= stableAfter; });
   const mask = vi.fn(() => order.push('mask'));
   const unmask = vi.fn(() => order.push('unmask'));
   const settle = vi.fn(() => { order.push('settle'); return Promise.resolve(); });
@@ -107,25 +110,32 @@ function makeScrollHarness({ displayImpl } = {}) {
 }
 
 describe('runScrollNav — continuous mode', () => {
-  it('masks first, then display → settle → snap → frame → snap → unmask', async () => {
-    const h = makeScrollHarness();
+  it('masks first, then display → settle → snap loop → unmask', async () => {
+    const h = makeScrollHarness({ stableAfter: 1 });
     await runScrollNav(h);
     expect(h.order).toEqual([
-      'mask', 'display', 'settle', 'scroll', 'frame', 'scroll', 'unmask',
+      'mask', 'display', 'settle', 'scroll', 'frame', 'unmask',
     ]);
   });
 
-  it('snaps to the target twice (settle + after frames) to absorb late resize', async () => {
-    const h = makeScrollHarness();
+  it('stops the convergence loop as soon as the position is stable', async () => {
+    const h = makeScrollHarness({ stableAfter: 3 });
     await runScrollNav(h);
-    expect(h.scrollToTarget).toHaveBeenCalledTimes(2);
+    expect(h.scrollToTarget).toHaveBeenCalledTimes(3);
+  });
+
+  it('caps the loop at maxSnaps when the position never stabilises', async () => {
+    const h = makeScrollHarness({ stableAfter: 999 });
+    await runScrollNav({ ...h, maxSnaps: 5 });
+    expect(h.scrollToTarget).toHaveBeenCalledTimes(5);
+    expect(h.unmask).toHaveBeenCalledTimes(1);
   });
 
   it('always unmasks even when display rejects', async () => {
     const h = makeScrollHarness({ displayImpl: () => Promise.reject(new Error('boom')) });
     await runScrollNav(h);
     expect(h.unmask).toHaveBeenCalledTimes(1);
-    // failed display short-circuits the snap sequence
+    // failed display short-circuits the snap loop
     expect(h.scrollToTarget).not.toHaveBeenCalled();
   });
 
@@ -145,13 +155,13 @@ describe('runScrollNav — continuous mode', () => {
 
   it('uses default settle/frame when not provided (resolves without throwing)', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
-    const scrollToTarget = vi.fn();
+    const scrollToTarget = vi.fn(() => true); // stable immediately
     const mask = vi.fn();
     const unmask = vi.fn();
     await expect(
       runScrollNav({ display, scrollToTarget, mask, unmask })
     ).resolves.toBeUndefined();
     expect(unmask).toHaveBeenCalledTimes(1);
-    expect(scrollToTarget).toHaveBeenCalledTimes(2);
+    expect(scrollToTarget).toHaveBeenCalledTimes(1);
   });
 });
