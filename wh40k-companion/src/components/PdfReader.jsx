@@ -300,7 +300,8 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       container.removeEventListener("scroll", onScroll);
       if (scrollObs.current) scrollObs.current.disconnect();
     };
-  }, [viewMode, doc]); // eslint-disable-line — intentionally minimal deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally minimal deps
+  }, [viewMode, doc]);
 
   // ── zoom update for scroll mode (re-render rendered pages in place) ───────
   useEffect(() => {
