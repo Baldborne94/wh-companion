@@ -473,15 +473,28 @@ export default function EpubReader({
   // Track start-of-book so prev() doesn't fire when there is no prev chapter.
   const atStartRef   = useRef(false);
 
+  // Resolve a chapter href to the CFI at the start of its spine section.
+  // epub.js href navigation lands at the wrong scroll offset in continuous mode
+  // (fill() prepends earlier sections after the jump), so we navigate by CFI —
+  // the path that scrolls reliably. Returns null when the href can't be resolved.
+  const hrefToCfi = useCallback((href) => {
+    try {
+      const section = bookRef.current?.spine?.get(href);
+      if (section?.cfiBase) return `epubcfi(${section.cfiBase}!/4)`;
+    } catch {}
+    return null;
+  }, []);
+
   // Display a CFI/href reliably in both flows (see lib/readerNav).
-  const displayCfi = useCallback((cfi) => {
-    if (!rendRef.current || !cfi) return;
+  const displayCfi = useCallback((target) => {
+    if (!rendRef.current || !target) return;
+    const cfi = /^epubcfi\(/i.test(target) ? target : (hrefToCfi(target) || target);
     displayTarget({
       display: (t) => rendRef.current.display(t),
       target: cfi,
       paginated: settingsRef.current.paginate,
     });
-  }, []);
+  }, [hrefToCfi]);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
