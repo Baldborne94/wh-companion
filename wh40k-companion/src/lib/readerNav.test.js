@@ -34,69 +34,50 @@ describe('isCfiTarget', () => {
   });
 });
 
-// ─── pages (paginated) mode ───────────────────────────────────────────────────
+// ─── success path — no retry scheduled regardless of mode or target ───────────
+//
+// epub.js's fill()+counter() mechanism compensates the scroll offset after
+// each display(); a second display() call would trigger another fill() cycle
+// and overshoot (flicker). So displayTarget never retries on success.
 
-describe('displayTarget — pages (paginated) mode', () => {
-  it('calls display exactly once and schedules no retry on success (CFI)', async () => {
+describe('displayTarget — success: no retry in any mode', () => {
+  it('pages mode, CFI: calls display once, no retry', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: true, schedule });
+    await displayTarget({ display, target: CFI, schedule });
     expect(display).toHaveBeenCalledTimes(1);
     expect(display).toHaveBeenCalledWith(CFI);
     expect(schedule.calls).toHaveLength(0);
   });
 
-  it('calls display once and schedules no retry on success (href)', async () => {
+  it('pages mode, href: calls display once, no retry', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, paginated: true, schedule });
+    await displayTarget({ display, target: HREF, schedule });
     expect(display).toHaveBeenCalledTimes(1);
     expect(schedule.calls).toHaveLength(0);
   });
-});
 
-// ─── scroll (continuous) mode ─────────────────────────────────────────────────
-
-describe('displayTarget — scroll (continuous) mode, CFI target', () => {
-  it('schedules a re-display after the layout settles', async () => {
+  it('scroll mode, CFI: calls display once, no retry (fill+counter self-corrects)', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule });
+    await displayTarget({ display, target: CFI, schedule });
     expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(1);
-    expect(schedule.calls[0].ms).toBe(400);
+    expect(schedule.calls).toHaveLength(0);
   });
 
-  it('the scheduled retry re-issues display with the same CFI', async () => {
+  it('scroll mode, section-start CFI (converted from TOC href): no retry', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule });
-    await schedule.runAll();
-    expect(display).toHaveBeenCalledTimes(2);
-    expect(display).toHaveBeenNthCalledWith(2, CFI);
+    await displayTarget({ display, target: SECTION_CFI, schedule });
+    expect(display).toHaveBeenCalledTimes(1);
+    expect(schedule.calls).toHaveLength(0);
   });
 
-  it('a section-start CFI (converted from a TOC href) also gets the retry', async () => {
+  it('scroll mode, href: no retry', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
-    await displayTarget({ display, target: SECTION_CFI, paginated: false, schedule });
-    expect(schedule.calls).toHaveLength(1);
-    expect(schedule.calls[0].ms).toBe(400);
-  });
-
-  it('uses a custom retryDelay when provided', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule, retryDelay: 250 });
-    expect(schedule.calls[0].ms).toBe(250);
-  });
-});
-
-describe('displayTarget — scroll (continuous) mode, href target', () => {
-  it('does NOT re-issue a raw href on success (would fight fill())', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, paginated: false, schedule });
+    await displayTarget({ display, target: HREF, schedule });
     expect(display).toHaveBeenCalledTimes(1);
     expect(schedule.calls).toHaveLength(0);
   });
@@ -108,7 +89,7 @@ describe('displayTarget — failure handling', () => {
   it('schedules an error retry after the longer delay when a CFI display rejects', async () => {
     const display = vi.fn().mockRejectedValue(new Error('section not loaded'));
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule });
+    await displayTarget({ display, target: CFI, schedule });
     expect(schedule.calls).toHaveLength(1);
     expect(schedule.calls[0].ms).toBe(800);
   });
@@ -116,15 +97,7 @@ describe('displayTarget — failure handling', () => {
   it('error retry fires for an href too (first display rejected)', async () => {
     const display = vi.fn().mockRejectedValue(new Error('fail'));
     const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, paginated: false, schedule });
-    expect(schedule.calls).toHaveLength(1);
-    expect(schedule.calls[0].ms).toBe(800);
-  });
-
-  it('error retry fires in pages mode too', async () => {
-    const display = vi.fn().mockRejectedValue(new Error('fail'));
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: true, schedule });
+    await displayTarget({ display, target: HREF, schedule });
     expect(schedule.calls).toHaveLength(1);
     expect(schedule.calls[0].ms).toBe(800);
   });
@@ -132,7 +105,7 @@ describe('displayTarget — failure handling', () => {
   it('a retry that also rejects does not throw (swallowed)', async () => {
     const display = vi.fn().mockRejectedValue(new Error('still failing'));
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule });
+    await displayTarget({ display, target: CFI, schedule });
     await expect(schedule.runAll()).resolves.toBeUndefined();
     expect(display).toHaveBeenCalledTimes(2);
   });
@@ -140,7 +113,7 @@ describe('displayTarget — failure handling', () => {
   it('uses a custom errorDelay when provided', async () => {
     const display = vi.fn().mockRejectedValue(new Error('fail'));
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule, errorDelay: 1200 });
+    await displayTarget({ display, target: CFI, schedule, errorDelay: 1200 });
     expect(schedule.calls[0].ms).toBe(1200);
   });
 });
@@ -151,7 +124,7 @@ describe('displayTarget — guards', () => {
   it('no-ops when target is empty', async () => {
     const display = vi.fn();
     const schedule = makeSchedule();
-    await displayTarget({ display, target: '', paginated: false, schedule });
+    await displayTarget({ display, target: '', schedule });
     expect(display).not.toHaveBeenCalled();
     expect(schedule.calls).toHaveLength(0);
   });
@@ -159,14 +132,14 @@ describe('displayTarget — guards', () => {
   it('no-ops when target is null', async () => {
     const display = vi.fn();
     const schedule = makeSchedule();
-    await displayTarget({ display, target: null, paginated: false, schedule });
+    await displayTarget({ display, target: null, schedule });
     expect(display).not.toHaveBeenCalled();
   });
 
   it('no-ops when display is not a function', async () => {
     const schedule = makeSchedule();
     await expect(
-      displayTarget({ display: undefined, target: CFI, paginated: false, schedule })
+      displayTarget({ display: undefined, target: CFI, schedule })
     ).resolves.toBeUndefined();
     expect(schedule.calls).toHaveLength(0);
   });
@@ -174,8 +147,8 @@ describe('displayTarget — guards', () => {
   it('tolerates a synchronous (non-promise) display return value', async () => {
     const display = vi.fn().mockReturnValue(undefined); // display() returns void
     const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, paginated: false, schedule });
+    await displayTarget({ display, target: CFI, schedule });
     expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(1);
+    expect(schedule.calls).toHaveLength(0);
   });
 });
