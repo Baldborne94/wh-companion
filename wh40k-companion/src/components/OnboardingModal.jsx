@@ -58,11 +58,10 @@ const SLIDES = [
     bg: "linear-gradient(160deg,#130a20 0%,#0a0905 100%)",
     iconBg: "linear-gradient(135deg,#1a0a2a,#130a20)",
     icon: "🔮",
-    tag: "LORE · ORACLE",
+    tag: "LORE",
     title: "Explore the Lore",
     bullets: [
       "Lore lookup: tap any highlighted term to open the wiki",
-      "Oracle: ask anything about WH40K or AoS lore",
       "AoS Realms guide with direct Lexicanum links",
       "Both 40K Fandom wiki & AoS Lexicanum supported",
     ],
