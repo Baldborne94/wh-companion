@@ -43,41 +43,51 @@ export function displayTarget({
  * epub.js's continuous manager runs `fill()` after every `display()`, prepending
  * the earlier sections above the target. That shifts the scroll offset, and its
  * `counter()` compensation is racy — the chapter lands, then visibly drifts away.
+ * Worse, programmatically setting `scrollTop` re-fires epub.js's scroll handler,
+ * which runs `check()` again and may prepend yet another section, shifting once
+ * more. How many cycles fire depends on the book (chapter sizes, how close the
+ * target lands to a section boundary), so a fixed number of snaps isn't enough.
  *
- * Instead of fighting it with re-displays (which trigger more `fill()` cycles and
- * flicker), we mask the viewport, let `display()` + `fill()` fully settle, then
- * snap the scroll container straight to the target's exact offset (authoritative,
- * independent of `counter()`), and only then reveal. The snap runs twice — once
- * after the settle delay and once after a couple animation frames — to absorb a
- * late resize. `unmask` always runs, even on failure, so the viewport is never
- * left hidden.
+ * So we mask the viewport, let `display()` + `fill()` settle, then run a bounded
+ * CONVERGENCE LOOP: snap to the target's measured offset, wait a frame (letting
+ * any triggered prepend/counter run), and re-snap — recomputing the offset each
+ * time, since `view.offset().top` grows as sections prepend. `scrollToTarget`
+ * reports when the position is already stable (no move needed); we stop then, or
+ * after `maxSnaps` iterations. Only then do we reveal. `unmask` always runs, even
+ * on failure, so the viewport is never left hidden.
  *
  * All side effects are injected so the orchestration is unit-testable without
  * epub.js, real timers, or a real DOM.
  *
  * @param {object}   args
  * @param {function} args.display        - () => Promise; epub.js display(cfi)
- * @param {function} args.scrollToTarget - () => void; snap scroll to the cfi offset
+ * @param {function} args.scrollToTarget - () => boolean; snap scroll to the cfi offset, return true if already stable
  * @param {function} args.mask           - () => void; hide the viewport
  * @param {function} args.unmask         - () => void; reveal the viewport
  * @param {function} [args.settle]       - () => Promise; wait for fill() to settle
- * @param {function} [args.frame]        - () => Promise; wait a couple animation frames
+ * @param {function} [args.frame]        - () => Promise; wait an animation frame
+ * @param {number}   [args.maxSnaps]     - convergence-loop iteration cap
  * @returns {Promise<void>}
  */
-export function runScrollNav({
+export async function runScrollNav({
   display,
   scrollToTarget,
   mask,
   unmask,
   settle = () => new Promise((r) => setTimeout(r, 60)),
-  frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  frame = () => new Promise((r) => requestAnimationFrame(r)),
+  maxSnaps = 8,
 }) {
-  if (typeof display !== 'function') return Promise.resolve();
+  if (typeof display !== 'function') return;
   mask?.();
-  return Promise.resolve(display())
-    .then(() => settle())
-    .then(() => { scrollToTarget?.(); return frame(); })
-    .then(() => { scrollToTarget?.(); })
-    .catch(() => {})
-    .finally(() => { unmask?.(); });
+  try {
+    await Promise.resolve(display());
+    await settle();
+    for (let i = 0; i < maxSnaps; i++) {
+      const stable = scrollToTarget?.();
+      await frame();
+      if (stable) break;
+    }
+  } catch { /* swallow — best effort */ }
+  finally { unmask?.(); }
 }

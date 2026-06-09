@@ -490,24 +490,30 @@ export default function EpubReader({
   }, []);
 
   // Snap the continuous scroll container straight to a CFI's exact offset.
-  // Authoritative: reads the target section's measured position rather than
-  // relying on epub.js's racy counter() compensation. Returns true on success.
+  // Authoritative: reads the target section's currently-measured position rather
+  // than relying on epub.js's racy counter() compensation. The offset is
+  // recomputed on every call because it grows as fill() prepends earlier
+  // sections. Returns true when the viewport is already at the target (within a
+  // couple px) so the convergence loop in runScrollNav can stop.
   const scrollToCfiExact = useCallback((cfi) => {
     try {
       const rend = rendRef.current, book = bookRef.current;
       const mgr = rend?.manager;
-      if (!mgr || !book) return false;
+      if (!mgr || !book) return true;
       const section = book.spine.get(cfi);
       const view = section && mgr.views?.find?.(section);
-      if (!view) return false;
+      if (!view) return true;
       const base = view.offset ? view.offset().top : 0;
       let within = 0;
       try { within = view.locationOf(cfi)?.top || 0; } catch {}
       const top = targetScrollTop(base, within);
-      if (mgr.settings?.fullsize) window.scrollTo(0, top);
+      const fullsize = !!mgr.settings?.fullsize;
+      const cur = fullsize ? window.scrollY : (mgr.container?.scrollTop ?? 0);
+      if (Math.abs(cur - top) <= 2) return true;
+      if (fullsize) window.scrollTo(0, top);
       else if (mgr.container) mgr.container.scrollTop = top;
-      return true;
-    } catch { return false; }
+      return false;
+    } catch { return true; }
   }, []);
 
   // Display a CFI/href reliably in both flows (see lib/readerNav).
