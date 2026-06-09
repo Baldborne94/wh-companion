@@ -557,6 +557,13 @@ export default function EpubReader({
     }
   }, [showSettings, showToc, showBmPanel]);
 
+  // TOC navigation is paginated-only — epub.js's continuous manager doesn't land
+  // chapter jumps reliably across all books. Close the panel if it's open when
+  // switching to scroll mode.
+  useEffect(() => {
+    if (!settings.paginate) setShowToc(false);
+  }, [settings.paginate]);
+
   // ── Book init / layout change ─────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
@@ -1185,7 +1192,9 @@ export default function EpubReader({
               </button>
             </>
           )}
-          <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title="Contents">☰</IBtn>
+          {settings.paginate && (
+            <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title="Contents">☰</IBtn>
+          )}
           <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? "Remove bookmark" : "Add bookmark"}>{isBookmarked ? "★" : "☆"}</IBtn>
           <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title="Bookmarks">🔖</IBtn>
           <IBtn onClick={() => setShowSettings(true)}  color={T.muted}                           title="Settings">⚙</IBtn>
