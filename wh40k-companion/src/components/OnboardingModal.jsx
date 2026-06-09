@@ -49,8 +49,8 @@ const SLIDES = [
     bullets: [
       "Read your ebooks directly in the app (EPUB & PDF)",
       "Bookmarks & auto-resume — pick up where you left off",
+      "Open once online → cached locally for offline reading",
       "WH40K and AoS lore terms highlighted — tap to open the wiki",
-      "Ambient music keeps playing while you read",
     ],
   },
   {
