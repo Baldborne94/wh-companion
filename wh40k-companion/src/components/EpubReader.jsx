@@ -383,8 +383,6 @@ export default function EpubReader({
   const [toc,      setToc]      = useState([]);
   const [chLabel,  setChLabel]  = useState("");
   const [progress, setProgress] = useState(0);
-  const [atStart,  setAtStart]  = useState(true);
-  const [atEnd,    setAtEnd]    = useState(false);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [showUI,        setShowUI]        = useState(false);
@@ -666,8 +664,6 @@ export default function EpubReader({
           if (cancelled) return;
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
-          setAtStart(!!loc.atStart);
-          setAtEnd(!!loc.atEnd);
           if (tocRef.current.length > 0 && loc.start?.href) {
             const base = decodeURIComponent(loc.start.href).split("#")[0].split("/").pop();
             const found = tocRef.current.find(ch =>
@@ -991,14 +987,14 @@ export default function EpubReader({
       )}
 
       {/* epub.js renders here */}
-      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:54, left:0, right:0 }} />
+      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0 }} />
 
       {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
       {isTouch.current && (
         <div
           onTouchStart={onSwipeStart}
           onTouchEnd={onSwipeEnd}
-          style={{ position:"absolute", top:54, bottom:54, left:0, right:0, zIndex:10,
+          style={{ position:"absolute", top:54, bottom:0, left:0, right:0, zIndex:10,
                    pointerEvents: (!settings.paginate || showSettings || showToc || showBmPanel || dictWord) ? "none" : "auto" }}
         />
       )}
@@ -1073,65 +1069,6 @@ export default function EpubReader({
         </div>
       </div>
 
-
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <div style={{
-        position:"absolute", bottom:0, left:0, right:0, height:54,
-        background:`${T.bg}ee`, backdropFilter:"blur(10px)",
-        borderTop:`1px solid ${T.border}`,
-        display:"flex", alignItems:"center", padding:"0 14px", gap:14,
-        opacity:uiVisible?1:0, pointerEvents:uiVisible?"auto":"none",
-        transition:"opacity .25s ease", zIndex:20,
-      }}>
-        {isTouch.current ? (
-          <button onClick={prev} disabled={atStart}
-            style={{ background:"transparent", border:`1px solid ${atStart?T.muted:T.text}`,
-                     borderRadius:6, color:atStart?T.muted:T.text, opacity:atStart?0.35:1,
-                     padding:"5px 14px", cursor:atStart?"default":"pointer",
-                     fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
-            ‹
-          </button>
-        ) : (
-          <button onClick={prev} disabled={atStart}
-            style={{ background:"transparent", border:"none", cursor:atStart?"default":"pointer",
-                     color:atStart?T.muted:T.text, opacity:atStart?0.4:1,
-                     fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
-                     flexShrink:0, padding:"5px 14px" }}>
-            ← prev
-          </button>
-        )}
-
-        <div style={{ flex:1 }}>
-          <div style={{ height:3, background:T.border, borderRadius:2, overflow:"hidden", marginBottom:4 }}>
-            <div style={{ height:"100%", width:`${progress}%`, background:C.gold,
-                          borderRadius:2, transition:"width .5s ease" }} />
-          </div>
-          <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:6 }}>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:T.muted, letterSpacing:1,
-                           overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-              {chLabel}
-            </span>
-          </div>
-        </div>
-
-        {isTouch.current ? (
-          <button onClick={next} disabled={atEnd}
-            style={{ background:"transparent", border:`1px solid ${atEnd?T.muted:T.text}`,
-                     borderRadius:6, color:atEnd?T.muted:T.text, opacity:atEnd?0.35:1,
-                     padding:"5px 14px", cursor:atEnd?"default":"pointer",
-                     fontFamily:"'Cinzel',serif", fontSize:14, flexShrink:0 }}>
-            ›
-          </button>
-        ) : (
-          <button onClick={next} disabled={atEnd}
-            style={{ background:"transparent", border:"none", cursor:atEnd?"default":"pointer",
-                     color:atEnd?T.muted:T.text, opacity:atEnd?0.4:1,
-                     fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
-                     flexShrink:0, padding:"5px 14px" }}>
-            next →
-          </button>
-        )}
-      </div>
 
       {/* ── Table of Contents ──────────────────────────────────────────────── */}
       {showToc && (
