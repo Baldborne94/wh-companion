@@ -504,8 +504,9 @@ export default function EpubReader({
     }
     rendRef.current = null;
 
-    const flow   = settings.paginate ? "paginated" : "scrolled";
-    const spread = settings.paginate && settings.twoPage ? "always" : "none";
+    const flow    = settings.paginate ? "paginated" : "scrolled";
+    const manager = settings.paginate ? "default"   : "continuous";
+    const spread  = settings.paginate && settings.twoPage ? "always" : "none";
 
     (async () => {
       if (cancelled || !containerRef.current) return;
@@ -536,7 +537,7 @@ export default function EpubReader({
           spread,
           flow,
           minSpreadWidth: 900,
-          manager:        "continuous",
+          manager,
         });
         rendRef.current = rend;
 
