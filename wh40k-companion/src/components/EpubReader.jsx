@@ -401,6 +401,7 @@ export default function EpubReader({
   const [showBmPanel, setShowBmPanel] = useState(false);
   const [bmFlash,     setBmFlash]     = useState(false);
   const [curCfi,      setCurCfi]      = useState(null);
+  const [navFade,     setNavFade]     = useState(false);
 
   const toggleFullscreen = useCallback(() => {
     const el = document.documentElement;
@@ -665,6 +666,7 @@ export default function EpubReader({
 
         rend.on("relocated", (loc) => {
           if (cancelled) return;
+          setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
           if (tocRef.current.length > 0 && loc.start?.href) {
@@ -785,8 +787,8 @@ export default function EpubReader({
 
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const next = useCallback(() => rendRef.current?.next(), []);
-  const prev = useCallback(() => rendRef.current?.prev(), []);
+  const next = useCallback(() => { setNavFade(true); rendRef.current?.next(); }, []);
+  const prev = useCallback(() => { setNavFade(true); rendRef.current?.prev(); }, []);
 
   // Swipe handler attached to the transparent overlay div in JSX (not the epub iframe container)
   const onSwipeStart = useCallback((e) => {
@@ -995,6 +997,15 @@ export default function EpubReader({
 
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg }} />
+
+      {/* Page-turn overlay — covers the white iframe flash during chapter load.
+          Appears instantly on next/prev, fades out once relocated fires. */}
+      <div style={{
+        position:"absolute", top:54, bottom:0, left:0, right:0,
+        background:T.bg, zIndex:11, pointerEvents:"none",
+        opacity: navFade ? 1 : 0,
+        transition: navFade ? "none" : "opacity 0.18s ease",
+      }} />
 
       {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
       {isTouch.current && (
