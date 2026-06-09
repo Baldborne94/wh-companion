@@ -495,8 +495,6 @@ export default function EpubReader({
     setError(null);
     setChLabel("");
     setProgress(0);
-    setAtStart(true);
-    setAtEnd(false);
     setPageDisplay(null);
 
     // Destroy previous instance
@@ -770,7 +768,11 @@ export default function EpubReader({
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(() => {
-      try { rendRef.current?.resize(); } catch {}
+      try {
+        rendRef.current?.resize();
+        const cfi = cfiRef.current;
+        if (cfi) setTimeout(() => rendRef.current?.display(cfi), 100);
+      } catch {}
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
