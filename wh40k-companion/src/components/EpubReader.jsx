@@ -464,10 +464,13 @@ export default function EpubReader({
   settingsRef.current = settings;
   const swipeRef     = useRef({ x:0, y:0, active:false });
   // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
-  // Without this, quick repeated prev() in scroll mode causes a race condition
-  // where epub.js loses track of the current position → black screen.
+  // In paginated mode the lock releases on `relocated` (page turn done).
+  // In scroll/continuous mode `relocated` fires on every scroll-position change
+  // (too early) — the lock releases on `rendered` instead (chapter in DOM).
   const navLockRef   = useRef(false);
   const navLockTimer = useRef(null);
+  // Track start-of-book so prev() doesn't fire when there is no prev chapter.
+  const atStartRef   = useRef(false);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
@@ -669,10 +672,25 @@ export default function EpubReader({
         // content position. Only use percentageFromCfi() after generate() completes.
         let locationsReady = false;
 
+        // In scroll/continuous mode, release the nav lock only on `rendered`
+        // (chapter content in DOM), not `relocated` (fires on every scroll tick).
+        if (manager === "continuous") {
+          rend.on("rendered", () => {
+            if (cancelled) return;
+            navLockRef.current = false;
+            clearTimeout(navLockTimer.current);
+          });
+        }
+
         rend.on("relocated", (loc) => {
           if (cancelled) return;
-          navLockRef.current = false;
-          clearTimeout(navLockTimer.current);
+          atStartRef.current = loc.atStart ?? false;
+          // Paginated: release lock here (one event per page turn).
+          // Scroll: lock already released by `rendered` above.
+          if (manager !== "continuous") {
+            navLockRef.current = false;
+            clearTimeout(navLockTimer.current);
+          }
           setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
@@ -806,7 +824,7 @@ export default function EpubReader({
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
   }, []);
   const next = useCallback(() => nav(1),  [nav]);
-  const prev = useCallback(() => nav(-1), [nav]);
+  const prev = useCallback(() => { if (!atStartRef.current) nav(-1); }, [nav]);
 
   // Swipe handler attached to the transparent overlay div in JSX (not the epub iframe container)
   const onSwipeStart = useCallback((e) => {
