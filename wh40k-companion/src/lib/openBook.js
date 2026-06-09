@@ -54,7 +54,7 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
   const { blob, status: dlStatus } = await sb.storage.download(meta.file_path, freshToken);
   if (blob) {
     const arrayBuffer = await blob.arrayBuffer();
-    cachePut(uid, book.id, arrayBuffer); // fire-and-forget: cache for offline use
+    cachePut(uid, book.id, arrayBuffer.slice(0)); // cache a copy so the original isn't detached by IDB
     return { arrayBuffer, meta };
   }
 
