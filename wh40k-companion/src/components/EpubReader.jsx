@@ -3,7 +3,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
-import { displayTarget } from "../lib/readerNav";
+import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -470,6 +470,10 @@ export default function EpubReader({
   // (too early) — the lock releases on `rendered` instead (chapter in DOM).
   const navLockRef   = useRef(false);
   const navLockTimer = useRef(null);
+  // True while a programmatic scroll-mode jump (TOC / bookmark / resume) is in
+  // flight. Keeps the nav-fade mask up across the display+settle+snap sequence so
+  // the relocated handler doesn't reveal the mid-jump drift.
+  const navHoldRef   = useRef(false);
   // Track start-of-book so prev() doesn't fire when there is no prev chapter.
   const atStartRef   = useRef(false);
 
@@ -485,16 +489,49 @@ export default function EpubReader({
     return null;
   }, []);
 
+  // Snap the continuous scroll container straight to a CFI's exact offset.
+  // Authoritative: reads the target section's measured position rather than
+  // relying on epub.js's racy counter() compensation. Returns true on success.
+  const scrollToCfiExact = useCallback((cfi) => {
+    try {
+      const rend = rendRef.current, book = bookRef.current;
+      const mgr = rend?.manager;
+      if (!mgr || !book) return false;
+      const section = book.spine.get(cfi);
+      const view = section && mgr.views?.find?.(section);
+      if (!view) return false;
+      const base = view.offset ? view.offset().top : 0;
+      let within = 0;
+      try { within = view.locationOf(cfi)?.top || 0; } catch {}
+      const top = targetScrollTop(base, within);
+      if (mgr.settings?.fullsize) window.scrollTo(0, top);
+      else if (mgr.container) mgr.container.scrollTop = top;
+      return true;
+    } catch { return false; }
+  }, []);
+
   // Display a CFI/href reliably in both flows (see lib/readerNav).
+  // Paginated: a single display lands correctly. Scroll/continuous: mask the
+  // viewport, let display()+fill() settle, snap to the exact offset, then reveal.
   const displayCfi = useCallback((target) => {
-    if (!rendRef.current || !target) return;
-    const cfi = /^epubcfi\(/i.test(target) ? target : (hrefToCfi(target) || target);
-    displayTarget({
-      display: (t) => rendRef.current.display(t),
-      target: cfi,
-      paginated: settingsRef.current.paginate,
+    const rend = rendRef.current;
+    if (!rend || !target) return;
+    const cfi = isCfiTarget(target) ? target : (hrefToCfi(target) || target);
+    if (settingsRef.current.paginate) {
+      displayTarget({ display: (t) => rend.display(t), target: cfi });
+      return;
+    }
+    navHoldRef.current = true;
+    runScrollNav({
+      display: () => rend.display(cfi),
+      scrollToTarget: () => scrollToCfiExact(cfi),
+      mask: () => setNavFade(true),
+      unmask: () => {
+        navHoldRef.current = false;
+        requestAnimationFrame(() => setNavFade(false));
+      },
     });
-  }, [hrefToCfi]);
+  }, [hrefToCfi, scrollToCfiExact]);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
@@ -715,7 +752,9 @@ export default function EpubReader({
             navLockRef.current = false;
             clearTimeout(navLockTimer.current);
           }
-          setNavFade(false);
+          // Keep the mask up while a programmatic scroll-mode jump settles —
+          // runScrollNav lifts it once the snap is done.
+          if (!navHoldRef.current) setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
           if (tocRef.current.length > 0 && loc.start?.href) {
@@ -766,7 +805,7 @@ export default function EpubReader({
             // initial pre-ready display — re-issue it now that the section can be
             // measured so the book resumes at the exact saved position.
             if (manager === "continuous" && savedCfi) {
-              setTimeout(() => { if (!cancelled) rendRef.current?.display(savedCfi).catch(() => {}); }, 250);
+              setTimeout(() => { if (!cancelled) displayCfi(savedCfi); }, 250);
             }
             return book.loaded.navigation;
           })

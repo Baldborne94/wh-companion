@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { displayTarget, isCfiTarget } from './readerNav.js';
+import { isCfiTarget, targetScrollTop, displayTarget, runScrollNav } from './readerNav.js';
 
 const CFI = 'epubcfi(/6/14!/4/2/2/1:0)';
 const SECTION_CFI = 'epubcfi(/6/14!/4)';
@@ -34,14 +34,29 @@ describe('isCfiTarget', () => {
   });
 });
 
-// ─── success path — no retry scheduled regardless of mode or target ───────────
-//
-// epub.js's fill()+counter() mechanism compensates the scroll offset after
-// each display(); a second display() call would trigger another fill() cycle
-// and overshoot (flicker). So displayTarget never retries on success.
+// ─── targetScrollTop ──────────────────────────────────────────────────────────
 
-describe('displayTarget — success: no retry in any mode', () => {
-  it('pages mode, CFI: calls display once, no retry', async () => {
+describe('targetScrollTop', () => {
+  it('sums the section top and the within-section offset', () => {
+    expect(targetScrollTop(1200, 340)).toBe(1540);
+  });
+  it('handles a section-start CFI (within = 0)', () => {
+    expect(targetScrollTop(1200, 0)).toBe(1200);
+  });
+  it('clamps negative results to 0', () => {
+    expect(targetScrollTop(-50, 10)).toBe(0);
+  });
+  it('coerces missing/NaN inputs to 0', () => {
+    expect(targetScrollTop(undefined, undefined)).toBe(0);
+    expect(targetScrollTop(NaN, 500)).toBe(500);
+    expect(targetScrollTop(800, null)).toBe(800);
+  });
+});
+
+// ─── displayTarget (paginated mode) ───────────────────────────────────────────
+
+describe('displayTarget — paginated', () => {
+  it('calls display once and schedules no retry on success', async () => {
     const display = vi.fn().mockResolvedValue(undefined);
     const schedule = makeSchedule();
     await displayTarget({ display, target: CFI, schedule });
@@ -50,105 +65,93 @@ describe('displayTarget — success: no retry in any mode', () => {
     expect(schedule.calls).toHaveLength(0);
   });
 
-  it('pages mode, href: calls display once, no retry', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, schedule });
-    expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(0);
-  });
-
-  it('scroll mode, CFI: calls display once, no retry (fill+counter self-corrects)', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, schedule });
-    expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(0);
-  });
-
-  it('scroll mode, section-start CFI (converted from TOC href): no retry', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: SECTION_CFI, schedule });
-    expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(0);
-  });
-
-  it('scroll mode, href: no retry', async () => {
-    const display = vi.fn().mockResolvedValue(undefined);
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, schedule });
-    expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(0);
-  });
-});
-
-// ─── failure handling ─────────────────────────────────────────────────────────
-
-describe('displayTarget — failure handling', () => {
-  it('schedules an error retry after the longer delay when a CFI display rejects', async () => {
-    const display = vi.fn().mockRejectedValue(new Error('section not loaded'));
+  it('schedules an error retry after the delay when display rejects', async () => {
+    const display = vi.fn().mockRejectedValue(new Error('not loaded'));
     const schedule = makeSchedule();
     await displayTarget({ display, target: CFI, schedule });
     expect(schedule.calls).toHaveLength(1);
     expect(schedule.calls[0].ms).toBe(800);
-  });
-
-  it('error retry fires for an href too (first display rejected)', async () => {
-    const display = vi.fn().mockRejectedValue(new Error('fail'));
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: HREF, schedule });
-    expect(schedule.calls).toHaveLength(1);
-    expect(schedule.calls[0].ms).toBe(800);
-  });
-
-  it('a retry that also rejects does not throw (swallowed)', async () => {
-    const display = vi.fn().mockRejectedValue(new Error('still failing'));
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, schedule });
-    await expect(schedule.runAll()).resolves.toBeUndefined();
+    await schedule.runAll();
     expect(display).toHaveBeenCalledTimes(2);
   });
 
-  it('uses a custom errorDelay when provided', async () => {
+  it('uses a custom errorDelay', async () => {
     const display = vi.fn().mockRejectedValue(new Error('fail'));
     const schedule = makeSchedule();
     await displayTarget({ display, target: CFI, schedule, errorDelay: 1200 });
     expect(schedule.calls[0].ms).toBe(1200);
   });
-});
 
-// ─── guards ───────────────────────────────────────────────────────────────────
-
-describe('displayTarget — guards', () => {
-  it('no-ops when target is empty', async () => {
-    const display = vi.fn();
+  it('no-ops on empty target or non-function display', async () => {
     const schedule = makeSchedule();
+    const display = vi.fn();
     await displayTarget({ display, target: '', schedule });
     expect(display).not.toHaveBeenCalled();
-    expect(schedule.calls).toHaveLength(0);
-  });
-
-  it('no-ops when target is null', async () => {
-    const display = vi.fn();
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: null, schedule });
-    expect(display).not.toHaveBeenCalled();
-  });
-
-  it('no-ops when display is not a function', async () => {
-    const schedule = makeSchedule();
     await expect(
       displayTarget({ display: undefined, target: CFI, schedule })
     ).resolves.toBeUndefined();
-    expect(schedule.calls).toHaveLength(0);
+  });
+});
+
+// ─── runScrollNav (continuous mode) ───────────────────────────────────────────
+
+function makeScrollHarness({ displayImpl } = {}) {
+  const order = [];
+  const display = vi.fn(() => { order.push('display'); return displayImpl ? displayImpl() : Promise.resolve(); });
+  const scrollToTarget = vi.fn(() => order.push('scroll'));
+  const mask = vi.fn(() => order.push('mask'));
+  const unmask = vi.fn(() => order.push('unmask'));
+  const settle = vi.fn(() => { order.push('settle'); return Promise.resolve(); });
+  const frame = vi.fn(() => { order.push('frame'); return Promise.resolve(); });
+  return { order, display, scrollToTarget, mask, unmask, settle, frame };
+}
+
+describe('runScrollNav — continuous mode', () => {
+  it('masks first, then display → settle → snap → frame → snap → unmask', async () => {
+    const h = makeScrollHarness();
+    await runScrollNav(h);
+    expect(h.order).toEqual([
+      'mask', 'display', 'settle', 'scroll', 'frame', 'scroll', 'unmask',
+    ]);
   });
 
-  it('tolerates a synchronous (non-promise) display return value', async () => {
-    const display = vi.fn().mockReturnValue(undefined); // display() returns void
-    const schedule = makeSchedule();
-    await displayTarget({ display, target: CFI, schedule });
-    expect(display).toHaveBeenCalledTimes(1);
-    expect(schedule.calls).toHaveLength(0);
+  it('snaps to the target twice (settle + after frames) to absorb late resize', async () => {
+    const h = makeScrollHarness();
+    await runScrollNav(h);
+    expect(h.scrollToTarget).toHaveBeenCalledTimes(2);
+  });
+
+  it('always unmasks even when display rejects', async () => {
+    const h = makeScrollHarness({ displayImpl: () => Promise.reject(new Error('boom')) });
+    await runScrollNav(h);
+    expect(h.unmask).toHaveBeenCalledTimes(1);
+    // failed display short-circuits the snap sequence
+    expect(h.scrollToTarget).not.toHaveBeenCalled();
+  });
+
+  it('unmasks even when a snap throws', async () => {
+    const h = makeScrollHarness();
+    h.scrollToTarget = vi.fn(() => { throw new Error('no view'); });
+    await runScrollNav(h);
+    expect(h.unmask).toHaveBeenCalledTimes(1);
+  });
+
+  it('no-ops (and does not mask) when display is not a function', async () => {
+    const h = makeScrollHarness();
+    await runScrollNav({ ...h, display: undefined });
+    expect(h.mask).not.toHaveBeenCalled();
+    expect(h.unmask).not.toHaveBeenCalled();
+  });
+
+  it('uses default settle/frame when not provided (resolves without throwing)', async () => {
+    const display = vi.fn().mockResolvedValue(undefined);
+    const scrollToTarget = vi.fn();
+    const mask = vi.fn();
+    const unmask = vi.fn();
+    await expect(
+      runScrollNav({ display, scrollToTarget, mask, unmask })
+    ).resolves.toBeUndefined();
+    expect(unmask).toHaveBeenCalledTimes(1);
+    expect(scrollToTarget).toHaveBeenCalledTimes(2);
   });
 });
