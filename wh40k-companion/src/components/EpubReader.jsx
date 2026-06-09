@@ -817,9 +817,13 @@ export default function EpubReader({
       }
     }
 
-    // Pure tap — the overlay blocks touches from reaching epub iframes, so
-    // forward manually: find the element under the touch in the iframe doc.
+    // Pure tap — edge zones navigate, centre forwards to epub iframe content.
     if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+      const EDGE = 70;
+      const tapX = swipeRef.current.x;
+      if (tapX < EDGE)                     { prev(); return; }
+      if (tapX > window.innerWidth - EDGE) { next(); return; }
+
       const iframe = tapIframe;
       if (iframe?.contentDocument) {
         const rect = iframe.getBoundingClientRect();

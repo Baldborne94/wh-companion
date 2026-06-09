@@ -336,12 +336,19 @@ export default function PdfReader({ url, title, bookId, userId, onClose, nowPlay
     const onEnd = (e) => {
       if (pinch.current) { pinch.current = null; touchX.current = null; return; }
       if (touchX.current === null || viewRef.current === "scroll") return;
-      const dx = e.changedTouches[0].clientX - touchX.current;
+      const startX = touchX.current;
+      const dx = e.changedTouches[0].clientX - startX;
       touchX.current = null;
-      if (Math.abs(dx) > 40) {
-        const step = viewRef.current === "dual" ? 2 : 1;
-        goTo(pageRef.current + (dx < 0 ? step : -step));
+      const step = viewRef.current === "dual" ? 2 : 1;
+      // Edge tap (≤15 px drag in left/right 70 px strip) → prev/next
+      if (Math.abs(dx) <= 15) {
+        const EDGE = 70;
+        if (startX < EDGE)                     { goTo(pageRef.current - step); return; }
+        if (startX > window.innerWidth - EDGE) { goTo(pageRef.current + step); return; }
+        return;
       }
+      // Swipe
+      if (Math.abs(dx) > 40) goTo(pageRef.current + (dx < 0 ? step : -step));
     };
 
     el.addEventListener("touchstart", onStart, { passive: false });
