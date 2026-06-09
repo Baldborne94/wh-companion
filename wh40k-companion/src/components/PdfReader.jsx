@@ -477,6 +477,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
                         color: C.goldDim, letterSpacing: 2, borderBottom: `1px solid ${C.border}` }}>
             BOOKMARKS
           </div>
+          <div style={{ padding: "7px 12px 6px", fontSize: 9, color: C.dim, fontFamily: "'Cinzel',serif",
+                        lineHeight: 1.5, borderBottom: `1px solid ${C.border}22` }}>
+            Tap <span style={{ color: C.gold }}>☆</span> to bookmark the current page.
+            Tap a bookmark to jump to it.
+          </div>
           {bookmarks.length === 0 ? (
             <div style={{ padding: 16, fontFamily: "'Cinzel',serif", fontSize: 10, color: C.dim, textAlign: "center" }}>
               No bookmarks yet.<br />Press ☆ to add one.

@@ -1024,7 +1024,7 @@ export default function EpubReader({
                       fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
                       padding:"6px 18px", borderRadius:20, pointerEvents:"none",
                       animation:"rdrIn .15s ease" }}>
-          🔖 Segnalibro salvato
+          ★ Bookmark saved
         </div>
       )}
 
@@ -1076,8 +1076,8 @@ export default function EpubReader({
             </>
           )}
           <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title="Contents">☰</IBtn>
-          <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? "Rimuovi segnalibro" : "Aggiungi segnalibro"}>🔖</IBtn>
-          <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title="Segnalibri">📑</IBtn>
+          <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? "Remove bookmark" : "Add bookmark"}>{isBookmarked ? "★" : "☆"}</IBtn>
+          <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title="Bookmarks">🔖</IBtn>
           <IBtn onClick={() => setShowSettings(true)}  color={T.muted}                           title="Settings">⚙</IBtn>
           {document.fullscreenEnabled && (
             <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?"Exit fullscreen":"Fullscreen"}>
@@ -1138,13 +1138,17 @@ export default function EpubReader({
                      animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.border}`,
                           display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Segnalibri</span>
+              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Bookmarks</span>
               <button onClick={() => setShowBmPanel(false)}
                 style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
             </div>
+            <p style={{ fontSize:11, color:T.muted, padding:"8px 16px 0", margin:0, lineHeight:1.5 }}>
+              Tap <span style={{ color:C.gold }}>☆</span> in the toolbar to bookmark the current page.
+              Tap a bookmark below to jump to it.
+            </p>
             {bookmarks.length === 0 ? (
-              <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"32px 16px", fontStyle:"italic", lineHeight:1.6 }}>
-                Nessun segnalibro.<br/>Usa 🔖 per salvarne uno.
+              <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"24px 16px", fontStyle:"italic", lineHeight:1.6 }}>
+                No bookmarks yet.<br/>Tap ☆ to add one.
               </p>
             ) : (
               <div style={{ overflowY:"auto", flex:1 }}>
@@ -1155,13 +1159,13 @@ export default function EpubReader({
                                padding:"12px 16px", cursor:"pointer" }}>
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
                                     marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {bm.label || "Segnalibro"}
+                        {bm.label || "Bookmark"}
                       </div>
                       <div style={{ fontSize:11, color:C.gold, fontFamily:"'Cinzel',serif" }}>
                         {bm.pct > 0 ? `${bm.pct}%` : "—"}
                       </div>
                     </button>
-                    <button onClick={() => deleteBookmark(bm.cfi)} title="Elimina"
+                    <button onClick={() => deleteBookmark(bm.cfi)} title="Delete"
                       style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
                                color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
                                flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
