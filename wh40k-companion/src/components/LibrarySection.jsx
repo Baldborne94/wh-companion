@@ -114,8 +114,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
       });
   }, [tab, user?.id, shelfSeed]);
 
-  const handleOpenReader = ({ book, url, fileType, progress, chapterIndex, pageIndex }) =>
-    setReader({ book, url, fileType, progress, chapterIndex, pageIndex: pageIndex || 0 });
+  const handleOpenReader = ({ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex }) =>
+    setReader({ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex: pageIndex || 0 });
 
   const filtered = useMemo(() => BOOKS.filter(b => {
     if (series  !== "All" && b.series  !== series)  return false;
@@ -133,12 +133,12 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   }, [shelfBooks, dSearch]);
 
   if (reader) {
-    const { book, url, fileType, progress, chapterIndex } = reader;
+    const { book, arrayBuffer, fileType, progress, chapterIndex } = reader;
     return (
       <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#0f0e09", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 48, animation: "spin 2s linear infinite" }}>⚙</div></div>}>
         {fileType === "pdf"
-          ? <PdfReader url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)} />
-          : <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex || 0} initPageIndex={reader.pageIndex || 0} onProgress={() => {}} onClose={() => setReader(null)} />
+          ? <PdfReader arrayBuffer={arrayBuffer} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)} />
+          : <EpubReader arrayBuffer={arrayBuffer} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex || 0} initPageIndex={reader.pageIndex || 0} onProgress={() => {}} onClose={() => setReader(null)} />
         }
       </Suspense>
     );
