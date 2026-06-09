@@ -463,6 +463,11 @@ export default function EpubReader({
   const settingsRef  = useRef(settings);
   settingsRef.current = settings;
   const swipeRef     = useRef({ x:0, y:0, active:false });
+  // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
+  // Without this, quick repeated prev() in scroll mode causes a race condition
+  // where epub.js loses track of the current position → black screen.
+  const navLockRef   = useRef(false);
+  const navLockTimer = useRef(null);
 
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
@@ -666,6 +671,8 @@ export default function EpubReader({
 
         rend.on("relocated", (loc) => {
           if (cancelled) return;
+          navLockRef.current = false;
+          clearTimeout(navLockTimer.current);
           setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
@@ -757,6 +764,8 @@ export default function EpubReader({
       cancelled = true;
       clearTimeout(saveTimer.current);
       clearTimeout(hideTimer.current);
+      clearTimeout(navLockTimer.current);
+      navLockRef.current = false;
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
     };
@@ -787,8 +796,17 @@ export default function EpubReader({
 
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  const next = useCallback(() => { setNavFade(true); rendRef.current?.next(); }, []);
-  const prev = useCallback(() => { setNavFade(true); rendRef.current?.prev(); }, []);
+  const nav = useCallback((dir) => {
+    if (navLockRef.current) return;
+    navLockRef.current = true;
+    // Safety release in case relocated never fires (e.g. already at first/last chapter)
+    clearTimeout(navLockTimer.current);
+    navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
+    setNavFade(true);
+    if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
+  }, []);
+  const next = useCallback(() => nav(1),  [nav]);
+  const prev = useCallback(() => nav(-1), [nav]);
 
   // Swipe handler attached to the transparent overlay div in JSX (not the epub iframe container)
   const onSwipeStart = useCallback((e) => {

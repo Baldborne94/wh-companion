@@ -101,7 +101,7 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
 
   const handleOpenReader = async () => {
     if (!ebookMeta && !isCached) return;
-    setUploadMsg("Opening…");
+    setUploadMsg(isCached ? "Opening from cache…" : "Downloading · saving for offline…");
     const result = await resolveBookUrl({ uid: user.id, book, supabase, sb });
     if (result.error) {
       setUploadMsg(result.error === 'offline_no_cache'
