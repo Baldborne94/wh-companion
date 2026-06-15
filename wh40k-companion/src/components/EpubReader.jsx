@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
-import { LORE_DB, wikiUrl, KW_REGEX } from "../data/lore";
+import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -390,6 +390,7 @@ export default function EpubReader({
   const [showSettings,  setShowSettings]  = useState(false);
   const [showToc,       setShowToc]       = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
+  const [lorePick,      setLorePick]      = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
@@ -669,7 +670,7 @@ export default function EpubReader({
               const span = doc.createElement("span");
               span.className = "lore-kw";
               span.setAttribute("data-kw", k);
-              span.title = "Open on Fandom Wiki ↗";
+              span.title = "Cerca su Wiki / Lexicanum ↗";
               span.textContent = m[0];
               frag.appendChild(span);
               last = m.index + m[0].length;
@@ -706,8 +707,7 @@ export default function EpubReader({
             if (kw && LORE_DB[kw]) {
               e.preventDefault();
               e.stopPropagation();
-              // Use outer app window — iframe window.open can be blocked by browser
-              appWindow.open(wikiUrl(kw), "_blank", "noopener");
+              setLorePick(kw);
             }
           });
 
@@ -951,11 +951,11 @@ export default function EpubReader({
         const y = (swipeRef.current.y - rect.top) / zoom;
         const el = iframe.contentDocument.elementFromPoint(x, y);
 
-        // 1. Lore keyword → open wiki
+        // 1. Lore keyword → show wiki/lexicanum picker
         const kw = el?.closest?.('[data-kw]')?.getAttribute?.('data-kw')
                 ?? el?.getAttribute?.('data-kw');
         if (kw && LORE_DB[kw]) {
-          window.open(wikiUrl(kw), '_blank', 'noopener');
+          setLorePick(kw);
           return;
         }
 
@@ -1298,6 +1298,35 @@ export default function EpubReader({
       {/* ── Settings ───────────────────────────────────────────────────────── */}
       {showSettings && (
         <SettingsPanel settings={settings} onChange={updateSetting} onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* ── Lore picker ────────────────────────────────────────────────────── */}
+      {lorePick && (
+        <div onClick={() => setLorePick(null)}
+          style={{ position:"absolute", inset:0, zIndex:300 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position:"absolute", bottom:80, left:16, right:16, background:C.card, border:`1px solid ${C.border}`, borderRadius:14, padding:"16px 16px 14px", boxShadow:"0 -4px 24px rgba(0,0,0,0.6)" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+              <div>
+                <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:C.gold, marginBottom:2 }}>{LORE_DB[lorePick]?.name || lorePick}</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>Cerca su</div>
+              </div>
+              <button onClick={() => setLorePick(null)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.muted, padding:"2px 8px", cursor:"pointer", fontSize:12 }}>✕</button>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <a href={wikiUrl(lorePick)} target="_blank" rel="noopener noreferrer"
+                onClick={() => setLorePick(null)}
+                style={{ flex:1, display:"block", padding:"11px 8px", background:`${C.gold}18`, border:`1px solid ${C.gold}44`, borderRadius:10, color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, textDecoration:"none", textAlign:"center" }}>
+                📖 Fandom Wiki
+              </a>
+              <a href={lexUrl(lorePick)} target="_blank" rel="noopener noreferrer"
+                onClick={() => setLorePick(null)}
+                style={{ flex:1, display:"block", padding:"11px 8px", background:`${C.blue}18`, border:`1px solid ${C.blue}44`, borderRadius:10, color:C.blue, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, textDecoration:"none", textAlign:"center" }}>
+                📜 Lexicanum
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
