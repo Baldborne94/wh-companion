@@ -234,12 +234,149 @@ export const LORE_DB = {
 
   // ── Post-Heresy / modern ───────────────────────────────────────────────────
   "cicatrix maledictum":{ name:"Cicatrix Maledictum",       wiki:"Cicatrix_Maledictum" },
-  "great rift":         { name:"Great Rift",                wiki:"Cicatrix_Maledictum" },
-  "black library":      { name:"The Black Library",         wiki:"Black_Library_(Craftworld)" },
+  "great rift":         { name:"Great Rift",                 wiki:"Cicatrix_Maledictum" },
+  "black library":      { name:"The Black Library",          wiki:"Black_Library_(Craftworld)" },
+
+  // ── More HH characters ─────────────────────────────────────────────────────
+  "argel tal":          { name:"Argel Tal",                  wiki:"Argel_Tal" },
+  "argel":              { name:"Argel Tal",                  wiki:"Argel_Tal" },
+  "ahriman":            { name:"Ahzek Ahriman",              wiki:"Ahriman" },
+  "ahzek ahriman":      { name:"Ahzek Ahriman",              wiki:"Ahriman" },
+  "eidolon":            { name:"Eidolon",                    wiki:"Eidolon" },
+  "aximand":            { name:"Horus Aximand",              wiki:"Horus_Aximand" },
+  "horus aximand":      { name:"Horus Aximand",              wiki:"Horus_Aximand" },
+  "little horus":       { name:"Horus Aximand",              wiki:"Horus_Aximand" },
+  "tybalt marr":        { name:"Tybalt Marr",                wiki:"Tybalt_Marr" },
+  "marr":               { name:"Tybalt Marr",                wiki:"Tybalt_Marr" },
+  "argonis":            { name:"Argonis",                    wiki:"Argonis" },
+  "luc sedirae":        { name:"Luc Sedirae",                wiki:"Luc_Sedirae" },
+  "sedirae":            { name:"Luc Sedirae",                wiki:"Luc_Sedirae" },
+  "nykona sharrowkyn":  { name:"Nykona Sharrowkyn",          wiki:"Nykona_Sharrowkyn" },
+  "sharrowkyn":         { name:"Nykona Sharrowkyn",          wiki:"Nykona_Sharrowkyn" },
+  "raldoron":           { name:"Raldoron",                   wiki:"Raldoron" },
+  "nassir amit":        { name:"Nassir Amit",                wiki:"Nassir_Amit" },
+  "amit":               { name:"Nassir Amit",                wiki:"Nassir_Amit" },
+  "azkaellon":          { name:"Azkaellon",                  wiki:"Azkaellon" },
+  "meros":              { name:"Meros",                      wiki:"Meros" },
+  "phosis t'kar":       { name:"Phosis T'kar",               wiki:"Phosis_T%27kar" },
+  "jenetia krole":      { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
+  "krole":              { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
+  "severian":           { name:"Severian",                   wiki:"Severian_(Legio_Custodes)" },
+  "jubal khan":         { name:"Jubal Khan",                 wiki:"Jubal_Khan" },
+  "shiban khan":        { name:"Shiban Khan",                wiki:"Shiban_Khan" },
+  "shiban":             { name:"Shiban Khan",                wiki:"Shiban_Khan" },
+  "torghun":            { name:"Torghun Khan",               wiki:"Torghun_Khan" },
+  "forrix":             { name:"Forrix",                     wiki:"Forrix" },
+  "kroeger":            { name:"Kroeger",                    wiki:"Kroeger" },
+  "berossus":           { name:"Berossus",                   wiki:"Berossus" },
+  "telemachon":         { name:"Telemachon Lyras",           wiki:"Telemachon_Lyras" },
+  "telemachon lyras":   { name:"Telemachon Lyras",           wiki:"Telemachon_Lyras" },
+
+  // ── Roles & titles ────────────────────────────────────────────────────────
+  "chaplain":           { name:"Chaplain",                   wiki:"Chaplain" },
+  "apothecary":         { name:"Apothecary",                 wiki:"Apothecary_(Space_Marines)" },
+  "librarian":          { name:"Librarian",                  wiki:"Librarian_(Space_Marines)" },
+  "techmarine":         { name:"Techmarine",                 wiki:"Techmarine" },
+  "tech-marine":        { name:"Techmarine",                 wiki:"Techmarine" },
+  "inquisitor":         { name:"Inquisitor",                 wiki:"Inquisitor_(Warhammer_40,000)" },
+  "magos":              { name:"Magos",                      wiki:"Magos" },
+  "tech-priest":        { name:"Tech-priest",                wiki:"Tech-priest" },
+  "tech priest":        { name:"Tech-priest",                wiki:"Tech-priest" },
+  "rogue trader":       { name:"Rogue Trader",               wiki:"Rogue_Trader" },
+  "chapter master":     { name:"Chapter Master",             wiki:"Chapter_Master" },
+  "lord commander":     { name:"Lord Commander",             wiki:"Lord_Commander" },
+  "remembrancer":       { name:"Remembrancer",               wiki:"Remembrancer" },
+  "remembrancers":      { name:"Remembrancers",              wiki:"Remembrancer" },
+  "iterator":           { name:"Iterator",                   wiki:"Iterator" },
+  "iterators":          { name:"Iterators",                  wiki:"Iterator" },
+  "sanguinary guard":   { name:"Sanguinary Guard",           wiki:"Sanguinary_Guard" },
+  "thunder warrior":    { name:"Thunder Warriors",           wiki:"Thunder_Warriors" },
+  "thunder warriors":   { name:"Thunder Warriors",           wiki:"Thunder_Warriors" },
+  "legio custodes":     { name:"Legio Custodes",             wiki:"Adeptus_Custodes" },
+  "knight-errant":      { name:"Knights Errant",             wiki:"Knights_Errant_(Horus_Heresy)" },
+
+  // ── Daemons & Chaos entities ──────────────────────────────────────────────
+  "daemon":             { name:"Daemon",                     wiki:"Daemon_(Warhammer_40,000)" },
+  "daemons":            { name:"Daemons",                    wiki:"Daemon_(Warhammer_40,000)" },
+  "bloodthirster":      { name:"Bloodthirster",              wiki:"Bloodthirster" },
+  "lord of change":     { name:"Lord of Change",             wiki:"Lord_of_Change" },
+  "great unclean one":  { name:"Great Unclean One",          wiki:"Great_Unclean_One" },
+  "keeper of secrets":  { name:"Keeper of Secrets",          wiki:"Keeper_of_Secrets" },
+  "daemonette":         { name:"Daemonette",                 wiki:"Daemonette" },
+  "bloodletter":        { name:"Bloodletter",                wiki:"Bloodletter" },
+  "plaguebearer":       { name:"Plaguebearer",               wiki:"Plaguebearer" },
+  "butcher's nails":    { name:"Butcher's Nails",            wiki:"Butcher%27s_Nails" },
+  "neverborn":          { name:"Neverborn",                  wiki:"Daemon_(Warhammer_40,000)" },
+
+  // ── C'tan & Necron entities ───────────────────────────────────────────────
+  "c'tan":              { name:"C'tan",                      wiki:"C%27tan" },
+  "nightbringer":       { name:"Nightbringer",               wiki:"Nightbringer" },
+  "void dragon":        { name:"Void Dragon",                wiki:"Void_Dragon" },
+  "the deceiver":       { name:"The Deceiver",               wiki:"The_Deceiver" },
+
+  // ── More xenos ────────────────────────────────────────────────────────────
+  "genestealer":        { name:"Genestealer",                wiki:"Genestealer" },
+  "genestealers":       { name:"Genestealers",               wiki:"Genestealer" },
+  "hive tyrant":        { name:"Hive Tyrant",                wiki:"Hive_Tyrant" },
+  "warboss":            { name:"Warboss",                    wiki:"Warboss" },
+  "farseer":            { name:"Farseer",                    wiki:"Farseer" },
+  "craftworld":         { name:"Craftworld",                 wiki:"Craftworld" },
+  "avatar of khaine":   { name:"Avatar of Khaine",           wiki:"Avatar_of_Khaine" },
+  "wraithguard":        { name:"Wraithguard",                wiki:"Wraithguard" },
+
+  // ── Technology & weapons ──────────────────────────────────────────────────
+  "dreadnought":        { name:"Dreadnought",                wiki:"Dreadnought_(Warhammer_40,000)" },
+  "contemptor":         { name:"Contemptor Dreadnought",     wiki:"Contemptor_Dreadnought" },
+  "drop pod":           { name:"Drop Pod",                   wiki:"Drop_Pod" },
+  "storm eagle":        { name:"Storm Eagle",                wiki:"Storm_Eagle" },
+  "land speeder":       { name:"Land Speeder",               wiki:"Land_Speeder" },
+  "volkite":            { name:"Volkite Weapons",            wiki:"Volkite" },
+  "plasma gun":         { name:"Plasma Gun",                 wiki:"Plasma_gun" },
+  "plasma pistol":      { name:"Plasma Pistol",              wiki:"Plasma_Pistol" },
+  "lascannon":          { name:"Lascannon",                  wiki:"Lascannon" },
+  "meltagun":           { name:"Meltagun",                   wiki:"Meltagun" },
+  "melta gun":          { name:"Meltagun",                   wiki:"Meltagun" },
+  "flamer":             { name:"Flamer",                     wiki:"Flamer_(weapon)" },
+  "boltgun":            { name:"Boltgun",                    wiki:"Bolter" },
+  "bolt pistol":        { name:"Bolt Pistol",                wiki:"Bolt_Pistol" },
+  "power fist":         { name:"Power Fist",                 wiki:"Power_Fist" },
+  "power sword":        { name:"Power Sword",                wiki:"Power_Sword" },
+  "force sword":        { name:"Force Sword",                wiki:"Force_Sword" },
+  "power axe":          { name:"Power Axe",                  wiki:"Power_Axe" },
+  "thunder hammer":     { name:"Thunder Hammer",             wiki:"Thunder_Hammer" },
+  "storm shield":       { name:"Storm Shield",               wiki:"Storm_Shield" },
+  "servo-skull":        { name:"Servo-skull",                wiki:"Servo-skull" },
+  "servo skull":        { name:"Servo-skull",                wiki:"Servo-skull" },
+  "mechadendrite":      { name:"Mechadendrite",              wiki:"Mechadendrite" },
+  "servitor":           { name:"Servitor",                   wiki:"Servitor" },
+  "servitors":          { name:"Servitors",                  wiki:"Servitor" },
+  "void shield":        { name:"Void Shield",                wiki:"Void_Shield" },
+  "cataphractii":       { name:"Cataphractii Armour",        wiki:"Cataphractii_Terminator_Armour" },
+  "iron circle":        { name:"Iron Circle",                wiki:"Iron_Circle" },
+
+  // ── More locations ────────────────────────────────────────────────────────
+  "mars":               { name:"Mars",                       wiki:"Mars_(Warhammer_40,000)" },
+  "luna":               { name:"Luna",                       wiki:"Luna_(Warhammer_40,000)" },
+  "ullanor":            { name:"Ullanor",                    wiki:"Ullanor" },
+  "tallarn":            { name:"Tallarn",                    wiki:"Tallarn" },
+  "phall":              { name:"Phall",                      wiki:"Phall" },
+  "cadia":              { name:"Cadia",                      wiki:"Cadia" },
+  "armageddon":         { name:"Armageddon",                 wiki:"Armageddon_(Warhammer_40,000)" },
+  "deliverance":        { name:"Deliverance",                wiki:"Deliverance_(World)" },
+  "medrengard":         { name:"Medrengard",                 wiki:"Medrengard" },
+  "plague planet":      { name:"Plague Planet",              wiki:"Plague_Planet" },
+  "sanctuary 101":      { name:"Sanctuary 101",              wiki:"Sanctuary_101" },
+  "veridi":             { name:"Verdii",                     wiki:"Verdii" },
 };
 
 export function wikiUrl(key) {
-  return `https://warhammer40k.fandom.com/wiki/${LORE_DB[key]?.wiki || encodeURIComponent(LORE_DB[key]?.name || key)}`;
+  const e = LORE_DB[key];
+  return `https://warhammer40k.fandom.com/wiki/${e?.wiki || encodeURIComponent(e?.name || key)}`;
+}
+
+export function lexUrl(key) {
+  const e = LORE_DB[key];
+  return `https://wh40k.lexicanum.com/wiki/${e?.lex || e?.wiki || encodeURIComponent(e?.name || key)}`;
 }
 
 export const KW_KEYS  = Object.keys(LORE_DB).sort((a, b) => b.length - a.length);
