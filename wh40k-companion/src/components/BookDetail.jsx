@@ -147,12 +147,12 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
             </div>
           ))}
         </div>
-        <div style={{background:C.card,border:`2px solid ${ebookMeta?C.gold:C.border}`,borderRadius:12,overflow:"hidden"}}>
-          <div style={{background:ebookMeta?`${C.gold}18`:C.surface,padding:"14px 16px",borderBottom:`1px solid ${ebookMeta?C.gold+"44":C.border}`,display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:20}}>{ebookMeta?"📖":"📂"}</span>
+        <div style={{background:C.card,border:`2px solid ${(ebookMeta||isCached)?C.gold:C.border}`,borderRadius:12,overflow:"hidden"}}>
+          <div style={{background:(ebookMeta||isCached)?`${C.gold}18`:C.surface,padding:"14px 16px",borderBottom:`1px solid ${(ebookMeta||isCached)?C.gold+"44":C.border}`,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:20}}>{(ebookMeta||isCached)?"📖":"📂"}</span>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:ebookMeta?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":"No Ebook Loaded"}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:(ebookMeta||isCached)?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":isCached?"Disponibile offline":"No Ebook Loaded"}</div>
                 {isCached&&<div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.green,letterSpacing:1,background:`${C.green}18`,border:`1px solid ${C.green}44`,borderRadius:4,padding:"2px 6px"}}>📲 OFFLINE</div>}
               </div>
               {ebookMeta&&<div style={{fontSize:11,color:C.goldDim,marginTop:1}}>{ebookMeta.file_name}</div>}
@@ -165,7 +165,7 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
                 <div style={{color:C.muted,fontSize:13,lineHeight:1.6,maxWidth:260}}>Sign in to upload and access your ebooks across any device.</div>
                 <button onClick={signInWithGoogle} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:8,padding:"10px 24px",color:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>Sign in with Google</button>
               </div>
-            ):ebookMeta?(
+            ):(ebookMeta||isCached)?(
               <>
                 {progress>0&&(
                   <div style={{marginBottom:12}}>
@@ -205,14 +205,18 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
                 )}
                 {uploadMsg&&<div style={{color:uploadMsg.startsWith("❌")?C.red:C.gold,fontFamily:"'Cinzel',serif",fontSize:12,textAlign:"center",marginBottom:8}}>{uploadMsg}</div>}
                 <button onClick={handleOpenReader} style={{width:"100%",padding:"16px",borderRadius:10,background:`linear-gradient(135deg,${C.gold},#8a6f28)`,border:"none",color:C.bg,fontFamily:"'Cinzel',serif",fontSize:15,letterSpacing:3,textTransform:"uppercase",fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-                  {bookmarkInfo||progress>0?"📖 Continue Reading":"📖 Start Reading"}
+                  {bookmarkInfo||progress>0?"📖 Continue Reading":ebookMeta?"📖 Start Reading":"📖 Open Cached Book"}
                 </button>
-                <div style={{display:"flex",gap:8,marginTop:8}}>
-                  <button onClick={()=>inp.current.click()} style={{flex:1,padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
-                  <button onClick={handleDeleteEbook} style={{flex:1,padding:"10px",borderRadius:8,background:deleteConfirm?`${C.red}22`:"transparent",border:`1px solid ${deleteConfirm?C.red:C.dim}`,color:deleteConfirm?C.red:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",transition:"all 0.2s"}}>
-                    {deleteConfirm?"⚠️ Confirm delete":"🗑 Remove ebook"}
-                  </button>
-                </div>
+                {ebookMeta?(
+                  <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <button onClick={()=>inp.current.click()} style={{flex:1,padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>Replace file</button>
+                    <button onClick={handleDeleteEbook} style={{flex:1,padding:"10px",borderRadius:8,background:deleteConfirm?`${C.red}22`:"transparent",border:`1px solid ${deleteConfirm?C.red:C.dim}`,color:deleteConfirm?C.red:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",transition:"all 0.2s"}}>
+                      {deleteConfirm?"⚠️ Confirm delete":"🗑 Remove ebook"}
+                    </button>
+                  </div>
+                ):(
+                  <button onClick={()=>inp.current.click()} style={{marginTop:8,width:"100%",padding:"10px",borderRadius:8,background:"transparent",border:`1px solid ${C.dim}`,color:C.muted,fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer"}}>📂 Carica file dal dispositivo</button>
+                )}
               </>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>

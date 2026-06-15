@@ -55,6 +55,7 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
   if (blob) {
     const arrayBuffer = await blob.arrayBuffer();
     cachePut(uid, book.id, arrayBuffer.slice(0)); // cache a copy so the original isn't detached by IDB
+    try { localStorage.setItem(`wh40k_ebook_${uid}_${book.id}`, JSON.stringify(meta)); } catch {}
     return { arrayBuffer, meta };
   }
 
