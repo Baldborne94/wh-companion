@@ -1017,12 +1017,31 @@ const AOS_STARTER_GUIDE = [
           { t:"Hallowed Knights: Black Pyramid",  a:"Josh Reynolds", type:"novel", aos_id:"aos15" },
         ]},
       { label:"Gotrek and Felix", color:"#a07838",
-        note:"The full saga of Gotrek Gurnisson and Felix Jaeger — 16 novels from the Old World followed by the AoS continuation. Start from the very beginning with Trollslayer, or jump straight into AoS with Ghoulslayer (no prior knowledge needed).",
+        note:"The full saga of Gotrek Gurnisson and Felix Jaeger. The first 16 novels are set in the Old World (ending with the End Times); the saga then continues in the Age of Sigmar. To stay purely in AoS, jump straight to Ghoulslayer — no prior knowledge needed.",
         books:[
-          { t:"Trollslayer",  a:"William King",  type:"novel", aos_id:"aos89" },
-          { t:"Ghoulslayer",  a:"Darius Hinks",  type:"novel", aos_id:"aos21" },
-          { t:"Gitslayer",    a:"Darius Hinks",  type:"novel", aos_id:"aos22" },
-          { t:"Soulslayer",   a:"Darius Hinks",  type:"novel", aos_id:"aos23" },
+          { t:"Trollslayer",                          a:"William King",   type:"novel", aos_id:"aos89",  era:"old" },
+          { t:"Skavenslayer",                         a:"William King",   type:"novel", aos_id:"aos90",  era:"old" },
+          { t:"Daemonslayer",                         a:"William King",   type:"novel", aos_id:"aos91",  era:"old" },
+          { t:"Dragonslayer",                         a:"William King",   type:"novel", aos_id:"aos92",  era:"old" },
+          { t:"Beastslayer",                          a:"William King",   type:"novel", aos_id:"aos93",  era:"old" },
+          { t:"Vampireslayer",                        a:"William King",   type:"novel", aos_id:"aos94",  era:"old" },
+          { t:"Giantslayer",                          a:"William King",   type:"novel", aos_id:"aos95",  era:"old" },
+          { t:"Orcslayer",                            a:"Nathan Long",    type:"novel", aos_id:"aos96",  era:"old" },
+          { t:"Manslayer",                            a:"Nathan Long",    type:"novel", aos_id:"aos97",  era:"old" },
+          { t:"Elfslayer",                            a:"Nathan Long",    type:"novel", aos_id:"aos98",  era:"old" },
+          { t:"Shamanslayer",                         a:"Nathan Long",    type:"novel", aos_id:"aos99",  era:"old" },
+          { t:"Zombieslayer",                         a:"Nathan Long",    type:"novel", aos_id:"aos100", era:"old" },
+          { t:"Road of Skulls",                       a:"Josh Reynolds",  type:"novel", aos_id:"aos101", era:"old" },
+          { t:"City of the Damned",                   a:"David Guymer",   type:"novel", aos_id:"aos102", era:"old" },
+          { t:"Kinslayer",                            a:"David Guymer",   type:"novel", aos_id:"aos103", era:"old" },
+          { t:"Slayer",                               a:"David Guymer",   type:"novel", aos_id:"aos104", era:"old" },
+          { t:"Realmslayer",                          a:"David Guymer",   type:"audio", aos_id:"aos19",  era:"aos" },
+          { t:"Realmslayer: Blood of the Old World",  a:"David Guymer",   type:"audio", aos_id:"aos20",  era:"aos" },
+          { t:"Ghoulslayer",                          a:"Darius Hinks",   type:"novel", aos_id:"aos21",  era:"aos" },
+          { t:"Gitslayer",                            a:"Darius Hinks",   type:"novel", aos_id:"aos22",  era:"aos" },
+          { t:"Soulslayer",                           a:"Darius Hinks",   type:"novel", aos_id:"aos23",  era:"aos" },
+          { t:"Blightslayer",                         a:"Richard Strachan", type:"novel", aos_id:"aos24", era:"aos" },
+          { t:"Realmslayer: Legend of the Doomseeker", a:"David Guymer",  type:"audio", aos_id:"aos67",  era:"aos" },
         ]},
       { label:"Callis & Toll", color:"#607080",
         note:"Continuing from City of Secrets — a witch hunter and a disgraced soldier chase mystery and intrigue across the free cities.",
@@ -1067,7 +1086,10 @@ function AoSBookRow({ entry, statuses, isLast }) {
           {entry.t}
           {entry.opt && <span style={{ fontSize:9, color:AOS.muted, marginLeft:4 }}>(optional)</span>}
         </div>
-        <div style={{ fontSize:10, color:AOS.muted }}>{entry.a}</div>
+        <div style={{ fontSize:10, color:AOS.muted, display:"flex", alignItems:"center", gap:6 }}>
+          {entry.era && <span style={{ fontSize:8, fontFamily:"'Cinzel',serif", letterSpacing:1, textTransform:"uppercase", color:entry.era==='aos'?AOS.gold:AOS.blue, border:`1px solid ${entry.era==='aos'?AOS.gold:AOS.blue}55`, borderRadius:4, padding:"1px 5px", flexShrink:0 }}>{entry.era==='aos'?'Age of Sigmar':'Old World'}</span>}
+          <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.a}</span>
+        </div>
       </div>
       {stCfg && <span style={{ fontSize:13, flexShrink:0 }}>{stCfg.icon}</span>}
     </div>
