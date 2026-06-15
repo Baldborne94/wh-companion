@@ -55,3 +55,25 @@ export async function cacheHas(userId, bookId) {
     });
   } catch { return false; }
 }
+
+// Returns a Set of book ids (numbers) cached for offline for this user.
+export async function cacheListIds(userId) {
+  try {
+    const db = await openIDB();
+    return new Promise(resolve => {
+      const req = db.transaction(STORE).objectStore(STORE).getAllKeys();
+      req.onsuccess = () => {
+        const prefix = `${userId}_`;
+        const ids = new Set();
+        for (const k of req.result || []) {
+          if (typeof k === 'string' && k.startsWith(prefix)) {
+            const n = Number(k.slice(prefix.length));
+            if (!Number.isNaN(n)) ids.add(n);
+          }
+        }
+        resolve(ids);
+      };
+      req.onerror = () => resolve(new Set());
+    });
+  } catch { return new Set(); }
+}

@@ -6,6 +6,7 @@ import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
 import CoverImage from "./CoverImage";
 import BookDetail from "./BookDetail";
 import { getBookRating } from "../lib/bookStatus";
+import { cacheListIds } from "../lib/ebookCache";
 
 const EpubReader = lazy(() => import("./EpubReader"));
 const PdfReader  = lazy(() => import("./PdfReader"));
@@ -36,6 +37,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
   const [readingProgress, setReadingProgress] = useState({});
+  const [cachedIds, setCachedIds] = useState(() => new Set());
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef(null);
 
@@ -87,6 +89,13 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
 
   const [shelfSeed, setShelfSeed] = useState(0);
   const refreshShelf = () => setShelfSeed(s => s + 1);
+
+  // Which ebooks are downloaded to IndexedDB (readable offline). Refresh after
+  // uploads/opens (shelfSeed) and when returning from the reader (reader === null).
+  useEffect(() => {
+    if (!user?.id) { setCachedIds(new Set()); return; }
+    cacheListIds(user.id).then(setCachedIds);
+  }, [user?.id, shelfSeed, reader]);
 
   // Load shelf books from DB whenever tab switches to shelf (or after an upload)
   useEffect(() => {
@@ -218,6 +227,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 1, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.series}{book.num > 0 ? ` #${book.num}` : ""}</div>
                               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                                {cachedIds.has(book.id) && <span title="Disponibile offline" style={{ background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 4, padding: "2px 6px", fontFamily: "'Cinzel',serif", fontSize: 8, color: C.green, letterSpacing: 1 }}>⬇ OFFLINE</span>}
                                 {bst !== 'none' && <span style={{ fontSize: 13 }}>{bstCfg.icon}</span>}
                                 <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}44`, borderRadius: 4, padding: "2px 7px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1 }}>EPUB</span>
                               </div>
@@ -244,6 +254,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
                             <div style={{ fontSize: 10, color: C.muted, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.series}{book.num > 0 ? ` #${book.num}` : ""} · {book.author}</div>
                           </div>
+                          {cachedIds.has(book.id) && <span title="Disponibile offline" style={{ fontSize: 12, color: C.green, flexShrink: 0 }}>⬇</span>}
                           {bst !== 'none' && <span style={{ fontSize: 14, flexShrink: 0 }}>{bstCfg.icon}</span>}
                           <span style={{ color: C.dim, fontSize: 14, flexShrink: 0 }}>›</span>
                         </button>
