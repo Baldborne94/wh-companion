@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
 import { sb } from "../lib/sb";
 import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
-import { AOS_ESSENTIAL, AOS_FULL, AOS_OPTIONAL_ARCS, findAoSGuideBook } from "../data/aosGuide";
+import { AOS_ESSENTIAL, findAoSGuideBook } from "../data/aosGuide";
 import CoverImage from "./CoverImage";
 import { AOS, AOS_BOOKS } from "../data/aosBooks";
 import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
@@ -1148,9 +1148,8 @@ function AoSGetStartedSection({ statuses }) {
 // ─── AoS READING ORDER GUIDE ─────────────────────────────────────────────────
 function AoSReadingOrderSection({ statuses }) {
   const [open, setOpen] = useState(new Set(['ae1']));
-  const [aosMode, setAosMode] = useState(() => localStorage.getItem('aos_guide_mode') || 'essential');
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-  const parts = aosMode === 'essential' ? AOS_ESSENTIAL : AOS_FULL;
+  const parts = AOS_ESSENTIAL;
 
   const PartCard = ({ part, dimmed }) => {
     const isOpen = open.has(part.id);
@@ -1191,24 +1190,10 @@ function AoSReadingOrderSection({ statuses }) {
     <div>
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>AoS Reading Order</div>
-        <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>Per leggere la saga in ordine cronologico — dall'alba di Sigmar ai Dawnbringers. Scegli <b style={{ color:AOS.gold }}>Essenziale</b> per i romanzi chiave o <b style={{ color:AOS.gold }}>Completa</b> per l'intero catalogo.</div>
-        <div style={{ display:"flex", gap:4, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2, width:"fit-content" }}>
-          {[{ id:'essential', label:'⚡ Essenziale (~12)' }, { id:'full', label:'📚 Completa' }].map(m => (
-            <button key={m.id} onClick={() => { setAosMode(m.id); localStorage.setItem('aos_guide_mode', m.id); setOpen(new Set([m.id==='essential'?'ae1':'af1'])); }}
-              style={{ background:aosMode===m.id?`${AOS.gold}33`:"transparent", border:"none", borderRadius:6, padding:"6px 12px", cursor:"pointer", color:aosMode===m.id?AOS.gold:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, whiteSpace:"nowrap" }}>
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <div style={{ fontSize:11, color:AOS.muted, marginBottom:4 }}>La spina narrativa principale dei Reami Mortali, in ordine cronologico — dall'alba di Sigmar ai Dawnbringers. I romanzi chiave per seguire la storia attraverso le edizioni; per l'intero catalogo vedi l'<b style={{ color:AOS.gold }}>Overview</b>.</div>
       </div>
       <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
         {parts.map(part => <PartCard key={part.id} part={part}/>)}
-        {aosMode==='full' && (
-          <>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:3, textTransform:"uppercase", marginTop:10, marginBottom:4, padding:"0 2px" }}>Archi Opzionali</div>
-            {AOS_OPTIONAL_ARCS.map(part => <PartCard key={part.id} part={part} dimmed/>)}
-          </>
-        )}
       </div>
     </div>
   );
