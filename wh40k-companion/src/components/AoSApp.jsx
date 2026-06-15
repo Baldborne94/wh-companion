@@ -31,6 +31,26 @@ const SC = {
 };
 const spineColor = (b) => SC[b.series] || "#4a6a8a";
 
+// Chronological saga reading order — sagas are grouped by era/edition.
+// AoS sagas largely run in parallel, so eras give the macro reading order;
+// within an era the order is roughly interchangeable.
+const SAGA_ERAS = [
+  { key:"old", label:"Old World", sub:"The World-That-Was" },
+  { key:"e1",  label:"1st Edition", sub:"The Realmgate Wars" },
+  { key:"e2",  label:"2nd Edition", sub:"Soul Wars & the Necroquake" },
+  { key:"e3",  label:"3rd Edition", sub:"Era of the Beast" },
+  { key:"other", label:"Other Sagas", sub:"Standalone & side stories" },
+];
+const SAGA_ERA = {
+  "The Legend of Sigmar":"old", "Nagash":"old", "Tyrion & Teclis":"old",
+  "Malus Darkblade":"old", "Von Carstein":"old", "Genevieve":"old", "Gotrek and Felix":"old",
+  "The Realmgate Wars":"e1",
+  "Hallowed Knights":"e2", "Eight Lamentations":"e2", "Neferata":"e2",
+  "Callis and Toll":"e2", "Blacktalon":"e2", "Hamilcar":"e2", "Warcry":"e2",
+  "Warhammer Underworlds":"e2", "BL Novella Series":"e2", "Warhammer Horror":"e2",
+  "Drekki Flynt":"e3",
+};
+
 
 const AOS_SERIES = ["All", ...new Set(AOS_BOOKS.map(b => b.series).filter(Boolean))];
 const AOS_TYPES  = ["All", ...new Set(AOS_BOOKS.map(b => b.type))];
@@ -1307,6 +1327,13 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
     });
   }, [statuses, nonCodex]);
 
+  const seriesByEra = useMemo(() =>
+    SAGA_ERAS.map(era => ({
+      era,
+      sagas: seriesList.filter(s => (SAGA_ERA[s.name] || "other") === era.key),
+    })).filter(g => g.sagas.length > 0),
+  [seriesList]);
+
   return (
     <div style={{ paddingBottom:80, minHeight:"100%", background:AOS.bg }}>
       {/* Tab bar */}
@@ -1350,9 +1377,15 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
           </div>
         </div>
 
-        {/* Series list */}
-        <div style={{ padding:"14px 16px", display:"flex", flexDirection:"column", gap:8 }}>
-          {seriesList.map(serie => {
+        {/* Series list — grouped by chronological era */}
+        <div style={{ padding:"14px 16px", display:"flex", flexDirection:"column", gap:14 }}>
+          {seriesByEra.map(({ era, sagas }) => (
+            <div key={era.key} style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, paddingBottom:2, borderBottom:`1px solid ${AOS.border}` }}>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:AOS.gold, letterSpacing:3, textTransform:"uppercase" }}>{era.label}</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1, fontStyle:"italic", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{era.sub}</span>
+              </div>
+              {sagas.map(serie => {
             const pct = serie.total>0?(serie.readCount/serie.total)*100:0;
             const isExp = expanded===serie.name;
             return (
@@ -1395,7 +1428,9 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
                 )}
               </div>
             );
-          })}
+              })}
+            </div>
+          ))}
         </div>
 
       </>}
