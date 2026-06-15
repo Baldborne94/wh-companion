@@ -1130,7 +1130,7 @@ function AoSGetStartedSection({ statuses }) {
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>Getting Started Guide</div>
         <div style={{ fontSize:11, color:AOS.muted, marginBottom:6 }}>
-          A curated path into the Mortal Realms, based on{' '}
+          Per chi si affaccia per la prima volta su Age of Sigmar — i primi passi guidati nei Reami Mortali, con scelte per ogni gusto. Basato su{' '}
           <a href="https://www.trackofwords.com/2018/09/12/getting-started-with-black-library-age-of-sigmar/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline", textDecorationColor:`${AOS.blue}66` }}>Track of Words</a>
         </div>
       </div>
@@ -1191,7 +1191,7 @@ function AoSReadingOrderSection({ statuses }) {
     <div>
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>AoS Reading Order</div>
-        <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>La narrativa cronologica dei Reami Mortali — dall'alba di Sigmar ai Dawnbringers</div>
+        <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>Per leggere la saga in ordine cronologico — dall'alba di Sigmar ai Dawnbringers. Scegli <b style={{ color:AOS.gold }}>Essenziale</b> per i romanzi chiave o <b style={{ color:AOS.gold }}>Completa</b> per l'intero catalogo.</div>
         <div style={{ display:"flex", gap:4, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2, width:"fit-content" }}>
           {[{ id:'essential', label:'⚡ Essenziale (~12)' }, { id:'full', label:'📚 Completa' }].map(m => (
             <button key={m.id} onClick={() => { setAosMode(m.id); localStorage.setItem('aos_guide_mode', m.id); setOpen(new Set([m.id==='essential'?'ae1':'af1'])); }}
