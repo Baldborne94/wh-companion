@@ -317,7 +317,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               for (let i = 5; i >= 0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i);
                 const key = d.toISOString().slice(0, 7);
-                const label = d.toLocaleDateString('it-IT', { month: 'short' });
+                const label = d.toLocaleDateString('en-US', { month: 'short' });
                 const count = readEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
                 months.push({ key, label, count });
               }
@@ -449,7 +449,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               for (let i = 5; i >= 0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i);
                 const key = d.toISOString().slice(0, 7);
-                const label = d.toLocaleDateString('it-IT', { month: 'short' });
+                const label = d.toLocaleDateString('en-US', { month: 'short' });
                 const count = aosReadEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
                 months.push({ key, label, count });
               }
