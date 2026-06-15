@@ -16,8 +16,12 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
   if (!navigator.onLine) {
     const cached = await cacheGet(uid, book.id);
     if (cached) {
+      // Always keep file_type so cached PDFs don't open as EPUB; prefer stored meta.
       let meta = { file_type: 'epub' };
-      try { meta = JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`) || '{}') || meta; } catch {}
+      try {
+        const parsed = JSON.parse(localStorage.getItem(`wh40k_ebook_${uid}_${book.id}`) || 'null');
+        if (parsed) meta = { file_type: 'epub', ...parsed };
+      } catch {}
       return { arrayBuffer: cached, meta, fromCache: true };
     }
     return { error: 'offline_no_cache' };
