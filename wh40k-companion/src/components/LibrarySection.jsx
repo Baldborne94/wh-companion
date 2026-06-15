@@ -319,7 +319,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
         <div style={{ paddingBottom: 20 }}>
           <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "baseline", gap: 8 }}>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 1 }}>
-              Lista aggiornata al {new Date(RELEASES_UPDATED).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+              Updated as of {new Date(RELEASES_UPDATED).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft: "auto", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.blue, letterSpacing: 1, textDecoration: "none", flexShrink: 0 }}>

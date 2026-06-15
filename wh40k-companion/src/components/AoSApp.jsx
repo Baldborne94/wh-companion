@@ -776,7 +776,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
         <div style={{ paddingBottom:20 }}>
           <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"baseline", gap:8 }}>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1 }}>
-              Lista aggiornata al {new Date(RELEASES_UPDATED).toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'})}
+              Updated as of {new Date(RELEASES_UPDATED).toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'})}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft:"auto", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.blue, letterSpacing:1, textDecoration:"none", flexShrink:0 }}>
@@ -1103,6 +1103,21 @@ const AOS_STARTER_GUIDE = [
           { t:"Inheritance",  a:"Steven Savile", type:"novel", aos_id:"ow15", era:"old" },
           { t:"Dominion",     a:"Steven Savile", type:"novel", aos_id:"ow16", era:"old" },
           { t:"Retribution",  a:"Steven Savile", type:"novel", aos_id:"ow17", era:"old" },
+        ]},
+      { label:"Tyrion & Teclis", color:"#5a708a",
+        note:"The twin phoenix lords of the High Elves — an epic trilogy spanning millennia of elven history. Directly relevant to AoS's Lumineth Realm-lords.",
+        books:[
+          { t:"Blood of Aenarion", a:"William King", type:"novel", aos_id:"ow7", era:"old" },
+          { t:"Sword of Caledor",  a:"William King", type:"novel", aos_id:"ow8", era:"old" },
+          { t:"Bane of Malekith",  a:"William King", type:"novel", aos_id:"ow9", era:"old" },
+        ]},
+      { label:"Genevieve", color:"#7a3a5a",
+        note:"A vampire navigating the Empire's underworld — gothic noir by Jack Yeovil (Kim Newman). The most literary of Black Library's Old World fiction.",
+        books:[
+          { t:"Drachenfels",      a:"Jack Yeovil", type:"novel",     aos_id:"ow18", era:"old" },
+          { t:"Genevieve Undead", a:"Jack Yeovil", type:"novel",     aos_id:"ow19", era:"old" },
+          { t:"Beasts in Velvet", a:"Jack Yeovil", type:"novel",     aos_id:"ow20", era:"old" },
+          { t:"Silver Nails",     a:"Jack Yeovil", type:"anthology", aos_id:"ow21", era:"old" },
         ]},
     ],
   },

@@ -92,8 +92,8 @@ export default function LoreSection({ universe }) {
         <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Main Resources</div>
         {isAoS ? (
           <>
-            <LinkCard title="Lexicanum AoS" icon="📖" desc="L'enciclopedia più completa per Age of Sigmar: fazioni, Mortal Realms, personaggi e storia. Aggiornata dalla community." url="https://ageofsigmar.lexicanum.com/wiki/Main_Page" color={C.gold} badge="LEXICANUM"/>
-            <LinkCard title="Sigmar Wiki" icon="🔱" desc="La storia di Sigmar Heldenhammer, dal guerriero mortale al dio-re dei Mortal Realms. Lore profondo su Fandom." url="https://warhammerfantasy.fandom.com/wiki/Sigmar" color="#4a7fb5" badge="FANDOM"/>
+            <LinkCard title="Lexicanum AoS" icon="📖" desc="The most complete Age of Sigmar encyclopedia: factions, Mortal Realms, characters and history. Community-maintained." url="https://ageofsigmar.lexicanum.com/wiki/Main_Page" color={C.gold} badge="LEXICANUM"/>
+            <LinkCard title="Sigmar Wiki" icon="🔱" desc="The story of Sigmar Heldenhammer, from mortal warrior to god-king of the Mortal Realms. Deep lore on Fandom." url="https://warhammerfantasy.fandom.com/wiki/Sigmar" color="#4a7fb5" badge="FANDOM"/>
           </>
         ) : (
           <>
