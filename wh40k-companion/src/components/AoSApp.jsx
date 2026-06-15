@@ -1130,7 +1130,7 @@ function AoSGetStartedSection({ statuses }) {
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>Getting Started Guide</div>
         <div style={{ fontSize:11, color:AOS.muted, marginBottom:6 }}>
-          Per chi si affaccia per la prima volta su Age of Sigmar — i primi passi guidati nei Reami Mortali, con scelte per ogni gusto. Basato su{' '}
+          For newcomers to Age of Sigmar — your guided first steps into the Mortal Realms, with branching picks for every taste. Based on{' '}
           <a href="https://www.trackofwords.com/2018/09/12/getting-started-with-black-library-age-of-sigmar/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline", textDecorationColor:`${AOS.blue}66` }}>Track of Words</a>
         </div>
       </div>
@@ -1169,9 +1169,9 @@ function AoSReadingOrderSection({ statuses }) {
               <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:dimmed?AOS.muted:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{part.title}</span>
             </div>
             <div style={{ fontSize:10, color:AOS.muted }}>
-              {novelEntries.length > 0 && `${novelEntries.length} roman${novelEntries.length!==1?"zi":"zo"}`}
-              {extraEntries.length > 0 && ` + ${extraEntries.length} altri`}
-              {novelMatched.length > 0 && readCount > 0 && <span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{novelMatched.length} letti</span>}
+              {novelEntries.length > 0 && `${novelEntries.length} novel${novelEntries.length!==1?"s":""}`}
+              {extraEntries.length > 0 && ` + ${extraEntries.length} more`}
+              {novelMatched.length > 0 && readCount > 0 && <span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{novelMatched.length} read</span>}
             </div>
           </div>
           <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isOpen?"rotate(90deg)":"none" }}>›</span>
@@ -1190,7 +1190,7 @@ function AoSReadingOrderSection({ statuses }) {
     <div>
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>AoS Reading Order</div>
-        <div style={{ fontSize:11, color:AOS.muted, marginBottom:4 }}>La spina narrativa principale dei Reami Mortali, in ordine cronologico — dall'alba di Sigmar ai Dawnbringers. I romanzi chiave per seguire la storia attraverso le edizioni; per l'intero catalogo vedi l'<b style={{ color:AOS.gold }}>Overview</b>.</div>
+        <div style={{ fontSize:11, color:AOS.muted, marginBottom:4 }}>The main narrative spine of the Mortal Realms, in chronological order — from Sigmar's dawn to the Dawnbringers. The key novels to follow the story across editions; for the full catalogue see the <b style={{ color:AOS.gold }}>Overview</b>.</div>
       </div>
       <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
         {parts.map(part => <PartCard key={part.id} part={part}/>)}
