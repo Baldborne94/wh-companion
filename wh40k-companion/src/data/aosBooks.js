@@ -147,6 +147,35 @@ export const AOS_BOOKS = [
   { id:"aos87",  title:"Legends of the Age of Sigmar: Skaven Pestilens", author:"Various",           series:"", num:0, type:"Omnibus"   },
   { id:"aos88",  title:"Legends of the Age of Sigmar: Sylvaneth",   author:"Various",                series:"", num:0, type:"Omnibus"   },
 
+  // ── OLD WORLD / WARHAMMER FANTASY ─────────────────────────────────────────
+  // The Legend of Sigmar trilogy — Graham McNeill
+  { id:"ow1",  title:"Heldenhammer",   author:"Graham McNeill", series:"The Legend of Sigmar", num:1, type:"Novel" },
+  { id:"ow2",  title:"Empire",         author:"Graham McNeill", series:"The Legend of Sigmar", num:2, type:"Novel" },
+  { id:"ow3",  title:"God King",       author:"Graham McNeill", series:"The Legend of Sigmar", num:3, type:"Novel" },
+  // Nagash trilogy — Mike Lee
+  { id:"ow4",  title:"Nagash the Sorcerer",  author:"Mike Lee", series:"Nagash", num:1, type:"Novel" },
+  { id:"ow5",  title:"Nagash the Unbroken",  author:"Mike Lee", series:"Nagash", num:2, type:"Novel" },
+  { id:"ow6",  title:"Nagash Immortal",       author:"Mike Lee", series:"Nagash", num:3, type:"Novel" },
+  // Tyrion & Teclis trilogy — William King
+  { id:"ow7",  title:"Blood of Aenarion", author:"William King", series:"Tyrion & Teclis", num:1, type:"Novel" },
+  { id:"ow8",  title:"Sword of Caledor",  author:"William King", series:"Tyrion & Teclis", num:2, type:"Novel" },
+  { id:"ow9",  title:"Bane of Malekith",  author:"William King", series:"Tyrion & Teclis", num:3, type:"Novel" },
+  // Malus Darkblade — Dan Abnett & Mike Lee
+  { id:"ow10", title:"The Daemon's Curse",    author:"Dan Abnett & Mike Lee", series:"Malus Darkblade", num:1, type:"Novel" },
+  { id:"ow11", title:"Bloodstorm",            author:"Dan Abnett & Mike Lee", series:"Malus Darkblade", num:2, type:"Novel" },
+  { id:"ow12", title:"Reaper of Souls",       author:"Dan Abnett & Mike Lee", series:"Malus Darkblade", num:3, type:"Novel" },
+  { id:"ow13", title:"Lord of Ruin",          author:"Dan Abnett & Mike Lee", series:"Malus Darkblade", num:4, type:"Novel" },
+  { id:"ow14", title:"The Tyrant's Curse",    author:"Dan Abnett & Mike Lee", series:"Malus Darkblade", num:5, type:"Novel" },
+  // Von Carstein trilogy — Steven Savile
+  { id:"ow15", title:"Inheritance",  author:"Steven Savile", series:"Von Carstein", num:1, type:"Novel" },
+  { id:"ow16", title:"Dominion",     author:"Steven Savile", series:"Von Carstein", num:2, type:"Novel" },
+  { id:"ow17", title:"Retribution",  author:"Steven Savile", series:"Von Carstein", num:3, type:"Novel" },
+  // Genevieve — Jack Yeovil (Kim Newman)
+  { id:"ow18", title:"Drachenfels",         author:"Jack Yeovil", series:"Genevieve", num:1, type:"Novel" },
+  { id:"ow19", title:"Genevieve Undead",    author:"Jack Yeovil", series:"Genevieve", num:2, type:"Novel" },
+  { id:"ow20", title:"Beasts in Velvet",    author:"Jack Yeovil", series:"Genevieve", num:3, type:"Novel" },
+  { id:"ow21", title:"Silver Nails",        author:"Jack Yeovil", series:"Genevieve", num:4, type:"Anthology" },
+
   // ── BATTLETOMES ───────────────────────────────────────────────────────────
   { id:"aosbt1",  title:"Battletome: Stormcast Eternals",          author:"Games Workshop",  series:"Battletome", num:0, type:"Codex" },
   { id:"aosbt2",  title:"Battletome: Nighthaunt",                  author:"Games Workshop",  series:"Battletome", num:0, type:"Codex" },

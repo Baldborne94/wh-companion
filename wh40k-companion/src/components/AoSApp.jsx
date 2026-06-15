@@ -1069,6 +1069,43 @@ const AOS_STARTER_GUIDE = [
       { t:"Godeater's Son",             a:"Noah Van Nguyen", type:"novel",  aos_id:"aos72", opt:true },
     ],
   },
+  {
+    id:"s6", step:"Old World", title:"Explore the Old World",
+    note:"The Mortal Realms were born from the ashes of the Old World — Warhammer Fantasy. These sagas predate Age of Sigmar and give deep lore context. All set before the End Times.",
+    pickOne:true,
+    options:[
+      { label:"The Legend of Sigmar", color:"#c9a84c",
+        note:"How a mortal barbarian chieftain became the god-king who would forge the Stormcast Eternals. Essential AoS backstory.",
+        books:[
+          { t:"Heldenhammer", a:"Graham McNeill", type:"novel", aos_id:"ow1", era:"old" },
+          { t:"Empire",       a:"Graham McNeill", type:"novel", aos_id:"ow2", era:"old" },
+          { t:"God King",     a:"Graham McNeill", type:"novel", aos_id:"ow3", era:"old" },
+        ]},
+      { label:"Nagash", color:"#7a4aaa",
+        note:"The rise of the Great Necromancer who would become the supreme lord of the undead — and AoS's most powerful villain. Essential backstory for Death factions.",
+        books:[
+          { t:"Nagash the Sorcerer", a:"Mike Lee", type:"novel", aos_id:"ow4", era:"old" },
+          { t:"Nagash the Unbroken", a:"Mike Lee", type:"novel", aos_id:"ow5", era:"old" },
+          { t:"Nagash Immortal",     a:"Mike Lee", type:"novel", aos_id:"ow6", era:"old" },
+        ]},
+      { label:"Malus Darkblade", color:"#8a3030",
+        note:"A dark elf warrior possessed by a daemon — brutal sword-and-sorcery across Naggaroth. One of Black Library's best character studies.",
+        books:[
+          { t:"The Daemon's Curse", a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow10", era:"old" },
+          { t:"Bloodstorm",         a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow11", era:"old" },
+          { t:"Reaper of Souls",    a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow12", era:"old" },
+          { t:"Lord of Ruin",       a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow13", era:"old" },
+          { t:"The Tyrant's Curse", a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow14", era:"old" },
+        ]},
+      { label:"Von Carstein", color:"#6a1a1a",
+        note:"The vampire counts of Sylvania — Vlad von Carstein and his dynasty wage war on the Empire. Gothic horror at its finest.",
+        books:[
+          { t:"Inheritance",  a:"Steven Savile", type:"novel", aos_id:"ow15", era:"old" },
+          { t:"Dominion",     a:"Steven Savile", type:"novel", aos_id:"ow16", era:"old" },
+          { t:"Retribution",  a:"Steven Savile", type:"novel", aos_id:"ow17", era:"old" },
+        ]},
+    ],
+  },
 ];
 
 function AoSBookRow({ entry, statuses, isLast }) {
