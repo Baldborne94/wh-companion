@@ -224,6 +224,20 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
           ))}
         </div>
 
+        {/* Description + BL link */}
+        <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:10, padding:"12px 14px" }}>
+          {book.desc && (
+            <>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>About this book</div>
+              <div style={{ fontSize:12, color:AOS.muted, lineHeight:1.75, marginBottom:10 }}>{book.desc}</div>
+            </>
+          )}
+          <a href={`https://www.blacklibrary.com/search?q=${encodeURIComponent(book.title)}`} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize:11, color:AOS.blue, textDecoration:"underline", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
+            Find on Black Library ›
+          </a>
+        </div>
+
         {/* Ebook card */}
         <div style={{ background:AOS.card, border:`2px solid ${ebookMeta ? AOS.gold : AOS.border}`, borderRadius:12, overflow:"hidden" }}>
           <div style={{ background:ebookMeta ? `${AOS.gold}18` : AOS.surface, padding:"14px 16px", borderBottom:`1px solid ${ebookMeta ? AOS.gold+"44" : AOS.border}`, display:"flex", alignItems:"center", gap:10 }}>
@@ -1114,8 +1128,8 @@ const AOS_STARTER_GUIDE = [
           { t:"The Daemon's Curse", a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow10", era:"old" },
           { t:"Bloodstorm",         a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow11", era:"old" },
           { t:"Reaper of Souls",    a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow12", era:"old" },
-          { t:"Lord of Ruin",       a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow13", era:"old" },
-          { t:"The Tyrant's Curse", a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow14", era:"old" },
+          { t:"Warpsword",     a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow13", era:"old" },
+          { t:"Lord of Ruin", a:"Dan Abnett & Mike Lee", type:"novel", aos_id:"ow14", era:"old" },
         ]},
       { label:"Von Carstein", color:"#6a1a1a",
         note:"The vampire counts of Sylvania — Vlad von Carstein and his dynasty wage war on the Empire. Gothic horror at its finest.",

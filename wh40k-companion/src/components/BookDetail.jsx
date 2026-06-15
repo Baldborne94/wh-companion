@@ -147,12 +147,24 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
             </div>
           ))}
         </div>
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 14px"}}>
+          {book.desc && (
+            <>
+              <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.goldDim,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>About this book</div>
+              <div style={{fontSize:12,color:C.muted,lineHeight:1.75,marginBottom:10}}>{book.desc}</div>
+            </>
+          )}
+          <a href={`https://www.blacklibrary.com/search?q=${encodeURIComponent(book.title)}`} target="_blank" rel="noopener noreferrer"
+            style={{fontSize:11,color:C.blue,textDecoration:"underline",fontFamily:"'Cinzel',serif",letterSpacing:1}}>
+            Find on Black Library ›
+          </a>
+        </div>
         <div style={{background:C.card,border:`2px solid ${(ebookMeta||isCached)?C.gold:C.border}`,borderRadius:12,overflow:"hidden"}}>
           <div style={{background:(ebookMeta||isCached)?`${C.gold}18`:C.surface,padding:"14px 16px",borderBottom:`1px solid ${(ebookMeta||isCached)?C.gold+"44":C.border}`,display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:20}}>{(ebookMeta||isCached)?"📖":"📂"}</span>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:(ebookMeta||isCached)?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":isCached?"Disponibile offline":"No Ebook Loaded"}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:11,color:(ebookMeta||isCached)?C.gold:C.muted,fontWeight:700,letterSpacing:1}}>{ebookMeta?"Ebook Ready":isCached?"Available offline":"No Ebook Loaded"}</div>
                 {isCached&&<div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.green,letterSpacing:1,background:`${C.green}18`,border:`1px solid ${C.green}44`,borderRadius:4,padding:"2px 6px"}}>📲 OFFLINE</div>}
               </div>
               {ebookMeta&&<div style={{fontSize:11,color:C.goldDim,marginTop:1}}>{ebookMeta.file_name}</div>}
