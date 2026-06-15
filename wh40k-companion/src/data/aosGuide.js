@@ -9,6 +9,18 @@ export function findAoSGuideBook(entry) {
 // ─── ESSENTIAL PATH (~12 core reads) ─────────────────────────────────────────
 export const AOS_ESSENTIAL = [
   {
+    id:"ae0", label:"Prologue", title:"The World-That-Was",
+    note:"AoS was born from the death of the Old World. These Warhammer Fantasy sagas are optional, but they are the direct origin of the Age of Sigmar — setting up Sigmar the god-king and Nagash, his eternal enemy.",
+    books:[
+      { t:"Heldenhammer",        a:"Graham McNeill", aos_id:"ow1", era:"old", opt:true },
+      { t:"Empire",              a:"Graham McNeill", aos_id:"ow2", era:"old", opt:true },
+      { t:"God King",            a:"Graham McNeill", aos_id:"ow3", era:"old", opt:true },
+      { t:"Nagash the Sorcerer", a:"Mike Lee",       aos_id:"ow4", era:"old", opt:true },
+      { t:"Nagash the Unbroken", a:"Mike Lee",       aos_id:"ow5", era:"old", opt:true },
+      { t:"Nagash Immortal",     a:"Mike Lee",       aos_id:"ow6", era:"old", opt:true },
+    ],
+  },
+  {
     id:"ae1", label:"Part 1", title:"The Realmgate Wars",
     note:"The beginning. Sigmar sends his Stormcast Eternals into the Mortal Realms to free them from Chaos.",
     books:[
