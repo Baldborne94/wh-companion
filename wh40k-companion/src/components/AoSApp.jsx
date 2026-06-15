@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
 import { sb } from "../lib/sb";
 import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
+import { AOS_ESSENTIAL, AOS_FULL, AOS_OPTIONAL_ARCS, findAoSGuideBook } from "../data/aosGuide";
 import CoverImage from "./CoverImage";
 import { AOS, AOS_BOOKS } from "../data/aosBooks";
 import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
@@ -1144,6 +1145,75 @@ function AoSGetStartedSection({ statuses }) {
   );
 }
 
+// ─── AoS READING ORDER GUIDE ─────────────────────────────────────────────────
+function AoSReadingOrderSection({ statuses }) {
+  const [open, setOpen] = useState(new Set(['ae1']));
+  const [aosMode, setAosMode] = useState(() => localStorage.getItem('aos_guide_mode') || 'essential');
+  const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const parts = aosMode === 'essential' ? AOS_ESSENTIAL : AOS_FULL;
+
+  const PartCard = ({ part, dimmed }) => {
+    const isOpen = open.has(part.id);
+    const mainBooks = part.books || [];
+    const novelEntries = mainBooks.filter(b => !b.type || b.type === 'novel' || b.type === 'novella');
+    const extraEntries = mainBooks.filter(b => b.type === 'short' || b.type === 'audio' || b.type === 'anthology');
+    const novelMatched = novelEntries.map(e => findAoSGuideBook(e)).filter(Boolean);
+    const readCount = novelMatched.filter(b => statuses[b.id]?.status === 'read').length;
+    const allRead = novelMatched.length > 0 && readCount === novelMatched.length;
+    const accentColor = dimmed ? AOS.dim : allRead ? AOS.green : AOS.dim;
+    return (
+      <div style={{ background:AOS.card, border:`1px solid ${dimmed?AOS.dim+"33":AOS.border}`, borderLeft:`3px solid ${accentColor}`, borderRadius:10, overflow:"hidden", opacity:dimmed?0.85:1 }}>
+        <button type="button" onClick={() => toggle(part.id)} style={{ padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", background:"transparent", border:"none" }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:3 }}>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:dimmed?AOS.muted:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{part.label}</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:dimmed?AOS.muted:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{part.title}</span>
+            </div>
+            <div style={{ fontSize:10, color:AOS.muted }}>
+              {novelEntries.length > 0 && `${novelEntries.length} roman${novelEntries.length!==1?"zi":"zo"}`}
+              {extraEntries.length > 0 && ` + ${extraEntries.length} altri`}
+              {novelMatched.length > 0 && readCount > 0 && <span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{novelMatched.length} letti</span>}
+            </div>
+          </div>
+          <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isOpen?"rotate(90deg)":"none" }}>›</span>
+        </button>
+        {isOpen && (
+          <div style={{ borderTop:`1px solid ${AOS.border}`, padding:"10px 14px 12px" }}>
+            {part.note && <div style={{ fontSize:11, color:AOS.gold, fontStyle:"italic", marginBottom:10, padding:"6px 10px", background:`${AOS.gold}0a`, borderRadius:6, borderLeft:`2px solid ${AOS.gold}44` }}>{part.note}</div>}
+            {mainBooks.map((entry, i) => <AoSBookRow key={i} entry={entry} statuses={statuses} isLast={i===mainBooks.length-1}/>)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>AoS Reading Order</div>
+        <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>La narrativa cronologica dei Reami Mortali — dall'alba di Sigmar ai Dawnbringers</div>
+        <div style={{ display:"flex", gap:4, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2, width:"fit-content" }}>
+          {[{ id:'essential', label:'⚡ Essenziale (~12)' }, { id:'full', label:'📚 Completa' }].map(m => (
+            <button key={m.id} onClick={() => { setAosMode(m.id); localStorage.setItem('aos_guide_mode', m.id); setOpen(new Set([m.id==='essential'?'ae1':'af1'])); }}
+              style={{ background:aosMode===m.id?`${AOS.gold}33`:"transparent", border:"none", borderRadius:6, padding:"6px 12px", cursor:"pointer", color:aosMode===m.id?AOS.gold:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, whiteSpace:"nowrap" }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
+        {parts.map(part => <PartCard key={part.id} part={part}/>)}
+        {aosMode==='full' && (
+          <>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:3, textTransform:"uppercase", marginTop:10, marginBottom:4, padding:"0 2px" }}>Archi Opzionali</div>
+            {AOS_OPTIONAL_ARCS.map(part => <PartCard key={part.id} part={part} dimmed/>)}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── AoS PATH TO GLORY ────────────────────────────────────────────────────────
 export function AoSCrusadeSection({ user, statuses: propStatuses }) {
   const [tab,            setTab]          = useState('overview');
@@ -1192,17 +1262,18 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
     <div style={{ paddingBottom:80, minHeight:"100%", background:AOS.bg }}>
       {/* Tab bar */}
       <div style={{ display:"flex", borderBottom:`1px solid ${AOS.border}`, background:AOS.surface, position:"sticky", top:0, zIndex:5 }}>
-        {[{ id:"overview", label:"Overview" }, { id:"guide", label:"🌟 Getting Started" }].map(t => (
+        {[{ id:"overview", label:"Overview" }, { id:"order", label:"📖 Reading Order" }, { id:"guide", label:"🌟 Getting Started" }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex:1, padding:"12px 4px", background:"transparent", border:"none",
             borderBottom:`2px solid ${tab===t.id?AOS.gold:"transparent"}`,
             color:tab===t.id?AOS.gold:AOS.muted,
-            fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
+            fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1,
             cursor:"pointer", textTransform:"uppercase", transition:"color 0.15s",
           }}>{t.label}</button>
         ))}
       </div>
 
+      {tab==="order" && <AoSReadingOrderSection statuses={statuses}/>}
       {tab==="guide" && <AoSGetStartedSection statuses={statuses}/>}
 
       {tab==="overview" && <>
