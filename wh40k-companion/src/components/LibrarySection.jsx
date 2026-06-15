@@ -61,14 +61,15 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   });
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !navigator.onLine) return;
     supabase.from("reading_progress").select("book_id,progress_pct").eq("user_id", user.id)
       .then(({ data }) => {
         if (!data?.length) return;
         const map = {};
         data.forEach(r => { if (r.book_id && r.progress_pct != null) map[r.book_id] = r.progress_pct; });
         setReadingProgress(map);
-      });
+      })
+      .catch(() => {});
   }, [user?.id]);
 
   // Pre-load shelf from localStorage cache on mount
@@ -90,6 +91,21 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   const [shelfSeed, setShelfSeed] = useState(0);
   const refreshShelf = () => setShelfSeed(s => s + 1);
 
+  // Build the shelf from purely local sources: localStorage meta + IndexedDB cache.
+  // A book appears if we have its meta OR its file is cached for offline reading.
+  const buildLocalShelf = async () => {
+    const metas = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`wh40k_ebook_${user.id}_`)) {
+        try { const m = JSON.parse(localStorage.getItem(key)); if (m?.book_id) metas[Number(m.book_id)] = m; } catch {}
+      }
+    }
+    const cached = await cacheListIds(user.id);
+    const ids = new Set([...Object.keys(metas).map(Number), ...cached]);
+    return BOOKS.filter(b => ids.has(b.id)).map(b => ({ ...b, _file: metas[b.id] || { book_id: b.id, file_type: 'epub' } }));
+  };
+
   // Which ebooks are downloaded to IndexedDB (readable offline). Refresh after
   // uploads/opens (shelfSeed) and when returning from the reader (reader === null).
   useEffect(() => {
@@ -97,30 +113,27 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
     cacheListIds(user.id).then(setCachedIds);
   }, [user?.id, shelfSeed, reader]);
 
-  // Load shelf books from DB whenever tab switches to shelf (or after an upload)
+  // Load shelf books whenever tab switches to shelf (or after an upload).
+  // Offline: skip the network entirely and build from local sources so the
+  // shelf never hangs on a request that can't complete.
   useEffect(() => {
     if (!user?.id) { setShelfBooks([]); setShelfLoading(false); return; }
     if (tab === "shelf") setShelfLoading(true);
+    if (!navigator.onLine) {
+      buildLocalShelf().then(b => { setShelfBooks(b); setShelfLoading(false); });
+      return;
+    }
     supabase.from("ebook_files").select("book_id,file_name,file_path,file_type").eq("user_id", user.id)
-      .then(({ data: files }) => {
+      .then(async ({ data: files }) => {
         if (files?.length) {
           const ids = new Set(files.map(f => Number(f.book_id)));
           setShelfBooks(BOOKS.filter(b => ids.has(b.id)).map(b => ({ ...b, _file: files.find(f => Number(f.book_id) === b.id) })));
         } else {
-          const lsBooks = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key?.startsWith(`wh40k_ebook_${user.id}_`)) {
-              try {
-                const meta = JSON.parse(localStorage.getItem(key));
-                if (meta?.book_id) { const book = BOOKS.find(b => b.id === Number(meta.book_id)); if (book) lsBooks.push({ ...book, _file: meta }); }
-              } catch {}
-            }
-          }
-          setShelfBooks(lsBooks);
+          setShelfBooks(await buildLocalShelf());
         }
         setShelfLoading(false);
-      });
+      })
+      .catch(async () => { setShelfBooks(await buildLocalShelf()); setShelfLoading(false); });
   }, [tab, user?.id, shelfSeed]);
 
   const handleOpenReader = ({ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex }) =>
