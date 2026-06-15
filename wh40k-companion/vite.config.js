@@ -9,29 +9,21 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       workbox: {
-        // Only precache stable static assets — NOT JS chunks (they change hash on every deploy)
-        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
+        // Precache all static assets including JS chunks for full offline support.
+        // JS files are content-hashed so cached entries never go stale — new deploys
+        // create new URLs, which are fetched fresh on the next online visit.
+        globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js}'],
         skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [
           {
-            // JS chunks: NetworkFirst so stale hash filenames never 404 after a deploy
-            urlPattern: /\/assets\/.*\.js$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'js-chunks',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              networkTimeoutSeconds: 10,
-            },
-          },
-          {
-            // Supabase API + Storage — NetworkFirst
+            // Supabase API + Storage — NetworkFirst with short timeout
             urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-cache',
               expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 },
-              networkTimeoutSeconds: 10,
+              networkTimeoutSeconds: 5,
             },
           },
           {

@@ -44,7 +44,11 @@ export default function App(){
     supabase.auth.getSession()
       .then(({data:{session}})=>setUser(session?.user??null))
       .finally(()=>{ clearTimeout(timer); setAuthLoading(false); });
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));
+    // Don't clear the user if offline — a failed token refresh should not log the user out.
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{
+      if(s?.user) setUser(s.user);
+      else if(navigator.onLine) setUser(null);
+    });
     return ()=>subscription.unsubscribe();
   },[]);
 
@@ -204,12 +208,16 @@ export default function App(){
   const [showOnboarding,setShowOnboarding]=useState(false);
 
   // Landing page shown on first visit; auto-entered once user is authenticated.
-  const [appStarted,setAppStarted]=useState(()=>sessionStorage.getItem('wh_started')==='1');
+  // appStarted persists in localStorage so the PWA re-enters directly when reopened offline.
+  const [appStarted,setAppStarted]=useState(()=>
+    sessionStorage.getItem('wh_started')==='1' || localStorage.getItem('wh_app_started')==='1'
+  );
   // Auto-enter as soon as we know the user is authenticated.
   // This handles OAuth redirects where sessionStorage is lost (Custom Tab / new tab on tablet).
   useEffect(()=>{ if(user) setAppStarted(true); },[user]);
   const startApp=useCallback(()=>{
     sessionStorage.setItem('wh_started','1');
+    localStorage.setItem('wh_app_started','1');
     sessionStorage.setItem('wh_fresh_login','1'); // tells the DB-restore effect to skip
     localStorage.removeItem('wh_universe');
     setUniverse(null);
@@ -243,7 +251,7 @@ export default function App(){
     setUniverse(u);
     if(user?.id) sb.upsert("user_settings",{user_id:user.id,universe:u,updated_at:new Date().toISOString()},"user_id");
   };
-  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
+  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
   const [section,setSection]=useState(()=>{
     const p=new URLSearchParams(window.location.search);
