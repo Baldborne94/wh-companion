@@ -18,26 +18,37 @@ wh40k-companion/          ← git root
     │   ├── aquila.png         ← WH40K logo asset
     │   └── sigmar.png
     └── src/
-        ├── App.jsx            ← monolith: all sections, nav, state (~1900 lines)
+        ├── App.jsx            ← nav, top-level state, reader orchestration
         ├── main.jsx
         ├── index.css
         ├── components/
-        │   ├── AoSApp.jsx         ← Age of Sigmar universe module
+        │   ├── AoSApp.jsx         ← Age of Sigmar universe module (Path to Glory: Overview / Reading Order / Getting Started)
+        │   ├── ReadingSection.jsx ← WH40K Crusade (Overview + Horus Heresy guide)
+        │   ├── LibrarySection.jsx ← book catalogue + My Shelf (offline-aware)
+        │   ├── BookDetail.jsx     ← per-book detail / upload / open (offline-aware)
+        │   ├── HomePage.jsx
+        │   ├── LoreSection.jsx
         │   ├── EpubReader.jsx     ← EPUB reader (CFI bookmarks, paginate/scroll)
         │   ├── PdfReader.jsx      ← PDF reader
         │   ├── MusicPlayer.jsx    ← YouTube + Spotify player (forwardRef)
         │   ├── PaintingTracker.jsx
+        │   ├── StatsModal.jsx / AchievementPopup.jsx / OnboardingModal.jsx
         │   ├── LoginPage.jsx      ← Google OAuth landing page
-        │   ├── CoverImage.jsx
-        │   └── UniverseSelector.jsx
+        │   ├── CoverImage.jsx / ErrorBoundary.jsx / UniverseSelector.jsx
         ├── data/
-        │   ├── books.js       ← 230+ book catalogue
+        │   ├── books.js       ← 230+ WH40K book catalogue
+        │   ├── aosBooks.js    ← AoS book catalogue + AOS colour palette
         │   ├── constants.js   ← C (colours), FC (faction colours), THEMES, FONTS, STATUS_CFG
         │   ├── lore.js        ← WH40K keyword→wiki DB + KW_REGEX
-        │   └── hhGuide.js     ← Horus Heresy reading order (11 parts)
+        │   ├── hhGuide.js     ← Horus Heresy reading order (HH_MIN / HH_FULL / HH_OPTIONAL)
+        │   ├── aosGuide.js    ← AoS reading order (AOS_ESSENTIAL chronological spine) + findAoSGuideBook
+        │   └── releases.js
         └── lib/
             ├── supabase.js    ← createClient, signInWithGoogle, signOut
-            └── sb.js          ← fetch-based REST helpers (sb.get, sb.upsert, sb.del, sb.storage)
+            ├── sb.js          ← fetch-based REST helpers (sb.get, sb.upsert, sb.del, sb.storage)
+            ├── openBook.js    ← resolveBookUrl: download bytes (auth headers) + IndexedDB cache fallback
+            ├── ebookCache.js  ← IndexedDB ebook cache (cacheGet/cachePut/cacheListIds) for offline reading
+            ├── bookStatus.js / bookmarkHelpers.js / readerNav.js / readingHelpers.js / achievements.js
 ```
 
 ## Dev Commands
@@ -223,7 +234,7 @@ export const AOS = {
 
 ## Git Workflow
 
-- **Working branch**: `claude/relaxed-fermat-QZW5d`
+- **Working branch**: `claude/wizardly-fermat-q790e`
 - **Deploy target**: `main` (Vercel auto-deploys on merge)
 - **Merge strategy**: Squash merge via GitHub MCP tools
 - **After squash merge**: new PR from same branch conflicts with main → always `git fetch origin main && git rebase origin/main` before next push
@@ -234,7 +245,7 @@ Standard flow:
 npm run build                          # verify no errors
 git add <specific files>
 git commit -m "feat/fix: description"
-git push -u origin claude/relaxed-fermat-QZW5d
+git push -u origin claude/wizardly-fermat-q790e
 # create draft PR via mcp__github__create_pull_request
 # merge via mcp__github__update_pull_request (draft:false) + mcp__github__merge_pull_request
 ```
@@ -254,6 +265,29 @@ git push -u origin claude/relaxed-fermat-QZW5d
 | #97 | Music stop ✕ + ⏸/▶ pause in reader header; remove % from bookmark panel; "Save here" button in 📑 panel |
 | #98 | Remove redundant YouTube ▶ icon from mini player (pause button is enough) |
 | #99 | Remove pulsing circle rings from login page entirely |
+| #227 | BookDetail shows correct state offline with cached ebook; fall back to IndexedDB cache when download fails (`navigator.onLine` false-positive) |
+| #228 | Full offline support — precache JS chunks in `vite.config.js`; auth persists across PWA cold start (localStorage); don't clear user when offline token refresh fails |
+| #229 | My Shelf loads offline (builds shelf from localStorage + IndexedDB); cached PDFs open as PDF not EPUB |
+| #230 | AoS Reading Order guide added to Path to Glory |
+| #231–#233 | AoS guide refinement: Getting Started reframed as newcomer wizard; Reading Order simplified to a single chronological spine (no Essential/Full toggle — AoS has no Horus-Heresy-style mega-arc to isolate); all AoS text translated to English |
+
+### Offline Reading (key files)
+
+End-to-end offline EPUB/PDF reading spans several layers:
+1. `vite.config.js` — `globPatterns` precaches **all** JS chunks (not just CSS/images) so the app shell loads cold-offline.
+2. `lib/ebookCache.js` — IndexedDB store; ebook bytes cached on first successful download.
+3. `lib/openBook.js` — `resolveBookUrl` downloads via REST with explicit auth headers, caches the bytes, and **falls back to IndexedDB** if the network download fails. `file_type` is preserved in localStorage so cached PDFs don't open as EPUB.
+4. `App.jsx` — `appStarted` and auth persist across PWA cold starts; `onAuthStateChange` only clears the user when `navigator.onLine`.
+5. `LibrarySection.jsx` — `buildLocalShelf()` reconstructs My Shelf from localStorage meta + IndexedDB ids when offline.
+
+⚠️ `navigator.onLine` returns `true` on a LAN with no real internet — never trust it as the sole signal; always have a cache fallback.
+
+### AoS Path to Glory tabs (`AoSApp.jsx`)
+
+Three distinct tabs (mirrors the 40K Crusade structure):
+- **Overview** — full `AOS_BOOKS` catalogue grouped by series.
+- **📖 Reading Order** — single curated chronological spine (`AOS_ESSENTIAL` in `aosGuide.js`), Realmgate Wars → Dawnbringers. No Essential/Full toggle (unlike the 40K Heresy Guide, AoS has no self-contained mega-arc to isolate from the catalogue).
+- **🌟 Getting Started** — newcomer wizard (`AOS_STARTER_GUIDE`), branching `pickOne` paths. Book rows support an optional `era:"old"|"aos"` badge (used by the full Gotrek & Felix saga to mark Old World vs Age of Sigmar entries).
 
 ## Known Behaviors & Gotchas
 
