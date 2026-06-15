@@ -59,5 +59,9 @@ export async function resolveBookUrl({ uid, book, supabase, sb }) {
     return { arrayBuffer, meta };
   }
 
+  // Download failed (e.g. navigator.onLine=true but no real internet) — fall back to cache.
+  const cached = await cacheGet(uid, book.id);
+  if (cached) return { arrayBuffer: cached, meta, fromCache: true };
+
   return { error: `no_dl_${dlStatus ?? 'x'}` };
 }
