@@ -112,7 +112,7 @@ Signed URLs (2h TTL) via `sb.storage.signedUrl(path)`.
 `PaintingTracker.jsx` no longer calls Anthropic from the browser. It POSTs to `api/paint-advisor.js` (Vercel serverless) with the user's Supabase access token. The proxy:
 1. Validates the token → resolves `user_id`.
 2. Enforces **3 generations/day per user** via `ai_usage` (returns HTTP 429 → client shows "Hai esaurito le 3 generazioni AI di oggi").
-3. Fetches + base64-encodes photo URLs server-side (small request bodies).
+3. Fetches + base64-encodes photo URLs server-side (small request bodies). SSRF guard: only `https` URLs on the project's Supabase storage host (`/storage/…`) with an `image/*` content-type are fetched.
 4. Calls Claude with the server-side `ANTHROPIC_API_KEY` (`claude-sonnet-4-6` with photos, `claude-haiku-4-5-20251001` text-only).
 
 ## App Architecture

@@ -75,12 +75,22 @@ export default async function handler(req, res) {
 
   let content;
   if (Array.isArray(photoUrls) && photoUrls.length) {
+    // SSRF guard: only fetch images hosted on this project's Supabase storage.
+    const sbHost = (() => { try { return new URL(SB_URL).host; } catch { return null; } })();
+    const isAllowed = (url) => {
+      try {
+        const u = new URL(url);
+        return u.protocol === "https:" && u.host === sbHost && u.pathname.startsWith("/storage/");
+      } catch { return false; }
+    };
     const blocks = [];
     for (const url of photoUrls.slice(0, 4)) {
+      if (!isAllowed(url)) continue;
       try {
         const ir = await fetch(url);
         if (!ir.ok) continue;
         const mime = ir.headers.get("content-type") || "image/jpeg";
+        if (!mime.startsWith("image/")) continue;
         const buf = Buffer.from(await ir.arrayBuffer());
         blocks.push({ type: "image", source: { type: "base64", media_type: mime, data: buf.toString("base64") } });
       } catch { /* skip unreadable image */ }
