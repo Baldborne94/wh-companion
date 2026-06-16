@@ -31,6 +31,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   const [faction,     setFaction]     = useState("All");
   const [type,        setType]        = useState("All");
   const [era,         setEra]         = useState("All");
+  const [status,      setStatus]      = useState("All");
+  const [sort,        setSort]        = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const [detail,      setDetail]      = useState(null);
   const [reader,      setReader]      = useState(null);
@@ -44,7 +46,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   const dSearch = useDebounce(search, 250);
 
   // Reset visible count when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [dSearch, series, faction, type, era]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [dSearch, series, faction, type, era, status, sort]);
 
   // IntersectionObserver — load 30 more when sentinel enters viewport
   // No dep array: runs after every render so the observer always tracks the current sentinel element.
@@ -144,9 +146,24 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
     if (faction !== "All" && b.faction !== faction) return false;
     if (type    !== "All" && b.type    !== type)    return false;
     if (era     !== "All" && b.era     !== era)     return false;
+    if (status  !== "All") {
+      const bst = statuses[b.id]?.status || 'none';
+      if (status === "unread" ? bst !== 'none' : bst !== status) return false;
+    }
     if (dSearch) { const q = dSearch.toLowerCase(); return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.series.toLowerCase().includes(q); }
     return true;
-  }), [series, faction, type, era, dSearch]);
+  }), [series, faction, type, era, status, dSearch, statuses]);
+
+  // Sorting — applied after filtering. "default" keeps the curated BOOKS order
+  // (series → number), which is meaningful for reading guides.
+  const sorted = useMemo(() => {
+    if (sort === "default") return filtered;
+    const arr = [...filtered];
+    if (sort === "title")       arr.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sort === "author") arr.sort((a, b) => a.author.localeCompare(b.author));
+    else if (sort === "rating") arr.sort((a, b) => getBookRating(user?.id, b.id) - getBookRating(user?.id, a.id));
+    return arr;
+  }, [filtered, sort, user?.id]);
 
   const sfilt = useMemo(() => {
     if (!dSearch) return shelfBooks;
@@ -167,13 +184,13 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   }
   if (detail) return <BookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange} onEbookUploaded={refreshShelf} />;
 
-  const isFiltered = series !== "All" || faction !== "All" || type !== "All" || era !== "All";
+  const isFiltered = series !== "All" || faction !== "All" || type !== "All" || era !== "All" || status !== "All" || sort !== "default";
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick} style={{ background: active ? `${C.gold}22` : "transparent", border: `1px solid ${active ? C.gold : C.dim}`, borderRadius: 20, padding: "6px 14px", color: active ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap" }}>{label}</button>
   );
 
-  const visibleFiltered = filtered.slice(0, visibleCount);
-  const hasMore = filtered.length > visibleCount;
+  const visibleFiltered = sorted.slice(0, visibleCount);
+  const hasMore = sorted.length > visibleCount;
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -371,7 +388,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
           <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={() => setShowFilters(f => !f)} style={{ background: showFilters || isFiltered ? `${C.gold}22` : "transparent", border: `1px solid ${showFilters || isFiltered ? C.gold : C.dim}`, borderRadius: 20, padding: "7px 14px", color: showFilters || isFiltered ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer" }}>⚙ Filters{isFiltered ? " •" : ""}</button>
             <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, flex: 1 }}>{filtered.length} titles</span>
-            {isFiltered && <button onClick={() => { setSeries("All"); setFaction("All"); setType("All"); setEra("All"); }} style={{ background: "transparent", border: `1px solid ${C.red}55`, borderRadius: 20, padding: "5px 12px", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 10, cursor: "pointer" }}>Reset</button>}
+            {isFiltered && <button onClick={() => { setSeries("All"); setFaction("All"); setType("All"); setEra("All"); setStatus("All"); setSort("default"); }} style={{ background: "transparent", border: `1px solid ${C.red}55`, borderRadius: 20, padding: "5px 12px", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 10, cursor: "pointer" }}>Reset</button>}
             <div style={{ display: "flex", gap: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2 }}>
               {[{ m: "card", icon: "▦", title: "Card" }, { m: "list", icon: "☰", title: "List" }, { m: "shelf", icon: "📚", title: "Shelf" }].map(v => (
                 <button key={v.m} onClick={() => setViewMode(v.m)} title={v.title}
@@ -383,6 +400,22 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
           </div>
           {showFilters && (
             <div style={{ padding: "0 16px 12px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Status</div>
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                  {[{ v: "All", l: "All" }, { v: "want", l: "📋 To Read" }, { v: "reading", l: "📖 Reading" }, { v: "read", l: "✅ Read" }, { v: "unread", l: "Unread" }].map(o => (
+                    <Chip key={o.v} label={o.l} active={status === o.v} onClick={() => setStatus(o.v)} />
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Sort by</div>
+                <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+                  {[{ v: "default", l: "Default" }, { v: "title", l: "Title A–Z" }, { v: "author", l: "Author A–Z" }, { v: "rating", l: "Rating ★" }].map(o => (
+                    <Chip key={o.v} label={o.l} active={sort === o.v} onClick={() => setSort(o.v)} />
+                  ))}
+                </div>
+              </div>
               {[{ label: "Series", value: series, set: setSeries, opts: ALL_SERIES.slice(0, 22) }, { label: "Faction", value: faction, set: setFaction, opts: ALL_FACTIONS }, { label: "Type", value: type, set: setType, opts: ALL_TYPES }, { label: "Era", value: era, set: setEra, opts: ALL_ERAS }].map(f => (
                 <div key={f.label} style={{ marginBottom: 10 }}>
                   <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{f.label}</div>
