@@ -70,6 +70,18 @@ VITE_SPOTIFY_CLIENT_ID=...     # Spotify OAuth (optional)
 
 Set in `.env` locally and in Vercel project settings for deployment.
 
+### Server-side variables (Vercel only — no `VITE_` prefix)
+
+Used by `api/paint-advisor.js` (the AI Color Advisor proxy). These are **never** bundled into the client. Set them in Vercel project settings only:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...          # Claude API key (server-side, kept secret)
+SUPABASE_SERVICE_ROLE_KEY=...         # bypasses RLS to read/write ai_usage
+# SUPABASE_URL / SUPABASE_ANON_KEY    # optional — proxy falls back to the VITE_ ones
+```
+
+⚠️ Never expose the Anthropic key with a `VITE_` prefix — that bundles it into the public client JS. The AI Color Advisor must go through the serverless proxy.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -90,9 +102,18 @@ Key tables (all RLS-enforced — users see only their rows):
 - `reading_progress` — `(user_id, book_id, progress_pct, last_read, epub_cfi)` — auto-saved position
 - `bookmarks` — `(user_id, book_id, epub_cfi, label, progress, created_at)` — manual bookmarks
 - `painting_tracker` — painting step progress
+- `ai_usage` — `(user_id, day, count)` — per-user daily counter for the AI Color Advisor; written only by the serverless proxy via the service role (RLS enabled, no policies). See `supabase/ai_usage.sql`.
 
 Storage: private `ebooks` bucket at `{user_id}/{book_id}/{filename}`.  
 Signed URLs (2h TTL) via `sb.storage.signedUrl(path)`.
+
+### AI Color Advisor (serverless proxy)
+
+`PaintingTracker.jsx` no longer calls Anthropic from the browser. It POSTs to `api/paint-advisor.js` (Vercel serverless) with the user's Supabase access token. The proxy:
+1. Validates the token → resolves `user_id`.
+2. Enforces **3 generations/day per user** via `ai_usage` (returns HTTP 429 → client shows "Hai esaurito le 3 generazioni AI di oggi").
+3. Fetches + base64-encodes photo URLs server-side (small request bodies).
+4. Calls Claude with the server-side `ANTHROPIC_API_KEY` (`claude-sonnet-4-6` with photos, `claude-haiku-4-5-20251001` text-only).
 
 ## App Architecture
 

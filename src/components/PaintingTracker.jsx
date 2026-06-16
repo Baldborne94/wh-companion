@@ -6,7 +6,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
-import { db, storage } from "../lib/supabase";
+import { db, storage, supabase } from "../lib/supabase";
 import { sb } from "../lib/sb";
 import { achievementFromId, computePaintingAchievements, diffAchievements } from "../lib/achievements";
 
@@ -280,8 +280,6 @@ const FACTIONS_AOS = {
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
 async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("NO_API_KEY");
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
@@ -312,52 +310,36 @@ Always reply ONLY with valid JSON — no markdown, no extra text:
 }
 Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real existing products.`;
 
-  // Convert photo URLs to base64 so Anthropic doesn't need to fetch them externally
-  const toBase64 = async (url) => {
-    const r = await fetch(url);
-    const blob = await r.blob();
-    return new Promise((res, rej) => {
-      const reader = new FileReader();
-      reader.onload = () => res({ b64: reader.result.split(",")[1], mime: blob.type || "image/jpeg" });
-      reader.onerror = rej;
-      reader.readAsDataURL(blob);
-    });
-  };
-
-  // User message: base64 images first, then a short focused question
-  let userMessage;
+  // The user-facing question. Photos are passed as URLs and fetched/encoded
+  // server-side by the proxy, so the request body stays small.
+  let userText;
   if (hasPhotos) {
-    const encoded = await Promise.all(photoUrls.map(toBase64));
-    userMessage = [
-      ...encoded.map(({ b64, mime }) => ({
-        type: "image",
-        source: { type: "base64", media_type: mime, data: b64 },
-      })),
-      { type: "text", text: `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${faction ? ` This model belongs to the ${faction} faction — use this only to inform lore-accurate colour choices, not to add parts that are not visible.` : ""}` },
-    ];
+    userText = `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${faction ? ` This model belongs to the ${faction} faction — use this only to inform lore-accurate colour choices, not to add parts that are not visible.` : ""}`;
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
-    userMessage = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
+    userText = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
   }
 
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  // Authenticate with the serverless proxy using the Supabase access token.
+  // The proxy holds the Anthropic key server-side and enforces the daily limit.
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("NO_SESSION");
+
+  const resp = await fetch("/api/paint-advisor", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       model: hasPhotos ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001",
-      max_tokens: 8000,
       system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
+      userText,
+      photoUrls: hasPhotos ? photoUrls : [],
     }),
   });
+  if (resp.status === 429) throw new Error("DAILY_LIMIT");
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `HTTP ${resp.status}`);
+    throw new Error(err?.error || `HTTP ${resp.status}`);
   }
   const data = await resp.json();
   const text = data.content?.map((i) => i.text || "").join("") ?? "";
@@ -783,8 +765,10 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
       onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
     } catch (e) {
-      if (e.message === "NO_API_KEY") {
-        setError("Add VITE_ANTHROPIC_API_KEY to your Vercel environment variables to enable AI suggestions.");
+      if (e.message === "DAILY_LIMIT") {
+        setError("Hai esaurito le 3 generazioni AI di oggi. Riprova domani.");
+      } else if (e.message === "NO_SESSION") {
+        setError("Devi effettuare l'accesso per usare l'AI.");
       } else {
         setError("AI error: " + (e.message || "check console"));
       }
