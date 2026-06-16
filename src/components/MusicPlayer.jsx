@@ -55,7 +55,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
             setToken(resp.access_token);
             fetchPlaylists(resp.access_token);
           } else {
-            setError("Autorizzazione negata.");
+            setError("Authorization denied.");
           }
         },
       });
@@ -84,7 +84,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       if (d.error?.code === 401) { disconnect(); return; }
       if (d.error) { setError(d.error.message); return; }
       setPlaylists(d.items || []);
-    } catch { setError("Errore di rete."); }
+    } catch { setError("Network error."); }
     finally { setLoading(false); }
   };
 
@@ -97,7 +97,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       );
       const d = await r.json();
       setVideos((d.items || []).filter(v => v.snippet?.resourceId?.videoId));
-    } catch { setError("Errore caricamento video."); }
+    } catch { setError("Error loading videos."); }
     finally { setLoading(false); }
   };
 
@@ -140,7 +140,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       if (d.error?.code === 401) { disconnect(); return; }
       if (d.error) { setError(d.error.message); return; }
       setResults((d.items || []).filter(it => it.id?.videoId));
-    } catch { setError("Errore di rete."); }
+    } catch { setError("Network error."); }
     finally { setLoading(false); }
   };
 
@@ -152,11 +152,11 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
     onNowPlaying(null);
   };
 
-  if (!clientId) return <Placeholder icon="▶" title="YouTube non configurato" sub="Aggiungi VITE_GOOGLE_CLIENT_ID al file .env" />;
+  if (!clientId) return <Placeholder icon="▶" title="YouTube not configured" sub="Add VITE_GOOGLE_CLIENT_ID to your .env file" />;
 
   if (!token) return (
-    <ConnectScreen icon="▶" title="YouTube" sub="Connetti il tuo account per accedere alle tue playlist"
-      btnLabel="Connetti YouTube" btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
+    <ConnectScreen icon="▶" title="YouTube" sub="Connect your account to access your playlists"
+      btnLabel="Connect YouTube" btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
   );
 
   return (
@@ -170,17 +170,17 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
         </div>
       )}
 
-      <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
+      <button onClick={disconnect} style={s.disconnectBtn}>Disconnect account</button>
 
       <SearchBar value={query} onChange={setQuery} onSubmit={() => runYtSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
-        placeholder="Cerca un brano o incolla un link YouTube" accent="#FF0000" />
+        placeholder="Search a track or paste a YouTube link" accent="#FF0000" />
       {loading && <Spinner />}
       {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
       {results !== null ? (
         <>
           <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
-          {results.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>Nessun risultato.</div>}
+          {results.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>No results.</div>}
           {results.map(it => {
             const vid = it.id.videoId;
             const title = it.snippet?.title;
@@ -199,13 +199,13 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
         </>
       ) : !selectedPl ? (
         <>
-          <SectionLabel>Le tue playlist</SectionLabel>
+          <SectionLabel>Your playlists</SectionLabel>
           {playlists.map(pl => (
             <button key={pl.id} onClick={() => { setSelectedPl(pl); fetchVideos(pl.id); }} style={s.row}>
               <Thumb url={pl.snippet?.thumbnails?.medium?.url} w={64} h={48} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.snippet?.title}</div>
-                <div style={s.rowSub}>{pl.contentDetails?.itemCount} video</div>
+                <div style={s.rowSub}>{pl.contentDetails?.itemCount} videos</div>
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
@@ -308,9 +308,9 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         setToken(d.access_token);
         fetchPlaylists(d.access_token);
       } else {
-        setError("Autorizzazione fallita. Riprova.");
+        setError("Authorization failed. Try again.");
       }
-    } catch { setError("Errore di rete."); }
+    } catch { setError("Network error."); }
   };
 
   const fetchPlaylists = async (tok) => {
@@ -326,7 +326,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
       const d  = await plRes.json();
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
       setPlaylists((d.items || []).filter(Boolean));
-    } catch (e) { setError(`Errore di rete: ${e.message}`); }
+    } catch (e) { setError(`Network error: ${e.message}`); }
     finally { setLoading(false); }
   };
 
@@ -374,7 +374,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         tracks: (d.tracks?.items || []).filter(Boolean),
         playlists: (d.playlists?.items || []).filter(Boolean),
       });
-    } catch (e) { setError(`Errore di rete: ${e.message}`); }
+    } catch (e) { setError(`Network error: ${e.message}`); }
     finally { setLoading(false); }
   };
 
@@ -387,19 +387,19 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
     onNowPlaying(null);
   };
 
-  if (!clientId) return <Placeholder icon="♪" title="Spotify non configurato" sub="Aggiungi VITE_SPOTIFY_CLIENT_ID al file .env" />;
+  if (!clientId) return <Placeholder icon="♪" title="Spotify not configured" sub="Add VITE_SPOTIFY_CLIENT_ID to your .env file" />;
 
   if (!token) return (
-    <ConnectScreen icon="♪" title="Spotify" sub="Connetti il tuo account per accedere alle tue playlist"
-      btnLabel="Connetti Spotify" btnBg="#1DB954" btnColor="#000" onClick={connect} error={error} />
+    <ConnectScreen icon="♪" title="Spotify" sub="Connect your account to access your playlists"
+      btnLabel="Connect Spotify" btnBg="#1DB954" btnColor="#000" onClick={connect} error={error} />
   );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
-      <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
+      <button onClick={disconnect} style={s.disconnectBtn}>Disconnect account</button>
 
       <SearchBar value={query} onChange={setQuery} onSubmit={() => runSpSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
-        placeholder="Cerca brani/playlist o incolla un link Spotify" accent="#1DB954" />
+        placeholder="Search tracks/playlists or paste a Spotify link" accent="#1DB954" />
       {loading && <Spinner />}
       {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
@@ -421,7 +421,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
       ) : results !== null ? (
         <>
           <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
-          {results.tracks.length === 0 && results.playlists.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>Nessun risultato.</div>}
+          {results.tracks.length === 0 && results.playlists.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>No results.</div>}
           {results.tracks.length > 0 && <SectionLabel>Brani</SectionLabel>}
           {results.tracks.map(t => (
             <button key={t.id} onClick={() => selectItem("track", t.id, t.name, t.album?.images?.[0]?.url)} style={s.row}>
@@ -447,13 +447,13 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         </>
       ) : (
         <>
-          <SectionLabel>Le tue playlist e quelle che segui</SectionLabel>
+          <SectionLabel>Your playlists &amp; the ones you follow</SectionLabel>
           {playlists.map(pl => (
             <button key={pl.id} onClick={() => selectPlaylist(pl)} style={s.row}>
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.name}</div>
-                {pl.tracks?.total != null && <div style={s.rowSub}>{pl.tracks.total} brani</div>}
+                {pl.tracks?.total != null && <div style={s.rowSub}>{pl.tracks.total} tracks</div>}
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
@@ -492,7 +492,7 @@ function Placeholder({ icon, title, sub }) {
 }
 
 function Spinner() {
-  return <div style={{ textAlign: "center", color: C.muted, padding: 12, fontSize: 13 }}>Caricamento...</div>;
+  return <div style={{ textAlign: "center", color: C.muted, padding: 12, fontSize: 13 }}>Loading…</div>;
 }
 
 function SearchBar({ value, onChange, onSubmit, onClear, placeholder, accent }) {

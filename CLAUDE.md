@@ -325,5 +325,5 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 - **Fonts**: `'Cinzel Decorative'` for titles, `'Cinzel'` for labels/buttons — imported from Google Fonts in LoginPage.jsx CSS.
 - **No comments in code** unless the WHY is non-obvious.
 - **No external UI libraries** — all styles are inline JSX objects.
-- **Language**: UI labels in English. Code comments in English. User-facing text can be Italian (the owner is Italian).
+- **Language**: All user-facing text and UI labels in English (standardised June 2026). Code comments in English. A future enhancement may add an EN/IT language toggle; until then, write new strings in English.
 - **Merge method**: Always squash.

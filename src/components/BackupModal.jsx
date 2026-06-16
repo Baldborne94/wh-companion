@@ -48,7 +48,7 @@ export default function BackupModal({ user, onClose }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setMsg({ type: "ok", text: `Backup esportato — ${Object.keys(data).length} voci.` });
+    setMsg({ type: "ok", text: `Backup exported — ${Object.keys(data).length} items.` });
   };
 
   const onFile = async (e) => {
@@ -63,7 +63,7 @@ export default function BackupModal({ user, onClose }) {
       setMsg(null);
       setPending(parsed);
     } catch {
-      setMsg({ type: "err", text: "File non valido: non è un backup di WH40K Companion." });
+      setMsg({ type: "err", text: "Invalid file: not a WH40K Companion backup." });
     }
   };
 
@@ -76,7 +76,7 @@ export default function BackupModal({ user, onClose }) {
       try { localStorage.setItem(key, v); n++; } catch {}
     });
     setPending(null);
-    setMsg({ type: "ok", text: `Importate ${n} voci. Ricarico l'app…` });
+    setMsg({ type: "ok", text: `Imported ${n} items. Reloading…` });
     setTimeout(() => window.location.reload(), 1200);
   };
 
@@ -101,13 +101,13 @@ export default function BackupModal({ user, onClose }) {
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           {!pending && <>
             <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-              Salva un file con i tuoi <b style={{ color: C.text }}>stati di lettura, voti, note, segnalibri, progressi</b> e dati painting. Tienilo come backup o usalo per spostarti su un altro dispositivo.
+              Save a file with your <b style={{ color: C.text }}>reading statuses, ratings, notes, bookmarks, progress</b> and painting data. Keep it as a backup or use it to move to another device.
             </div>
 
-            <button onClick={doExport} style={btn()}>⬇ Esporta backup (.json)</button>
+            <button onClick={doExport} style={btn()}>⬇ Export backup (.json)</button>
 
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} style={{ display: "none" }} />
-            <button onClick={() => fileRef.current?.click()} style={btn({ background: "transparent", color: C.text, borderColor: C.dim })}>⬆ Importa backup…</button>
+            <button onClick={() => fileRef.current?.click()} style={btn({ background: "transparent", color: C.text, borderColor: C.dim })}>⬆ Import backup…</button>
 
             {msg && (
               <div style={{ fontSize: 12, color: msg.type === "err" ? "#e05050" : C.green, fontFamily: "'Cinzel',serif", letterSpacing: 0.5 }}>
@@ -118,13 +118,13 @@ export default function BackupModal({ user, onClose }) {
 
           {pending && <>
             <div style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>
-              Backup del <b>{pending.exportedAt ? new Date(pending.exportedAt).toLocaleString() : "?"}</b> — {Object.keys(pending.data).length} voci.
+              Backup from <b>{pending.exportedAt ? new Date(pending.exportedAt).toLocaleString() : "?"}</b> — {Object.keys(pending.data).length} items.
             </div>
             <div style={{ fontSize: 12, color: "#e0a050", lineHeight: 1.6, background: `${C.red}11`, border: `1px solid ${C.red}44`, borderRadius: 8, padding: "10px 12px" }}>
-              ⚠️ L'importazione <b>sovrascrive</b> i dati locali corrispondenti con quelli del backup. L'app si ricaricherà.
+              ⚠️ Importing <b>overwrites</b> the matching local data with the backup. The app will reload.
             </div>
-            <button onClick={applyImport} style={btn({ background: `${C.green}18`, color: C.green, borderColor: C.green })}>Conferma importazione</button>
-            <button onClick={() => setPending(null)} style={btn({ background: "transparent", color: C.muted, borderColor: C.dim })}>Annulla</button>
+            <button onClick={applyImport} style={btn({ background: `${C.green}18`, color: C.green, borderColor: C.green })}>Confirm import</button>
+            <button onClick={() => setPending(null)} style={btn({ background: "transparent", color: C.muted, borderColor: C.dim })}>Cancel</button>
           </>}
         </div>
       </div>
