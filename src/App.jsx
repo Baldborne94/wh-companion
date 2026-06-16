@@ -271,6 +271,8 @@ export default function App(){
 
   // ── App-level reader (opened from Home page) ──────────────────────────────
   const [appReader,setAppReader]=useState(null);
+  const [pendingDetailBook,setPendingDetailBook]=useState(null);
+  const openBookDetail=useCallback((book)=>{ setPendingDetailBook(book); setSection("library"); },[]);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
     const result = await resolveBookUrl({ uid, book, supabase, sb });
@@ -414,10 +416,10 @@ export default function App(){
               <div key={section} className="section-fade">
               <ErrorBoundary>
                 <Suspense fallback={null}>
-                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onShowHelp={()=>setShowOnboarding(true)}/>}
-                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onShowHelp={()=>setShowOnboarding(true)}/>}
-                  {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus}/>}
-                  {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus}/>}
+                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)}/>}
+                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)}/>}
+                  {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
+                  {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
                   {section==="lore"    &&<LoreSection universe={universe}/>}
                   {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
                   {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}

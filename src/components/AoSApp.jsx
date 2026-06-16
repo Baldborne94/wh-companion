@@ -348,7 +348,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 }
 
 // ─── AoS HOME PAGE ────────────────────────────────────────────────────────────
-export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onShowHelp }) {
+export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -398,11 +398,14 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onSho
 
   const [opening, setOpening] = useState(false);
   const openBookHandle = async (book) => {
-    if (!onOpenBook) return setSection('library');
-    setOpening(true);
-    const ok = await onOpenBook(book);
-    setOpening(false);
-    if (!ok) setSection('library');
+    if (uploadedIds.has(book.id) && onOpenBook) {
+      setOpening(true);
+      const ok = await onOpenBook(book);
+      setOpening(false);
+      if (ok === true) return;
+    }
+    if (onOpenDetail) onOpenDetail(book);
+    else setSection('library');
   };
 
   const ShelfRow = ({ books, label }) => {
@@ -553,7 +556,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onSho
 }
 
 // ─── AoS LIBRARY SECTION ─────────────────────────────────────────────────────
-export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
+export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card"); // card | list | shelf
   const [search,      setSearch]      = useState("");
@@ -566,6 +569,11 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
   const [reader,      setReader]      = useState(null);
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
+
+  // Deep-link: open a specific book's detail when navigated here (e.g. Home shelf).
+  useEffect(() => {
+    if (openDetailBook) { setDetail(openDetailBook); onDetailConsumed?.(); }
+  }, [openDetailBook]);
 
   // Pre-load shelf from localStorage cache on mount
   useEffect(() => {
