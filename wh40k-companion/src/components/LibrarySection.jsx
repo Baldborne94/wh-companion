@@ -236,7 +236,10 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                         <button key={book.id} type="button" onClick={() => setDetail(book)}
                           style={{ background: `linear-gradient(135deg,${fc2}22,${C.card})`, border: `1px solid ${C.gold}55`, borderLeft: `3px solid ${C.gold}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start", width: "100%", textAlign: "left", transition: "transform 0.18s ease, box-shadow 0.18s ease" }}
                           onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 6px 18px ${C.gold}22`; }}
-                          onMouseLeave={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
+                          onMouseLeave={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}
+                          onTouchStart={e=>{ e.currentTarget.style.transform="scale(0.985)"; e.currentTarget.style.boxShadow=`0 0 0 1px ${C.gold}55`; }}
+                          onTouchEnd={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}
+                          onTouchCancel={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
                           <CoverImage book={book} width={54} height={80} radius={3} accentColor={fc2} />
                           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
@@ -408,7 +411,10 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
                     <div key={book.id} onClick={() => setDetail(book)}
                       style={{ background: `linear-gradient(135deg,${fc2}18,${C.card})`, border: `1px solid ${bst !== 'none' ? bstCfg.color + "44" : fc2 + "44"}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start", position: "relative", overflow: "hidden", transition: "transform 0.18s ease, box-shadow 0.18s ease" }}
                       onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 6px 18px ${C.gold}22`; }}
-                      onMouseLeave={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
+                      onMouseLeave={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}
+                      onTouchStart={e=>{ e.currentTarget.style.transform="scale(0.985)"; e.currentTarget.style.boxShadow=`0 0 0 1px ${C.gold}55`; }}
+                      onTouchEnd={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}
+                      onTouchCancel={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
                       {pctPct > 0 && pctPct < 100 && <div style={{ position: "absolute", bottom: 0, left: 0, width: `${pctPct}%`, height: 2, background: "#4a8adc88", pointerEvents: "none" }} />}
                       {pctPct >= 100 && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: "#4aaa6a88", pointerEvents: "none" }} />}
                       <CoverImage book={book} width={54} height={80} radius={3} accentColor={fc2} />
