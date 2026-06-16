@@ -724,7 +724,9 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
                       const bstCfg = STATUS_CFG[bst];
                       return (
                         <button key={book.id} type="button" onClick={() => setDetail(book)}
-                          style={{ background:`linear-gradient(135deg,${sc}22,${AOS.card})`, border:`1px solid ${AOS.gold}55`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:8, padding:"10px", cursor:"pointer", display:"flex", gap:10, alignItems:"flex-start", width:"100%", textAlign:"left" }}>
+                          style={{ background:`linear-gradient(135deg,${sc}22,${AOS.card})`, border:`1px solid ${AOS.gold}55`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:8, padding:"10px", cursor:"pointer", display:"flex", gap:10, alignItems:"flex-start", width:"100%", textAlign:"left", transition:"transform 0.18s ease, box-shadow 0.18s ease" }}
+                          onMouseEnter={e=>{ e.currentTarget.style.transform="translateY(-3px)"; e.currentTarget.style.boxShadow=`0 6px 18px ${AOS.gold}22`; }}
+                          onMouseLeave={e=>{ e.currentTarget.style.transform=""; e.currentTarget.style.boxShadow=""; }}>
                           <CoverImage book={book} width={54} height={80} radius={3} accentColor={sc}/>
                           <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", gap:3 }}>
                             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>

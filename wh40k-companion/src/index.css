@@ -37,3 +37,7 @@ body {
 
 /* Inputs inherit font */
 input, select, button, textarea { font-family: inherit; }
+
+/* Section cross-fade */
+@keyframes secFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.section-fade { animation: secFadeIn 0.2s ease both; }

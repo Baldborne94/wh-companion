@@ -83,6 +83,7 @@ export default function CoverImage({ book, width=60, height=90, radius=4, style=
         : COVER_CACHE_PREFIX + book.id;
     return localStorage.getItem(k) ?? null;
   });
+  const [imgLoaded, setImgLoaded] = useState(false);
   const ref = useRef(null);
 
   useEffect(()=>{
@@ -95,20 +96,29 @@ export default function CoverImage({ book, width=60, height=90, radius=4, style=
   },[book.id]);
 
   const base = { width, height, borderRadius:radius, overflow:"hidden", flexShrink:0, ...style };
+  const skeletonText = { fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden" };
 
   if(url === null){
     return(
       <div ref={ref} style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}>
-        <span style={{fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), color:"rgba(255,255,255,0.75)", lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden"}}>{book.title}</span>
+        <span style={{...skeletonText, color:"rgba(255,255,255,0.75)"}}>{book.title}</span>
       </div>
     );
   }
   if(url===""){
-    return <div style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}><span style={{fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), color:"rgba(255,255,255,0.6)", lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden"}}>{book.title}</span></div>;
+    return <div style={{...base, background:`linear-gradient(160deg,${fc}cc,${fc}55)`, display:"flex", alignItems:"center", justifyContent:"center", padding:4}}><span style={{...skeletonText, color:"rgba(255,255,255,0.6)"}}>{book.title}</span></div>;
   }
   return(
-    <div ref={ref} style={base}>
-      <img src={url} alt={book.title} style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} onError={()=>setUrl("")}/>
+    <div ref={ref} style={{...base, position:"relative", background:`linear-gradient(160deg,${fc}cc,${fc}55)`}}>
+      {!imgLoaded && (
+        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",padding:4}}>
+          <span style={{...skeletonText, color:"rgba(255,255,255,0.75)"}}>{book.title}</span>
+        </div>
+      )}
+      <img src={url} alt={book.title}
+        style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:imgLoaded?1:0,transition:"opacity 0.5s ease"}}
+        onLoad={()=>setImgLoaded(true)}
+        onError={()=>setUrl("")}/>
     </div>
   );
 }
