@@ -26,6 +26,8 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
   const [, setCurrentTitle]             = useState(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
+  const [query, setQuery]               = useState("");
+  const [results, setResults]           = useState(null);
   const tokenClientRef                  = useRef(null);
   const iframeRef                       = useRef(null);
   const clientId                        = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -105,10 +107,48 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
     onNowPlaying({ type: "youtube", title, videoId: vid });
   };
 
+  // Extract a video or playlist id from a pasted YouTube URL.
+  const parseYouTube = (str) => {
+    try {
+      const u = new URL(str.trim());
+      if (!/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(u.hostname)) return null;
+      if (u.hostname.endsWith("youtu.be")) return { videoId: u.pathname.slice(1) };
+      const list = u.searchParams.get("list");
+      const v = u.searchParams.get("v");
+      if (v) return { videoId: v };
+      if (list) return { playlistId: list };
+      const parts = u.pathname.split("/").filter(Boolean);
+      if (parts[0] === "embed" || parts[0] === "shorts") return { videoId: parts[1] };
+    } catch {}
+    return null;
+  };
+
+  const runYtSearch = async (q) => {
+    const raw = q.trim();
+    if (!raw) { setResults(null); return; }
+    const link = parseYouTube(raw);
+    if (link?.videoId) { setResults(null); setQuery(""); playVideo(link.videoId, "YouTube"); return; }
+    if (link?.playlistId) { setResults(null); setQuery(""); setSelectedPl({ id: link.playlistId, snippet: { title: "Playlist" } }); fetchVideos(link.playlistId); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=25&q=${encodeURIComponent(raw)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const d = await r.json();
+      if (d.error?.code === 401) { disconnect(); return; }
+      if (d.error) { setError(d.error.message); return; }
+      setResults((d.items || []).filter(it => it.id?.videoId));
+    } catch { setError("Errore di rete."); }
+    finally { setLoading(false); }
+  };
+
   const disconnect = () => {
     clearYtToken();
     setToken(null); setPlaylists([]); setSelectedPl(null);
     setVideos([]); setCurrentVideo(null); setCurrentTitle(null);
+    setResults(null); setQuery("");
     onNowPlaying(null);
   };
 
@@ -131,9 +171,33 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       )}
 
       <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
-      {loading && <Spinner />}
 
-      {!selectedPl ? (
+      <SearchBar value={query} onChange={setQuery} onSubmit={() => runYtSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
+        placeholder="Cerca un brano o incolla un link YouTube" accent="#FF0000" />
+      {loading && <Spinner />}
+      {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
+
+      {results !== null ? (
+        <>
+          <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
+          {results.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>Nessun risultato.</div>}
+          {results.map(it => {
+            const vid = it.id.videoId;
+            const title = it.snippet?.title;
+            const active = currentVideo === vid;
+            return (
+              <button key={vid} onClick={() => playVideo(vid, title)}
+                style={{ ...s.row, borderColor: active ? "#FF0000" : C.border, background: active ? C.surface : C.card }}>
+                <Thumb url={it.snippet?.thumbnails?.medium?.url} w={80} h={50} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ ...s.rowTitle, color: active ? "#FF4444" : C.text }}>{title}</div>
+                  <div style={s.rowSub}>{it.snippet?.channelTitle}</div>
+                </div>
+              </button>
+            );
+          })}
+        </>
+      ) : !selectedPl ? (
         <>
           <SectionLabel>Le tue playlist</SectionLabel>
           {playlists.map(pl => (
@@ -190,6 +254,8 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
   const [selectedPl, setSelectedPl] = useState(null);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
+  const [query, setQuery]           = useState("");
+  const [results, setResults]       = useState(null);
   const iframeRef                   = useRef(null);
   const clientId                    = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const redirectUri                 = window.location.origin;
@@ -256,18 +322,60 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         fetch("https://api.spotify.com/v1/me/playlists?limit=50", { headers: { Authorization: `Bearer ${tok}` } }),
       ]);
       if (meRes.status === 401 || plRes.status === 401) { disconnect(); return; }
-      const me = await meRes.json();
+      await meRes.json();
       const d  = await plRes.json();
       if (d.error) { setError(`Spotify: ${d.error.message} (${d.error.status})`); return; }
-      const owned = (d.items || []).filter(pl => pl.owner?.id === me.id);
-      setPlaylists(owned);
+      setPlaylists((d.items || []).filter(Boolean));
     } catch (e) { setError(`Errore di rete: ${e.message}`); }
     finally { setLoading(false); }
   };
 
   const selectPlaylist = (pl) => {
-    setSelectedPl(pl);
-    onNowPlaying({ type: "spotify", title: pl.name, subtitle: "Spotify", albumArt: pl.images?.[0]?.url });
+    selectItem("playlist", pl.id, pl.name, pl.images?.[0]?.url);
+  };
+
+  // Embed any Spotify resource (playlist / album / track) inside the app.
+  const selectItem = (type, id, name, image) => {
+    setSelectedPl({ type, id, name, images: image ? [{ url: image }] : [] });
+    onNowPlaying({ type: "spotify", title: name, subtitle: "Spotify", albumArt: image });
+  };
+
+  // Parse a pasted Spotify URL or URI into { type, id }.
+  const parseSpotify = (str) => {
+    const raw = str.trim();
+    let m = raw.match(/spotify:(playlist|album|track|artist):([A-Za-z0-9]+)/);
+    if (m) return { type: m[1], id: m[2] };
+    try {
+      const u = new URL(raw);
+      if (!u.hostname.endsWith("spotify.com")) return null;
+      const parts = u.pathname.split("/").filter(Boolean);
+      const i = parts.findIndex(p => ["playlist", "album", "track", "artist"].includes(p));
+      if (i >= 0 && parts[i + 1]) return { type: parts[i], id: parts[i + 1].split("?")[0] };
+    } catch {}
+    return null;
+  };
+
+  const runSpSearch = async (q) => {
+    const raw = q.trim();
+    if (!raw) { setResults(null); return; }
+    const link = parseSpotify(raw);
+    if (link && link.type !== "artist") { setResults(null); setQuery(""); selectItem(link.type, link.id, "Spotify", null); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch(
+        `https://api.spotify.com/v1/search?type=track,playlist&limit=20&q=${encodeURIComponent(raw)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (r.status === 401) { disconnect(); return; }
+      const d = await r.json();
+      if (d.error) { setError(`Spotify: ${d.error.message}`); return; }
+      setResults({
+        tracks: (d.tracks?.items || []).filter(Boolean),
+        playlists: (d.playlists?.items || []).filter(Boolean),
+      });
+    } catch (e) { setError(`Errore di rete: ${e.message}`); }
+    finally { setLoading(false); }
   };
 
   const disconnect = () => {
@@ -275,6 +383,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
     localStorage.removeItem("sp_refresh");
     localStorage.removeItem("sp_verifier");
     setToken(null); setPlaylists([]); setSelectedPl(null);
+    setResults(null); setQuery("");
     onNowPlaying(null);
   };
 
@@ -288,12 +397,57 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
       <button onClick={disconnect} style={s.disconnectBtn}>Disconnetti account</button>
+
+      <SearchBar value={query} onChange={setQuery} onSubmit={() => runSpSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
+        placeholder="Cerca brani/playlist o incolla un link Spotify" accent="#1DB954" />
       {loading && <Spinner />}
       {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
-      {!selectedPl ? (
+      {selectedPl ? (
         <>
-          <SectionLabel>Le tue playlist</SectionLabel>
+          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); onNowPlaying(null); }} />
+          <iframe
+            ref={iframeRef}
+            title={selectedPl.name}
+            src={`https://open.spotify.com/embed/${selectedPl.type || "playlist"}/${selectedPl.id}?utm_source=generator&theme=0`}
+            width="100%"
+            height={selectedPl.type === "track" ? 152 : 480}
+            frameBorder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"
+            style={{ borderRadius: 12, border: "none", marginTop: 8 }}
+          />
+        </>
+      ) : results !== null ? (
+        <>
+          <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
+          {results.tracks.length === 0 && results.playlists.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>Nessun risultato.</div>}
+          {results.tracks.length > 0 && <SectionLabel>Brani</SectionLabel>}
+          {results.tracks.map(t => (
+            <button key={t.id} onClick={() => selectItem("track", t.id, t.name, t.album?.images?.[0]?.url)} style={s.row}>
+              <Thumb url={t.album?.images?.[0]?.url} w={48} h={48} radius={4} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={s.rowTitle}>{t.name}</div>
+                <div style={s.rowSub}>{(t.artists || []).map(a => a.name).join(", ")}</div>
+              </div>
+              <span style={{ color: C.muted, fontSize: 16 }}>›</span>
+            </button>
+          ))}
+          {results.playlists.length > 0 && <SectionLabel>Playlist</SectionLabel>}
+          {results.playlists.map(pl => (
+            <button key={pl.id} onClick={() => selectItem("playlist", pl.id, pl.name, pl.images?.[0]?.url)} style={s.row}>
+              <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={s.rowTitle}>{pl.name}</div>
+                <div style={s.rowSub}>{pl.owner?.display_name || "Spotify"}</div>
+              </div>
+              <span style={{ color: C.muted, fontSize: 16 }}>›</span>
+            </button>
+          ))}
+        </>
+      ) : (
+        <>
+          <SectionLabel>Le tue playlist e quelle che segui</SectionLabel>
           {playlists.map(pl => (
             <button key={pl.id} onClick={() => selectPlaylist(pl)} style={s.row}>
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
@@ -304,21 +458,6 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
           ))}
-        </>
-      ) : (
-        <>
-          <BackBtn label={selectedPl.name} onClick={() => { setSelectedPl(null); onNowPlaying(null); }} />
-          <iframe
-            ref={iframeRef}
-            title={selectedPl.name}
-            src={`https://open.spotify.com/embed/playlist/${selectedPl.id}?utm_source=generator&theme=0`}
-            width="100%"
-            height="480"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            style={{ borderRadius: 12, border: "none", marginTop: 8 }}
-          />
         </>
       )}
     </div>
@@ -354,6 +493,17 @@ function Placeholder({ icon, title, sub }) {
 
 function Spinner() {
   return <div style={{ textAlign: "center", color: C.muted, padding: 12, fontSize: 13 }}>Caricamento...</div>;
+}
+
+function SearchBar({ value, onChange, onSubmit, onClear, placeholder, accent }) {
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} style={{ position: "relative" }}>
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} enterKeyHint="search"
+        style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "11px 40px 11px 38px", fontSize: 14, outline: "none" }} />
+      <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: accent || C.muted, fontSize: 16, pointerEvents: "none" }}>🔍</span>
+      {value && <button type="button" onClick={onClear} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
+    </form>
+  );
 }
 
 function SectionLabel({ children }) {
