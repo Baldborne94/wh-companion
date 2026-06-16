@@ -4,6 +4,7 @@ import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
 import { AOS_ESSENTIAL, findAoSGuideBook } from "../data/aosGuide";
 import CoverImage from "./CoverImage";
+import { getBookRating } from "../lib/bookStatus";
 import { AOS, AOS_BOOKS } from "../data/aosBooks";
 import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
 
@@ -558,6 +559,8 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
   const [search,      setSearch]      = useState("");
   const [series,      setSeries]      = useState("All");
   const [type,        setType]        = useState("All");
+  const [status,      setStatus]      = useState("All");
+  const [sort,        setSort]        = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const [detail,      setDetail]      = useState(null);
   const [reader,      setReader]      = useState(null);
@@ -633,10 +636,25 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
   const filtered = AOS_BOOKS.filter(b => {
     if (series !== "All" && b.series !== series) return false;
     if (type   !== "All" && b.type   !== type)   return false;
+    if (status !== "All") {
+      const bst = statuses[b.id]?.status || 'none';
+      if (status === "unread" ? bst !== 'none' : bst !== status) return false;
+    }
     if (search) { const q = search.toLowerCase(); return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.series.toLowerCase().includes(q); }
     return true;
   });
-  const isFiltered = series !== "All" || type !== "All";
+
+  // Sorting — applied after filtering. "default" keeps the curated AOS_BOOKS order.
+  const sorted = useMemo(() => {
+    if (sort === "default") return filtered;
+    const arr = [...filtered];
+    if (sort === "title")       arr.sort((a, b) => a.title.localeCompare(b.title));
+    else if (sort === "author") arr.sort((a, b) => a.author.localeCompare(b.author));
+    else if (sort === "rating") arr.sort((a, b) => getBookRating(user?.id, b.id) - getBookRating(user?.id, a.id));
+    return arr;
+  }, [filtered, sort, user?.id]);
+
+  const isFiltered = series !== "All" || type !== "All" || status !== "All" || sort !== "default";
 
   const TABS = [
     { id:"catalogue", label:"Catalogue" },
@@ -866,7 +884,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
           <div style={{ padding:"8px 16px", display:"flex", gap:8, alignItems:"center" }}>
             <button onClick={() => setShowFilters(f => !f)} style={{ background:showFilters||isFiltered?`${AOS.gold}22`:"transparent", border:`1px solid ${showFilters||isFiltered?AOS.gold:AOS.dim}`, borderRadius:20, padding:"7px 14px", color:showFilters||isFiltered?AOS.gold:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>⚙ Filters{isFiltered?" •":""}</button>
             <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.muted, flex:1 }}>{filtered.length} titles</span>
-            {isFiltered && <button onClick={() => { setSeries("All"); setType("All"); }} style={{ background:"transparent", border:`1px solid ${AOS.red}55`, borderRadius:20, padding:"5px 12px", color:AOS.red, fontFamily:"'Cinzel',serif", fontSize:10, cursor:"pointer" }}>Reset</button>}
+            {isFiltered && <button onClick={() => { setSeries("All"); setType("All"); setStatus("All"); setSort("default"); }} style={{ background:"transparent", border:`1px solid ${AOS.red}55`, borderRadius:20, padding:"5px 12px", color:AOS.red, fontFamily:"'Cinzel',serif", fontSize:10, cursor:"pointer" }}>Reset</button>}
             {/* view mode toggle */}
             <div style={{ display:"flex", gap:2, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2 }}>
               {[{m:"card",icon:"▦",title:"Card"},{m:"list",icon:"☰",title:"List"},{m:"shelf",icon:"📚",title:"Shelf"}].map(v => (
@@ -879,6 +897,22 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
           </div>
           {showFilters && (
             <div style={{ padding:"0 16px 12px", borderBottom:`1px solid ${AOS.border}` }}>
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Status</div>
+                <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+                  {[{ v:"All", l:"All" }, { v:"want", l:"📋 To Read" }, { v:"reading", l:"📖 Reading" }, { v:"read", l:"✅ Read" }, { v:"unread", l:"Unread" }].map(o => (
+                    <Chip key={o.v} label={o.l} active={status===o.v} onClick={() => setStatus(o.v)}/>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Sort by</div>
+                <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+                  {[{ v:"default", l:"Default" }, { v:"title", l:"Title A–Z" }, { v:"author", l:"Author A–Z" }, { v:"rating", l:"Rating ★" }].map(o => (
+                    <Chip key={o.v} label={o.l} active={sort===o.v} onClick={() => setSort(o.v)} color={AOS.blue}/>
+                  ))}
+                </div>
+              </div>
               <div style={{ marginBottom:10 }}>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Series</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
@@ -897,9 +931,9 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
           {/* VIEW: CARD */}
           {viewMode === "card" && (
             <div style={{ padding:"10px 16px", display:"flex", flexDirection:"column", gap:8 }}>
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>No tomes found, Warrior.</div>
-              ) : filtered.map(book => {
+              ) : sorted.map(book => {
                 const sc = spineColor(book);
                 const tc = book.type === "Codex" ? AOS.red : AOS.gold;
                 const bst = statuses[book.id]?.status || 'none';
@@ -929,9 +963,9 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange }) {
           {/* VIEW: LIST */}
           {viewMode === "list" && (
             <div style={{ padding:"6px 16px 16px" }}>
-              {filtered.length === 0 ? (
+              {sorted.length === 0 ? (
                 <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>No tomes found, Warrior.</div>
-              ) : filtered.map(book => {
+              ) : sorted.map(book => {
                 const sc = spineColor(book);
                 const bst = statuses[book.id]?.status || 'none';
                 const bstCfg = STATUS_CFG[bst];
