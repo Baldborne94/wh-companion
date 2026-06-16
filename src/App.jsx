@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react"
 import { supabase, signOut } from "./lib/supabase";
 import { sb } from "./lib/sb";
 import { resolveBookUrl } from "./lib/openBook";
+import { useLang } from "./lib/i18n.jsx";
 import { C } from "./data/constants";
 import { BOOKS } from "./data/books";
 import MusicPlayer from "./components/MusicPlayer";
@@ -38,6 +39,7 @@ const AoSCrusadeSection = lazy(() => import("./components/AoSApp").then(m => ({ 
 const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"},{id:"music",icon:"🎵",label:"Music"}];
 
 export default function App(){
+  const { lang, toggle:toggleLang, t }=useLang();
   const [user,setUser]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
   useEffect(()=>{
@@ -269,7 +271,8 @@ export default function App(){
   },[musicPaused]);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
-  const curNavLabel=curNav?(curNav.id==="reading"&&universe==='aos'?"Path to Glory":curNav.label):"";
+  const navLabel=(id)=>t(id==="reading"?(universe==='aos'?"nav.pathToGlory":"nav.crusade"):`nav.${id}`);
+  const curNavLabel=curNav?navLabel(curNav.id):"";
 
   // ── App-level reader (opened from Home page) ──────────────────────────────
   const [appReader,setAppReader]=useState(null);
@@ -346,10 +349,10 @@ export default function App(){
           return(
             <div style={{flexShrink:0,height:50,background:hBg,borderBottom:`1px solid ${hBorder}`,display:"flex",alignItems:"center",padding:"0 16px",gap:0,position:"relative"}}>
               <div style={{height:2,position:"absolute",top:0,left:0,right:0,background:`linear-gradient(to right,transparent,${hAccent},transparent)`}}/>
-              <button onClick={()=>selectUniverse(null)} title="Switch Universe" style={{background:"transparent",border:"none",cursor:"pointer",padding:"0 8px 0 0",color:hMuted,fontSize:18,lineHeight:1,flexShrink:0}}>‹</button>
+              <button onClick={()=>selectUniverse(null)} title={t("header.switchUniverse")} style={{background:"transparent",border:"none",cursor:"pointer",padding:"0 8px 0 0",color:hMuted,fontSize:18,lineHeight:1,flexShrink:0}}>‹</button>
               <button onClick={()=>setSection("home")} style={{background:"transparent",border:"none",cursor:"pointer",padding:0,display:"flex",flexDirection:"column",alignItems:"flex-start"}}>
                 <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:universe==='aos'?10:13,fontWeight:900,color:hText,letterSpacing:2,lineHeight:1}}>{hLabel}</div>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:hGoldDim,letterSpacing:4,textTransform:"uppercase"}}>Companion</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:7,color:hGoldDim,letterSpacing:4,textTransform:"uppercase"}}>{t("header.companion")}</div>
               </button>
               <div style={{flex:1,textAlign:"center"}}>
                 {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
@@ -362,21 +365,23 @@ export default function App(){
                       {nowPlaying.title}
                     </span>
                   </button>
-                  <button onClick={toggleMusicPause} title={musicPaused?"Resume":"Pause"}
+                  <button onClick={toggleMusicPause} title={musicPaused?t("header.resume"):t("header.pause")}
                     style={{background:"transparent",border:"none",cursor:"pointer",color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",fontSize:13,lineHeight:1,padding:"3px 3px",flexShrink:0}}>
                     {musicPaused?"▶":"⏸"}
                   </button>
-                  <button onClick={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} title="Stop music"
+                  <button onClick={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} title={t("header.stopMusic")}
                     style={{background:"transparent",border:"none",cursor:"pointer",color:`${hMuted}99`,fontSize:14,lineHeight:1,padding:"3px 4px",flexShrink:0}}>
                     ✕
                   </button>
                 </>)}
-                <button onClick={()=>setShowStats(true)} title="Achievements & Stats"
+                <button onClick={()=>setShowStats(true)} title={t("header.achievements")}
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>🏆</button>
-                <button onClick={()=>setShowBackup(true)} title="Backup & Restore"
+                <button onClick={()=>setShowBackup(true)} title={t("header.backup")}
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>💾</button>
+                <button onClick={toggleLang} title={t("language.toggle")}
+                  style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 7px",fontFamily:"'Cinzel',serif",fontSize:9,fontWeight:700,letterSpacing:1,lineHeight:1,cursor:"pointer"}}>{lang.toUpperCase()}</button>
                 {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
-                <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
+                <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>{t("header.logout")}</button>
               </div>
             </div>
           );
@@ -384,7 +389,7 @@ export default function App(){
         {/* ── OFFLINE BANNER ── */}
         {!isOnline&&(
           <div style={{flexShrink:0,background:"#b0302299",borderBottom:"1px solid #ff444466",padding:"6px 16px",textAlign:"center",fontFamily:"'Cinzel',serif",fontSize:11,color:"#ffaaaa",letterSpacing:1}}>
-            📡 Offline — local data only
+            📡 {t("header.offline")}
           </div>
         )}
         {/* ── RELEASE REMINDER ── */}
@@ -480,7 +485,7 @@ export default function App(){
           const nBorder=universe==='aos'?AOS.border:C.border;
           const nGold=universe==='aos'?AOS.gold:C.gold;
           const nMuted=universe==='aos'?AOS.muted:C.muted;
-          const navItems=NAV.map(n=>n.id==="reading"?{...n,label:universe==='aos'?"Path to Glory":"Crusade"}:n);
+          const navItems=NAV.map(n=>({...n,label:navLabel(n.id)}));
           return(
             <div style={{flexShrink:0,background:nBg,borderTop:`1px solid ${nBorder}`,display:"flex",height:56}}>
               {navItems.map(n=>(<button key={n.id} onClick={()=>setSection(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"transparent",border:"none",cursor:"pointer",padding:0,borderTop:`2px solid ${section===n.id?nGold:"transparent"}`,transition:"border-color 0.15s"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span><span style={{fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,color:section===n.id?nGold:nMuted,textTransform:"uppercase"}}>{n.label}</span></button>))}
