@@ -68,8 +68,8 @@ A progressive web app (PWA) for Warhammer 40,000 fans: a full Black Library cata
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/Baldborne94/wh40k-companion.git
-cd wh40k-companion/wh40k-companion
+git clone https://github.com/Baldborne94/wh-companion.git
+cd wh-companion
 npm install
 
 # 2. Add environment variables — create a .env file:
@@ -95,7 +95,7 @@ npm run dev
 ## Project structure
 
 ```
-wh40k-companion/
+wh-companion/
 ├── public/
 │   ├── manifest.json        ← PWA manifest (installable on phone)
 │   ├── icon.svg
