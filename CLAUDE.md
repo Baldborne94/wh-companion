@@ -98,7 +98,7 @@ Signed URLs (2h TTL) via `sb.storage.signedUrl(path)`.
 
 ### Navigation
 
-Single-page app with a bottom nav bar. Sections: `home`, `library`, `reading` (Crusade/Path to Glory), `lore`, `music`, `painting`, `oracle`.
+Single-page app with a bottom nav bar. Sections: `home`, `library`, `reading` (Crusade/Path to Glory), `lore`, `music`, `painting`.
 
 ```js
 // In App.jsx
@@ -109,7 +109,6 @@ const NAV = [
   { id:"lore",    label:"Lore",   icon:"📖" },
   { id:"music",   label:"Music",  icon:"🎵" },
   { id:"painting",label:"Painting",icon:"🎨"},
-  { id:"oracle",  label:"Oracle", icon:"🔮" },
 ];
 ```
 
