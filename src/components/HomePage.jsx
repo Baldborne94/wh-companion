@@ -120,7 +120,7 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
   );
 }
 
-export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onShowHelp }) {
+export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -165,6 +165,17 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
   const [openErrorId, setOpenErrorId] = useState(null);
   const spineColor  = b => FC[b.faction] || C.dim;
 
+  // Shelf click: open the reader if the ebook is available, otherwise open the
+  // book's detail page (never a dead click).
+  const openShelfBook = async (b) => {
+    if (uploadedIds.has(b.id) && onOpenBook) {
+      const ok = await onOpenBook(b);
+      if (ok === true) return;
+    }
+    if (onOpenDetail) onOpenDetail(b);
+    else setSection('library');
+  };
+
   const ShelfRow = ({ books, label }) => {
     if (!books.length) return null;
     return (
@@ -179,7 +190,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
               const isReading = bst === 'reading';
               const isRead    = bst === 'read';
               return (
-                <div key={b.id} onClick={() => onOpenBook ? onOpenBook(b) : setSection('library')} title={`${b.title} — ${b.author}`}
+                <div key={b.id} onClick={() => openShelfBook(b)} title={`${b.title} — ${b.author}`}
                   style={{ flexShrink: 0, position: "relative", cursor: "pointer", borderRadius: "3px 3px 0 0", overflow: "hidden", boxShadow: "2px 3px 8px rgba(0,0,0,0.6)", transition: "transform 0.15s ease, box-shadow 0.15s ease", border: isUploaded ? `1px solid ${C.gold}99` : "none" }}
                   onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "4px 8px 16px rgba(0,0,0,0.8)"; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}

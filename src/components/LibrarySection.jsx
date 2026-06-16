@@ -23,7 +23,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-export default function LibrarySection({ user, statuses = {}, onStatusChange }) {
+export default function LibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card");
   const [search,      setSearch]      = useState("");
@@ -44,6 +44,11 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange }) 
   const sentinelRef = useRef(null);
 
   const dSearch = useDebounce(search, 250);
+
+  // Deep-link: open a specific book's detail when navigated here from elsewhere (e.g. Home shelf).
+  useEffect(() => {
+    if (openDetailBook) { setDetail(openDetailBook); onDetailConsumed?.(); }
+  }, [openDetailBook]);
 
   // Reset visible count when filters change
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [dSearch, series, faction, type, era, status, sort]);
