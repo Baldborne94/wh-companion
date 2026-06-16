@@ -292,7 +292,6 @@ export const LORE_DB = {
   "sanguinary guard":   { name:"Sanguinary Guard",           wiki:"Sanguinary_Guard" },
   "thunder warrior":    { name:"Thunder Warriors",           wiki:"Thunder_Warriors" },
   "thunder warriors":   { name:"Thunder Warriors",           wiki:"Thunder_Warriors" },
-  "legio custodes":     { name:"Legio Custodes",             wiki:"Adeptus_Custodes" },
   "knight-errant":      { name:"Knights Errant",             wiki:"Knights_Errant_(Horus_Heresy)" },
 
   // ── Daemons & Chaos entities ──────────────────────────────────────────────
