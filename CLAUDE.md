@@ -7,54 +7,53 @@ A Warhammer 40,000 + Age of Sigmar companion PWA. React 18 + Vite 5 SPA, Supabas
 ## Repository Layout
 
 ```
-wh40k-companion/          ← git root
-└── wh40k-companion/      ← actual Vite project (cd here to run npm commands)
-    ├── index.html
-    ├── vite.config.js
-    ├── package.json
-    ├── public/
-    │   ├── manifest.json      ← PWA manifest (orientation: "any")
-    │   ├── icon.svg / icon-192.png / icon-512.png
-    │   ├── aquila.png         ← WH40K logo asset
-    │   └── sigmar.png
-    └── src/
-        ├── App.jsx            ← nav, top-level state, reader orchestration
-        ├── main.jsx
-        ├── index.css
-        ├── components/
-        │   ├── AoSApp.jsx         ← Age of Sigmar universe module (Path to Glory: Overview / Reading Order / Getting Started)
-        │   ├── ReadingSection.jsx ← WH40K Crusade (Overview + Horus Heresy guide)
-        │   ├── LibrarySection.jsx ← book catalogue + My Shelf (offline-aware)
-        │   ├── BookDetail.jsx     ← per-book detail / upload / open (offline-aware)
-        │   ├── HomePage.jsx
-        │   ├── LoreSection.jsx
-        │   ├── EpubReader.jsx     ← EPUB reader (CFI bookmarks, paginate/scroll)
-        │   ├── PdfReader.jsx      ← PDF reader
-        │   ├── MusicPlayer.jsx    ← YouTube + Spotify player (forwardRef)
-        │   ├── PaintingTracker.jsx
-        │   ├── StatsModal.jsx / AchievementPopup.jsx / OnboardingModal.jsx
-        │   ├── LoginPage.jsx      ← Google OAuth landing page
-        │   ├── CoverImage.jsx / ErrorBoundary.jsx / UniverseSelector.jsx
-        ├── data/
-        │   ├── books.js       ← 230+ WH40K book catalogue
-        │   ├── aosBooks.js    ← AoS book catalogue + AOS colour palette
-        │   ├── constants.js   ← C (colours), FC (faction colours), THEMES, FONTS, STATUS_CFG
-        │   ├── lore.js        ← WH40K keyword→wiki DB + KW_REGEX
-        │   ├── hhGuide.js     ← Horus Heresy reading order (HH_MIN / HH_FULL / HH_OPTIONAL)
-        │   ├── aosGuide.js    ← AoS reading order (AOS_ESSENTIAL chronological spine) + findAoSGuideBook
-        │   └── releases.js
-        └── lib/
-            ├── supabase.js    ← createClient, signInWithGoogle, signOut
-            ├── sb.js          ← fetch-based REST helpers (sb.get, sb.upsert, sb.del, sb.storage)
-            ├── openBook.js    ← resolveBookUrl: download bytes (auth headers) + IndexedDB cache fallback
-            ├── ebookCache.js  ← IndexedDB ebook cache (cacheGet/cachePut/cacheListIds) for offline reading
-            ├── bookStatus.js / bookmarkHelpers.js / readerNav.js / readingHelpers.js / achievements.js
+wh-companion/             ← git root + Vite project (run npm commands here)
+├── index.html
+├── vite.config.js
+├── package.json
+├── public/
+│   ├── manifest.json      ← PWA manifest (orientation: "any")
+│   ├── icon.svg / icon-192.png / icon-512.png
+│   ├── aquila.png         ← WH40K logo asset
+│   └── sigmar.png
+└── src/
+    ├── App.jsx            ← nav, top-level state, reader orchestration
+    ├── main.jsx
+    ├── index.css
+    ├── components/
+    │   ├── AoSApp.jsx         ← Age of Sigmar universe module (Path to Glory: Overview / Reading Order / Getting Started)
+    │   ├── ReadingSection.jsx ← WH40K Crusade (Overview + Horus Heresy guide)
+    │   ├── LibrarySection.jsx ← book catalogue + My Shelf (offline-aware)
+    │   ├── BookDetail.jsx     ← per-book detail / upload / open (offline-aware)
+    │   ├── HomePage.jsx
+    │   ├── LoreSection.jsx
+    │   ├── EpubReader.jsx     ← EPUB reader (CFI bookmarks, paginate/scroll)
+    │   ├── PdfReader.jsx      ← PDF reader
+    │   ├── MusicPlayer.jsx    ← YouTube + Spotify player (forwardRef)
+    │   ├── PaintingTracker.jsx
+    │   ├── StatsModal.jsx / AchievementPopup.jsx / OnboardingModal.jsx
+    │   ├── LoginPage.jsx      ← Google OAuth landing page
+    │   ├── CoverImage.jsx / ErrorBoundary.jsx / UniverseSelector.jsx
+    ├── data/
+    │   ├── books.js       ← 230+ WH40K book catalogue
+    │   ├── aosBooks.js    ← AoS book catalogue + AOS colour palette
+    │   ├── constants.js   ← C (colours), FC (faction colours), THEMES, FONTS, STATUS_CFG
+    │   ├── lore.js        ← WH40K keyword→wiki DB + KW_REGEX
+    │   ├── hhGuide.js     ← Horus Heresy reading order (HH_MIN / HH_FULL / HH_OPTIONAL)
+    │   ├── aosGuide.js    ← AoS reading order (AOS_ESSENTIAL chronological spine) + findAoSGuideBook
+    │   └── releases.js
+    └── lib/
+        ├── supabase.js    ← createClient, signInWithGoogle, signOut
+        ├── sb.js          ← fetch-based REST helpers (sb.get, sb.upsert, sb.del, sb.storage)
+        ├── openBook.js    ← resolveBookUrl: download bytes (auth headers) + IndexedDB cache fallback
+        ├── ebookCache.js  ← IndexedDB ebook cache (cacheGet/cachePut/cacheListIds) for offline reading
+        ├── bookStatus.js / bookmarkHelpers.js / readerNav.js / readingHelpers.js / achievements.js
 ```
 
 ## Dev Commands
 
 ```bash
-cd wh40k-companion/wh40k-companion
+cd wh-companion
 npm run dev       # local dev server
 npm run build     # production build — ALWAYS run before committing to verify no errors
 npm run preview   # preview production build
