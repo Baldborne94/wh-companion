@@ -234,7 +234,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("library.shelf.searchPlaceholder")}
                     style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 40px 12px 44px", fontSize: 15, outline: "none" }} />
                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.muted, fontSize: 18, pointerEvents: "none" }}>🔍</span>
-                  {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
+                  {search && <button onClick={() => setSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
                 </div>
               </div>
               <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center" }}>
@@ -389,7 +389,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
             <div style={{ position: "relative" }}>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("library.catalogue.searchPlaceholder")} style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 40px 12px 44px", fontSize: 15, outline: "none" }} />
               <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.muted, fontSize: 18, pointerEvents: "none" }}>🔍</span>
-              {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
+              {search && <button onClick={() => setSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
             </div>
           </div>
           <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center" }}>

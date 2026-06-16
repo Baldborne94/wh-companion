@@ -725,7 +725,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("aos.library.searchEbooks")}
                     style={{ width:"100%", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:10, color:AOS.text, padding:"12px 40px 12px 44px", fontSize:15, outline:"none" }}/>
                   <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:AOS.muted, fontSize:18, pointerEvents:"none" }}>🔍</span>
-                  {search && <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
+                  {search && <button onClick={() => setSearch("")} aria-label="Clear search" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
                 </div>
               </div>
               {/* view toggle + count */}
@@ -890,7 +890,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("aos.library.searchPlaceholder")}
                 style={{ width:"100%", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:10, color:AOS.text, padding:"12px 40px 12px 44px", fontSize:15, outline:"none" }}/>
               <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:AOS.muted, fontSize:18, pointerEvents:"none" }}>🔍</span>
-              {search && <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
+              {search && <button onClick={() => setSearch("")} aria-label="Clear search" style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
             </div>
           </div>
           {/* filter + view toggle bar */}

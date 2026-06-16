@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLang } from "../lib/i18n.jsx";
 
 // Visual style per slide; the text (tag/title/body/bullets) comes from i18n,
@@ -28,6 +28,12 @@ export default function OnboardingModal({ onClose }) {
     else setSlide(i => i + 1);
   };
   const prev = () => setSlide(i => Math.max(0, i - 1));
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const onTouchEnd = (e) => {
@@ -108,7 +114,7 @@ export default function OnboardingModal({ onClose }) {
           {/* Progress dots */}
           <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 16 }}>
             {SLIDES.map((_, i) => (
-              <button key={i} onClick={() => setSlide(i)} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, background: i === slide ? s.accent : "#3a3428", border: "none", cursor: "pointer", transition: "all 0.25s", padding: 0 }} />
+              <button key={i} onClick={() => setSlide(i)} aria-label={`Go to slide ${i + 1}`} aria-current={i === slide ? "true" : undefined} style={{ width: i === slide ? 20 : 6, height: 6, borderRadius: 3, background: i === slide ? s.accent : "#3a3428", border: "none", cursor: "pointer", transition: "all 0.25s", padding: 0 }} />
             ))}
           </div>
 
