@@ -32,6 +32,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
     │   ├── MusicPlayer.jsx    ← YouTube + Spotify player (forwardRef)
     │   ├── PaintingTracker.jsx
     │   ├── StatsModal.jsx / AchievementPopup.jsx / OnboardingModal.jsx
+    │   ├── BackupModal.jsx    ← export/import of local user data (JSON) — 💾 header button
     │   ├── LoginPage.jsx      ← Google OAuth landing page
     │   ├── CoverImage.jsx / ErrorBoundary.jsx / UniverseSelector.jsx
     ├── data/

@@ -24,6 +24,7 @@ const EpubReader        = lazy(() => import("./components/EpubReader"));
 const PdfReader         = lazy(() => import("./components/PdfReader"));
 const PaintingTracker   = lazy(() => import("./components/PaintingTracker"));
 const StatsModal        = lazy(() => import("./components/StatsModal"));
+const BackupModal       = lazy(() => import("./components/BackupModal"));
 const AchievementPopup  = lazy(() => import("./components/AchievementPopup"));
 const OnboardingModal   = lazy(() => import("./components/OnboardingModal"));
 const HomePage          = lazy(() => import("./components/HomePage"));
@@ -118,6 +119,7 @@ export default function App(){
   const [unlockedIdsLoaded,   setUnlockedIdsLoaded]   = useState(false);
   const [pendingAchievements, setPendingAchievements] = useState([]);
   const [showStats,           setShowStats]           = useState(false);
+  const [showBackup,          setShowBackup]          = useState(false);
 
   useEffect(() => {
     if (!user?.id) { setUnlockedIds([]); setUnlockedIdsLoaded(false); didInitialAosCheck.current = false; return; }
@@ -371,6 +373,8 @@ export default function App(){
                 </>)}
                 <button onClick={()=>setShowStats(true)} title="Achievements & Stats"
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>🏆</button>
+                <button onClick={()=>setShowBackup(true)} title="Backup & Restore"
+                  style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>💾</button>
                 {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
                 <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>LOGOUT</button>
               </div>
@@ -462,6 +466,12 @@ export default function App(){
               unlockedIds={unlockedIds}
               onClose={()=>setShowStats(false)}
             />
+          </Suspense>
+        )}
+        {/* ── BACKUP MODAL ── */}
+        {showBackup&&(
+          <Suspense fallback={null}>
+            <BackupModal user={user} onClose={()=>setShowBackup(false)}/>
           </Suspense>
         )}
         {/* ── BOTTOM NAV ── */}
