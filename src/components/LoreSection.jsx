@@ -76,7 +76,7 @@ export default function LoreSection({ universe }) {
         <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?"Accesso diretto alle migliori enciclopedie online dei Mortal Realms.":"Direct access to the best online encyclopedias. WH40K lore is vast — let the experts handle it."}</p>
       </div>
       <div style={{padding:"16px 16px 0"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{isAoS?"Cerca su Lexicanum AoS":"Search on Fandom Wiki"}</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{isAoS?"Search on AoS Lexicanum":"Search on Fandom Wiki"}</div>
         <div style={{display:"flex",gap:8}}>
           <div style={{flex:1,position:"relative"}}>
             <input value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}

@@ -670,7 +670,7 @@ export default function EpubReader({
               const span = doc.createElement("span");
               span.className = "lore-kw";
               span.setAttribute("data-kw", k);
-              span.title = "Cerca su Wiki / Lexicanum ↗";
+              span.title = "Search on Wiki / Lexicanum ↗";
               span.textContent = m[0];
               frag.appendChild(span);
               last = m.index + m[0].length;
@@ -1309,7 +1309,7 @@ export default function EpubReader({
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
               <div>
                 <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:C.gold, marginBottom:2 }}>{LORE_DB[lorePick]?.name || lorePick}</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>Cerca su</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>Search on</div>
               </div>
               <button onClick={() => setLorePick(null)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.muted, padding:"2px 8px", cursor:"pointer", fontSize:12 }}>✕</button>
             </div>

@@ -766,9 +766,9 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
     } catch (e) {
       if (e.message === "DAILY_LIMIT") {
-        setError("Hai esaurito le 3 generazioni AI di oggi. Riprova domani.");
+        setError("You've used today's 3 AI generations. Try again tomorrow.");
       } else if (e.message === "NO_SESSION") {
-        setError("Devi effettuare l'accesso per usare l'AI.");
+        setError("You must be signed in to use the AI.");
       } else {
         setError("AI error: " + (e.message || "check console"));
       }
@@ -1177,7 +1177,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
       }
       onSave();
     } catch (err) {
-      alert("Errore cancellazione: " + err.message);
+      alert("Delete error: " + err.message);
       setLoading(false);
     }
   };
