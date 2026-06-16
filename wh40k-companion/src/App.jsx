@@ -410,7 +410,7 @@ export default function App(){
             </div>
           )}
           {!appReader&&section!=="music"&&(
-            <div ref={mainRef} style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
+            <div ref={mainRef} key={section} className="section-fade" style={{position:"absolute",inset:0,zIndex:1,overflowY:"auto",overscrollBehavior:"contain",background:universe==='aos'?AOS.bg:C.bg}}>
               <ErrorBoundary>
                 <Suspense fallback={null}>
                   {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onShowHelp={()=>setShowOnboarding(true)}/>}
