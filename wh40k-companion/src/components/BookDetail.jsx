@@ -154,7 +154,7 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
               <div style={{fontSize:12,color:C.muted,lineHeight:1.75,marginBottom:10}}>{book.desc}</div>
             </>
           )}
-          <a href={`https://www.blacklibrary.com/search?q=${encodeURIComponent(book.title)}`} target="_blank" rel="noopener noreferrer"
+          <a href={`https://www.google.com/search?q=${encodeURIComponent('"'+book.title+'" site:blacklibrary.com')}`} target="_blank" rel="noopener noreferrer"
             style={{fontSize:11,color:C.blue,textDecoration:"underline",fontFamily:"'Cinzel',serif",letterSpacing:1}}>
             Find on Black Library ›
           </a>
