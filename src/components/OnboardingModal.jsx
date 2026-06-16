@@ -1,117 +1,23 @@
 import { useState, useRef } from "react";
+import { useLang } from "../lib/i18n.jsx";
 
-const SLIDES = [
-  {
-    accent: "#c9a84c",
-    bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#2a1a00,#1a1000)",
-    icon: null, // custom: dual logos
-    tag: "WELCOME",
-    title: "The Scriptorium",
-    body: "Your all-in-one companion for the 41st Millennium and the Mortal Realms. Track your reading, explore the lore, and manage your hobby — in one place.",
-    bullets: [],
-  },
-  {
-    accent: "#4a8adc",
-    bg: "linear-gradient(160deg,#0a1520 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#0a1a2a,#0a1520)",
-    icon: "📚",
-    tag: "LIBRARY",
-    title: "Your Library",
-    bullets: [
-      "280+ books from Warhammer 40,000 & Age of Sigmar",
-      "Upload your own EPUB & PDF ebooks",
-      "Mark books as Read, Reading or Want to Read",
-      "Filter by status, faction & series — and sort the catalogue",
-      "Progress syncs automatically across all devices",
-    ],
-  },
-  {
-    accent: "#b03030",
-    bg: "linear-gradient(160deg,#200a0a 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#2a0a0a,#200a0a)",
-    icon: "🗺",
-    tag: "CRUSADE · PATH TO GLORY",
-    title: "Reading Guides",
-    bullets: [
-      "Horus Heresy Full & Essential reading order",
-      "Age of Sigmar narrative reading guide",
-      "\"Next Up\" shows what to read next in every saga",
-      "Short stories & audio dramas included in the order",
-    ],
-  },
-  {
-    accent: "#4aaa6a",
-    bg: "linear-gradient(160deg,#0a1a10 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#0a1a10,#0a2010)",
-    icon: "📖",
-    tag: "READER",
-    title: "Read Anywhere",
-    bullets: [
-      "Read your ebooks directly in the app (EPUB & PDF)",
-      "Bookmarks & auto-resume — pick up where you left off",
-      "Open once online → cached locally for offline reading",
-      "WH40K and AoS lore terms highlighted — tap to open the wiki",
-    ],
-  },
-  {
-    accent: "#9a4adc",
-    bg: "linear-gradient(160deg,#130a20 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#1a0a2a,#130a20)",
-    icon: "🔮",
-    tag: "LORE",
-    title: "Explore the Lore",
-    bullets: [
-      "Lore lookup: tap any highlighted term to open the wiki",
-      "AoS Realms guide with direct Lexicanum links",
-      "Both 40K Fandom wiki & AoS Lexicanum supported",
-    ],
-  },
-  {
-    accent: "#2a9dc9",
-    bg: "linear-gradient(160deg,#071520 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#071a25,#071520)",
-    icon: "🎵",
-    tag: "MUSIC",
-    title: "Ambient Soundscapes",
-    bullets: [
-      "Search any track or playlist on YouTube & Spotify",
-      "Paste a YouTube or Spotify link to play it instantly",
-      "Your own & followed playlists, full-length playback",
-      "Mini player keeps the music going across the whole app",
-    ],
-  },
-  {
-    accent: "#c9a84c",
-    bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#2a1800,#1a1000)",
-    icon: "🎨",
-    tag: "PAINTING",
-    title: "Track Your Hobby",
-    bullets: [
-      "Track miniature painting progress step by step",
-      "AI Color Advisor — photo-based scheme suggestions",
-      "Citadel, AK & Army Painter paint picker with notes",
-    ],
-  },
-  {
-    accent: "#c9a84c",
-    bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)",
-    iconBg: "linear-gradient(135deg,#2a1800,#1a1000)",
-    icon: "🏆",
-    tag: "RECORD & BACKUP",
-    title: "Stats & Backup",
-    bullets: [
-      "Stats screen (🏆): monthly reading charts & streaks",
-      "Achievements unlock as you read and paint",
-      "Backup & restore (💾): export and import all your data",
-      "Move to a new device without losing your progress",
-    ],
-    isLast: true,
-  },
+// Visual style per slide; the text (tag/title/body/bullets) comes from i18n,
+// matched by index to onboarding.slides in data/i18n/translations.js.
+const SLIDE_STYLES = [
+  { accent: "#c9a84c", bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#2a1a00,#1a1000)", icon: null },
+  { accent: "#4a8adc", bg: "linear-gradient(160deg,#0a1520 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#0a1a2a,#0a1520)", icon: "📚" },
+  { accent: "#b03030", bg: "linear-gradient(160deg,#200a0a 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#2a0a0a,#200a0a)", icon: "🗺" },
+  { accent: "#4aaa6a", bg: "linear-gradient(160deg,#0a1a10 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#0a1a10,#0a2010)", icon: "📖" },
+  { accent: "#9a4adc", bg: "linear-gradient(160deg,#130a20 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#1a0a2a,#130a20)", icon: "🔮" },
+  { accent: "#2a9dc9", bg: "linear-gradient(160deg,#071520 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#071a25,#071520)", icon: "🎵" },
+  { accent: "#c9a84c", bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#2a1800,#1a1000)", icon: "🎨" },
+  { accent: "#c9a84c", bg: "linear-gradient(160deg,#1a1000 0%,#0a0905 100%)", iconBg: "linear-gradient(135deg,#2a1800,#1a1000)", icon: "🏆" },
 ];
 
 export default function OnboardingModal({ onClose }) {
+  const { t } = useLang();
+  const texts = t("onboarding.slides");
+  const SLIDES = SLIDE_STYLES.map((st, i) => ({ ...st, ...texts[i] }));
   const [slide, setSlide] = useState(0);
   const touchStartX = useRef(null);
   const s = SLIDES[slide];
@@ -209,14 +115,14 @@ export default function OnboardingModal({ onClose }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             {/* Skip / Back */}
             {slide === 0 ? (
-              <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#7a7060", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer", padding: "8px 4px" }}>Skip</button>
+              <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#7a7060", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer", padding: "8px 4px" }}>{t("onboarding.skip")}</button>
             ) : (
-              <button onClick={prev} style={{ background: "transparent", border: `1px solid #3a3428`, borderRadius: 8, color: "#7a7060", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer", padding: "8px 16px" }}>← Back</button>
+              <button onClick={prev} style={{ background: "transparent", border: `1px solid #3a3428`, borderRadius: 8, color: "#7a7060", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer", padding: "8px 16px" }}>← {t("onboarding.back")}</button>
             )}
 
             {/* Next / Start */}
             <button onClick={next} style={{ background: `linear-gradient(135deg,${s.accent},${s.accent}99)`, border: "none", borderRadius: 10, color: "#0a0905", fontFamily: "'Cinzel',serif", fontSize: 11, fontWeight: 700, letterSpacing: 2, cursor: "pointer", padding: "10px 28px", boxShadow: `0 4px 16px ${s.accent}44`, transition: "all 0.2s" }}>
-              {isLast ? "Begin ⚔" : "Next →"}
+              {isLast ? `${t("onboarding.begin")} ⚔` : `${t("onboarding.next")} →`}
             </button>
           </div>
         </div>
