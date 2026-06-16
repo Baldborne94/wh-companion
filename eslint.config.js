@@ -40,4 +40,9 @@ export default [
     files: ["**/*.test.{js,jsx}"],
     languageOptions: { globals: { ...globals.node } },
   },
+  {
+    // Vercel serverless functions run in Node, not the browser.
+    files: ["api/**/*.js"],
+    languageOptions: { globals: { ...globals.node } },
+  },
 ];

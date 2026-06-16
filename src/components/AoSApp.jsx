@@ -624,20 +624,6 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
     setReader({book, url, fileType, progress, chapterIndex, pageIndex:pageIndex||0});
   };
 
-  if (reader) {
-    const {book, url, fileType, progress, chapterIndex} = reader;
-    return (
-      <Suspense fallback={<div style={{ position:"fixed", inset:0, background:AOS.bg, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ fontSize:48, animation:"spin 2s linear infinite" }}>⚙</div></div>}>
-        {fileType === "pdf"
-          ? <PdfReader  url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)}/>
-          : <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress||0} initChapterIndex={chapterIndex||0} initPageIndex={reader.pageIndex||0} onProgress={() => {}} onClose={() => setReader(null)}/>
-        }
-      </Suspense>
-    );
-  }
-
-  if (detail) return <AoSBookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
-
   const readCount    = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'read').length;
   const readingCount = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'reading').length;
 
@@ -653,6 +639,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
   });
 
   // Sorting — applied after filtering. "default" keeps the curated AOS_BOOKS order.
+  // Declared before the early returns below so the hook order stays stable.
   const sorted = useMemo(() => {
     if (sort === "default") return filtered;
     const arr = [...filtered];
@@ -663,6 +650,20 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
   }, [filtered, sort, user?.id]);
 
   const isFiltered = series !== "All" || type !== "All" || status !== "All" || sort !== "default";
+
+  if (reader) {
+    const {book, url, fileType, progress, chapterIndex} = reader;
+    return (
+      <Suspense fallback={<div style={{ position:"fixed", inset:0, background:AOS.bg, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ fontSize:48, animation:"spin 2s linear infinite" }}>⚙</div></div>}>
+        {fileType === "pdf"
+          ? <PdfReader  url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)}/>
+          : <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress||0} initChapterIndex={chapterIndex||0} initPageIndex={reader.pageIndex||0} onProgress={() => {}} onClose={() => setReader(null)}/>
+        }
+      </Suspense>
+    );
+  }
+
+  if (detail) return <AoSBookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
 
   const TABS = [
     { id:"catalogue", label:"Catalogue" },
