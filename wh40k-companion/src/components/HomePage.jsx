@@ -171,7 +171,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
       <div style={{ marginBottom: 8 }}>
         {label && <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", padding: "0 16px", marginBottom: 4 }}>{label}</div>}
         <div style={{ position: "relative", overflowX: "auto", overflowY: "visible", paddingBottom: 10 }}>
-          <div style={{ display: "flex", gap: 3, padding: "0 16px 0 16px", minWidth: "max-content", alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: 5, padding: "0 16px", minWidth: "max-content", alignItems: "flex-end" }}>
             {books.map(b => {
               const sc = spineColor(b);
               const isUploaded = uploadedIds.has(b.id);
@@ -180,14 +180,16 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
               const isRead    = bst === 'read';
               return (
                 <div key={b.id} onClick={() => onOpenBook ? onOpenBook(b) : setSection('library')} title={`${b.title} — ${b.author}`}
-                  style={{ flexShrink: 0, width: isUploaded ? 32 : 22, height: isUploaded ? 130 : 120, background: `linear-gradient(to right,${sc}dd,${sc}99,${sc}cc)`, borderRadius: "2px 2px 0 0", cursor: "pointer", position: "relative", boxShadow: `inset -2px 0 4px rgba(0,0,0,0.4), 2px 0 3px rgba(0,0,0,0.3)`, border: `1px solid ${sc}`, borderBottom: "none", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", transition: "transform 0.15s, box-shadow 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `inset -2px 0 4px rgba(0,0,0,0.4), 4px 4px 8px rgba(0,0,0,0.5)`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = `inset -2px 0 4px rgba(0,0,0,0.4), 2px 0 3px rgba(0,0,0,0.3)`; }}
+                  style={{ flexShrink: 0, position: "relative", cursor: "pointer", borderRadius: "3px 3px 0 0", overflow: "hidden", boxShadow: "2px 3px 8px rgba(0,0,0,0.6)", transition: "transform 0.15s ease, box-shadow 0.15s ease", border: isUploaded ? `1px solid ${C.gold}99` : "none" }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "4px 8px 16px rgba(0,0,0,0.8)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
+                  onTouchStart={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "4px 8px 16px rgba(0,0,0,0.8)"; }}
+                  onTouchEnd={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
+                  onTouchCancel={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
                 >
-                  <div style={{ writingMode: "vertical-rl", textOrientation: "mixed", transform: "rotate(180deg)", fontFamily: "'Cinzel',serif", fontSize: isUploaded ? 7 : 6, color: "rgba(255,255,255,0.85)", letterSpacing: 1, overflow: "hidden", maxHeight: "90%", padding: "4px 2px", textShadow: "0 1px 2px rgba(0,0,0,0.8)", lineHeight: 1.1 }}>{b.title}</div>
-                  {isReading && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: C.blue }} />}
-                  {isRead    && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: C.green }} />}
-                  {isUploaded && <div style={{ position: "absolute", inset: 0, border: `1px solid ${C.gold}88`, borderRadius: "2px 2px 0 0", pointerEvents: "none" }} />}
+                  <CoverImage book={b} width={52} height={80} radius={0} accentColor={sc} />
+                  {isReading && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: C.blue, pointerEvents: "none" }} />}
+                  {isRead    && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: C.green, pointerEvents: "none" }} />}
                 </div>
               );
             })}
