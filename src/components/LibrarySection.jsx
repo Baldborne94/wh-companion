@@ -25,7 +25,7 @@ function useDebounce(value, delay) {
 }
 
 export default function LibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card");
   const [search,      setSearch]      = useState("");
@@ -348,7 +348,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
         <div style={{ paddingBottom: 20 }}>
           <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "baseline", gap: 8 }}>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 1 }}>
-              {t("library.upcoming.updatedAsOf")} {new Date(RELEASES_UPDATED).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {t("library.upcoming.updatedAsOf")} {new Date(RELEASES_UPDATED).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft: "auto", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.blue, letterSpacing: 1, textDecoration: "none", flexShrink: 0 }}>

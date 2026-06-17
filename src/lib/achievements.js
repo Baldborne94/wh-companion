@@ -102,6 +102,47 @@ export function achievementFromId(id) {
   return null;
 }
 
+// ─── LOCALIZATION ────────────────────────────────────────────────────────────
+// Returns the achievement with its label/desc localized via the i18n `t`
+// function (injected by the caller). Falls back to the English label/desc baked
+// into the definition above when a translation key is missing. Dynamic ids
+// (series:/aos_series:/army:) are resolved through template keys.
+export function localizeAchievement(ach, t) {
+  if (!ach || typeof t !== "function") return ach;
+  const id = ach.id;
+
+  if (id.startsWith("aos_series:") || id.startsWith("series:")) {
+    const isAos = id.startsWith("aos_series:");
+    const name  = id.slice((isAos ? "aos_series:" : "series:").length);
+    return {
+      ...ach,
+      label: t("stats.ach.sagaComplete.label").replace("{name}", name),
+      desc:  t(isAos ? "stats.ach.sagaComplete.descAos" : "stats.ach.sagaComplete.desc40k").replace("{name}", name),
+    };
+  }
+
+  if (id.startsWith("army:")) {
+    const rest    = id.slice("army:".length);
+    const sep     = rest.lastIndexOf(":");
+    const faction = rest.slice(0, sep);
+    const count   = rest.slice(sep + 1);
+    const medalKey = `stats.ach.armyMedal.${count}`;
+    let medal = t(medalKey);
+    if (medal === medalKey) medal = t("stats.ach.armyMedal.nMinis").replace("{n}", count);
+    return {
+      ...ach,
+      label: t("stats.ach.armyLabel").replace("{faction}", faction).replace("{medal}", medal),
+      desc:  t("stats.ach.armyDesc").replace("{faction}", faction).replace("{count}", count),
+    };
+  }
+
+  const lk = `stats.ach.${id}.label`;
+  const dk = `stats.ach.${id}.desc`;
+  const label = t(lk);
+  const desc  = t(dk);
+  return { ...ach, label: label === lk ? ach.label : label, desc: desc === dk ? ach.desc : desc };
+}
+
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function monthKey(iso) {

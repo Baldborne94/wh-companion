@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLang } from "../lib/i18n.jsx";
+import { localizeAchievement } from "../lib/achievements";
 
 // ─── FLAVOR TEXT ──────────────────────────────────────────────────────────────
 // The opener / flavor / series / army pools are translated and live in the i18n
@@ -82,6 +83,7 @@ export default function AchievementPopup({ achievement, onDismiss, type = "readi
   const uni     = universe === 'aos' ? 'aos' : 'wh40k';
   const flavor  = useRef(getFlavorText(achievement, t("stats.flavor")[uni], t("stats.seriesFlavor")[uni], t("stats.armyFlavor")[uni]));
   const opener  = useRef(getOpener(achievement, t("stats.openers")[uni]));
+  const label   = localizeAchievement(achievement, t).label;
 
   useEffect(() => {
     const t1 = setTimeout(() => setVis(true), 30);
@@ -156,7 +158,7 @@ export default function AchievementPopup({ achievement, onDismiss, type = "readi
               color: TEXT, lineHeight: 1.2, marginBottom: 6,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
-              {achievement.label}
+              {label}
             </div>
             <div style={{ fontSize: 11, color: MUTED, lineHeight: 1.5, fontStyle: "italic" }}>
               {flavor.current}

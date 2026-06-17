@@ -97,7 +97,7 @@ function getAoSAllNextSuggestions(statuses) {
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
 function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   const inp = useRef(null);
   const sc = spineColor(book);
   const [ebookMeta,     setEbookMeta]     = useState(null);
@@ -278,7 +278,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>{t("aos.detail.lastReadPosition")}</div>
                       <div style={{ fontSize:12, color:AOS.text }}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index > 0 ? ` · ${t("aos.detail.chapterShort").replace("{n}", bookmarkInfo.chapter_index+1)}` : ""}</div>
-                      {bookmarkInfo.bookmarkedAt && <div style={{ fontSize:10, color:AOS.muted, marginTop:1 }}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</div>}
+                      {bookmarkInfo.bookmarkedAt && <div style={{ fontSize:10, color:AOS.muted, marginTop:1 }}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString(locale,{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
                 )}
@@ -293,7 +293,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                       <div key={bm.id} style={{ padding:"8px 12px", borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${AOS.border}55`:"none", display:"flex", alignItems:"center", gap:8 }}>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:11, color:AOS.text, fontFamily:"'Cinzel',serif" }}>{bm.label}</div>
-                          <div style={{ fontSize:10, color:AOS.muted }}>{bm.pct != null ? bm.pct : Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div>
+                          <div style={{ fontSize:10, color:AOS.muted }}>{bm.pct != null ? bm.pct : Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString(locale,{day:'numeric',month:'short'})}</div>
                         </div>
                       </div>
                     ))}
@@ -560,7 +560,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
 
 // ─── AoS LIBRARY SECTION ─────────────────────────────────────────────────────
 export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card"); // card | list | shelf
   const [search,      setSearch]      = useState("");
@@ -846,7 +846,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
         <div style={{ paddingBottom:20 }}>
           <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"baseline", gap:8 }}>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1 }}>
-              {t("aos.library.updatedAsOf").replace("{date}", new Date(RELEASES_UPDATED).toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}))}
+              {t("aos.library.updatedAsOf").replace("{date}", new Date(RELEASES_UPDATED).toLocaleDateString(locale,{day:'numeric',month:'long',year:'numeric'}))}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft:"auto", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.blue, letterSpacing:1, textDecoration:"none", flexShrink:0 }}>
@@ -1451,8 +1451,8 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
           {seriesByEra.map(({ era, sagas }) => (
             <div key={era.key} style={{ display:"flex", flexDirection:"column", gap:8 }}>
               <div style={{ display:"flex", alignItems:"baseline", gap:8, paddingBottom:2, borderBottom:`1px solid ${AOS.border}` }}>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:AOS.gold, letterSpacing:3, textTransform:"uppercase" }}>{era.label}</span>
-                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1, fontStyle:"italic", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{era.sub}</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:AOS.gold, letterSpacing:3, textTransform:"uppercase" }}>{t(`aos.crusade.eras.${era.key}.label`)}</span>
+                <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1, fontStyle:"italic", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t(`aos.crusade.eras.${era.key}.sub`)}</span>
               </div>
               {sagas.map(serie => {
             const pct = serie.total>0?(serie.readCount/serie.total)*100:0;

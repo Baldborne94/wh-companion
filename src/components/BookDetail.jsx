@@ -9,7 +9,7 @@ import { cacheHas, cacheRemove } from "../lib/ebookCache";
 import { useLang } from "../lib/i18n.jsx";
 
 export default function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange, onEbookUploaded }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   const fc = FC[book.faction] || C.dim;
   const inp = useRef(null);
   const [ebookMeta,    setEbookMeta]    = useState(null);
@@ -196,7 +196,7 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontFamily:"'Cinzel',serif",fontSize:9,color:C.muted,letterSpacing:2,textTransform:"uppercase",marginBottom:2}}>{t("library.detail.lastReadPosition")}</div>
                       <div style={{fontSize:12,color:C.text}}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index>0?` · ${t("library.detail.chapterAbbrev")} ${bookmarkInfo.chapter_index+1}`:""}</div>
-                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</div>}
+                      {bookmarkInfo.bookmarkedAt&&<div style={{fontSize:10,color:C.muted,marginTop:1}}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString(locale,{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
                 )}
@@ -210,7 +210,7 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
                       <div key={bm.id} style={{padding:"8px 12px",borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${C.border}55`:"none",display:"flex",alignItems:"center",gap:8}}>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:11,color:C.text,fontFamily:"'Cinzel',serif"}}>{bm.label}</div>
-                          <div style={{fontSize:10,color:C.muted}}>{bm.pct!=null?bm.pct:Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString('en-US',{day:'numeric',month:'short'})}</div>
+                          <div style={{fontSize:10,color:C.muted}}>{bm.pct!=null?bm.pct:Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString(locale,{day:'numeric',month:'short'})}</div>
                         </div>
                       </div>
                     ))}
