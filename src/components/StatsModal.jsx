@@ -211,6 +211,12 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
   const [loadingMinis, setLoadingMinis] = useState(false);
 
   useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
     if (!user?.id || tab !== "painting") return;
     setLoadingMinis(true);
     supabase.from("miniatures").select("id,faction,status,created_at").eq("user_id", user.id)
@@ -289,7 +295,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 3 }}>{t("stats.headerKicker")}</div>
             <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 20, color: C.text }}>{t("stats.headerTitle")}</div>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Close stats" style={{
             background: "transparent", border: `1px solid ${C.dim}`, borderRadius: 8,
             color: C.muted, padding: "6px 14px", fontFamily: "'Cinzel',serif", fontSize: 12, cursor: "pointer",
           }}>✕</button>

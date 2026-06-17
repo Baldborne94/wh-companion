@@ -525,7 +525,7 @@ function BackBtn({ label, onClick }) {
 
 function Thumb({ url, w, h, radius = 6 }) {
   if (!url) return <div style={{ width: w, height: h, borderRadius: radius, background: C.dim, flexShrink: 0 }} />;
-  return <img src={url} width={w} height={h} style={{ borderRadius: radius, objectFit: "cover", flexShrink: 0 }} />;
+  return <img src={url} width={w} height={h} alt="" style={{ borderRadius: radius, objectFit: "cover", flexShrink: 0 }} />;
 }
 
 const s = {

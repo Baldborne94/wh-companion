@@ -305,7 +305,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
             {t("reader.readingSettings")}
           </span>
-          <button onClick={onClose} style={{ background:"transparent", border:`1px solid ${T.border}`,
+          <button onClick={onClose} aria-label="Close settings" style={{ background:"transparent", border:`1px solid ${T.border}`,
             borderRadius:6, color:T.muted, width:30, height:30, cursor:"pointer", fontSize:14,
             display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
         </div>
@@ -1176,13 +1176,13 @@ export default function EpubReader({
                   {nowPlaying.title}
                 </span>
               </button>
-              <button onClick={onTogglePauseMusic} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")}
+              <button onClick={onTogglePauseMusic} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")} aria-label={musicPaused?"Resume music":"Pause music"}
                 style={{ background:"transparent", border:"none", cursor:"pointer",
                          padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
                          fontSize:12, lineHeight:1, flexShrink:0 }}>
                 {musicPaused ? "▶" : "⏸"}
               </button>
-              <button onClick={onStopMusic} title={t("reader.stopMusic")}
+              <button onClick={onStopMusic} title={t("reader.stopMusic")} aria-label="Stop music"
                 style={{ background:"transparent", border:"none", cursor:"pointer",
                          padding:"4px 5px", color:"rgba(212,203,184,0.45)", fontSize:14,
                          lineHeight:1, flexShrink:0 }}>
@@ -1218,7 +1218,7 @@ export default function EpubReader({
                           display:"flex", justifyContent:"space-between", alignItems:"center",
                           position:"sticky", top:0, background:T.surface, zIndex:1, flexShrink:0 }}>
               <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.contents")}</span>
-              <button onClick={() => setShowToc(false)}
+              <button onClick={() => setShowToc(false)} aria-label="Close contents"
                 style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
             </div>
             <div style={{ overflowY:"auto", flex:1 }}>
@@ -1256,7 +1256,7 @@ export default function EpubReader({
             <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.border}`,
                           display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
               <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.bookmarks")}</span>
-              <button onClick={() => setShowBmPanel(false)}
+              <button onClick={() => setShowBmPanel(false)} aria-label="Close bookmarks"
                 style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
             </div>
             <p style={{ fontSize:11, color:T.muted, padding:"8px 16px 0", margin:0, lineHeight:1.5 }}>
@@ -1283,7 +1283,7 @@ export default function EpubReader({
                         {bm.pct > 0 ? `${bm.pct}%` : "—"}
                       </div>
                     </button>
-                    <button onClick={() => deleteBookmark(bm.cfi)} title={t("reader.delete")}
+                    <button onClick={() => deleteBookmark(bm.cfi)} title={t("reader.delete")} aria-label="Delete bookmark"
                       style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
                                color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
                                flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
@@ -1316,7 +1316,7 @@ export default function EpubReader({
                 <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:C.gold, marginBottom:2 }}>{LORE_DB[lorePick]?.name || lorePick}</div>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>{t("reader.searchOn")}</div>
               </div>
-              <button onClick={() => setLorePick(null)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.muted, padding:"2px 8px", cursor:"pointer", fontSize:12 }}>✕</button>
+              <button onClick={() => setLorePick(null)} aria-label="Close" style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.muted, padding:"2px 8px", cursor:"pointer", fontSize:12 }}>✕</button>
             </div>
             <div style={{ display:"flex", gap:8 }}>
               <a href={wikiUrl(lorePick)} target="_blank" rel="noopener noreferrer"
@@ -1342,7 +1342,7 @@ export default function EpubReader({
 // ─────────────────────────────────────────────────────────────────────────────
 function IBtn({ onClick, color, title, children }) {
   return (
-    <button onClick={onClick} title={title}
+    <button onClick={onClick} title={title} aria-label={title}
       style={{ background:"transparent", border:"none", color, cursor:"pointer",
                padding:"10px 9px", fontSize:17, lineHeight:1, transition:"color .15s" }}>
       {children}

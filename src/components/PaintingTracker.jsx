@@ -2250,6 +2250,7 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
         const navBtn = (show, onClick, label) => show ? (
           <button
             onClick={e => { e.stopPropagation(); onClick(); }}
+            aria-label={label === "‹" ? "Previous photo" : "Next photo"}
             style={{
               position: "absolute", top: "50%", transform: "translateY(-50%)",
               ...(label === "‹" ? { left: 12 } : { right: 12 }),
@@ -2273,6 +2274,7 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
           >
             <button
               onClick={() => setLightboxMini(null)}
+              aria-label="Close image"
               style={{
                 position: "absolute", top: 16, right: 16,
                 background: "transparent", border: `1px solid ${theme.border}`,

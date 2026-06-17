@@ -401,7 +401,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
   // ── toolbar button ────────────────────────────────────────────────────────
   const Btn = ({ label, onClick, active, disabled, title: tip }) => (
-    <button title={tip} disabled={disabled} onClick={onClick} style={{
+    <button title={tip} aria-label={tip} disabled={disabled} onClick={onClick} style={{
       background: active ? "rgba(201,168,76,.18)" : "transparent",
       border: active ? `1px solid ${C.gold}44` : "1px solid transparent",
       borderRadius: 6, cursor: disabled ? "default" : "pointer",
@@ -468,7 +468,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Music indicator */}
         {nowPlaying && (
           <>
-            <button onClick={e => { e.stopPropagation(); onMusicClick?.(); }} title={nowPlaying.title}
+            <button onClick={e => { e.stopPropagation(); onMusicClick?.(); }} title={nowPlaying.title} aria-label={`Now playing: ${nowPlaying.title}. Open music section`}
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 2px 4px 4px", display:"flex", alignItems:"center",
                        maxWidth:72, overflow:"hidden", flexShrink:0 }}>
@@ -477,13 +477,13 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
                 {nowPlaying.title}
               </span>
             </button>
-            <button onClick={e => { e.stopPropagation(); onTogglePauseMusic?.(); }} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")}
+            <button onClick={e => { e.stopPropagation(); onTogglePauseMusic?.(); }} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")} aria-label={musicPaused?"Resume music":"Pause music"}
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
                        fontSize:12, lineHeight:1, flexShrink:0 }}>
               {musicPaused ? "▶" : "⏸"}
             </button>
-            <button onClick={e => { e.stopPropagation(); onStopMusic?.(); }} title={t("reader.stopMusic")}
+            <button onClick={e => { e.stopPropagation(); onStopMusic?.(); }} title={t("reader.stopMusic")} aria-label="Stop music"
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 5px", color:"rgba(212,203,184,0.45)", fontSize:14,
                        lineHeight:1, flexShrink:0 }}>
@@ -495,11 +495,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Zoom — desktop only */}
         {isDesktop && (<>
           <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
-          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
+          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} title="Zoom out" />
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.dim, minWidth: 28, textAlign: "center" }}>
             {Math.round(zoom * 100)}%
           </span>
-          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
+          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.red, letterSpacing: 2,
                          border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>PDF</span>
@@ -591,18 +591,18 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           pointerEvents: navVisible ? "auto" : "none",
         }}>
           {/* Zoom controls */}
-          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} />
+          <Btn label="−" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)))} disabled={zoom <= 0.5} title="Zoom out" />
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.dim, minWidth: 30, textAlign: "center" }}>
             {Math.round(zoom * 100)}%
           </span>
-          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
+          <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
 
           <div style={{ flex: 1 }} />
 
           {/* Page nav — single / dual */}
           {viewMode !== "scroll" && (<>
-            <button onClick={() => goTo(page - step)} disabled={page <= 1} style={{
+            <button onClick={() => goTo(page - step)} disabled={page <= 1} aria-label="Previous page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
               color: page <= 1 ? C.dim : C.gold, padding: "6px 14px",
               cursor: page <= 1 ? "default" : "pointer",
@@ -611,7 +611,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, minWidth: 46, textAlign: "center" }}>
               {viewMode === "dual" ? `${page}–${Math.min(page + 1, total)}` : page} / {total}
             </span>
-            <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} style={{
+            <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} aria-label="Next page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
               color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 14px",
               cursor: page + step - 1 >= total ? "default" : "pointer",
