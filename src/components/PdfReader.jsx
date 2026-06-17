@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { C } from "../data/constants";
+import { useLang } from "../lib/i18n.jsx";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -103,6 +104,7 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
+  const { t } = useLang();
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
@@ -197,7 +199,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     getPdfJs()
       .then(lib => lib.getDocument(src).promise)
       .then(d => { if (!cancelled) { setDoc(d); setTotal(d.numPages); } })
-      .catch(e => { if (!cancelled) setErr(e?.message || "Could not load PDF"); });
+      .catch(e => { if (!cancelled) setErr(e?.message || t("reader.couldNotLoadPdf")); });
     return () => { cancelled = true; };
   }, [arrayBuffer, url]);
 
@@ -429,7 +431,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           background: "transparent", border: `1px solid ${C.dim}`, borderRadius: 8,
           color: C.gold, padding: "5px 10px", cursor: "pointer",
           fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, flexShrink: 0,
-        }}>← Back</button>
+        }}>{t("reader.back")}</button>
 
         <div style={{ flex: 1, fontFamily: "'Cinzel',serif", fontSize: 10, color: C.text,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 4px" }}>
@@ -453,15 +455,15 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {isDesktop && <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />}
 
         {/* View mode */}
-        <Btn label="▯"  onClick={() => setViewMode("single")} active={viewMode === "single"} title="Single page" />
-        <Btn label="▯▯" onClick={() => setViewMode("dual")}   active={viewMode === "dual"}   title="Dual page" />
-        <Btn label="≡"  onClick={() => setViewMode("scroll")} active={viewMode === "scroll"} title="Scroll" />
+        <Btn label="▯"  onClick={() => setViewMode("single")} active={viewMode === "single"} title={t("reader.singlePage")} />
+        <Btn label="▯▯" onClick={() => setViewMode("dual")}   active={viewMode === "dual"}   title={t("reader.dualPage")} />
+        <Btn label="≡"  onClick={() => setViewMode("scroll")} active={viewMode === "scroll"} title={t("reader.scrollMode")} />
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
         {/* Bookmarks */}
-        <Btn label="🔖" onClick={e => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title="Bookmarks" />
-        <Btn label={isBookmarked ? "★" : "☆"} onClick={e => { e.stopPropagation(); toggleBm(); }} active={isBookmarked} title={isBookmarked ? "Remove bookmark" : "Add bookmark"} />
+        <Btn label="🔖" onClick={e => { e.stopPropagation(); setShowBm(v => !v); }} active={showBm} title={t("reader.bookmarks")} />
+        <Btn label={isBookmarked ? "★" : "☆"} onClick={e => { e.stopPropagation(); toggleBm(); }} active={isBookmarked} title={isBookmarked ? t("reader.removeBookmark") : t("reader.addBookmark")} />
 
         {/* Music indicator */}
         {nowPlaying && (
@@ -475,13 +477,13 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
                 {nowPlaying.title}
               </span>
             </button>
-            <button onClick={e => { e.stopPropagation(); onTogglePauseMusic?.(); }} title={musicPaused?"Resume":"Pause"}
+            <button onClick={e => { e.stopPropagation(); onTogglePauseMusic?.(); }} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")}
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
                        fontSize:12, lineHeight:1, flexShrink:0 }}>
               {musicPaused ? "▶" : "⏸"}
             </button>
-            <button onClick={e => { e.stopPropagation(); onStopMusic?.(); }} title="Stop music"
+            <button onClick={e => { e.stopPropagation(); onStopMusic?.(); }} title={t("reader.stopMusic")}
               style={{ background:"transparent", border:"none", cursor:"pointer",
                        padding:"4px 5px", color:"rgba(212,203,184,0.45)", fontSize:14,
                        lineHeight:1, flexShrink:0 }}>
@@ -498,7 +500,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             {Math.round(zoom * 100)}%
           </span>
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
-          <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
+          <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.red, letterSpacing: 2,
                          border: `1px solid ${C.red}55`, borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>PDF</span>
         </>)}
@@ -513,16 +515,17 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         }}>
           <div style={{ padding: "10px 12px 6px", fontFamily: "'Cinzel',serif", fontSize: 10,
                         color: C.goldDim, letterSpacing: 2, borderBottom: `1px solid ${C.border}` }}>
-            BOOKMARKS
+            {t("reader.bookmarks").toUpperCase()}
           </div>
           <div style={{ padding: "7px 12px 6px", fontSize: 9, color: C.dim, fontFamily: "'Cinzel',serif",
                         lineHeight: 1.5, borderBottom: `1px solid ${C.border}22` }}>
-            Tap <span style={{ color: C.gold }}>☆</span> to bookmark the current page.
-            Tap a bookmark to jump to it.
+            {t("reader.bookmarkHintPdf").split("{star}").flatMap((part, i) =>
+              i === 0 ? [part] : [<span key={i} style={{ color: C.gold }}>☆</span>, part]
+            )}
           </div>
           {bookmarks.length === 0 ? (
             <div style={{ padding: 16, fontFamily: "'Cinzel',serif", fontSize: 10, color: C.dim, textAlign: "center" }}>
-              No bookmarks yet.<br />Press ☆ to add one.
+              {t("reader.noBookmarks")}<br />{t("reader.pressStarToAdd")}
             </div>
           ) : bookmarks.map(bm => (
             <button key={bm.page} onClick={() => { goTo(bm.page); setShowBm(false); }} style={{
@@ -532,7 +535,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
               padding: "10px 12px", color: bm.page === page ? C.gold : C.text,
               fontFamily: "'Cinzel',serif", fontSize: 10,
             }}>
-              <span>Page {bm.page}</span>
+              <span>{t("reader.page").replace("{n}", bm.page)}</span>
               <span style={{ fontSize: 8, color: C.dim }}>{new Date(bm.addedAt).toLocaleDateString()}</span>
             </button>
           ))}
@@ -551,11 +554,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             {err ? (
               <div style={{ margin: "auto", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>✕</div>
-                <div>Failed to load PDF</div>
+                <div>{t("reader.failedToLoadPdf")}</div>
                 <div style={{ fontSize: 10, color: C.dim, marginTop: 8 }}>{err}</div>
               </div>
             ) : !doc ? (
-              <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>Loading…</div>
+              <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
               <div style={{ margin: "auto", padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
                 <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
@@ -573,8 +576,8 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
             scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
           }}>
-            {err && <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>Failed to load PDF: {err}</div>}
-            {!doc && !err && <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>Loading…</div>}
+            {err && <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>{t("reader.failedToLoadPdfWith").replace("{msg}", err)}</div>}
+            {!doc && !err && <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>{t("reader.loading")}</div>}
           </div>
         )}
       </div>
@@ -593,7 +596,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             {Math.round(zoom * 100)}%
           </span>
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} />
-          <Btn label="⊡" onClick={() => setZoom(1)} title="Reset zoom" />
+          <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
 
           <div style={{ flex: 1 }} />
 

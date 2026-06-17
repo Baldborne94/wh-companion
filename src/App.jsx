@@ -397,11 +397,11 @@ export default function App(){
           <div style={{flexShrink:0,background:`${C.gold}18`,borderBottom:`1px solid ${C.gold}55`,padding:"8px 16px",display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:16,flexShrink:0}}>📅</span>
             <div style={{flex:1,fontFamily:"'Cinzel',serif",fontSize:10,color:C.gold,letterSpacing:1}}>
-              BL release list not updated in 6 months — ask Claude to update it!
+              {t("header.releaseReminder")}
             </div>
             <button onClick={()=>{dismissReleaseReminder();setShowReleaseReminder(false);}}
               style={{background:"transparent",border:`1px solid ${C.gold}55`,borderRadius:6,color:C.goldDim,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:1,cursor:"pointer",flexShrink:0}}>
-              OK
+              {t("header.releaseOk")}
             </button>
           </div>
         )}

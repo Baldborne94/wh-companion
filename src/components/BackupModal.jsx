@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useLang } from "../lib/i18n.jsx";
 
 // Backup / restore of the user's locally-stored data (reading statuses, ratings,
 // notes, bookmarks, progress, painting timestamps, …). Everything lives in
@@ -25,6 +26,7 @@ function gatherUserData() {
 }
 
 export default function BackupModal({ user, onClose }) {
+  const { t } = useLang();
   const fileRef = useRef(null);
   const [msg, setMsg] = useState(null);
   const [pending, setPending] = useState(null); // parsed backup awaiting confirmation
@@ -48,7 +50,7 @@ export default function BackupModal({ user, onClose }) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    setMsg({ type: "ok", text: `Backup exported — ${Object.keys(data).length} items.` });
+    setMsg({ type: "ok", text: t("backup.exportOk").replace("{n}", Object.keys(data).length) });
   };
 
   const onFile = async (e) => {
@@ -63,7 +65,7 @@ export default function BackupModal({ user, onClose }) {
       setMsg(null);
       setPending(parsed);
     } catch {
-      setMsg({ type: "err", text: "Invalid file: not a WH40K Companion backup." });
+      setMsg({ type: "err", text: t("backup.invalidFile") });
     }
   };
 
@@ -76,7 +78,7 @@ export default function BackupModal({ user, onClose }) {
       try { localStorage.setItem(key, v); n++; } catch {}
     });
     setPending(null);
-    setMsg({ type: "ok", text: `Imported ${n} items. Reloading…` });
+    setMsg({ type: "ok", text: t("backup.importOk").replace("{n}", n) });
     setTimeout(() => window.location.reload(), 1200);
   };
 
@@ -92,8 +94,8 @@ export default function BackupModal({ user, onClose }) {
       <div style={{ width: "100%", maxWidth: 380, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "16px 16px 12px", background: C.surface, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 3 }}>Data Vault</div>
-            <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text }}>Backup &amp; Restore</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 3 }}>{t("backup.eyebrow")}</div>
+            <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text }}>{t("backup.title")}</div>
           </div>
           <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.dim}`, borderRadius: 8, color: C.muted, padding: "6px 14px", fontFamily: "'Cinzel',serif", fontSize: 12, cursor: "pointer" }}>✕</button>
         </div>
@@ -101,13 +103,13 @@ export default function BackupModal({ user, onClose }) {
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           {!pending && <>
             <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-              Save a file with your <b style={{ color: C.text }}>reading statuses, ratings, notes, bookmarks, progress</b> and painting data. Keep it as a backup or use it to move to another device.
+              {t("backup.introPre")}<b style={{ color: C.text }}>{t("backup.introBold")}</b>{t("backup.introPost")}
             </div>
 
-            <button onClick={doExport} style={btn()}>⬇ Export backup (.json)</button>
+            <button onClick={doExport} style={btn()}>{t("backup.exportBtn")}</button>
 
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} style={{ display: "none" }} />
-            <button onClick={() => fileRef.current?.click()} style={btn({ background: "transparent", color: C.text, borderColor: C.dim })}>⬆ Import backup…</button>
+            <button onClick={() => fileRef.current?.click()} style={btn({ background: "transparent", color: C.text, borderColor: C.dim })}>{t("backup.importBtn")}</button>
 
             {msg && (
               <div style={{ fontSize: 12, color: msg.type === "err" ? "#e05050" : C.green, fontFamily: "'Cinzel',serif", letterSpacing: 0.5 }}>
@@ -118,13 +120,15 @@ export default function BackupModal({ user, onClose }) {
 
           {pending && <>
             <div style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>
-              Backup from <b>{pending.exportedAt ? new Date(pending.exportedAt).toLocaleString() : "?"}</b> — {Object.keys(pending.data).length} items.
+              {t("backup.pendingInfo")
+                .replace("{date}", pending.exportedAt ? new Date(pending.exportedAt).toLocaleString() : t("backup.pendingDateUnknown"))
+                .replace("{n}", Object.keys(pending.data).length)}
             </div>
             <div style={{ fontSize: 12, color: "#e0a050", lineHeight: 1.6, background: `${C.red}11`, border: `1px solid ${C.red}44`, borderRadius: 8, padding: "10px 12px" }}>
-              ⚠️ Importing <b>overwrites</b> the matching local data with the backup. The app will reload.
+              {t("backup.overwriteWarnPre")}<b>{t("backup.overwriteWarnBold")}</b>{t("backup.overwriteWarnPost")}
             </div>
-            <button onClick={applyImport} style={btn({ background: `${C.green}18`, color: C.green, borderColor: C.green })}>Confirm import</button>
-            <button onClick={() => setPending(null)} style={btn({ background: "transparent", color: C.muted, borderColor: C.dim })}>Cancel</button>
+            <button onClick={applyImport} style={btn({ background: `${C.green}18`, color: C.green, borderColor: C.green })}>{t("backup.confirmBtn")}</button>
+            <button onClick={() => setPending(null)} style={btn({ background: "transparent", color: C.muted, borderColor: C.dim })}>{t("backup.cancelBtn")}</button>
           </>}
         </div>
       </div>

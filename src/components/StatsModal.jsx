@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { useLang } from "../lib/i18n.jsx";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
   AOS_READING_ACHIEVEMENTS,
@@ -72,6 +73,7 @@ function StatBox({ n, label, color, suffix }) {
 }
 
 function AchCard({ a, unlocked, accent }) {
+  const { t } = useLang();
   const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
   if (unlocked) {
     return (
@@ -107,7 +109,7 @@ function AchCard({ a, unlocked, accent }) {
           fontFamily: "'Cinzel',serif", fontSize: 6, letterSpacing: 3,
           color: accent, textTransform: "uppercase", marginBottom: 5,
           opacity: 0.9,
-        }}>✦ Achieved ✦</div>
+        }}>{t("stats.achieved")}</div>
         {/* label */}
         <div style={{
           fontFamily: "'Cinzel Decorative',serif", fontSize: 9,
@@ -146,6 +148,7 @@ function AchCard({ a, unlocked, accent }) {
 
 // Card for dynamic earned achievements (sagas, armies)
 function DynCard({ id, accent }) {
+  const { t } = useLang();
   const a = achievementFromId(id);
   if (!a) return null;
   const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
@@ -177,7 +180,7 @@ function DynCard({ id, accent }) {
         <div style={{
           fontFamily: "'Cinzel',serif", fontSize: 6, letterSpacing: 3,
           color: accent, textTransform: "uppercase", marginBottom: 4, opacity: 0.9,
-        }}>✦ Achieved ✦</div>
+        }}>{t("stats.achieved")}</div>
         <div style={{
           fontFamily: "'Cinzel Decorative',serif", fontSize: 10,
           color: C.text, marginBottom: 4, lineHeight: 1.2,
@@ -199,6 +202,8 @@ function SectionLabel({ children }) {
 }
 
 export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlockedIds = [], onClose, initialTab = "reading" }) {
+  const { t, lang } = useLang();
+  const monthLocale = lang === "it" ? "it-IT" : "en-US";
   const [tab, setTab] = useState(initialTab);
   const [minis, setMinis] = useState([]);
   const [loadingMinis, setLoadingMinis] = useState(false);
@@ -279,8 +284,8 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
           display: "flex", alignItems: "center", gap: 12,
         }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 3 }}>Imperial Record</div>
-            <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 20, color: C.text }}>Deeds &amp; Honour</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 3 }}>{t("stats.headerKicker")}</div>
+            <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 20, color: C.text }}>{t("stats.headerTitle")}</div>
           </div>
           <button onClick={onClose} style={{
             background: "transparent", border: `1px solid ${C.dim}`, borderRadius: 8,
@@ -290,13 +295,13 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
         {/* Tabs */}
         <div style={{ flexShrink: 0, display: "flex", borderBottom: `1px solid ${C.border}`, background: C.surface }}>
-          {[{id:"reading",label:"📖 WH40K"},{id:"painting",label:"🎨 Painting"},{id:"aos",label:"⚡ Age of Sigmar"}].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {[{id:"reading",label:t("stats.tabReading")},{id:"painting",label:t("stats.tabPainting")},{id:"aos",label:t("stats.tabAos")}].map(tb => (
+            <button key={tb.id} onClick={() => setTab(tb.id)} style={{
               flex: 1, padding: "12px 4px", background: "transparent", border: "none",
-              borderBottom: `2px solid ${tab === t.id ? C.gold : "transparent"}`,
-              color: tab === t.id ? C.gold : C.muted,
+              borderBottom: `2px solid ${tab === tb.id ? C.gold : "transparent"}`,
+              color: tab === tb.id ? C.gold : C.muted,
               fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer",
-            }}>{t.label}</button>
+            }}>{tb.label}</button>
           ))}
         </div>
 
@@ -305,10 +310,10 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
           {tab === "reading" && <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-              <StatBox n={readCount}      label="Read"         color={C.gold}   />
-              <StatBox n={readingCount}   label="Reading"      color="#4a8adc"  />
-              <StatBox n={thisMonthRead}  label="This Month"   color="#4aaa6a"  />
-              <StatBox n={readStreak} suffix="mo" label="Streak" color={C.gold} />
+              <StatBox n={readCount}      label={t("stats.statRead")}      color={C.gold}   />
+              <StatBox n={readingCount}   label={t("stats.statReading")}   color="#4a8adc"  />
+              <StatBox n={thisMonthRead}  label={t("stats.statThisMonth")} color="#4aaa6a"  />
+              <StatBox n={readStreak} suffix={t("stats.streakSuffix")} label={t("stats.statStreak")} color={C.gold} />
             </div>
 
             {/* Monthly reading chart — last 6 months */}
@@ -317,14 +322,14 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               for (let i = 5; i >= 0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i);
                 const key = d.toISOString().slice(0, 7);
-                const label = d.toLocaleDateString('en-US', { month: 'short' });
+                const label = d.toLocaleDateString(monthLocale, { month: 'short' });
                 const count = readEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
                 months.push({ key, label, count });
               }
               const peak = Math.max(...months.map(x => x.count), 1);
               return (
                 <div style={{ marginBottom: 4 }}>
-                  <SectionLabel>Monthly Reading</SectionLabel>
+                  <SectionLabel>{t("stats.monthlyReading")}</SectionLabel>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 72, marginBottom: 8 }}>
                     {months.map(m => {
                       const barH = Math.max((m.count / peak) * 52, m.count > 0 ? 6 : 2);
@@ -344,11 +349,11 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
             {/* Completed sagas — dynamic, always visible */}
             <SectionLabel>
-              Completed Sagas — {completedSagas.length}
+              {t("stats.completedSagas").replace("{n}", completedSagas.length)}
             </SectionLabel>
             {completedSagas.length === 0 ? (
               <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
-                Finish every book in a series to earn a saga completion.
+                {t("stats.completedSagasEmpty")}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
@@ -370,7 +375,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               if (!inProgress.length) return null;
               return (
                 <>
-                  <SectionLabel>In Progress — {inProgress.length} series</SectionLabel>
+                  <SectionLabel>{t("stats.inProgress").replace("{n}", inProgress.length)}</SectionLabel>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
                     {inProgress.map(([sName, v]) => {
                       const pct = v.read / v.total;
@@ -395,7 +400,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
             })()}
 
             <SectionLabel>
-              Achievements — {staticReadUnlocked.length}/{READING_ACHIEVEMENTS.length} Unlocked
+              {t("stats.achievementsUnlocked").replace("{n}", staticReadUnlocked.length).replace("{total}", READING_ACHIEVEMENTS.length)}
             </SectionLabel>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {READING_ACHIEVEMENTS.map(a => <AchCard key={a.id} a={a} unlocked={isUnlocked(a.id)} accent={C.gold} />)}
@@ -404,21 +409,21 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
 
           {tab === "painting" && <>
             {loadingMinis ? (
-              <div style={{ textAlign: "center", padding: 40, color: C.muted, fontStyle: "italic" }}>Loading…</div>
+              <div style={{ textAlign: "center", padding: 40, color: C.muted, fontStyle: "italic" }}>{t("stats.loading")}</div>
             ) : <>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-                <StatBox n={paintCount}     label="Completed"   color={PAINT_ACCENT} />
-                <StatBox n={thisMonthPaint} label="This Month"  color="#4aaa6a"      />
-                <StatBox n={paintStreak} suffix="mo" label="Streak" color={C.gold} />
+                <StatBox n={paintCount}     label={t("stats.statCompleted")} color={PAINT_ACCENT} />
+                <StatBox n={thisMonthPaint} label={t("stats.statThisMonth")} color="#4aaa6a"      />
+                <StatBox n={paintStreak} suffix={t("stats.streakSuffix")} label={t("stats.statStreak")} color={C.gold} />
               </div>
 
               {/* Armies built — dynamic, always visible */}
               <SectionLabel>
-                Armies Built — {topArmyIds.length} faction{topArmyIds.length !== 1 ? 's' : ''}
+                {t(topArmyIds.length !== 1 ? "stats.armiesBuiltPlural" : "stats.armiesBuilt").replace("{n}", topArmyIds.length)}
               </SectionLabel>
               {topArmyIds.length === 0 ? (
                 <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
-                  Complete 5 minis of the same faction to unlock your first army achievement.
+                  {t("stats.armiesBuiltEmpty")}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
@@ -449,14 +454,14 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               for (let i = 5; i >= 0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i);
                 const key = d.toISOString().slice(0, 7);
-                const label = d.toLocaleDateString('en-US', { month: 'short' });
+                const label = d.toLocaleDateString(monthLocale, { month: 'short' });
                 const count = aosReadEntries.filter(([, v]) => monthKey(v.completedAt) === key).length;
                 months.push({ key, label, count });
               }
               const peak = Math.max(...months.map(x => x.count), 1);
               return (
                 <div style={{ marginBottom: 4 }}>
-                  <SectionLabel>Monthly Reading</SectionLabel>
+                  <SectionLabel>{t("stats.monthlyReading")}</SectionLabel>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-end", height: 72, marginBottom: 8 }}>
                     {months.map(m => {
                       const barH = Math.max((m.count / peak) * 52, m.count > 0 ? 6 : 2);
@@ -475,11 +480,11 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
             })()}
 
             <SectionLabel>
-              Completed Sagas — {completedAosSagas.length}
+              {t("stats.completedSagas").replace("{n}", completedAosSagas.length)}
             </SectionLabel>
             {completedAosSagas.length === 0 ? (
               <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginBottom: 12 }}>
-                Finish every book in a series to earn a saga completion.
+                {t("stats.completedSagasEmpty")}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
@@ -502,7 +507,7 @@ export default function StatsModal({ user, statuses = {}, aosStatuses = {}, unlo
               if (!inProgress.length) return null;
               return (
                 <>
-                  <SectionLabel>In Progress — {inProgress.length} series</SectionLabel>
+                  <SectionLabel>{t("stats.inProgress").replace("{n}", inProgress.length)}</SectionLabel>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 4 }}>
                     {inProgress.map(([sName, v]) => {
                       const pct = v.read / v.total;

@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
+import { useLang } from "../lib/i18n.jsx";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -190,6 +191,7 @@ function flattenToc(items, depth = 0) {
 // Dictionary bottom-sheet
 // ─────────────────────────────────────────────────────────────────────────────
 function DictionaryPanel({ word, onClose, theme }) {
+  const { t } = useLang();
   const [entry,   setEntry]   = useState(null);
   const [loading, setLoading] = useState(true);
   const T = THEMES[theme];
@@ -215,13 +217,13 @@ function DictionaryPanel({ word, onClose, theme }) {
 
         {loading && (
           <p style={{ textAlign:"center", color:T.muted, fontStyle:"italic", padding:"28px 0" }}>
-            Looking up &ldquo;{word}&rdquo;…
+            {t("reader.lookingUp").replace("{word}", word)}
           </p>
         )}
 
         {!loading && !entry && (
           <p style={{ textAlign:"center", color:T.muted, fontStyle:"italic", padding:"28px 0" }}>
-            No definition found for &ldquo;{word}&rdquo;
+            {t("reader.noDefinition").replace("{word}", word)}
           </p>
         )}
 
@@ -249,7 +251,7 @@ function DictionaryPanel({ word, onClose, theme }) {
                   )}
                   {m.synonyms?.length > 0 && (
                     <p style={{ color:T.muted, fontSize:12, margin:"8px 0 0" }}>
-                      Syn: <span style={{ color:T.text }}>{m.synonyms.slice(0,6).join(", ")}</span>
+                      {t("reader.synonyms")} <span style={{ color:T.text }}>{m.synonyms.slice(0,6).join(", ")}</span>
                     </p>
                   )}
                 </div>
@@ -266,6 +268,7 @@ function DictionaryPanel({ word, onClose, theme }) {
 // Settings bottom-sheet
 // ─────────────────────────────────────────────────────────────────────────────
 function SettingsPanel({ settings, onChange, onClose }) {
+  const { t } = useLang();
   const T = THEMES[settings.themeId] ?? THEMES.dark;
 
   const Chip = ({ label, active, onClick }) => (
@@ -300,7 +303,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
         <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"8px auto 14px" }} />
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
-            Reading Settings
+            {t("reader.readingSettings")}
           </span>
           <button onClick={onClose} style={{ background:"transparent", border:`1px solid ${T.border}`,
             borderRadius:6, color:T.muted, width:30, height:30, cursor:"pointer", fontSize:14,
@@ -308,7 +311,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
         </div>
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
-                      letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>Typeface</div>
+                      letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("reader.typeface")}</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:20 }}>
           {FONTS.map((f, i) => (
             <button key={i} onClick={() => onChange("fontIndex", i)}
@@ -321,31 +324,31 @@ function SettingsPanel({ settings, onChange, onClose }) {
           ))}
         </div>
 
-        <Row label={`Font size — ${settings.fontSize}px`}>
+        <Row label={t("reader.fontSize").replace("{n}", settings.fontSize)}>
           {[14,16,18,20,22,24].map(s => (
             <Chip key={s} label={String(s)} active={settings.fontSize===s} onClick={() => onChange("fontSize",s)} />
           ))}
         </Row>
 
-        <Row label={`Line spacing — ${settings.lineHeight}×`}>
+        <Row label={t("reader.lineSpacing").replace("{n}", settings.lineHeight)}>
           {[1.5,1.7,1.9,2.1].map(v => (
             <Chip key={v} label={String(v)} active={settings.lineHeight===v} onClick={() => onChange("lineHeight",v)} />
           ))}
         </Row>
 
-        <Row label="Reading mode">
-          <Chip label="Pages"  active={ settings.paginate} onClick={() => onChange("paginate",true)} />
-          <Chip label="Scroll" active={!settings.paginate} onClick={() => { onChange("paginate",false); onChange("twoPage",false); }} />
+        <Row label={t("reader.readingMode")}>
+          <Chip label={t("reader.pages")}  active={ settings.paginate} onClick={() => onChange("paginate",true)} />
+          <Chip label={t("reader.scroll")} active={!settings.paginate} onClick={() => { onChange("paginate",false); onChange("twoPage",false); }} />
         </Row>
 
         {settings.paginate && (
-          <Row label="Layout">
-            <Chip label="Single"   active={!settings.twoPage} onClick={() => onChange("twoPage",false)} />
-            <Chip label="Two-page" active={ settings.twoPage} onClick={() => onChange("twoPage",true)} />
+          <Row label={t("reader.layout")}>
+            <Chip label={t("reader.single")}   active={!settings.twoPage} onClick={() => onChange("twoPage",false)} />
+            <Chip label={t("reader.twoPage")} active={ settings.twoPage} onClick={() => onChange("twoPage",true)} />
           </Row>
         )}
 
-        <Row label="Theme">
+        <Row label={t("reader.theme")}>
           {Object.values(THEMES).map(th => (
             <Chip key={th.id} label={th.label} active={settings.themeId===th.id} onClick={() => onChange("themeId", th.id)} />
           ))}
@@ -363,6 +366,7 @@ export default function EpubReader({
   initProgress,
   onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
+  const { t } = useLang();
   useReaderViewport();
   useReaderStyles();
 
@@ -568,7 +572,7 @@ export default function EpubReader({
   useEffect(() => {
     if (!containerRef.current) return;
     if (!arrayBuffer && !url) {
-      setError("No download link — please close and reopen the book.");
+      setError(t("reader.noDownloadLink"));
       setLoading(false);
       return;
     }
@@ -600,10 +604,10 @@ export default function EpubReader({
       if (!epubBuf) {
         try {
           const resp = await fetch(url);
-          if (!resp.ok) throw new Error(`HTTP ${resp.status} — download link may have expired. Please close and reopen.`);
+          if (!resp.ok) throw new Error(t("reader.httpError").replace("{status}", resp.status));
           epubBuf = await resp.arrayBuffer();
         } catch (fetchErr) {
-          if (!cancelled) { setError(fetchErr.message || "Failed to download book"); setLoading(false); }
+          if (!cancelled) { setError(fetchErr.message || t("reader.failedDownload")); setLoading(false); }
           return;
         }
       }
@@ -670,7 +674,7 @@ export default function EpubReader({
               const span = doc.createElement("span");
               span.className = "lore-kw";
               span.setAttribute("data-kw", k);
-              span.title = "Search on Wiki / Lexicanum ↗";
+              span.title = t("reader.searchWiki");
               span.textContent = m[0];
               frag.appendChild(span);
               last = m.index + m[0].length;
@@ -799,7 +803,7 @@ export default function EpubReader({
         rend.on("click", () => revealUI());
 
         const readyTimeout = setTimeout(() => {
-          if (!cancelled) { setError("Book took too long to open — try re-uploading the file."); setLoading(false); }
+          if (!cancelled) { setError(t("reader.tookTooLong")); setLoading(false); }
         }, 20000);
 
 
@@ -826,9 +830,9 @@ export default function EpubReader({
             clearTimeout(readyTimeout);
             if (cancelled) return;
             const msg = e?.message || "";
-            const friendly = msg.includes("403") ? "Download link expired — close and reopen the book."
-                           : msg.includes("404") ? "Book file not found — try re-uploading."
-                           : msg || "Failed to load book";
+            const friendly = msg.includes("403") ? t("reader.linkExpired")
+                           : msg.includes("404") ? t("reader.fileNotFound")
+                           : msg || t("reader.failedLoadBook");
             setError(friendly);
             setLoading(false);
           });
@@ -850,7 +854,7 @@ export default function EpubReader({
         }).catch(() => {});
 
       } catch (e) {
-        if (!cancelled) { setError(e?.message || "Failed to initialize reader"); setLoading(false); }
+        if (!cancelled) { setError(e?.message || t("reader.failedInit")); setLoading(false); }
       }
     })();
 
@@ -1074,7 +1078,7 @@ export default function EpubReader({
                   display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:14,
                   padding:"0 28px" }}>
       <p style={{ color:C.gold, fontFamily:"'Cinzel',serif", fontSize:15, margin:0, letterSpacing:1 }}>
-        Failed to load
+        {t("reader.failedToLoad")}
       </p>
       <p style={{ color:"#c8bfa8", fontSize:13, margin:0, textAlign:"center", lineHeight:1.6, maxWidth:360 }}>
         {error}
@@ -1083,7 +1087,7 @@ export default function EpubReader({
         style={{ marginTop:8, background:"transparent", border:`1px solid ${C.gold}55`,
                  borderRadius:8, color:C.gold, padding:"9px 24px", cursor:"pointer",
                  fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:1 }}>
-        Close
+        {t("reader.close")}
       </button>
     </div>
   );
@@ -1101,7 +1105,7 @@ export default function EpubReader({
           <div style={{ width:36, height:36, border:`2px solid ${T.border}`, borderTopColor:C.gold,
                         borderRadius:"50%", animation:"rdrSpin 1s linear infinite" }} />
           <p style={{ fontFamily:"'Cinzel',serif", color:T.muted, fontSize:12, letterSpacing:2, margin:0 }}>
-            Loading…
+            {t("reader.loading")}
           </p>
         </div>
       )}
@@ -1135,7 +1139,7 @@ export default function EpubReader({
                       fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1,
                       padding:"6px 18px", borderRadius:20, pointerEvents:"none",
                       animation:"rdrIn .15s ease" }}>
-          ★ Bookmark saved
+          {t("reader.bookmarkSaved")}
         </div>
       )}
 
@@ -1172,13 +1176,13 @@ export default function EpubReader({
                   {nowPlaying.title}
                 </span>
               </button>
-              <button onClick={onTogglePauseMusic} title={musicPaused?"Resume":"Pause"}
+              <button onClick={onTogglePauseMusic} title={musicPaused?t("reader.resumeMusic"):t("reader.pauseMusic")}
                 style={{ background:"transparent", border:"none", cursor:"pointer",
                          padding:"4px 4px", color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",
                          fontSize:12, lineHeight:1, flexShrink:0 }}>
                 {musicPaused ? "▶" : "⏸"}
               </button>
-              <button onClick={onStopMusic} title="Stop music"
+              <button onClick={onStopMusic} title={t("reader.stopMusic")}
                 style={{ background:"transparent", border:"none", cursor:"pointer",
                          padding:"4px 5px", color:"rgba(212,203,184,0.45)", fontSize:14,
                          lineHeight:1, flexShrink:0 }}>
@@ -1187,13 +1191,13 @@ export default function EpubReader({
             </>
           )}
           {settings.paginate && (
-            <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title="Contents">☰</IBtn>
+            <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title={t("reader.contents")}>☰</IBtn>
           )}
-          <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? "Remove bookmark" : "Add bookmark"}>{isBookmarked ? "★" : "☆"}</IBtn>
-          <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title="Bookmarks">🔖</IBtn>
-          <IBtn onClick={() => setShowSettings(true)}  color={T.muted}                           title="Settings">⚙</IBtn>
+          <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? t("reader.removeBookmark") : t("reader.addBookmark")}>{isBookmarked ? "★" : "☆"}</IBtn>
+          <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title={t("reader.bookmarks")}>🔖</IBtn>
+          <IBtn onClick={() => setShowSettings(true)}  color={T.muted}                           title={t("reader.settings")}>⚙</IBtn>
           {document.fullscreenEnabled && (
-            <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?"Exit fullscreen":"Fullscreen"}>
+            <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?t("reader.exitFullscreen"):t("reader.fullscreen")}>
               {isFullscreen ? "⊡" : "⛶"}
             </IBtn>
           )}
@@ -1213,14 +1217,14 @@ export default function EpubReader({
             <div style={{ padding:"16px 16px 10px", borderBottom:`1px solid ${T.border}`,
                           display:"flex", justifyContent:"space-between", alignItems:"center",
                           position:"sticky", top:0, background:T.surface, zIndex:1, flexShrink:0 }}>
-              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Contents</span>
+              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.contents")}</span>
               <button onClick={() => setShowToc(false)}
                 style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
             </div>
             <div style={{ overflowY:"auto", flex:1 }}>
               {toc.length === 0 ? (
                 <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"28px 16px", fontStyle:"italic" }}>
-                  Loading contents…
+                  {t("reader.loadingContents")}
                 </p>
               ) : toc.map((ch, i) => (
                 <button key={i}
@@ -1251,17 +1255,18 @@ export default function EpubReader({
                      animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
             <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.border}`,
                           display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
-              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>Bookmarks</span>
+              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.bookmarks")}</span>
               <button onClick={() => setShowBmPanel(false)}
                 style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
             </div>
             <p style={{ fontSize:11, color:T.muted, padding:"8px 16px 0", margin:0, lineHeight:1.5 }}>
-              Tap <span style={{ color:C.gold }}>☆</span> in the toolbar to bookmark the current page.
-              Tap a bookmark below to jump to it.
+              {t("reader.bookmarkHint").split("{star}").flatMap((part, i) =>
+                i === 0 ? [part] : [<span key={i} style={{ color:C.gold }}>☆</span>, part]
+              )}
             </p>
             {bookmarks.length === 0 ? (
               <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"24px 16px", fontStyle:"italic", lineHeight:1.6 }}>
-                No bookmarks yet.<br/>Tap ☆ to add one.
+                {t("reader.noBookmarks")}<br/>{t("reader.tapStarToAdd")}
               </p>
             ) : (
               <div style={{ overflowY:"auto", flex:1 }}>
@@ -1272,13 +1277,13 @@ export default function EpubReader({
                                padding:"12px 16px", cursor:"pointer" }}>
                       <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
                                     marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {bm.label || "Bookmark"}
+                        {bm.label || t("reader.bookmarkLabel")}
                       </div>
                       <div style={{ fontSize:11, color:C.gold, fontFamily:"'Cinzel',serif" }}>
                         {bm.pct > 0 ? `${bm.pct}%` : "—"}
                       </div>
                     </button>
-                    <button onClick={() => deleteBookmark(bm.cfi)} title="Delete"
+                    <button onClick={() => deleteBookmark(bm.cfi)} title={t("reader.delete")}
                       style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
                                color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
                                flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
@@ -1309,7 +1314,7 @@ export default function EpubReader({
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
               <div>
                 <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:C.gold, marginBottom:2 }}>{LORE_DB[lorePick]?.name || lorePick}</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>Search on</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted, letterSpacing:2, textTransform:"uppercase" }}>{t("reader.searchOn")}</div>
               </div>
               <button onClick={() => setLorePick(null)} style={{ background:"transparent", border:`1px solid ${C.border}`, borderRadius:6, color:C.muted, padding:"2px 8px", cursor:"pointer", fontSize:12 }}>✕</button>
             </div>
@@ -1317,12 +1322,12 @@ export default function EpubReader({
               <a href={wikiUrl(lorePick)} target="_blank" rel="noopener noreferrer"
                 onClick={() => setLorePick(null)}
                 style={{ flex:1, display:"block", padding:"11px 8px", background:`${C.gold}18`, border:`1px solid ${C.gold}44`, borderRadius:10, color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, textDecoration:"none", textAlign:"center" }}>
-                📖 Fandom Wiki
+                {t("reader.fandomWiki")}
               </a>
               <a href={lexUrl(lorePick)} target="_blank" rel="noopener noreferrer"
                 onClick={() => setLorePick(null)}
                 style={{ flex:1, display:"block", padding:"11px 8px", background:`${C.blue}18`, border:`1px solid ${C.blue}44`, borderRadius:10, color:C.blue, fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1, textDecoration:"none", textAlign:"center" }}>
-                📜 Lexicanum
+                {t("reader.lexicanum")}
               </a>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, createContext, useCo
 import { db, storage, supabase } from "../lib/supabase";
 import { sb } from "../lib/sb";
 import { achievementFromId, computePaintingAchievements, diffAchievements } from "../lib/achievements";
+import { useLang } from "../lib/i18n.jsx";
 
 // ─── THEME ────────────────────────────────────────────────────────────────
 
@@ -29,11 +30,11 @@ const ThemeCtx = createContext(C);
 // ─── STATUS CONFIG ────────────────────────────────────────────────────────
 
 const STATUS = [
-  { id: "owned",      icon: "📦", label: "Owned",      color: "#4a4a4a" },
-  { id: "assembled",  icon: "🔧", label: "Assembled",  color: "#2a5a6a" },
-  { id: "base_coat",  icon: "🎨", label: "Base Coat",  color: "#5a2a7a" },
-  { id: "painted",    icon: "🖌️", label: "Painted",    color: "#7a5a10" },
-  { id: "completed",  icon: "✅", label: "Completed",  color: "#1a6a2a" },
+  { id: "owned",      icon: "📦", label: "Owned",      tkey: "owned",     color: "#4a4a4a" },
+  { id: "assembled",  icon: "🔧", label: "Assembled",  tkey: "assembled", color: "#2a5a6a" },
+  { id: "base_coat",  icon: "🎨", label: "Base Coat",  tkey: "baseCoat",  color: "#5a2a7a" },
+  { id: "painted",    icon: "🖌️", label: "Painted",    tkey: "painted",   color: "#7a5a10" },
+  { id: "completed",  icon: "✅", label: "Completed",  tkey: "completed", color: "#1a6a2a" },
 ];
 
 const statusIndex = (s) => STATUS.findIndex((x) => x.id === s);
@@ -354,6 +355,7 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
 
 function StatusStepper({ value, onChange }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const active = parseStatuses(value);
 
   const toggle = (id) => {
@@ -381,7 +383,7 @@ function StatusStepper({ value, onChange }) {
               alignItems: "center", gap: 3, transition: "all 0.2s",
             }}>
             <span style={{ fontSize: 16 }}>{s.icon}</span>
-            {s.label}
+            {t(`painting.status.${s.tkey}`)}
           </button>
         );
       })}
@@ -393,6 +395,7 @@ function StatusStepper({ value, onChange }) {
 
 function PaintPicker({ onSelect, onClose }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const [search, setSearch] = useState("");
   const [brand,  setBrand]  = useState("Citadel");
   const [range,  setRange]  = useState("All");
@@ -436,7 +439,7 @@ function PaintPicker({ onSelect, onClose }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Search ${brand} paint…`}
+          placeholder={t("painting.paintPicker.searchPlaceholder").replace("{brand}", brand)}
           style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                    padding:"10px 14px", color:C.text, fontFamily:"'Cinzel',serif",
                    fontSize:13, width:"100%", boxSizing:"border-box", marginBottom:10 }}
@@ -460,7 +463,7 @@ function PaintPicker({ onSelect, onClose }) {
         <div style={{ overflowY:"auto", flex:1 }}>
           {filtered.length === 0 && (
             <div style={{ color:C.muted, fontSize:13, textAlign:"center", padding:24 }}>
-              No colours found
+              {t("painting.paintPicker.noColours")}
             </div>
           )}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
@@ -500,6 +503,7 @@ function pinterestUrl(faction, unit, name) {
 }
 
 function PinterestButton({ faction, unit, name, style = {} }) {
+  const { t } = useLang();
   const url = pinterestUrl(faction, unit, name);
   return (
     <a
@@ -521,7 +525,7 @@ function PinterestButton({ faction, unit, name, style = {} }) {
       onMouseEnter={(e) => e.currentTarget.style.background = "#e6002322"}
       onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
     >
-      ⊕ Pinterest
+      {t("painting.pinterest")}
     </a>
   );
 }
@@ -530,6 +534,7 @@ function PinterestButton({ faction, unit, name, style = {} }) {
 
 function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const [editing,    setEditing]    = useState(false);
   const [partInput,  setPartInput]  = useState(paint.part_name  || "");
   const [usageInput, setUsageInput] = useState(paint.usage_type || "base");
@@ -562,7 +567,7 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
           </div>
         </div>
         <button onClick={() => { setEditing(e => !e); setPartInput(paint.part_name || ""); setUsageInput(paint.usage_type || "base"); }}
-          title="Edit"
+          title={t("painting.paintRow.editTitle")}
           style={{ background:"transparent", border:`1px solid ${editing ? C.gold+"88" : "transparent"}`,
                    borderRadius:4, color: editing ? C.gold : C.muted,
                    cursor:"pointer", fontSize:12, padding:"2px 6px", transition:"all 0.15s" }}>
@@ -585,21 +590,21 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
                      background:`${C.gold}15`, border:`1px solid ${C.gold}55`,
                      color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
                      letterSpacing:1, cursor:"pointer" }}>
-            🎨 Change Paint
+            {t("painting.paintRow.changePaint")}
           </button>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
             <div>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
-                            letterSpacing:2, marginBottom:4 }}>SECTION</div>
+                            letterSpacing:2, marginBottom:4 }}>{t("painting.paintRow.section")}</div>
               <input value={partInput} onChange={e => setPartInput(e.target.value)}
-                placeholder="e.g. Skin, Armour…"
+                placeholder={t("painting.paintRow.sectionPlaceholder")}
                 style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
                          padding:"7px 10px", color:C.text, fontSize:12,
                          width:"100%", boxSizing:"border-box" }}/>
             </div>
             <div>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
-                            letterSpacing:2, marginBottom:4 }}>USE</div>
+                            letterSpacing:2, marginBottom:4 }}>{t("painting.paintRow.use")}</div>
               <select value={usageInput} onChange={e => setUsageInput(e.target.value)}
                 style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6,
                          padding:"7px 10px", color:C.text, fontSize:12,
@@ -614,7 +619,7 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
                        background:`${C.gold}22`, border:`1px solid ${C.gold}`,
                        color:C.gold, fontFamily:"'Cinzel',serif", fontSize:10,
                        letterSpacing:1, cursor:"pointer" }}>
-              ✓ Save
+              {t("painting.paintRow.save")}
             </button>
             <button onClick={() => setEditing(false)}
               style={{ padding:"8px 12px", borderRadius:6, background:"transparent",
@@ -643,6 +648,7 @@ function PaintRow({ paint, onRemove, onUpdate, onReplace }) {
 
 function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const st       = highestStatus(mini.status);
   const faction  = mini.faction || "";
   const coverUrl = (() => {
@@ -675,7 +681,7 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
           <span style={{ fontSize:11 }}>{st.icon}</span>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:"#fff",
                          letterSpacing:1 }}>
-            {st.label}
+            {t(`painting.status.${st.tkey}`)}
           </span>
         </div>
         {/* Edit button (owner only) */}
@@ -685,7 +691,7 @@ function MiniCard({ mini, paints = [], isOwner, onEdit, onClick }) {
                      border:`1px solid ${C.border}`, borderRadius:6, color:C.gold,
                      padding:"4px 8px", fontFamily:"'Cinzel',serif", fontSize:10,
                      cursor:"pointer" }}>
-            Edit
+            {t("painting.miniCard.edit")}
           </button>
         )}
       </div>
@@ -737,6 +743,7 @@ const STEP_COLOR = { base:"#3a3a4a", shade:"#1a2a5a", layer:"#5a4a10",
 
 function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUrls, miniId, onDataChange, initialData }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const lsKey = miniId ? `wh40k_ai_${miniId}` : null;
 
   const [data,          setData]          = useState(() => {
@@ -756,8 +763,8 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
     setSelBrands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
 
   const load = async () => {
-    if (!faction && !hasPhotos) { setError("Select a faction first"); return; }
-    if (!selBrands.length) { setError("Select at least one paint brand"); return; }
+    if (!faction && !hasPhotos) { setError(t("painting.ai.selectFactionFirst")); return; }
+    if (!selBrands.length) { setError(t("painting.ai.selectBrand")); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
       const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
@@ -766,11 +773,11 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
     } catch (e) {
       if (e.message === "DAILY_LIMIT") {
-        setError("You've used today's 3 AI generations. Try again tomorrow.");
+        setError(t("painting.ai.dailyLimit"));
       } else if (e.message === "NO_SESSION") {
-        setError("You must be signed in to use the AI.");
+        setError(t("painting.ai.noSession"));
       } else {
-        setError("AI error: " + (e.message || "check console"));
+        setError(t("painting.ai.error").replace("{msg}", e.message || t("painting.ai.errorFallback")));
       }
       console.error(e);
     } finally {
@@ -791,14 +798,16 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                     justifyContent:"space-between", gap:10 }}>
         <div style={{ minWidth:0 }}>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.gold, letterSpacing:2 }}>
-            ⚡ AI Color Advisor
+            {t("painting.ai.title")}
           </div>
           <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>
             {data && lsKey
-              ? "💾 Saved suggestions — click ⟳ to regenerate"
+              ? t("painting.ai.saved")
               : hasPhotos
-                ? `📷 ${photoUrls.length} photo${photoUrls.length > 1 ? "s" : ""} · Claude will analyse your miniature`
-                : "Claude suggests colour schemes · techniques · tips"}
+                ? t("painting.ai.photoHint")
+                    .replace("{n}", photoUrls.length)
+                    .replace("{s}", photoUrls.length > 1 ? "s" : "")
+                : t("painting.ai.defaultHint")}
           </div>
         </div>
         <button onClick={load} disabled={loading}
@@ -807,7 +816,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                    color:C.gold, padding:"8px 14px", fontFamily:"'Cinzel',serif",
                    fontSize:11, letterSpacing:1, cursor:loading ? "default" : "pointer",
                    opacity:loading ? 0.6 : 1 }}>
-          {loading ? "⚙ Analysing…" : data ? "⟳ New Ideas" : "✦ Inspire Me"}
+          {loading ? t("painting.ai.analysing") : data ? t("painting.ai.newIdeas") : t("painting.ai.inspireMe")}
         </button>
       </div>
 
@@ -816,7 +825,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                     display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
         <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
                        letterSpacing:2, textTransform:"uppercase", flexShrink:0 }}>
-          My brands:
+          {t("painting.ai.myBrands")}
         </span>
         {BRANDS.map(b => {
           const on = selBrands.includes(b);
@@ -838,8 +847,8 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
       {loading && (
         <div style={{ padding:"20px 16px", textAlign:"center", color:C.muted, fontSize:12 }}>
           {hasPhotos
-            ? "🔍 Analysing your miniature photo…"
-            : "🎨 Generating schemes…"}
+            ? t("painting.ai.analysingPhoto")
+            : t("painting.ai.generating")}
         </div>
       )}
 
@@ -857,7 +866,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
           {data.miniature && hasPhotos && !faction && (
             <div style={{ padding:"10px 16px 0", fontSize:11, color:C.muted,
                           fontStyle:"italic", borderBottom:`1px solid ${C.border}` }}>
-              Identified: <span style={{ color:C.text }}>{data.miniature}</span>
+              {t("painting.ai.identified")} <span style={{ color:C.text }}>{data.miniature}</span>
             </div>
           )}
 
@@ -900,7 +909,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                 <div style={{ marginBottom:10 }}>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
                                 letterSpacing:3, textTransform:"uppercase", marginBottom:5 }}>
-                    Techniques
+                    {t("painting.ai.techniques")}
                   </div>
                   <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
                     {scheme.techniques.map((t, i) => (
@@ -961,7 +970,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                               </div>
                             )}
                           </div>
-                          <button title="Add to my scheme"
+                          <button title={t("painting.ai.addToScheme")}
                             onClick={() => onApply({
                               paint_name:  step.paint,
                               paint_hex:   hex,
@@ -1019,6 +1028,7 @@ function FormInput({ value, onChange, placeholder, multiline }) {
 
 function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const C = useContext(ThemeCtx);
+  const { t } = useLang();
   const isEdit = !!mini?.id;
   const photoInput = useRef(null);
 
@@ -1064,7 +1074,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const slots = 4 - photoUrls.length;
-    if (slots <= 0) { alert("Maximum 4 photos"); return; }
+    if (slots <= 0) { alert(t("painting.modal.maxPhotos")); return; }
     setPhotoLoading(true);
     try {
       const newUrls = [];
@@ -1075,7 +1085,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
       }
       setPhotoUrls(prev => [...prev, ...newUrls]);
     } catch (err) {
-      alert("Photo upload error: " + err.message);
+      alert(t("painting.modal.photoUploadError").replace("{msg}", err.message));
     } finally {
       setPhotoLoading(false);
       e.target.value = "";
@@ -1118,7 +1128,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     : p));
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert("Name is required!"); return; }
+    if (!form.name.trim()) { alert(t("painting.modal.nameRequired")); return; }
     setLoading(true);
     try {
       let miniId = mini?.id;
@@ -1153,7 +1163,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
 
       onSave();
     } catch (err) {
-      alert("Save error: " + err.message);
+      alert(t("painting.modal.saveError").replace("{msg}", err.message));
       console.error(err);
     } finally {
       setLoading(false);
@@ -1173,11 +1183,11 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
       // Verify the row is actually gone (sb.del returns ok=true even for 0-row deletes)
       const check = await sb.get("miniatures", `id=eq.${mini.id}&select=id`);
       if (Array.isArray(check) && check.length > 0) {
-        throw new Error("Non sei il proprietario di questa miniatura o la sessione è scaduta.");
+        throw new Error(t("painting.modal.notOwner"));
       }
       onSave();
     } catch (err) {
-      alert("Delete error: " + err.message);
+      alert(t("painting.modal.deleteError").replace("{msg}", err.message));
       setLoading(false);
     }
   };
@@ -1194,7 +1204,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                       padding:"16px 20px", display:"flex",
                       justifyContent:"space-between", alignItems:"center", gap:10 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:16, color:C.text }}>
-            {isEdit ? "Edit Miniature" : "Add Miniature"}
+            {isEdit ? t("painting.modal.editTitle") : t("painting.modal.addTitle")}
           </span>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             {isEdit && (
@@ -1205,7 +1215,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                          padding:"6px 12px", cursor:"pointer",
                          fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1,
                          transition:"all 0.2s" }}>
-                {deleteConfirm ? "⚠ Confirm Delete" : "🗑 Delete"}
+                {deleteConfirm ? t("painting.modal.confirmDelete") : t("painting.modal.delete")}
               </button>
             )}
             <button onClick={onClose}
@@ -1219,26 +1229,26 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
 
         <div style={{ padding:"16px 20px 24px" }}>
           {/* Name */}
-          <FormLabel>Miniature Name</FormLabel>
+          <FormLabel>{t("painting.modal.nameLabel")}</FormLabel>
           <FormInput value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Miniature name"/>
+            placeholder={t("painting.modal.namePlaceholder")}/>
 
           {/* Faction + Unit */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:4 }}>
             <div>
-              <FormLabel>Faction</FormLabel>
+              <FormLabel>{t("painting.modal.factionLabel")}</FormLabel>
               <select value={form.faction}
                 onChange={(e) => setForm((f) => ({ ...f, faction:e.target.value, unit_type:"" }))}
                 style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:8,
                          padding:"10px 14px", color:form.faction ? C.text : C.muted,
                          fontSize:13, width:"100%", boxSizing:"border-box" }}>
-                <option value="">— Faction —</option>
+                <option value="">{t("painting.modal.factionOption")}</option>
                 {Object.keys(FACTIONS).map((f) => <option key={f}>{f}</option>)}
               </select>
             </div>
             <div>
-              <FormLabel>Unit / Specific Model</FormLabel>
+              <FormLabel>{t("painting.modal.unitLabel")}</FormLabel>
               {/* Dropdown quick-filler */}
               {units.length > 0 && (
                 <select value=""
@@ -1246,14 +1256,14 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                   style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:"8px 8px 0 0",
                            padding:"8px 14px", color:C.muted, fontSize:11,
                            width:"100%", boxSizing:"border-box", borderBottom:"none" }}>
-                  <option value="">— Quick select unit —</option>
+                  <option value="">{t("painting.modal.quickSelectUnit")}</option>
                   {units.map(u => <option key={u}>{u}</option>)}
                 </select>
               )}
               {/* Editable text — what gets saved and sent to AI */}
               <input value={form.unit_type}
                 onChange={e => setForm(f => ({ ...f, unit_type: e.target.value }))}
-                placeholder="Type the exact model name (e.g. Loonboss on Giant Cave Squig)…"
+                placeholder={t("painting.modal.unitPlaceholder")}
                 style={{ background:C.card, border:`1px solid ${C.border}`,
                          borderRadius: units.length ? "0 0 8px 8px" : 8,
                          padding:"10px 14px", color:C.text, fontSize:13,
@@ -1265,19 +1275,19 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                   style={{ display:"inline-block", marginTop:5, color:C.goldDim,
                            fontSize:10, fontFamily:"'Cinzel',serif", letterSpacing:1,
                            textDecoration:"none" }}>
-                  ↗ Browse {form.faction} miniatures on Lexicanum
+                  {t("painting.modal.browseLexicanum").replace("{faction}", form.faction)}
                 </a>
               )}
             </div>
           </div>
 
           {/* Status */}
-          <FormLabel>Progress</FormLabel>
+          <FormLabel>{t("painting.modal.progressLabel")}</FormLabel>
           <StatusStepper value={form.status}
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
           {/* Photos (up to 4) */}
-          <FormLabel>Photos ({photoUrls.length}/4)</FormLabel>
+          <FormLabel>{t("painting.modal.photosLabel").replace("{n}", photoUrls.length)}</FormLabel>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-start" }}>
             {photoUrls.map((url, i) => (
               <div key={i} style={{ position:"relative", flexShrink:0 }}>
@@ -1290,7 +1300,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                                 background:"rgba(0,0,0,0.7)", borderRadius:3,
                                 padding:"1px 4px", fontSize:8,
                                 fontFamily:"'Cinzel',serif", color:C.gold }}>
-                    cover
+                    {t("painting.modal.cover")}
                   </div>
                 )}
                 <button onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
@@ -1312,7 +1322,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                          opacity:photoLoading ? 0.5 : 1,
                          display:"flex", flexDirection:"column",
                          alignItems:"center", justifyContent:"center", gap:4 }}>
-                {photoLoading ? "⚙" : <>📷<span>Add</span></>}
+                {photoLoading ? "⚙" : <>📷<span>{t("painting.modal.addPhoto")}</span></>}
               </button>
             )}
             <input ref={photoInput} type="file" accept="image/*" multiple
@@ -1320,13 +1330,13 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           </div>
 
           {/* Notes */}
-          <FormLabel>General Notes</FormLabel>
+          <FormLabel>{t("painting.modal.notesLabel")}</FormLabel>
           <FormInput multiline value={form.notes}
             onChange={(e) => setForm((f) => ({ ...f, notes:e.target.value }))}
-            placeholder="Inspiration, basing, conversions…"/>
+            placeholder={t("painting.modal.notesPlaceholder")}/>
 
           {/* ── COLOR SCHEME ────────────────────────────────────────── */}
-          <FormLabel>Colour Scheme</FormLabel>
+          <FormLabel>{t("painting.modal.colourSchemeLabel")}</FormLabel>
 
           {/* Paints grouped by section */}
           {paints.length > 0 && (() => {
@@ -1378,17 +1388,17 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                             marginBottom:10 }}>
                 <div>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.muted,
-                                letterSpacing:1, marginBottom:4 }}>PART</div>
+                                letterSpacing:1, marginBottom:4 }}>{t("painting.modal.part")}</div>
                   <input value={partInput}
                     onChange={(e) => setPartInput(e.target.value)}
-                    placeholder="e.g. Armour, Skin…"
+                    placeholder={t("painting.modal.partPlaceholder")}
                     style={{ background:C.surface, border:`1px solid ${C.border}`,
                              borderRadius:6, padding:"8px 10px", color:C.text,
                              fontSize:12, width:"100%", boxSizing:"border-box" }}/>
                 </div>
                 <div>
                   <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.muted,
-                                letterSpacing:1, marginBottom:4 }}>USE</div>
+                                letterSpacing:1, marginBottom:4 }}>{t("painting.modal.use")}</div>
                   <select value={usageInput}
                     onChange={(e) => setUsageInput(e.target.value)}
                     style={{ background:C.surface, border:`1px solid ${C.border}`,
@@ -1404,7 +1414,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                            background:`${C.gold}22`, border:`1px solid ${C.gold}`,
                            color:C.gold, fontFamily:"'Cinzel',serif",
                            fontSize:11, letterSpacing:2, cursor:"pointer" }}>
-                  ✓ Add Colour
+                  {t("painting.modal.addColour")}
                 </button>
                 <button onClick={() => setPendingPaint(null)}
                   style={{ padding:"10px 14px", borderRadius:8, background:"transparent",
@@ -1422,7 +1432,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                        background:"transparent", border:`1px dashed ${C.goldDim}`,
                        color:C.goldDim, fontFamily:"'Cinzel',serif",
                        fontSize:12, letterSpacing:2, cursor:"pointer", marginBottom:10 }}>
-              + Add Paint (Citadel · AK · Army Painter)
+              {t("painting.modal.addPaint")}
             </button>
           )}
 
@@ -1454,10 +1464,10 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           )}
 
           {/* Color scheme notes */}
-          <FormLabel>Colour Scheme Notes</FormLabel>
+          <FormLabel>{t("painting.modal.colourSchemeNotesLabel")}</FormLabel>
           <FormInput multiline value={form.color_scheme_notes}
             onChange={(e) => setForm((f) => ({ ...f, color_scheme_notes:e.target.value }))}
-            placeholder="Free notes on the scheme, techniques used, inspiration…"/>
+            placeholder={t("painting.modal.colourSchemeNotesPlaceholder")}/>
 
           {/* Public toggle */}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -1466,10 +1476,10 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             <div>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:C.text,
                             letterSpacing:1 }}>
-                Publish to Gallery
+                {t("painting.modal.publishToGallery")}
               </div>
               <div style={{ color:C.muted, fontSize:11, marginTop:2 }}>
-                Visible to all users
+                {t("painting.modal.visibleToAll")}
               </div>
             </div>
             <button onClick={() => setForm((f) => ({ ...f, is_public:!f.is_public }))}
@@ -1516,6 +1526,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
 // ─── COLLECTION SECTION ───────────────────────────────────────────────────
 
 function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, onAdd }) {
+  const { t } = useLang();
   const C = useContext(ThemeCtx);
   const [open, setOpen] = useState(true);
 
@@ -1559,7 +1570,7 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.gold,
                         letterSpacing:2, marginTop:2, textTransform:"uppercase" }}>
             {faction}
-            {minis.length > 0 && ` · ${minis.length} ${minis.length === 1 ? "model" : "models"}`}
+            {minis.length > 0 && ` · ${minis.length} ${t(`painting.collection.${minis.length === 1 ? "models_one" : "models_other"}`)}`}
           </div>
           {statusCounts.length > 0 && (
             <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:4 }}>
@@ -1571,7 +1582,7 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
                   <span style={{ fontSize:9 }}>{st.icon}</span>
                   <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
                                  color:st.color, letterSpacing:1 }}>
-                    {st.count} {st.label}
+                    {st.count} {t(`painting.status.${st.tkey}`)}
                   </span>
                 </div>
               ))}
@@ -1624,6 +1635,7 @@ function CollectionSection({ faction, unit, minis, paintsMap, userId, onEdit, on
 // ─── ARMY TAB ─────────────────────────────────────────────────────────────
 
 function ArmyTab({ userId, universe, minis, onGoToSection }) {
+  const { t } = useLang();
   const C = useContext(ThemeCtx);
   const lsKey = `wh40k_army_${userId || 'anon'}_${universe}`;
 
@@ -1700,18 +1712,18 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
       {(data.followed.length > 0 || totalOwned > 0) && (
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
           {[
-            { label:"Armies",   value:data.followed.length, color:C.gold },
-            { label:"Owned",    value:totalOwned,            color:"#4aaa6a" },
-            { label:"Wishlist", value:totalWishlist,         color:"#4a8adc" },
+            { tk:"armies",   value:data.followed.length, color:C.gold },
+            { tk:"owned",    value:totalOwned,            color:"#4aaa6a" },
+            { tk:"wishlist", value:totalWishlist,         color:"#4a8adc" },
           ].map(s => (
-            <div key={s.label} style={{ background:C.card, border:`1px solid ${C.border}`,
+            <div key={s.tk} style={{ background:C.card, border:`1px solid ${C.border}`,
                                         borderRadius:8, padding:"10px 4px", textAlign:"center" }}>
               <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:20, color:s.color }}>
                 {s.value}
               </div>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.muted,
                             letterSpacing:2, textTransform:"uppercase" }}>
-                {s.label}
+                {t(`painting.stats.${s.tk}`)}
               </div>
             </div>
           ))}
@@ -1814,14 +1826,14 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
                                   <span style={{ fontSize:9 }}>{st.icon}</span>
                                   <span style={{ fontFamily:"'Cinzel',serif", fontSize:8,
                                                  color:st.color, letterSpacing:1 }}>
-                                    {st.count} {st.label}
+                                    {st.count} {t(`painting.status.${st.tkey}`)}
                                   </span>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
-                        <button onClick={() => setUnitStatus(faction, unit, 'wishlist')} title="Wishlist"
+                        <button onClick={() => setUnitStatus(faction, unit, 'wishlist')} title={t("painting.tooltips.wishlist")}
                           style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
                                    border:`1px solid ${unitStatus==='wishlist' ? '#4a8adc' : C.dim}`,
                                    background:unitStatus==='wishlist' ? '#4a8adc22' : "transparent",
@@ -1829,7 +1841,7 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
                                    fontSize:11, transition:"all 0.15s" }}>
                           🛒
                         </button>
-                        <button onClick={() => setUnitStatus(faction, unit, 'owned')} title="Owned"
+                        <button onClick={() => setUnitStatus(faction, unit, 'owned')} title={t("painting.tooltips.owned")}
                           style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
                                    border:`1px solid ${unitStatus==='owned' ? '#4aaa6a' : C.dim}`,
                                    background:unitStatus==='owned' ? '#4aaa6a22' : "transparent",
@@ -1839,7 +1851,7 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
                         </button>
                         {unitStatus === 'owned' && (
                           <button onClick={() => onGoToSection(faction)}
-                            title="Go to My Collection"
+                            title={t("painting.tooltips.goToCollection")}
                             style={{ flexShrink:0, padding:"4px 8px", borderRadius:6, cursor:"pointer",
                                      border:`1px solid ${C.border}`, background:"transparent",
                                      color:C.muted, fontSize:12 }}>
@@ -1855,7 +1867,7 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
                     <input value={customInput}
                       onChange={e => setCustomInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addCustomUnit(faction)}
-                      placeholder="Add custom model…"
+                      placeholder={t("painting.tooltips.addCustomModel")}
                       style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`,
                                borderRadius:6, padding:"7px 10px", color:C.text, fontSize:12,
                                boxSizing:"border-box" }}/>
@@ -1877,6 +1889,7 @@ function ArmyTab({ userId, universe, minis, onGoToSection }) {
 }
 
 export default function PaintingTracker({ user, universe, onAchievement, unlockedIds = [], onUpdateUnlocked }) {
+  const { t } = useLang();
   const [tab,            setTab]          = useState("gallery");
   const [minis,          setMinis]        = useState([]);
   const [completedMinis, setCompletedMinis] = useState([]);
@@ -2003,9 +2016,9 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
                     borderBottom:`1px solid ${theme.border}`, padding:"0 16px" }}>
         <div style={{ display:"flex", gap:0 }}>
           {[
-            { id:"gallery",    label:"🏛 Community Gallery" },
-            { id:"army",       label:"⚔ My Army" },
-            { id:"collection", label:"⚙ My Collection" },
+            { id:"gallery",    label:t("painting.tabs.gallery") },
+            { id:"army",       label:t("painting.tabs.army") },
+            { id:"collection", label:t("painting.tabs.collection") },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               style={{ flex:1, padding:"14px 8px", background:"transparent",
@@ -2038,7 +2051,7 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
               <div key={s.id} style={{background:theme.card,border:`1px solid ${cnt>0?s.color+"44":theme.border}`,borderRadius:8,padding:"8px 4px",textAlign:"center"}}>
                 <div style={{fontSize:16,marginBottom:2}}>{s.icon}</div>
                 <div style={{fontFamily:"'Cinzel Decorative',serif",fontSize:16,color:cnt>0?s.color:theme.dim}}>{cnt}</div>
-                <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:theme.muted,letterSpacing:1,lineHeight:1.2}}>{s.label}</div>
+                <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:theme.muted,letterSpacing:1,lineHeight:1.2}}>{t(`painting.status.${s.tkey}`)}</div>
               </div>
             );
           })}

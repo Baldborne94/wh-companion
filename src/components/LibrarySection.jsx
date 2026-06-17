@@ -7,6 +7,7 @@ import CoverImage from "./CoverImage";
 import BookDetail from "./BookDetail";
 import { getBookRating } from "../lib/bookStatus";
 import { cacheListIds } from "../lib/ebookCache";
+import { useLang } from "../lib/i18n.jsx";
 
 const EpubReader = lazy(() => import("./EpubReader"));
 const PdfReader  = lazy(() => import("./PdfReader"));
@@ -24,6 +25,7 @@ function useDebounce(value, delay) {
 }
 
 export default function LibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
+  const { t } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card");
   const [search,      setSearch]      = useState("");
@@ -200,16 +202,16 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ padding: "20px 16px 0", borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
-        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 24, color: C.text, marginBottom: 12 }}>The Library</h2>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>{t("library.eyebrow")}</div>
+        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 24, color: C.text, marginBottom: 12 }}>{t("library.title")}</h2>
         <div style={{ display: "flex", gap: 20, marginBottom: 14, flexWrap: "wrap" }}>
-          {[{ l: "Tomes", v: BOOKS.length, color: C.text }, { l: "Read", v: Object.values(statuses).filter(s => s.status === 'read').length, color: "#4aaa6a" }, { l: "Reading", v: Object.values(statuses).filter(s => s.status === 'reading').length, color: "#4a8adc" }, { l: "Ebook", v: shelfBooks.length, color: C.gold }].map(s => (
+          {[{ l: t("library.stats.tomes"), v: BOOKS.length, color: C.text }, { l: t("library.stats.read"), v: Object.values(statuses).filter(s => s.status === 'read').length, color: "#4aaa6a" }, { l: t("library.stats.reading"), v: Object.values(statuses).filter(s => s.status === 'reading').length, color: "#4a8adc" }, { l: t("library.stats.ebook"), v: shelfBooks.length, color: C.gold }].map(s => (
             <div key={s.l}><div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 2, textTransform: "uppercase" }}>{s.l}</div><div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 20, color: s.color }}>{s.v}</div></div>
           ))}
         </div>
         <div style={{ display: "flex", gap: 0 }}>
-          {[{ id: "catalogue", label: "Catalogue" }, { id: "shelf", label: `My Shelf${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` }, { id: "upcoming", label: "Upcoming" }].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "10px", background: "transparent", border: "none", borderBottom: `2px solid ${tab === t.id ? C.gold : "transparent"}`, color: tab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>{t.label}</button>
+          {[{ id: "catalogue", label: t("library.tabs.catalogue") }, { id: "shelf", label: `${t("library.tabs.shelf")}${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` }, { id: "upcoming", label: t("library.tabs.upcoming") }].map(tb => (
+            <button key={tb.id} onClick={() => setTab(tb.id)} style={{ flex: 1, padding: "10px", background: "transparent", border: "none", borderBottom: `2px solid ${tab === tb.id ? C.gold : "transparent"}`, color: tab === tb.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>{tb.label}</button>
           ))}
         </div>
       </div>
@@ -217,26 +219,26 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
       {tab === "shelf" && (
         <>
           {shelfLoading ? (
-            <div style={{ textAlign: "center", padding: 40, color: C.muted, fontStyle: "italic" }}>Loading…</div>
+            <div style={{ textAlign: "center", padding: 40, color: C.muted, fontStyle: "italic" }}>{t("library.shelf.loading")}</div>
           ) : shelfBooks.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
               <div style={{ fontSize: 52 }}>📂</div>
-              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 16, color: C.muted }}>No ebooks loaded</div>
-              <div style={{ color: C.muted, fontSize: 13, maxWidth: 280, lineHeight: 1.6, textAlign: "center" }}>Go to Catalogue, select a book and upload your EPUB or PDF file to add it here.</div>
-              <button onClick={() => setTab("catalogue")} style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}`, borderRadius: 8, padding: "10px 24px", color: C.gold, fontFamily: "'Cinzel',serif", fontSize: 12, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>Go to Catalogue →</button>
+              <div style={{ fontFamily: "'Cinzel',serif", fontSize: 16, color: C.muted }}>{t("library.shelf.emptyTitle")}</div>
+              <div style={{ color: C.muted, fontSize: 13, maxWidth: 280, lineHeight: 1.6, textAlign: "center" }}>{t("library.shelf.emptyDesc")}</div>
+              <button onClick={() => setTab("catalogue")} style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}`, borderRadius: 8, padding: "10px 24px", color: C.gold, fontFamily: "'Cinzel',serif", fontSize: 12, letterSpacing: 2, cursor: "pointer", textTransform: "uppercase" }}>{t("library.shelf.goToCatalogue")}</button>
             </div>
           ) : (
             <>
               <div style={{ padding: "12px 16px 0" }}>
                 <div style={{ position: "relative" }}>
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search your ebooks..."
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("library.shelf.searchPlaceholder")}
                     style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 40px 12px 44px", fontSize: 15, outline: "none" }} />
                   <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.muted, fontSize: 18, pointerEvents: "none" }}>🔍</span>
                   {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
                 </div>
               </div>
               <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, flex: 1 }}>{sfilt.length} ebook</span>
+                <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, flex: 1 }}>{sfilt.length} {t("library.shelf.count")}</span>
                 <div style={{ display: "flex", gap: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2 }}>
                   {[{ m: "card", icon: "▦" }, { m: "list", icon: "☰" }, { m: "shelf", icon: "📚" }].map(v => (
                     <button key={v.m} onClick={() => setViewMode(v.m)}
@@ -247,7 +249,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                 </div>
               </div>
               {(() => {
-                if (sfilt.length === 0) return <div style={{ textAlign: "center", padding: "40px 20px", color: C.muted, fontStyle: "italic" }}>No results.</div>;
+                if (sfilt.length === 0) return <div style={{ textAlign: "center", padding: "40px 20px", color: C.muted, fontStyle: "italic" }}>{t("library.shelf.noResults")}</div>;
                 if (viewMode === "card") return (
                   <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
                     {sfilt.map(book => {
@@ -267,7 +269,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                               <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 1, textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.series}{book.num > 0 ? ` #${book.num}` : ""}</div>
                               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                                {cachedIds.has(book.id) && <span title="Available offline" style={{ background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 4, padding: "2px 6px", fontFamily: "'Cinzel',serif", fontSize: 8, color: C.green, letterSpacing: 1 }}>⬇ OFFLINE</span>}
+                                {cachedIds.has(book.id) && <span title={t("library.offlineTitle")} style={{ background: `${C.green}22`, border: `1px solid ${C.green}55`, borderRadius: 4, padding: "2px 6px", fontFamily: "'Cinzel',serif", fontSize: 8, color: C.green, letterSpacing: 1 }}>⬇ {t("library.offline")}</span>}
                                 {bst !== 'none' && <span style={{ fontSize: 13 }}>{bstCfg.icon}</span>}
                                 <span style={{ background: `${C.gold}22`, border: `1px solid ${C.gold}44`, borderRadius: 4, padding: "2px 7px", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.gold, letterSpacing: 1 }}>EPUB</span>
                               </div>
@@ -294,7 +296,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.title}</div>
                             <div style={{ fontSize: 10, color: C.muted, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{book.series}{book.num > 0 ? ` #${book.num}` : ""} · {book.author}</div>
                           </div>
-                          {cachedIds.has(book.id) && <span title="Available offline" style={{ fontSize: 12, color: C.green, flexShrink: 0 }}>⬇</span>}
+                          {cachedIds.has(book.id) && <span title={t("library.offlineTitle")} style={{ fontSize: 12, color: C.green, flexShrink: 0 }}>⬇</span>}
                           {bst !== 'none' && <span style={{ fontSize: 14, flexShrink: 0 }}>{bstCfg.icon}</span>}
                           <span style={{ color: C.dim, fontSize: 14, flexShrink: 0 }}>›</span>
                         </button>
@@ -346,7 +348,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
         <div style={{ paddingBottom: 20 }}>
           <div style={{ padding: "12px 16px 8px", display: "flex", alignItems: "baseline", gap: 8 }}>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 1 }}>
-              Updated as of {new Date(RELEASES_UPDATED).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+              {t("library.upcoming.updatedAsOf")} {new Date(RELEASES_UPDATED).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft: "auto", fontFamily: "'Cinzel',serif", fontSize: 9, color: C.blue, letterSpacing: 1, textDecoration: "none", flexShrink: 0 }}>
@@ -370,7 +372,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                           {item.faction && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.faction}</span>}
                         </div>
                         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</div>
-                        <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginTop: 2 }}>by {item.author}</div>
+                        <div style={{ fontSize: 11, color: C.muted, fontStyle: "italic", marginTop: 2 }}>{t("library.upcoming.by")} {item.author}</div>
                       </div>
                     </div>
                   );
@@ -385,17 +387,17 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
         <>
           <div style={{ padding: "12px 16px 0" }}>
             <div style={{ position: "relative" }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search titles, authors, series…" style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 40px 12px 44px", fontSize: 15, outline: "none" }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("library.catalogue.searchPlaceholder")} style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "12px 40px 12px 44px", fontSize: 15, outline: "none" }} />
               <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.muted, fontSize: 18, pointerEvents: "none" }}>🔍</span>
               {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
             </div>
           </div>
           <div style={{ padding: "8px 16px", display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setShowFilters(f => !f)} style={{ background: showFilters || isFiltered ? `${C.gold}22` : "transparent", border: `1px solid ${showFilters || isFiltered ? C.gold : C.dim}`, borderRadius: 20, padding: "7px 14px", color: showFilters || isFiltered ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer" }}>⚙ Filters{isFiltered ? " •" : ""}</button>
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, flex: 1 }}>{filtered.length} titles</span>
-            {isFiltered && <button onClick={() => { setSeries("All"); setFaction("All"); setType("All"); setEra("All"); setStatus("All"); setSort("default"); }} style={{ background: "transparent", border: `1px solid ${C.red}55`, borderRadius: 20, padding: "5px 12px", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 10, cursor: "pointer" }}>Reset</button>}
+            <button onClick={() => setShowFilters(f => !f)} style={{ background: showFilters || isFiltered ? `${C.gold}22` : "transparent", border: `1px solid ${showFilters || isFiltered ? C.gold : C.dim}`, borderRadius: 20, padding: "7px 14px", color: showFilters || isFiltered ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer" }}>⚙ {t("library.catalogue.filters")}{isFiltered ? " •" : ""}</button>
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.muted, flex: 1 }}>{filtered.length} {t("library.catalogue.titlesCount")}</span>
+            {isFiltered && <button onClick={() => { setSeries("All"); setFaction("All"); setType("All"); setEra("All"); setStatus("All"); setSort("default"); }} style={{ background: "transparent", border: `1px solid ${C.red}55`, borderRadius: 20, padding: "5px 12px", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 10, cursor: "pointer" }}>{t("library.catalogue.reset")}</button>}
             <div style={{ display: "flex", gap: 2, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2 }}>
-              {[{ m: "card", icon: "▦", title: "Card" }, { m: "list", icon: "☰", title: "List" }, { m: "shelf", icon: "📚", title: "Shelf" }].map(v => (
+              {[{ m: "card", icon: "▦", title: t("library.viewTitles.card") }, { m: "list", icon: "☰", title: t("library.viewTitles.list") }, { m: "shelf", icon: "📚", title: t("library.viewTitles.shelf") }].map(v => (
                 <button key={v.m} onClick={() => setViewMode(v.m)} title={v.title}
                   style={{ background: viewMode === v.m ? `${C.gold}33` : "transparent", border: "none", borderRadius: 6, width: 28, height: 26, cursor: "pointer", color: viewMode === v.m ? C.gold : C.muted, fontSize: viewMode === v.m ? 13 : 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {v.icon}
@@ -406,26 +408,26 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
           {showFilters && (
             <div style={{ padding: "0 16px 12px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Status</div>
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{t("library.filterLabels.status")}</div>
                 <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
-                  {[{ v: "All", l: "All" }, { v: "want", l: "📋 To Read" }, { v: "reading", l: "📖 Reading" }, { v: "read", l: "✅ Read" }, { v: "unread", l: "Unread" }].map(o => (
+                  {[{ v: "All", l: t("library.statusFilter.all") }, { v: "want", l: t("library.statusFilter.want") }, { v: "reading", l: t("library.statusFilter.reading") }, { v: "read", l: t("library.statusFilter.read") }, { v: "unread", l: t("library.statusFilter.unread") }].map(o => (
                     <Chip key={o.v} label={o.l} active={status === o.v} onClick={() => setStatus(o.v)} />
                   ))}
                 </div>
               </div>
               <div style={{ marginBottom: 10 }}>
-                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>Sort by</div>
+                <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{t("library.filterLabels.sortBy")}</div>
                 <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
-                  {[{ v: "default", l: "Default" }, { v: "title", l: "Title A–Z" }, { v: "author", l: "Author A–Z" }, { v: "rating", l: "Rating ★" }].map(o => (
+                  {[{ v: "default", l: t("library.sortFilter.default") }, { v: "title", l: t("library.sortFilter.title") }, { v: "author", l: t("library.sortFilter.author") }, { v: "rating", l: t("library.sortFilter.rating") }].map(o => (
                     <Chip key={o.v} label={o.l} active={sort === o.v} onClick={() => setSort(o.v)} />
                   ))}
                 </div>
               </div>
-              {[{ label: "Series", value: series, set: setSeries, opts: ALL_SERIES.slice(0, 22) }, { label: "Faction", value: faction, set: setFaction, opts: ALL_FACTIONS }, { label: "Type", value: type, set: setType, opts: ALL_TYPES }, { label: "Era", value: era, set: setEra, opts: ALL_ERAS }].map(f => (
-                <div key={f.label} style={{ marginBottom: 10 }}>
+              {[{ key: "series", label: t("library.filterLabels.series"), value: series, set: setSeries, opts: ALL_SERIES.slice(0, 22) }, { key: "faction", label: t("library.filterLabels.faction"), value: faction, set: setFaction, opts: ALL_FACTIONS }, { key: "type", label: t("library.filterLabels.type"), value: type, set: setType, opts: ALL_TYPES }, { key: "era", label: t("library.filterLabels.era"), value: era, set: setEra, opts: ALL_ERAS }].map(f => (
+                <div key={f.key} style={{ marginBottom: 10 }}>
                   <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{f.label}</div>
                   <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
-                    {f.opts.map(o => <Chip key={o} label={o} active={f.value === o} onClick={() => f.set(o)} />)}
+                    {f.opts.map(o => <Chip key={o} label={o === "All" ? t("library.statusFilter.all") : o} active={f.value === o} onClick={() => f.set(o)} />)}
                   </div>
                 </div>
               ))}
@@ -436,7 +438,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
           {viewMode === "card" && (
             <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
               {filtered.length === 0
-                ? <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>No tomes found, Inquisitor.</div>
+                ? <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>{t("library.catalogue.empty")}</div>
                 : visibleFiltered.map(book => {
                   const fc2 = FC[book.faction] || C.dim;
                   const tc  = book.type === "Codex" ? C.red : C.gold;
@@ -481,7 +483,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
           {viewMode === "list" && (
             <div style={{ padding: "6px 16px 16px" }}>
               {filtered.length === 0
-                ? <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>No tomes found, Inquisitor.</div>
+                ? <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>{t("library.catalogue.empty")}</div>
                 : visibleFiltered.map(book => {
                   const fc2 = FC[book.faction] || C.dim;
                   const bst = statuses[book.id]?.status || 'none';
@@ -510,7 +512,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
 
           {/* ── VIEW: SHELF (by series) ── */}
           {viewMode === "shelf" && (()=> {
-            if (filtered.length === 0) return <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>No tomes found, Inquisitor.</div>;
+            if (filtered.length === 0) return <div style={{ textAlign: "center", padding: "60px 20px", color: C.muted, fontStyle: "italic" }}>{t("library.catalogue.empty")}</div>;
             const seriesMap = {};
             filtered.forEach(b => { if (!seriesMap[b.series]) seriesMap[b.series] = []; seriesMap[b.series].push(b); });
             const seriesEntries = Object.entries(seriesMap).sort((a, b) => b[1].length - a[1].length);
@@ -526,7 +528,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 1, flexShrink: 0 }}>
                           {readC > 0 && <span style={{ color: C.green }}>✅{readC} </span>}
                           {readingC > 0 && <span style={{ color: C.blue }}>📖{readingC} </span>}
-                          <span>{books.length} books</span>
+                          <span>{books.length} {t("library.upcoming.booksCount")}</span>
                         </div>
                       </div>
                       <div style={{ overflowX: "auto", paddingBottom: 2 }}>

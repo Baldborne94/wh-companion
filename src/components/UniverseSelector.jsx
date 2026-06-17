@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "../lib/i18n.jsx";
 
 const UNIVERSES = [
   {
@@ -8,7 +9,7 @@ const UNIVERSES = [
     accent: "#C0392B",
     accentSoft: "#8B0000",
     bg: "linear-gradient(160deg, #1a0505 0%, #0f0e09 100%)",
-    flavorText: "In the grim darkness of the far future, there is only war.",
+    flavorKey: "login.selector.flavor40k",
     logo: "/aquila.png",
     logoAlt: "Imperial Aquila",
   },
@@ -19,13 +20,14 @@ const UNIVERSES = [
     accent: "#C9A227",
     accentSoft: "#7a6015",
     bg: "linear-gradient(160deg, #060c1a 0%, #090c0f 100%)",
-    flavorText: "A new age dawns — forged in the fires of the Mortal Realms.",
+    flavorKey: "login.selector.flavorAoS",
     logo: "/sigmar.png",
     logoAlt: "Sigmar",
   },
 ];
 
 export default function UniverseSelector({ onSelect }) {
+  const { t } = useLang();
   const [hovered, setHovered] = useState(null);
 
   return (
@@ -65,10 +67,10 @@ export default function UniverseSelector({ onSelect }) {
         animation: "usFadeIn 0.6s ease-out both",
       }}>
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:"0.5em", color:"#5a5040", textTransform:"uppercase", marginBottom:5 }}>
-          CHOOSE YOUR REALM
+          {t("login.selector.eyebrow")}
         </div>
         <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:"clamp(14px,4vw,20px)", color:"#d4cbb8", fontWeight:700 }}>
-          Select Your Universe
+          {t("login.selector.title")}
         </div>
       </div>
 
@@ -175,7 +177,7 @@ export default function UniverseSelector({ onSelect }) {
                 fontFamily:"'Cinzel',serif", letterSpacing:"0.02em",
                 opacity: isHov ? 1 : 0,
                 transition:"opacity 0.35s",
-              }}>{u.flavorText}</div>
+              }}>{t(u.flavorKey)}</div>
 
               {/* ENTER button */}
               <button
@@ -190,7 +192,7 @@ export default function UniverseSelector({ onSelect }) {
                   transition:"all 0.3s",
                 }}
                 onClick={(e) => { e.stopPropagation(); onSelect(u.id); }}
-              >ENTER</button>
+              >{t("login.selector.enter")}</button>
             </div>
           );
         })}

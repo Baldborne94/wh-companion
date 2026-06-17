@@ -6,8 +6,10 @@ import { BOOKS } from "../data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "../data/hhGuide";
 import CoverImage from "./CoverImage";
 import { getNextSuggestion } from "../lib/readingHelpers";
+import { useLang } from "../lib/i18n.jsx";
 
 function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
+  const { t } = useLang();
   const book = findHHBook(entry);
   const status = book ? statuses[book.id]?.status || 'none' : null;
   const stCfg = status && status !== 'none' ? STATUS_CFG[status] : null;
@@ -26,7 +28,7 @@ function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
         <div style={{ fontSize: 12, color: isSecondary ? (isShortRead ? C.gold : entry.opt ? C.muted : C.text) : (entry.opt ? C.muted : C.text), fontStyle: entry.opt ? 'italic' : 'normal', overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: type === 'novel' || type === 'novella' ? "'Cinzel',serif" : undefined }}>
           {entry.t}
           {entry.n > 0 && <span style={{ fontSize: 9, color: C.goldDim, marginLeft: 4 }}>#{entry.n}</span>}
-          {entry.opt && <span style={{ fontSize: 9, color: C.muted, marginLeft: 4 }}>(optional)</span>}
+          {entry.opt && <span style={{ fontSize: 9, color: C.muted, marginLeft: 4 }}>{t("reading.optional")}</span>}
         </div>
         <div style={{ fontSize: 10, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {entry.a}{entry.src && <span style={{ color: C.dim }}> · {entry.src}</span>}
@@ -41,6 +43,7 @@ function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
 }
 
 function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(new Set([hhMode === 'essential' ? 'm1' : 'p0']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
@@ -67,11 +70,11 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: dimmed ? C.muted : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{part.title}</span>
             </div>
             <div style={{ fontSize: 10, color: C.muted }}>
-              {part.pickOne ? <span>Pick one path · 4 options</span> : <>
-                {novelCount > 0 && `${novelCount} novel${novelCount !== 1 ? 's' : ''}`}
-                {extraCount > 0 && ` + ${extraCount} shorts/audio`}
-                {novelMatched.length > 0 && readCount > 0 && <span style={{ color: allRead ? C.green : C.blue, marginLeft: 6 }}>{allRead ? '✅' : ''}{readCount}/{novelMatched.length} read</span>}
-                {extraCount > 0 && shortReadCount > 0 && <span style={{ color: C.gold, marginLeft: 4 }}>· {shortReadCount}/{extraCount} shorts ✓</span>}
+              {part.pickOne ? <span>{t("reading.pickOne")}</span> : <>
+                {novelCount > 0 && `${novelCount} ${novelCount !== 1 ? t("reading.novelMany") : t("reading.novelOne")}`}
+                {extraCount > 0 && ` + ${extraCount} ${t("reading.shortsAudio")}`}
+                {novelMatched.length > 0 && readCount > 0 && <span style={{ color: allRead ? C.green : C.blue, marginLeft: 6 }}>{allRead ? '✅' : ''}{t("reading.readCount").replace("{n}", readCount).replace("{total}", novelMatched.length)}</span>}
+                {extraCount > 0 && shortReadCount > 0 && <span style={{ color: C.gold, marginLeft: 4 }}>· {t("reading.shortsRead").replace("{n}", shortReadCount).replace("{total}", extraCount)}</span>}
               </>}
             </div>
           </div>
@@ -98,7 +101,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
                   if (!b40k.length) return null;
                   return (
                     <div style={{ marginTop: 10, background: `${C.gold}08`, border: `1px solid ${C.gold}22`, borderRadius: 6, padding: "6px 10px" }}>
-                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 2, marginBottom: 6 }}>🌌 BONUS 40K READS</div>
+                      <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 2, marginBottom: 6 }}>{t("reading.bonus40k")}</div>
                       {b40k.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === b40k.length - 1} readShorts={readShorts} toggleShort={toggleShort} />)}
                     </div>
                   );
@@ -114,10 +117,10 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
   return (
     <div>
       <div style={{ padding: "12px 16px 10px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg,${C.surface},${C.bg})` }}>
-        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text, marginBottom: 4 }}>Heresy Reading Guide</div>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>Curated by Reddit user <span style={{ color: C.gold }}>cd8d</span> — organises 60+ books into readable story arcs</div>
+        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text, marginBottom: 4 }}>{t("reading.guideTitle")}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>{t("reading.guideCuratedPre")}<span style={{ color: C.gold }}>cd8d</span>{t("reading.guideCuratedPost")}</div>
         <div style={{ display: "flex", gap: 4, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2, alignSelf: "flex-start", width: "fit-content" }}>
-          {[{ id: 'essential', label: '⚡ Essential (~25 books)' }, { id: 'full', label: '📚 Full Guide' }].map(m => (
+          {[{ id: 'essential', label: t("reading.modeEssential") }, { id: 'full', label: t("reading.modeFull") }].map(m => (
             <button key={m.id} onClick={() => { setHhMode(m.id); setOpen(new Set([m.id === 'essential' ? 'm1' : 'p0'])); }}
               style={{ background: hhMode === m.id ? `${C.gold}33` : "transparent", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer", color: hhMode === m.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, whiteSpace: "nowrap" }}>
               {m.label}
@@ -129,13 +132,13 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
         {parts.map(part => <PartCard key={part.id} part={part} />)}
         {hhMode === 'full' && (
           <>
-            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 3, textTransform: "uppercase", marginTop: 10, marginBottom: 4, padding: "0 2px" }}>Optional Arcs</div>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 3, textTransform: "uppercase", marginTop: 10, marginBottom: 4, padding: "0 2px" }}>{t("reading.optionalArcs")}</div>
             {HH_OPTIONAL.map(part => <PartCard key={part.id} part={part} dimmed />)}
           </>
         )}
         <div style={{ marginTop: 8, padding: "10px 12px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 10, color: C.muted, lineHeight: 1.6, textAlign: "center" }}>
-          Guide by <span style={{ color: C.gold }}>u/cd8d</span> · Full article on{' '}
-          <a href="https://www.polygon.com/warhammer-40k/522708/warhammer-40k-horus-heresy-reading-guide-cd8d-redditor/" target="_blank" rel="noopener noreferrer" style={{ color: C.blue, textDecoration: "underline", textDecorationColor: `${C.blue}66` }}>Polygon (Feb 2025)</a>
+          {t("reading.footerGuideBy")}<span style={{ color: C.gold }}>u/cd8d</span>{t("reading.footerFullArticle")}
+          <a href="https://www.polygon.com/warhammer-40k/522708/warhammer-40k-horus-heresy-reading-guide-cd8d-redditor/" target="_blank" rel="noopener noreferrer" style={{ color: C.blue, textDecoration: "underline", textDecorationColor: `${C.blue}66` }}>{t("reading.footerPolygon")}</a>
         </div>
       </div>
     </div>
@@ -144,6 +147,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
 
 
 export default function ReadingSection({ user, statuses = {}, onOpenBook, setSection }) {
+  const { t } = useLang();
   const [crusadeTab, setCrusadeTab] = useState('overview');
   const [expanded, setExpanded] = useState(null);
 
@@ -230,19 +234,19 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, background: C.surface, position: "sticky", top: 0, zIndex: 5 }}>
-        {[{ id: "overview", label: "Overview" }, { id: "guide", label: "⚔ Heresy Guide" }].map(t => (
-          <button key={t.id} onClick={() => setCrusadeTab(t.id)} style={{ flex: 1, padding: "12px 4px", background: "transparent", border: "none", borderBottom: `2px solid ${crusadeTab === t.id ? C.gold : "transparent"}`, color: crusadeTab === t.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "color 0.15s" }}>
-            {t.label}
+        {[{ id: "overview", label: t("reading.tabOverview") }, { id: "guide", label: t("reading.tabGuide") }].map(tab => (
+          <button key={tab.id} onClick={() => setCrusadeTab(tab.id)} style={{ flex: 1, padding: "12px 4px", background: "transparent", border: "none", borderBottom: `2px solid ${crusadeTab === tab.id ? C.gold : "transparent"}`, color: crusadeTab === tab.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "color 0.15s" }}>
+            {tab.label}
           </button>
         ))}
       </div>
       {crusadeTab === "guide" && <HHGuideSection statuses={statuses} readShorts={readShorts} toggleShort={toggleShort} hhMode={hhMode} setHhMode={handleSetHhMode} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>Black Library</div>
-          <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 24, color: C.text, marginBottom: 14 }}>Your Crusade</h2>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 6 }}>{t("reading.blackLibrary")}</div>
+          <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 24, color: C.text, marginBottom: 14 }}>{t("reading.yourCrusade")}</h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-            {[{ label: "Read", count: readCount, color: C.green }, { label: "Reading", count: readingCount, color: C.blue }, { label: "To Read", count: wantCount, color: C.gold }, { label: "Total", count: BOOKS.length, color: C.muted }].map(s => (
+            {[{ label: t("reading.statRead"), count: readCount, color: C.green }, { label: t("reading.statReading"), count: readingCount, color: C.blue }, { label: t("reading.statToRead"), count: wantCount, color: C.gold }, { label: t("reading.statTotal"), count: BOOKS.length, color: C.muted }].map(s => (
               <div key={s.label} style={{ flex: "1 1 60px", background: C.card, border: `1px solid ${s.color}44`, borderRadius: 10, padding: "10px 14px", textAlign: "center" }}>
                 <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 20, color: s.color, lineHeight: 1 }}>{s.count}</div>
                 <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, letterSpacing: 2, marginTop: 4 }}>{s.label}</div>
@@ -252,13 +256,13 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
           <div style={{ height: 6, background: C.dim, borderRadius: 3, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${BOOKS.length > 0 ? (readCount / BOOKS.length) * 100 : 0}%`, background: `linear-gradient(to right,${C.green},${C.gold})`, borderRadius: 3, transition: "width 0.5s ease" }} />
           </div>
-          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 2, marginTop: 6, textAlign: "right" }}>{BOOKS.length > 0 ? Math.round((readCount / BOOKS.length) * 100) : 0}% COMPLETE</div>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 2, marginTop: 6, textAlign: "right" }}>{BOOKS.length > 0 ? Math.round((readCount / BOOKS.length) * 100) : 0}{t("reading.percentComplete")}</div>
         </div>
 
         {suggestion && (
           <div style={{ margin: "14px 16px 0", background: `linear-gradient(135deg,${C.gold}12,${C.card})`, border: `1px solid ${C.gold}44`, borderRadius: 12, overflow: "hidden" }}>
             <div style={{ padding: "10px 14px 0", display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>⚔ Next Up</span>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>{t("reading.nextUp")}</span>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 1 }}>· {suggestion.reason}</span>
               {suggestion.seriesProgress && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.muted, marginLeft: "auto" }}>{suggestion.seriesProgress}</span>}
             </div>
@@ -268,13 +272,13 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
                   {suggestion.entry.type === 'audio' ? '🎧' : '📄'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 2, marginBottom: 4, textTransform: "uppercase" }}>{suggestion.entry.type === 'audio' ? 'Audio Drama' : 'Short Story'}</div>
+                  <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 2, marginBottom: 4, textTransform: "uppercase" }}>{suggestion.entry.type === 'audio' ? t("reading.audioDrama") : t("reading.shortStory")}</div>
                   <div style={{ fontFamily: "'Cinzel',serif", fontSize: 14, color: C.text, lineHeight: 1.3, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{suggestion.entry.t}</div>
                   <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginBottom: suggestion.entry.src ? 2 : 10 }}>{suggestion.entry.a}</div>
-                  {suggestion.entry.src && <div style={{ fontSize: 10, color: C.dim, marginBottom: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>In: {suggestion.entry.src}</div>}
+                  {suggestion.entry.src && <div style={{ fontSize: 10, color: C.dim, marginBottom: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("reading.inSource")}{suggestion.entry.src}</div>}
                   <button onClick={() => toggleShort(suggestion.shortId)}
                     style={{ padding: "9px 14px", borderRadius: 8, background: `linear-gradient(135deg,${C.gold},#8a6f28)`, border: "none", color: C.bg, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer", fontWeight: 700 }}>
-                    ✓ Mark as Read
+                    {t("reading.markAsRead")}
                   </button>
                 </div>
               </div>
@@ -288,11 +292,11 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => handleReadNext(suggestion.book)} disabled={opening}
                       style={{ flex: 1, padding: "9px 10px", borderRadius: 8, background: `linear-gradient(135deg,${C.gold},#8a6f28)`, border: "none", color: C.bg, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer", fontWeight: 700 }}>
-                      {opening ? "Opening…" : "📖 Read Next"}
+                      {opening ? t("reading.opening") : t("reading.readNext")}
                     </button>
                     <button onClick={() => setSection?.('library')}
                       style={{ padding: "9px 12px", borderRadius: 8, background: "transparent", border: `1px solid ${C.dim}`, color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1, cursor: "pointer" }}>
-                      Details
+                      {t("reading.details")}
                     </button>
                   </div>
                 </div>
@@ -316,7 +320,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
                     <div style={{ display: "flex", gap: 10, marginTop: 5 }}>
                       {serie.readCount > 0 && <span style={{ fontSize: 10, color: C.green }}>✅ {serie.readCount}</span>}
                       {serie.readingCount > 0 && <span style={{ fontSize: 10, color: C.blue }}>📖 {serie.readingCount}</span>}
-                      <span style={{ fontSize: 10, color: C.muted }}>{serie.total} books</span>
+                      <span style={{ fontSize: 10, color: C.muted }}>{serie.total} {t("reading.booksSuffix")}</span>
                     </div>
                   </div>
                   <span style={{ color: C.goldDim, fontSize: 16, flexShrink: 0, transition: "transform 0.2s", transform: isExp ? "rotate(90deg)" : "none" }}>›</span>
@@ -331,7 +335,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
                         <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0", background: isNext ? `${C.gold}0a` : "transparent", borderRadius: 6, paddingLeft: isNext ? 6 : 0 }}>
                           <span style={{ fontSize: 13, flexShrink: 0 }}>{cfg.icon}</span>
                           <span style={{ fontSize: 12, color: bs === 'none' ? C.muted : C.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.title}</span>
-                          {isNext && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.gold, background: `${C.gold}22`, border: `1px solid ${C.gold}44`, borderRadius: 4, padding: "1px 5px", letterSpacing: 1, flexShrink: 0 }}>NEXT</span>}
+                          {isNext && <span style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.gold, background: `${C.gold}22`, border: `1px solid ${C.gold}44`, borderRadius: 4, padding: "1px 5px", letterSpacing: 1, flexShrink: 0 }}>{t("reading.next")}</span>}
                           <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: cfg.color, letterSpacing: 1, flexShrink: 0 }}>{b.num > 0 ? `#${b.num}` : ""}</span>
                         </div>
                       );
