@@ -4,7 +4,7 @@ import { useLang } from "../lib/i18n.jsx";
 import {
   READING_ACHIEVEMENTS, PAINTING_ACHIEVEMENTS,
   AOS_READING_ACHIEVEMENTS,
-  getConsecutiveMonthStreak, achievementFromId,
+  getConsecutiveMonthStreak, achievementFromId, localizeAchievement,
 } from "../lib/achievements";
 import { AOS_BOOKS } from "../data/aosBooks";
 import { BOOKS } from "../data/books";
@@ -74,6 +74,7 @@ function StatBox({ n, label, color, suffix }) {
 
 function AchCard({ a, unlocked, accent }) {
   const { t } = useLang();
+  a = localizeAchievement(a, t);
   const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
   if (unlocked) {
     return (
@@ -149,8 +150,9 @@ function AchCard({ a, unlocked, accent }) {
 // Card for dynamic earned achievements (sagas, armies)
 function DynCard({ id, accent }) {
   const { t } = useLang();
-  const a = achievementFromId(id);
-  if (!a) return null;
+  const raw = achievementFromId(id);
+  if (!raw) return null;
+  const a = localizeAchievement(raw, t);
   const glowClass = accent === C.gold ? "ach-unlocked-gold" : accent === AOS_ACCENT ? "ach-unlocked-aos" : "ach-unlocked-paint";
   return (
     <div

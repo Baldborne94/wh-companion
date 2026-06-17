@@ -45,7 +45,8 @@ export function LanguageProvider({ children }) {
     [lang]
   );
 
-  const value = useMemo(() => ({ lang, setLang, toggle, t }), [lang, setLang, toggle, t]);
+  const locale = lang === "it" ? "it-IT" : "en-US";
+  const value = useMemo(() => ({ lang, setLang, toggle, t, locale }), [lang, setLang, toggle, t, locale]);
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 

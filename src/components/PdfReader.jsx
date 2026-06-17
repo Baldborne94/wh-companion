@@ -104,7 +104,7 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
-  const { t } = useLang();
+  const { t, locale } = useLang();
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
@@ -536,7 +536,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
               fontFamily: "'Cinzel',serif", fontSize: 10,
             }}>
               <span>{t("reader.page").replace("{n}", bm.page)}</span>
-              <span style={{ fontSize: 8, color: C.dim }}>{new Date(bm.addedAt).toLocaleDateString()}</span>
+              <span style={{ fontSize: 8, color: C.dim }}>{new Date(bm.addedAt).toLocaleDateString(locale)}</span>
             </button>
           ))}
         </div>
