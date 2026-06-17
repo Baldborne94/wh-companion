@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
+import { useLang } from "../lib/i18n.jsx";
 import { sb } from "../lib/sb";
 import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
@@ -91,11 +92,12 @@ function getAoSAllNextSuggestions(statuses) {
     return b.readCount - a.readCount;
   });
 
-  return candidates.map(c => ({ book:c.next, reason:`Next in ${c.name}`, seriesProgress:`${c.readCount}/${c.books.length} read` }));
+  return candidates.map(c => ({ book:c.next, seriesName:c.name, readCount:c.readCount, total:c.books.length }));
 }
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
 function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
+  const { t } = useLang();
   const inp = useRef(null);
   const sc = spineColor(book);
   const [ebookMeta,     setEbookMeta]     = useState(null);
@@ -156,8 +158,8 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 
   const handleFileSelect = async e => {
     const file = e.target.files[0]; if (!file) return;
-    if (!user?.id) { setUploadMsg("❌ Sign in to upload ebooks."); return; }
-    setUploading(true); setUploadMsg("Uploading to cloud…");
+    if (!user?.id) { setUploadMsg(t("aos.detail.msgSignInUpload")); return; }
+    setUploading(true); setUploadMsg(t("aos.detail.msgUploading"));
     const path = `${user.id}/${book.id}/${file.name}`;
     const ok = await sb.storage.upload(path, file);
     if (ok) {
@@ -166,20 +168,20 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
       localStorage.setItem(`wh40k_ebook_${user.id}_${book.id}`, JSON.stringify(meta));
       setEbookMeta(meta);
       if (dbResult?._error) {
-        setUploadMsg(`⚠️ File saved but DB error ${dbResult._error}: ${dbResult._body?.slice(0,80)}`);
+        setUploadMsg(t("aos.detail.msgUploadDbError").replace("{code}", dbResult._error).replace("{body}", dbResult._body?.slice(0,80) || ""));
       } else {
-        setUploadMsg("✅ Uploaded & synced!");
+        setUploadMsg(t("aos.detail.msgUploaded"));
       }
-    } else { setUploadMsg("❌ Upload failed — check Supabase storage policy."); }
+    } else { setUploadMsg(t("aos.detail.msgUploadFailed")); }
     setUploading(false);
     setTimeout(() => setUploadMsg(""), 3000);
   };
 
   const handleOpenReader = async () => {
     if (!ebookMeta) return;
-    setUploadMsg("Opening…");
+    setUploadMsg(t("aos.detail.msgOpening"));
     const url = await sb.storage.signedUrl(ebookMeta.file_path);
-    if (!url) { setUploadMsg("❌ Could not open file — try re-uploading."); return; }
+    if (!url) { setUploadMsg(t("aos.detail.msgOpenFailed")); return; }
     setUploadMsg("");
     onOpenReader({ book, url, fileType:ebookMeta.file_type, progress, chapterIndex, pageIndex });
   };
@@ -187,12 +189,12 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
   const handleDeleteEbook = async () => {
     if (!deleteConfirm) { setDeleteConfirm(true); setTimeout(() => setDeleteConfirm(false), 4000); return; }
     setDeleteConfirm(false);
-    setUploadMsg("Removing…");
+    setUploadMsg(t("aos.detail.msgRemoving"));
     if (ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
     if (user?.id) await sb.del("ebook_files", `user_id=eq.${user.id}&book_id=eq.${book.id}`);
     if (user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
     setEbookMeta(null);
-    setUploadMsg("✅ Ebook removed.");
+    setUploadMsg(t("aos.detail.msgRemoved"));
     setTimeout(() => setUploadMsg(""), 2500);
   };
 
@@ -200,16 +202,16 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
     <div style={{ minHeight:"100%", background:AOS.bg }}>
       {/* Sticky header */}
       <div style={{ position:"sticky", top:0, zIndex:10, background:AOS.surface, borderBottom:`1px solid ${AOS.border}`, height:52, display:"flex", alignItems:"center", padding:"0 16px", gap:12 }}>
-        <button onClick={onBack} style={{ background:"transparent", border:`1px solid ${AOS.dim}`, borderRadius:8, color:AOS.gold, padding:"7px 16px", cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:1 }}>← Library</button>
+        <button onClick={onBack} style={{ background:"transparent", border:`1px solid ${AOS.dim}`, borderRadius:8, color:AOS.gold, padding:"7px 16px", cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:1 }}>{t("aos.detail.back")}</button>
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:AOS.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{book.series || book.type}{book.num > 0 ? ` #${book.num}` : ""}</div>
       </div>
 
       {/* Cover section */}
       <div style={{ background:`linear-gradient(160deg,${sc}55,${AOS.card})`, borderBottom:`1px solid ${sc}66`, padding:"28px 20px 24px", display:"flex", gap:16, alignItems:"flex-start" }}>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>{book.series || "Standalone"}{book.num > 0 ? ` · Book ${book.num}` : ""}</div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>{book.series || t("aos.detail.standalone")}{book.num > 0 ? ` · ${t("aos.detail.bookNum").replace("{n}", book.num)}` : ""}</div>
           <h1 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:"clamp(16px,5vw,24px)", color:AOS.text, lineHeight:1.2, marginBottom:6 }}>{book.title}</h1>
-          <div style={{ color:AOS.muted, fontSize:14, fontStyle:"italic" }}>by {book.author}</div>
+          <div style={{ color:AOS.muted, fontSize:14, fontStyle:"italic" }}>{t("aos.detail.by").replace("{author}", book.author)}</div>
         </div>
         <CoverImage book={book} width={80} height={120} radius={5} accentColor={sc} style={{ flexShrink:0, boxShadow:"0 4px 16px rgba(0,0,0,0.5)" }}/>
       </div>
@@ -217,7 +219,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
       <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
         {/* Metadata */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-          {[{ l:"Type", v:book.type }, { l:"Series", v:book.series || "Standalone" }].map(m => (
+          {[{ l:t("aos.detail.type"), v:book.type }, { l:t("aos.detail.series"), v:book.series || t("aos.detail.standalone") }].map(m => (
             <div key={m.l} style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:"10px" }}>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:3 }}>{m.l}</div>
               <div style={{ color:AOS.text, fontSize:12, lineHeight:1.2 }}>{m.v}</div>
@@ -229,13 +231,13 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
         <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:10, padding:"12px 14px" }}>
           {book.desc && (
             <>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>About this book</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{t("aos.detail.about")}</div>
               <div style={{ fontSize:12, color:AOS.muted, lineHeight:1.75, marginBottom:10 }}>{book.desc}</div>
             </>
           )}
           <a href={`https://www.google.com/search?q=${encodeURIComponent('"'+book.title+'" site:blacklibrary.com')}`} target="_blank" rel="noopener noreferrer"
             style={{ fontSize:11, color:AOS.blue, textDecoration:"underline", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-            Find on Black Library ›
+            {t("aos.detail.findOnBL")}
           </a>
         </div>
 
@@ -244,7 +246,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
           <div style={{ background:ebookMeta ? `${AOS.gold}18` : AOS.surface, padding:"14px 16px", borderBottom:`1px solid ${ebookMeta ? AOS.gold+"44" : AOS.border}`, display:"flex", alignItems:"center", gap:10 }}>
             <span style={{ fontSize:20 }}>{ebookMeta ? "📖" : "📂"}</span>
             <div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:ebookMeta ? AOS.gold : AOS.muted, fontWeight:700, letterSpacing:1 }}>{ebookMeta ? "Ebook Ready" : "No Ebook Loaded"}</div>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:ebookMeta ? AOS.gold : AOS.muted, fontWeight:700, letterSpacing:1 }}>{ebookMeta ? t("aos.detail.ebookReady") : t("aos.detail.noEbook")}</div>
               {ebookMeta && <div style={{ fontSize:11, color:AOS.goldDim, marginTop:1 }}>{ebookMeta.file_name}</div>}
             </div>
           </div>
@@ -252,8 +254,8 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
             {!user ? (
               <div style={{ textAlign:"center", padding:"24px 8px", display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>
                 <div style={{ fontSize:36 }}>🔐</div>
-                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6, maxWidth:260 }}>Sign in to upload and access your ebooks across any device.</div>
-                <button onClick={signInWithGoogle} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:2, cursor:"pointer", textTransform:"uppercase" }}>Sign in with Google</button>
+                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6, maxWidth:260 }}>{t("aos.detail.signInPrompt")}</div>
+                <button onClick={signInWithGoogle} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:2, cursor:"pointer", textTransform:"uppercase" }}>{t("aos.detail.signInGoogle")}</button>
               </div>
             ) : ebookMeta ? (
               <>
@@ -261,7 +263,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                 {progress > 0 && (
                   <div style={{ marginBottom:12 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase" }}>Progress</span>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase" }}>{t("aos.detail.progress")}</span>
                       <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold }}>{Math.round(progress * 100)}%</span>
                     </div>
                     <div style={{ height:4, background:AOS.dim, borderRadius:2 }}>
@@ -274,8 +276,8 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                   <div style={{ marginBottom:12, background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:8, padding:"10px 12px", display:"flex", alignItems:"center", gap:10 }}>
                     <span style={{ fontSize:16, flexShrink:0 }}>📍</span>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>Last read position</div>
-                      <div style={{ fontSize:12, color:AOS.text }}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index > 0 ? ` · Ch. ${bookmarkInfo.chapter_index+1}` : ""}</div>
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>{t("aos.detail.lastReadPosition")}</div>
+                      <div style={{ fontSize:12, color:AOS.text }}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index > 0 ? ` · ${t("aos.detail.chapterShort").replace("{n}", bookmarkInfo.chapter_index+1)}` : ""}</div>
                       {bookmarkInfo.bookmarkedAt && <div style={{ fontSize:10, color:AOS.muted, marginTop:1 }}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'})}</div>}
                     </div>
                   </div>
@@ -285,7 +287,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                   <div style={{ marginBottom:12, background:AOS.surface, border:`1px solid ${AOS.gold}33`, borderRadius:8, overflow:"hidden" }}>
                     <div style={{ padding:"8px 12px 6px", borderBottom:`1px solid ${AOS.border}`, display:"flex", alignItems:"center", gap:6 }}>
                       <span>🔖</span>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:2, textTransform:"uppercase" }}>Bookmarks ({bookmarksList.length})</span>
+                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:2, textTransform:"uppercase" }}>{t("aos.detail.bookmarks").replace("{n}", bookmarksList.length)}</span>
                     </div>
                     {bookmarksList.slice(0,5).map((bm,i) => (
                       <div key={bm.id} style={{ padding:"8px 12px", borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${AOS.border}55`:"none", display:"flex", alignItems:"center", gap:8 }}>
@@ -295,30 +297,30 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
                         </div>
                       </div>
                     ))}
-                    {bookmarksList.length > 5 && <div style={{ padding:"6px 12px", fontSize:10, color:AOS.muted, fontStyle:"italic" }}>+{bookmarksList.length-5} more bookmarks in reader</div>}
+                    {bookmarksList.length > 5 && <div style={{ padding:"6px 12px", fontSize:10, color:AOS.muted, fontStyle:"italic" }}>{t("aos.detail.moreBookmarks").replace("{n}", bookmarksList.length-5)}</div>}
                   </div>
                 )}
                 {uploadMsg && <div style={{ color:uploadMsg.startsWith("❌")?AOS.red:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, textAlign:"center", marginBottom:8 }}>{uploadMsg}</div>}
                 <button onClick={handleOpenReader} style={{ width:"100%", padding:"16px", borderRadius:10, background:`linear-gradient(135deg,${AOS.gold},#7a6015)`, border:"none", color:AOS.bg, fontFamily:"'Cinzel',serif", fontSize:15, letterSpacing:3, textTransform:"uppercase", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-                  {bookmarkInfo || progress > 0 ? "📖 Continue Reading" : "📖 Start Reading"}
+                  {bookmarkInfo || progress > 0 ? t("aos.detail.continueReading") : t("aos.detail.startReading")}
                 </button>
                 <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                  <button onClick={() => inp.current.click()} style={{ flex:1, padding:"10px", borderRadius:8, background:"transparent", border:`1px solid ${AOS.dim}`, color:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>Replace file</button>
+                  <button onClick={() => inp.current.click()} style={{ flex:1, padding:"10px", borderRadius:8, background:"transparent", border:`1px solid ${AOS.dim}`, color:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>{t("aos.detail.replaceFile")}</button>
                   <button onClick={handleDeleteEbook} style={{ flex:1, padding:"10px", borderRadius:8, background:deleteConfirm?`${AOS.red}22`:"transparent", border:`1px solid ${deleteConfirm?AOS.red:AOS.dim}`, color:deleteConfirm?AOS.red:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer", transition:"all 0.2s" }}>
-                    {deleteConfirm ? "⚠️ Confirm delete" : "🗑 Remove ebook"}
+                    {deleteConfirm ? t("aos.detail.confirmDelete") : t("aos.detail.removeEbook")}
                   </button>
                 </div>
               </>
             ) : (
               <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6 }}>Load your personal EPUB or PDF — saved to your private cloud, accessible from any device.</div>
+                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6 }}>{t("aos.detail.loadPrompt")}</div>
                 <div style={{ background:"#ffffff06", borderRadius:8, padding:"12px 14px" }}>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>Reader features</div>
-                  <div style={{ color:AOS.dim, fontSize:12, lineHeight:1.8 }}>📖 Pages or scroll mode<br/>🎨 Dark / Sepia / Paper theme<br/>🔤 Font &amp; typography<br/>📄 Single or two-page spread<br/>📝 Select words → dictionary</div>
+                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{t("aos.detail.readerFeatures")}</div>
+                  <div style={{ color:AOS.dim, fontSize:12, lineHeight:1.8 }}>{t("aos.detail.featureList").split("\n").map((line,i,arr) => <span key={i}>{line}{i<arr.length-1 && <br/>}</span>)}</div>
                 </div>
-                {(uploading || uploadMsg) && <div style={{ color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, textAlign:"center" }}>{uploadMsg || "Uploading…"}</div>}
+                {(uploading || uploadMsg) && <div style={{ color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, textAlign:"center" }}>{uploadMsg || t("aos.detail.msgUploadingShort")}</div>}
                 <button onClick={() => inp.current.click()} disabled={uploading} style={{ width:"100%", padding:"16px", borderRadius:10, background:"transparent", border:`2px dashed ${AOS.goldDim}`, color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:14, letterSpacing:2, textTransform:"uppercase", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:uploading?0.5:1 }}>
-                  📂 Load EPUB or PDF
+                  {t("aos.detail.loadEpubPdf")}
                 </button>
               </div>
             )}
@@ -328,7 +330,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 
         {/* Reading Status */}
         <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>Reading Status</div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>{t("aos.detail.readingStatus")}</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
             {['want','reading','read'].map(s => {
               const cfg = STATUS_CFG[s]; const active = curStatus === s;
@@ -340,7 +342,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
               );
             })}
           </div>
-          {curStatus === 'read' && <div style={{ marginTop:8, fontSize:11, color:STATUS_CFG.read.color, textAlign:"center", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>This book is in your completed collection!</div>}
+          {curStatus === 'read' && <div style={{ marginTop:8, fontSize:11, color:STATUS_CFG.read.color, textAlign:"center", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>{t("aos.detail.completedNote")}</div>}
         </div>
       </div>
     </div>
@@ -349,6 +351,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 
 // ─── AoS HOME PAGE ────────────────────────────────────────────────────────────
 export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
+  const { t } = useLang();
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -461,9 +464,9 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
         {onShowHelp && (
           <button onClick={onShowHelp} style={{ position:"absolute", top:16, right:16, width:28, height:28, borderRadius:"50%", background:"transparent", border:`1px solid ${AOS.border}`, color:AOS.muted, fontSize:13, fontFamily:"'Cinzel',serif", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>?</button>
         )}
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:4 }}>Age of Sigmar</div>
-        <h1 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:26, color:AOS.text, lineHeight:1.1, marginBottom:4 }}>Mortal Realms</h1>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3 }}>YOUR LIBRARY</div>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:4 }}>{t("aos.home.kicker")}</div>
+        <h1 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:26, color:AOS.text, lineHeight:1.1, marginBottom:4 }}>{t("aos.home.title")}</h1>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3 }}>{t("aos.home.subtitle")}</div>
         {user && (
           <div style={{ marginTop:14, display:"flex", alignItems:"center", gap:10 }}>
             {user.user_metadata?.avatar_url && <img src={user.user_metadata.avatar_url} alt="" style={{ width:28, height:28, borderRadius:"50%", border:`1px solid ${AOS.gold}55` }}/>}
@@ -475,9 +478,9 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
       {/* Stats bar — 3 columns like 40K */}
       <div style={{ display:"flex", borderBottom:`1px solid ${AOS.border}` }}>
         {[
-          { n:readingCount,   l:"Reading", c:AOS.blue  },
-          { n:readCount,      l:"Read",    c:AOS.green  },
-          { n:AOS_BOOKS.length, l:"Total", c:AOS.muted  },
+          { n:readingCount,   l:t("aos.home.statReading"), c:AOS.blue  },
+          { n:readCount,      l:t("aos.home.statRead"),    c:AOS.green  },
+          { n:AOS_BOOKS.length, l:t("aos.home.statTotal"), c:AOS.muted  },
         ].map(s => (
           <div key={s.l} style={{ flex:1, padding:"12px 4px", textAlign:"center", borderRight:`1px solid ${AOS.border}` }}>
             <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:22, color:s.c, lineHeight:1 }}>{s.n}</div>
@@ -489,7 +492,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
       {/* Currently Reading */}
       {activeBooks.length > 0 && (
         <div style={{ padding:"14px 16px 0" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.blue, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>📖 Currently Reading</div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.blue, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("aos.home.currentlyReading")}</div>
           {activeBooks.map(b => {
             const hasEbook = uploadedIds.has(b.id);
             return (
@@ -501,7 +504,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
                   <div style={{ fontSize:11, color:AOS.muted }}>{b.series}{b.num > 0 ? ` #${b.num}` : ""} · {b.author}</div>
                 </div>
                 {hasEbook
-                  ? <span style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}55`, borderRadius:6, padding:"4px 8px", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:1, flexShrink:0 }}>READ ›</span>
+                  ? <span style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}55`, borderRadius:6, padding:"4px 8px", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:1, flexShrink:0 }}>{t("aos.home.read")}</span>
                   : <span style={{ color:AOS.blue, fontSize:16, flexShrink:0 }}>›</span>
                 }
               </button>
@@ -513,13 +516,13 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
       {/* Next Up — one card per active AoS saga */}
       {suggestions.length > 0 && (
         <div style={{ padding:"14px 16px 0" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>⚔ Next Up</div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("aos.home.nextUp")}</div>
           {suggestions.map(s => (
             <div key={s.book.id} style={{ background:`linear-gradient(135deg,${AOS.gold}12,${AOS.card})`, border:`1px solid ${AOS.gold}44`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:10, padding:"12px 14px", display:"flex", gap:12, alignItems:"center", marginBottom:8 }}>
               <CoverImage book={s.book} width={36} height={54} radius={3} accentColor={spineColor(s.book)} style={{ boxShadow:"0 2px 8px rgba(0,0,0,0.5)" }}/>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:1, marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                  {s.reason.toUpperCase()}{s.seriesProgress ? ` · ${s.seriesProgress}` : ""}
+                  {t("aos.nextIn").replace("{series}", s.seriesName).toUpperCase()}{` · ${t("aos.seriesProgress").replace("{read}", s.readCount).replace("{total}", s.total)}`}
                 </div>
                 <div style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, marginBottom:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.book.title}</div>
                 <div style={{ fontSize:11, color:AOS.muted, fontStyle:"italic" }}>{s.book.author}</div>
@@ -535,16 +538,16 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
 
       {/* Shelf */}
       <div style={{ padding:"16px 0 0" }}>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", padding:"0 16px", marginBottom:10 }}>Your Shelf</div>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", padding:"0 16px", marginBottom:10 }}>{t("aos.home.yourShelf")}</div>
         {shelfBySeries.length === 0 ? (
           <div style={{ padding:"40px 20px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:14 }}>
             <div style={{ fontSize:48 }}>📚</div>
-            <div style={{ fontFamily:"'Cinzel',serif", fontSize:15, color:AOS.muted }}>Your shelf is empty</div>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:15, color:AOS.muted }}>{t("aos.home.shelfEmpty")}</div>
             <div style={{ fontSize:12, color:AOS.muted, maxWidth:260, lineHeight:1.6, textAlign:"center" }}>
-              Go to the Library, upload ebooks or mark books as read to build your shelf.
+              {t("aos.home.shelfEmptyHint")}
             </div>
             <button onClick={() => setSection('library')} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:2, cursor:"pointer" }}>
-              Go to Library →
+              {t("aos.home.goToLibrary")}
             </button>
           </div>
         ) : shelfBySeries.map(({ series, books }) => (
@@ -557,6 +560,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
 
 // ─── AoS LIBRARY SECTION ─────────────────────────────────────────────────────
 export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
+  const { t } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card"); // card | list | shelf
   const [search,      setSearch]      = useState("");
@@ -666,9 +670,9 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
   if (detail) return <AoSBookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
 
   const TABS = [
-    { id:"catalogue", label:"Catalogue" },
-    { id:"shelf",     label:`My Shelf${shelfBooks.length > 0 ? ` (${shelfBooks.length})` : ""}` },
-    { id:"upcoming",  label:"Upcoming" },
+    { id:"catalogue", label:t("aos.library.tabCatalogue") },
+    { id:"shelf",     label:shelfBooks.length > 0 ? t("aos.library.tabShelfCount").replace("{n}", shelfBooks.length) : t("aos.library.tabShelf") },
+    { id:"upcoming",  label:t("aos.library.tabUpcoming") },
   ];
 
   const Chip = ({label, active, onClick, color}) => (
@@ -679,14 +683,14 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
     <div style={{ paddingBottom:80, minHeight:"100%", background:AOS.bg }}>
       {/* Header */}
       <div style={{ padding:"20px 16px 0", borderBottom:`1px solid ${AOS.border}` }}>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>Black Library</div>
-        <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:12 }}>The Library</h2>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>{t("aos.library.kicker")}</div>
+        <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:12 }}>{t("aos.library.title")}</h2>
         <div style={{ display:"flex", gap:20, marginBottom:14, flexWrap:"wrap" }}>
           {[
-            { l:"Tomes",   v:AOS_BOOKS.length, color:AOS.text  },
-            { l:"Read",    v:readCount,         color:AOS.green },
-            { l:"Reading", v:readingCount,      color:AOS.blue  },
-            { l:"Ebook",   v:shelfBooks.length, color:AOS.gold  },
+            { l:t("aos.library.statTomes"),   v:AOS_BOOKS.length, color:AOS.text  },
+            { l:t("aos.library.statRead"),    v:readCount,         color:AOS.green },
+            { l:t("aos.library.statReading"), v:readingCount,      color:AOS.blue  },
+            { l:t("aos.library.statEbook"),   v:shelfBooks.length, color:AOS.gold  },
           ].map(s => (
             <div key={s.l}>
               <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase" }}>{s.l}</div>
@@ -705,20 +709,20 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
       {tab === "shelf" && (
         <>
           {shelfLoading ? (
-            <div style={{ textAlign:"center", padding:40, color:AOS.muted, fontStyle:"italic" }}>Loading…</div>
+            <div style={{ textAlign:"center", padding:40, color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.loading")}</div>
           ) : shelfBooks.length === 0 ? (
             <div style={{ textAlign:"center", padding:"60px 20px", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
               <div style={{ fontSize:52 }}>📂</div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:16, color:AOS.muted }}>No ebooks loaded</div>
-              <div style={{ color:AOS.muted, fontSize:13, maxWidth:280, lineHeight:1.6, textAlign:"center" }}>Go to Catalogue, select a book and upload your EPUB or PDF file to add it here.</div>
-              <button onClick={() => setTab("catalogue")} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:2, cursor:"pointer", textTransform:"uppercase" }}>Go to Catalogue →</button>
+              <div style={{ fontFamily:"'Cinzel',serif", fontSize:16, color:AOS.muted }}>{t("aos.library.noEbooksLoaded")}</div>
+              <div style={{ color:AOS.muted, fontSize:13, maxWidth:280, lineHeight:1.6, textAlign:"center" }}>{t("aos.library.noEbooksHint")}</div>
+              <button onClick={() => setTab("catalogue")} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:2, cursor:"pointer", textTransform:"uppercase" }}>{t("aos.library.goToCatalogue")}</button>
             </div>
           ) : (
             <>
               {/* search shelf */}
               <div style={{ padding:"12px 16px 0" }}>
                 <div style={{ position:"relative" }}>
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search your ebooks..."
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("aos.library.searchEbooks")}
                     style={{ width:"100%", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:10, color:AOS.text, padding:"12px 40px 12px 44px", fontSize:15, outline:"none" }}/>
                   <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:AOS.muted, fontSize:18, pointerEvents:"none" }}>🔍</span>
                   {search && <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
@@ -727,7 +731,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
               {/* view toggle + count */}
               <div style={{ padding:"8px 16px", display:"flex", gap:8, alignItems:"center" }}>
                 <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.muted, flex:1 }}>
-                  {shelfBooks.filter(b => !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())).length} ebook
+                  {t("aos.library.ebookCount").replace("{n}", shelfBooks.filter(b => !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())).length)}
                 </span>
                 <div style={{ display:"flex", gap:2, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2 }}>
                   {[{m:"card",icon:"▦"},{m:"list",icon:"☰"},{m:"shelf",icon:"📚"}].map(v => (
@@ -741,7 +745,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
               {/* books — same view modes as catalogue */}
               {(()=>{
                 const sfilt = shelfBooks.filter(b => !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.series.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase()));
-                if (sfilt.length === 0) return <div style={{ textAlign:"center", padding:"40px 20px", color:AOS.muted, fontStyle:"italic" }}>No results.</div>;
+                if (sfilt.length === 0) return <div style={{ textAlign:"center", padding:"40px 20px", color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.noResults")}</div>;
 
                 if (viewMode === "card") return (
                   <div style={{ padding:"10px 16px", display:"flex", flexDirection:"column", gap:8 }}>
@@ -842,7 +846,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
         <div style={{ paddingBottom:20 }}>
           <div style={{ padding:"12px 16px 8px", display:"flex", alignItems:"baseline", gap:8 }}>
             <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:1 }}>
-              Updated as of {new Date(RELEASES_UPDATED).toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'})}
+              {t("aos.library.updatedAsOf").replace("{date}", new Date(RELEASES_UPDATED).toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'}))}
             </div>
             <a href="https://www.blacklibrary.com" target="_blank" rel="noopener noreferrer"
               style={{ marginLeft:"auto", fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.blue, letterSpacing:1, textDecoration:"none", flexShrink:0 }}>
@@ -883,7 +887,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
         <>
           <div style={{ padding:"12px 16px 0" }}>
             <div style={{ position:"relative" }}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search titles, authors, series…"
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("aos.library.searchPlaceholder")}
                 style={{ width:"100%", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:10, color:AOS.text, padding:"12px 40px 12px 44px", fontSize:15, outline:"none" }}/>
               <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)", color:AOS.muted, fontSize:18, pointerEvents:"none" }}>🔍</span>
               {search && <button onClick={() => setSearch("")} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"transparent", border:"none", color:AOS.muted, cursor:"pointer", fontSize:20, lineHeight:1 }}>×</button>}
@@ -891,12 +895,12 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
           </div>
           {/* filter + view toggle bar */}
           <div style={{ padding:"8px 16px", display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={() => setShowFilters(f => !f)} style={{ background:showFilters||isFiltered?`${AOS.gold}22`:"transparent", border:`1px solid ${showFilters||isFiltered?AOS.gold:AOS.dim}`, borderRadius:20, padding:"7px 14px", color:showFilters||isFiltered?AOS.gold:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>⚙ Filters{isFiltered?" •":""}</button>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.muted, flex:1 }}>{filtered.length} titles</span>
-            {isFiltered && <button onClick={() => { setSeries("All"); setType("All"); setStatus("All"); setSort("default"); }} style={{ background:"transparent", border:`1px solid ${AOS.red}55`, borderRadius:20, padding:"5px 12px", color:AOS.red, fontFamily:"'Cinzel',serif", fontSize:10, cursor:"pointer" }}>Reset</button>}
+            <button onClick={() => setShowFilters(f => !f)} style={{ background:showFilters||isFiltered?`${AOS.gold}22`:"transparent", border:`1px solid ${showFilters||isFiltered?AOS.gold:AOS.dim}`, borderRadius:20, padding:"7px 14px", color:showFilters||isFiltered?AOS.gold:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>{isFiltered?t("aos.library.filtersActive"):t("aos.library.filters")}</button>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.muted, flex:1 }}>{t("aos.library.titleCount").replace("{n}", filtered.length)}</span>
+            {isFiltered && <button onClick={() => { setSeries("All"); setType("All"); setStatus("All"); setSort("default"); }} style={{ background:"transparent", border:`1px solid ${AOS.red}55`, borderRadius:20, padding:"5px 12px", color:AOS.red, fontFamily:"'Cinzel',serif", fontSize:10, cursor:"pointer" }}>{t("aos.library.reset")}</button>}
             {/* view mode toggle */}
             <div style={{ display:"flex", gap:2, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2 }}>
-              {[{m:"card",icon:"▦",title:"Card"},{m:"list",icon:"☰",title:"List"},{m:"shelf",icon:"📚",title:"Shelf"}].map(v => (
+              {[{m:"card",icon:"▦",title:t("aos.library.viewCard")},{m:"list",icon:"☰",title:t("aos.library.viewList")},{m:"shelf",icon:"📚",title:t("aos.library.viewShelf")}].map(v => (
                 <button key={v.m} onClick={() => setViewMode(v.m)} title={v.title}
                   style={{ background:viewMode===v.m?`${AOS.gold}33`:"transparent", border:"none", borderRadius:6, width:28, height:26, cursor:"pointer", color:viewMode===v.m?AOS.gold:AOS.muted, fontSize:viewMode===v.m?13:12, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   {v.icon}
@@ -907,31 +911,31 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
           {showFilters && (
             <div style={{ padding:"0 16px 12px", borderBottom:`1px solid ${AOS.border}` }}>
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Status</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>{t("aos.library.filterStatus")}</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                  {[{ v:"All", l:"All" }, { v:"want", l:"📋 To Read" }, { v:"reading", l:"📖 Reading" }, { v:"read", l:"✅ Read" }, { v:"unread", l:"Unread" }].map(o => (
+                  {[{ v:"All", l:t("aos.library.statusAll") }, { v:"want", l:t("aos.library.statusWant") }, { v:"reading", l:t("aos.library.statusReading") }, { v:"read", l:t("aos.library.statusRead") }, { v:"unread", l:t("aos.library.statusUnread") }].map(o => (
                     <Chip key={o.v} label={o.l} active={status===o.v} onClick={() => setStatus(o.v)}/>
                   ))}
                 </div>
               </div>
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Sort by</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>{t("aos.library.filterSortBy")}</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                  {[{ v:"default", l:"Default" }, { v:"title", l:"Title A–Z" }, { v:"author", l:"Author A–Z" }, { v:"rating", l:"Rating ★" }].map(o => (
+                  {[{ v:"default", l:t("aos.library.sortDefault") }, { v:"title", l:t("aos.library.sortTitle") }, { v:"author", l:t("aos.library.sortAuthor") }, { v:"rating", l:t("aos.library.sortRating") }].map(o => (
                     <Chip key={o.v} label={o.l} active={sort===o.v} onClick={() => setSort(o.v)} color={AOS.blue}/>
                   ))}
                 </div>
               </div>
               <div style={{ marginBottom:10 }}>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Series</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>{t("aos.library.filterSeries")}</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                  {AOS_SERIES.slice(0,15).map(o => <Chip key={o} label={o} active={series===o} onClick={() => setSeries(o)}/>)}
+                  {AOS_SERIES.slice(0,15).map(o => <Chip key={o} label={o==="All"?t("aos.library.statusAll"):o} active={series===o} onClick={() => setSeries(o)}/>)}
                 </div>
               </div>
               <div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>Type</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>{t("aos.library.filterType")}</div>
                 <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
-                  {AOS_TYPES.map(o => <Chip key={o} label={o} active={type===o} onClick={() => setType(o)} color={AOS.blue}/>)}
+                  {AOS_TYPES.map(o => <Chip key={o} label={o==="All"?t("aos.library.statusAll"):o} active={type===o} onClick={() => setType(o)} color={AOS.blue}/>)}
                 </div>
               </div>
             </div>
@@ -941,7 +945,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
           {viewMode === "card" && (
             <div style={{ padding:"10px 16px", display:"flex", flexDirection:"column", gap:8 }}>
               {sorted.length === 0 ? (
-                <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>No tomes found, Warrior.</div>
+                <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.noTomes")}</div>
               ) : sorted.map(book => {
                 const sc = spineColor(book);
                 const tc = book.type === "Codex" ? AOS.red : AOS.gold;
@@ -973,7 +977,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
           {viewMode === "list" && (
             <div style={{ padding:"6px 16px 16px" }}>
               {sorted.length === 0 ? (
-                <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>No tomes found, Warrior.</div>
+                <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.noTomes")}</div>
               ) : sorted.map(book => {
                 const sc = spineColor(book);
                 const bst = statuses[book.id]?.status || 'none';
@@ -996,7 +1000,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
 
           {/* VIEW: SHELF (by series) */}
           {viewMode === "shelf" && (()=>{
-            if (filtered.length === 0) return <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>No tomes found, Warrior.</div>;
+            if (filtered.length === 0) return <div style={{ textAlign:"center", padding:"60px 20px", color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.noTomes")}</div>;
             const seriesMap = {};
             filtered.forEach(b => { if (!seriesMap[b.series]) seriesMap[b.series] = []; seriesMap[b.series].push(b); });
             const seriesEntries = Object.entries(seriesMap).sort((a,b) => b[1].length - a[1].length);
@@ -1012,7 +1016,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
                         <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:1, flexShrink:0 }}>
                           {readC > 0 && <span style={{ color:AOS.green }}>✅{readC} </span>}
                           {readingC > 0 && <span style={{ color:AOS.blue }}>📖{readingC} </span>}
-                          <span>{books.length} books</span>
+                          <span>{t("aos.library.booksCount").replace("{n}", books.length)}</span>
                         </div>
                       </div>
                       <div style={{ overflowX:"auto", paddingBottom:2 }}>
@@ -1206,6 +1210,7 @@ const AOS_STARTER_GUIDE = [
 ];
 
 function AoSBookRow({ entry, statuses, isLast }) {
+  const { t } = useLang();
   const book = findAoSBook(entry);
   const status = book ? statuses[book.id]?.status || 'none' : null;
   const stCfg = status && status !== 'none' ? STATUS_CFG[status] : null;
@@ -1218,10 +1223,10 @@ function AoSBookRow({ entry, statuses, isLast }) {
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ fontSize:12, color:entry.opt?AOS.muted:AOS.text, fontStyle:entry.opt?"italic":"normal", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'Cinzel',serif" }}>
           {entry.t}
-          {entry.opt && <span style={{ fontSize:9, color:AOS.muted, marginLeft:4 }}>(optional)</span>}
+          {entry.opt && <span style={{ fontSize:9, color:AOS.muted, marginLeft:4 }}>{t("aos.guide.optional")}</span>}
         </div>
         <div style={{ fontSize:10, color:AOS.muted, display:"flex", alignItems:"center", gap:6 }}>
-          {entry.era && <span style={{ fontSize:8, fontFamily:"'Cinzel',serif", letterSpacing:1, textTransform:"uppercase", color:entry.era==='aos'?AOS.gold:AOS.blue, border:`1px solid ${entry.era==='aos'?AOS.gold:AOS.blue}55`, borderRadius:4, padding:"1px 5px", flexShrink:0 }}>{entry.era==='aos'?'Age of Sigmar':'Old World'}</span>}
+          {entry.era && <span style={{ fontSize:8, fontFamily:"'Cinzel',serif", letterSpacing:1, textTransform:"uppercase", color:entry.era==='aos'?AOS.gold:AOS.blue, border:`1px solid ${entry.era==='aos'?AOS.gold:AOS.blue}55`, borderRadius:4, padding:"1px 5px", flexShrink:0 }}>{entry.era==='aos'?t("aos.guide.eraAos"):t("aos.guide.eraOld")}</span>}
           <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{entry.a}</span>
         </div>
       </div>
@@ -1231,6 +1236,7 @@ function AoSBookRow({ entry, statuses, isLast }) {
 }
 
 function AoSGetStartedSection({ statuses }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(new Set(['s1']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const [arcOpen, setArcOpen] = useState(new Set(['ae1']));
@@ -1247,12 +1253,12 @@ function AoSGetStartedSection({ statuses }) {
         <div onClick={() => toggle(step.id)} style={{ padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:3 }}>
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{step.step}</span>
-              <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{step.title}</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{t(`aos.starter.${step.id}.step`)}</span>
+              <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t(`aos.starter.${step.id}.title`)}</span>
             </div>
             <div style={{ fontSize:10, color:AOS.muted }}>
-              {step.pickOne ? "Pick one path" : `${allBooks.length} book${allBooks.length!==1?"s":""}`}
-              {matched.length>0&&readCount>0&&<span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{matched.length} read</span>}
+              {step.pickOne ? t("aos.guide.pickOne") : (allBooks.length!==1?t("aos.guide.bookMany"):t("aos.guide.bookOne")).replace("{n}", allBooks.length)}
+              {matched.length>0&&readCount>0&&<span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{t("aos.guide.readCount").replace("{read}", readCount).replace("{total}", matched.length)}</span>}
             </div>
           </div>
           <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isOpen?"rotate(90deg)":"none" }}>›</span>
@@ -1261,15 +1267,15 @@ function AoSGetStartedSection({ statuses }) {
           <div style={{ borderTop:`1px solid ${AOS.border}`, padding:"10px 14px 12px" }}>
             {step.note && (
               <div style={{ fontSize:11, color:AOS.gold, fontStyle:"italic", marginBottom:10, padding:"6px 10px", background:`${AOS.gold}0a`, borderRadius:6, borderLeft:`2px solid ${AOS.gold}44` }}>
-                {step.note}
+                {t(`aos.starter.${step.id}.note`)}
               </div>
             )}
             {step.pickOne ? (
               <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                 {(step.options||[]).map((opt,oi) => (
                   <div key={oi} style={{ background:AOS.surface, border:`1px solid ${AOS.border}`, borderLeft:`3px solid ${opt.color||AOS.gold}`, borderRadius:8, padding:"8px 10px" }}>
-                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:opt.color||AOS.gold, letterSpacing:2, marginBottom:opt.note?4:6 }}>{opt.label.toUpperCase()}</div>
-                    {opt.note && <div style={{ fontSize:10, color:AOS.muted, fontStyle:"italic", marginBottom:6 }}>💡 {opt.note}</div>}
+                    <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:opt.color||AOS.gold, letterSpacing:2, marginBottom:opt.note?4:6 }}>{t(`aos.starter.${step.id}.opt${oi+1}Label`).toUpperCase()}</div>
+                    {opt.note && <div style={{ fontSize:10, color:AOS.muted, fontStyle:"italic", marginBottom:6 }}>💡 {t(`aos.starter.${step.id}.opt${oi+1}Note`)}</div>}
                     {(opt.books||[]).map((e,i) => <AoSBookRow key={i} entry={e} statuses={statuses} isLast={i===opt.books.length-1}/>)}
                   </div>
                 ))}
@@ -1286,10 +1292,10 @@ function AoSGetStartedSection({ statuses }) {
   return (
     <div>
       <div style={{ padding:"12px 16px 10px", borderBottom:`1px solid ${AOS.border}`, background:`linear-gradient(180deg,${AOS.surface},${AOS.bg})` }}>
-        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>Getting Started Guide</div>
+        <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:AOS.text, marginBottom:4 }}>{t("aos.guide.title")}</div>
         <div style={{ fontSize:11, color:AOS.muted, marginBottom:6 }}>
-          For newcomers to Age of Sigmar — your guided first steps into the Mortal Realms, with branching picks for every taste. Based on{' '}
-          <a href="https://www.trackofwords.com/2018/09/12/getting-started-with-black-library-age-of-sigmar/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline", textDecorationColor:`${AOS.blue}66` }}>Track of Words</a>
+          {t("aos.guide.introBefore")}
+          <a href="https://www.trackofwords.com/2018/09/12/getting-started-with-black-library-age-of-sigmar/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline", textDecorationColor:`${AOS.blue}66` }}>{t("aos.guide.trackOfWords")}</a>
         </div>
       </div>
       <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
@@ -1347,6 +1353,7 @@ function AoSPartCard({ part, isOpen, onToggle, statuses }) {
 
 // ─── AoS PATH TO GLORY ────────────────────────────────────────────────────────
 export function AoSCrusadeSection({ user, statuses: propStatuses }) {
+  const { t } = useLang();
   const [tab,            setTab]          = useState('overview');
   const [localStatuses,  setLocalStatuses] = useState({});
   const [expanded,       setExpanded]     = useState(null);
@@ -1400,14 +1407,14 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
     <div style={{ paddingBottom:80, minHeight:"100%", background:AOS.bg }}>
       {/* Tab bar */}
       <div style={{ display:"flex", borderBottom:`1px solid ${AOS.border}`, background:AOS.surface, position:"sticky", top:0, zIndex:5 }}>
-        {[{ id:"overview", label:"Overview" }, { id:"guide", label:"🌟 Getting Started" }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
+        {[{ id:"overview", label:t("aos.crusade.tabOverview") }, { id:"guide", label:t("aos.crusade.tabGuide") }].map(tb => (
+          <button key={tb.id} onClick={() => setTab(tb.id)} style={{
             flex:1, padding:"12px 4px", background:"transparent", border:"none",
-            borderBottom:`2px solid ${tab===t.id?AOS.gold:"transparent"}`,
-            color:tab===t.id?AOS.gold:AOS.muted,
+            borderBottom:`2px solid ${tab===tb.id?AOS.gold:"transparent"}`,
+            color:tab===tb.id?AOS.gold:AOS.muted,
             fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1,
             cursor:"pointer", textTransform:"uppercase", transition:"color 0.15s",
-          }}>{t.label}</button>
+          }}>{tb.label}</button>
         ))}
       </div>
 
@@ -1416,18 +1423,18 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
       {tab==="overview" && <>
         {/* Header + stats */}
         <div style={{ padding:"22px 16px 12px", borderBottom:`1px solid ${AOS.border}` }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>Black Library</div>
-          <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:14 }}>Path to Glory</h2>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:5, color:AOS.goldDim, textTransform:"uppercase", marginBottom:6 }}>{t("aos.crusade.kicker")}</div>
+          <h2 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:24, color:AOS.text, marginBottom:14 }}>{t("aos.crusade.title")}</h2>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
             {[
-              { label:"Read",    count:readCount,    color:AOS.green },
-              { label:"Reading", count:readingCount, color:AOS.blue  },
-              { label:"To Read", count:wantCount,    color:AOS.gold  },
-              { label:"Total",   count:total,        color:AOS.muted },
+              { tk:"statRead",    count:readCount,    color:AOS.green },
+              { tk:"statReading", count:readingCount, color:AOS.blue  },
+              { tk:"statToRead",  count:wantCount,    color:AOS.gold  },
+              { tk:"statTotal",   count:total,        color:AOS.muted },
             ].map(s => (
-              <div key={s.label} style={{ flex:"1 1 60px", background:AOS.card, border:`1px solid ${s.color}44`, borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
+              <div key={s.tk} style={{ flex:"1 1 60px", background:AOS.card, border:`1px solid ${s.color}44`, borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
                 <div style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:20, color:s.color, lineHeight:1 }}>{s.count}</div>
-                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:2, marginTop:4 }}>{s.label}</div>
+                <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.muted, letterSpacing:2, marginTop:4 }}>{t(`aos.crusade.${s.tk}`)}</div>
               </div>
             ))}
           </div>
@@ -1435,7 +1442,7 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
             <div style={{ height:"100%", width:`${total>0?(readCount/total)*100:0}%`, background:`linear-gradient(to right,${AOS.green},${AOS.gold})`, borderRadius:3, transition:"width 0.5s ease" }}/>
           </div>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, marginTop:6, textAlign:"right" }}>
-            {total>0?Math.round((readCount/total)*100):0}% COMPLETE
+            {t("aos.crusade.percentComplete").replace("{n}", total>0?Math.round((readCount/total)*100):0)}
           </div>
         </div>
 
@@ -1461,7 +1468,7 @@ export function AoSCrusadeSection({ user, statuses: propStatuses }) {
                     <div style={{ display:"flex", gap:10, marginTop:5 }}>
                       {serie.readCount>0&&<span style={{ fontSize:10, color:AOS.green }}>✅ {serie.readCount}</span>}
                       {serie.readingCount>0&&<span style={{ fontSize:10, color:AOS.blue }}>📖 {serie.readingCount}</span>}
-                      <span style={{ fontSize:10, color:AOS.muted }}>{serie.total} books</span>
+                      <span style={{ fontSize:10, color:AOS.muted }}>{t("aos.crusade.booksCount").replace("{n}", serie.total)}</span>
                     </div>
                   </div>
                   <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isExp?"rotate(90deg)":"none" }}>›</span>

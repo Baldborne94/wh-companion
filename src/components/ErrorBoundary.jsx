@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { TRANSLATIONS } from '../data/i18n/translations';
 
 function isChunkError(error) {
   const msg = error?.message ?? '';
@@ -23,6 +24,8 @@ export default class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       const chunkErr = isChunkError(this.state.error);
+      const lang = (typeof localStorage !== 'undefined' && localStorage.getItem('wh_language')) === 'it' ? 'it' : 'en';
+      const tr = TRANSLATIONS[lang].login.error;
       return (
         <div style={{
           display:'flex', flexDirection:'column', alignItems:'center',
@@ -30,10 +33,10 @@ export default class ErrorBoundary extends Component {
         }}>
           <div style={{fontSize:48}}>⚙</div>
           <div style={{fontFamily:"'Cinzel Decorative',serif", fontSize:18, color:'#c9a84c'}}>
-            {this.props.title || 'Something went wrong'}
+            {this.props.title || tr.title}
           </div>
           <div style={{fontSize:13, color:'#7a7060', lineHeight:1.6, maxWidth:280}}>
-            {this.state.error?.message || 'An unexpected error occurred.'}
+            {this.state.error?.message || tr.generic}
           </div>
           <button
             onClick={() => chunkErr ? window.location.reload() : this.setState({ hasError:false, error:null })}
@@ -41,7 +44,7 @@ export default class ErrorBoundary extends Component {
                     padding:'8px 20px', color:'#c9a84c', fontFamily:"'Cinzel',serif",
                     fontSize:11, letterSpacing:2, cursor:'pointer', textTransform:'uppercase'}}
           >
-            Retry
+            {tr.retry}
           </button>
         </div>
       );

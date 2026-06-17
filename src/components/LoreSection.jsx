@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { C } from "../data/constants";
+import { useLang } from "../lib/i18n.jsx";
 
 const AOS_REALMS = [
   {name:"Realm of Aqshy", sub:"Fire",    color:"#C0392B", icon:"🔥"},
@@ -13,6 +14,7 @@ const AOS_REALMS = [
 ];
 
 export default function LoreSection({ universe }) {
+  const { t } = useLang();
   const [wikiSearch, setWikiSearch] = useState("");
   const isAoS = universe === 'aos';
 
@@ -72,38 +74,38 @@ export default function LoreSection({ universe }) {
     <div style={{paddingBottom:80}}>
       <div style={{padding:"22px 16px 16px",borderBottom:`1px solid ${C.border}`}}>
         <div style={{fontFamily:"'Cinzel',serif",fontSize:9,letterSpacing:5,color:C.goldDim,textTransform:"uppercase",marginBottom:6}}>{isAoS?"Warhammer: Age of Sigmar":"Warhammer 40,000"}</div>
-        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>Lore & Resources</h2>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?"Accesso diretto alle migliori enciclopedie online dei Mortal Realms.":"Direct access to the best online encyclopedias. WH40K lore is vast — let the experts handle it."}</p>
+        <h2 style={{fontFamily:"'Cinzel Decorative',serif",fontSize:24,color:C.text,marginBottom:6}}>{t("lore.title")}</h2>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{isAoS?t("lore.introAos"):t("lore.intro40k")}</p>
       </div>
       <div style={{padding:"16px 16px 0"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{isAoS?"Search on AoS Lexicanum":"Search on Fandom Wiki"}</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{isAoS?t("lore.searchLabelAos"):t("lore.searchLabel40k")}</div>
         <div style={{display:"flex",gap:8}}>
           <div style={{flex:1,position:"relative"}}>
             <input value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}
               onKeyDown={e=>e.key==="Enter"&&openWikiSearch()}
-              placeholder={isAoS?"Sigmar, Stormcast, Nagash…":"Space Marines, Horus, Aeldari…"}
+              placeholder={isAoS?t("lore.searchPlaceholderAos"):t("lore.searchPlaceholder40k")}
               style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,color:C.text,padding:"11px 12px 11px 40px",fontSize:14,outline:"none"}}/>
             <span style={{position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:16,pointerEvents:"none"}}>🔍</span>
           </div>
-          <button onClick={openWikiSearch} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:10,color:C.gold,padding:"0 18px",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",flexShrink:0}}>Search ↗</button>
+          <button onClick={openWikiSearch} style={{background:`${C.gold}22`,border:`1px solid ${C.gold}`,borderRadius:10,color:C.gold,padding:"0 18px",fontFamily:"'Cinzel',serif",fontSize:11,letterSpacing:1,cursor:"pointer",flexShrink:0}}>{t("lore.searchButton")}</button>
         </div>
       </div>
       <div style={{padding:"20px 16px 4px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>Main Resources</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>{t("lore.mainResources")}</div>
         {isAoS ? (
           <>
-            <LinkCard title="Lexicanum AoS" icon="📖" desc="The most complete Age of Sigmar encyclopedia: factions, Mortal Realms, characters and history. Community-maintained." url="https://ageofsigmar.lexicanum.com/wiki/Main_Page" color={C.gold} badge="LEXICANUM"/>
-            <LinkCard title="Sigmar Wiki" icon="🔱" desc="The story of Sigmar Heldenhammer, from mortal warrior to god-king of the Mortal Realms. Deep lore on Fandom." url="https://warhammerfantasy.fandom.com/wiki/Sigmar" color="#4a7fb5" badge="FANDOM"/>
+            <LinkCard title={t("lore.resources.lexicanumAos.title")} icon="📖" desc={t("lore.resources.lexicanumAos.desc")} url="https://ageofsigmar.lexicanum.com/wiki/Main_Page" color={C.gold} badge="LEXICANUM"/>
+            <LinkCard title={t("lore.resources.sigmarWiki.title")} icon="🔱" desc={t("lore.resources.sigmarWiki.desc")} url="https://warhammerfantasy.fandom.com/wiki/Sigmar" color="#4a7fb5" badge="FANDOM"/>
           </>
         ) : (
           <>
-            <LinkCard title="Warhammer 40k Wiki" icon="📖" desc="The most complete wiki: factions, characters, events, battles, planets. Thousands of articles continuously updated by the community." url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki" color={C.gold} badge="FANDOM"/>
-            <LinkCard title="Lexicanum" icon="📜" desc="Encyclopedic and technical reference. Great for equipment details, units, dates and chronology." url="https://wh40k.lexicanum.com" color={C.blue} badge="LEXICANUM"/>
+            <LinkCard title={t("lore.resources.warhammer40kWiki.title")} icon="📖" desc={t("lore.resources.warhammer40kWiki.desc")} url="https://warhammer40k.fandom.com/wiki/Warhammer_40k_Wiki" color={C.gold} badge="FANDOM"/>
+            <LinkCard title={t("lore.resources.lexicanum.title")} icon="📜" desc={t("lore.resources.lexicanum.desc")} url="https://wh40k.lexicanum.com" color={C.blue} badge="LEXICANUM"/>
           </>
         )}
       </div>
       <div style={{padding:"8px 16px 16px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>Quick Access</div>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:10}}>{t("lore.quickAccess")}</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
           {QUICK_LINKS.map(q=>(
             <a key={q.wiki} href={isAoS?`https://ageofsigmar.lexicanum.com/wiki/${q.wiki}`:`https://warhammer40k.fandom.com/wiki/${q.wiki}`} target="_blank" rel="noopener noreferrer"
@@ -117,7 +119,7 @@ export default function LoreSection({ universe }) {
       </div>
       {isAoS && (
         <div style={{padding:"8px 16px 16px"}}>
-          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>The Mortal Realms</div>
+          <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.goldDim,letterSpacing:3,textTransform:"uppercase",marginBottom:12}}>{t("lore.mortalRealms")}</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {AOS_REALMS.map(r=>(
               <button key={r.name} type="button" onClick={()=>window.open('https://ageofsigmar.lexicanum.com/wiki/'+r.name.replace(/ /g,'_'),'_blank')}
@@ -125,7 +127,7 @@ export default function LoreSection({ universe }) {
                 <span style={{fontSize:22}}>{r.icon}</span>
                 <div>
                   <div style={{fontFamily:"'Cinzel',serif",fontSize:12,color:C.text}}>{r.name}</div>
-                  <div style={{fontSize:10,color:r.color,letterSpacing:0.5}}>{r.sub}</div>
+                  <div style={{fontSize:10,color:r.color,letterSpacing:0.5}}>{t("lore.realmSub."+r.sub)}</div>
                 </div>
               </button>
             ))}
@@ -133,8 +135,8 @@ export default function LoreSection({ universe }) {
         </div>
       )}
       <div style={{margin:"0 16px 16px",background:`${C.blue}11`,border:`1px solid ${C.blue}33`,borderRadius:10,padding:"12px 14px"}}>
-        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>In the Reader</div>
-        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>While reading, {isAoS?"AoS":"WH40K"} terms appear <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>underlined in blue</span>. Tap them to open the wiki page directly.</p>
+        <div style={{fontFamily:"'Cinzel',serif",fontSize:8,color:C.blue,letterSpacing:3,textTransform:"uppercase",marginBottom:6}}>{t("lore.inTheReader")}</div>
+        <p style={{fontSize:12,color:C.muted,lineHeight:1.6}}>{t("lore.readerHint1")} {isAoS?"AoS":"WH40K"} {t("lore.readerHint2")} <span style={{color:C.blue,borderBottom:`1px solid ${C.blue}55`}}>{t("lore.readerHintUnderlined")}</span>{t("lore.readerHint3")}</p>
       </div>
     </div>
   );

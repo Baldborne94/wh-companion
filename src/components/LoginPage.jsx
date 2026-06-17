@@ -1,4 +1,5 @@
 import { signInWithGoogle } from "../lib/supabase";
+import { useLang } from "../lib/i18n.jsx";
 
 const SILVER = "#c8c4bc";
 const SILVER_DIM = "#706c64";
@@ -7,6 +8,7 @@ const BLUE = "#4a7cb5";
 const AOS_GOLD = "#C9A227";
 
 export default function LoginPage({ authLoading, onEnter, user }) {
+  const { t } = useLang();
   const handleSignIn = () => {
     if (onEnter) onEnter();
     signInWithGoogle();
@@ -149,16 +151,16 @@ export default function LoginPage({ authLoading, onEnter, user }) {
           padding:"0 20px",
           letterSpacing:"0.04em",
         }}>
-          Library, campaigns and progress — all synced.
+          {t("login.tagline")}
         </p>
 
         {/* CTA */}
         {!authLoading && (
           onEnter
             ? user
-              ? <button className="login-btn" onClick={onEnter}>ENTER THE UNIVERSE</button>
-              : <button className="login-btn" onClick={handleSignIn}><GoogleIcon/> SIGN IN WITH GOOGLE</button>
-            : <button className="login-btn" onClick={signInWithGoogle}><GoogleIcon/> SIGN IN WITH GOOGLE</button>
+              ? <button className="login-btn" onClick={onEnter}>{t("login.enterUniverse")}</button>
+              : <button className="login-btn" onClick={handleSignIn}><GoogleIcon/> {t("login.signInGoogle")}</button>
+            : <button className="login-btn" onClick={signInWithGoogle}><GoogleIcon/> {t("login.signInGoogle")}</button>
         )}
       </div>
 
@@ -171,7 +173,7 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         textTransform:"uppercase",
         userSelect:"none", pointerEvents:"none",
       }}>
-        FOR GLORY AND HONOUR
+        {t("login.footer")}
       </div>
 
       {/* Auth loading overlay */}
@@ -189,7 +191,7 @@ export default function LoginPage({ authLoading, onEnter, user }) {
             animation:"spin 1s linear infinite",
           }}/>
           <div style={{ fontFamily:"'Cinzel', serif", fontSize:11, letterSpacing:3, color:SILVER_DIM }}>
-            Loading...
+            {t("login.loading")}
           </div>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { C } from "../data/constants";
+import { useLang } from "../lib/i18n.jsx";
 
 // ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ function clearYtToken() { localStorage.removeItem("yt_token"); }
 // ─── YOUTUBE ─────────────────────────────────────────────────────────────────
 
 const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref) {
+  const { t } = useLang();
   const [token, setToken]               = useState(() => loadYtToken());
   const [playlists, setPlaylists]       = useState([]);
   const [selectedPl, setSelectedPl]     = useState(null);
@@ -55,7 +57,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
             setToken(resp.access_token);
             fetchPlaylists(resp.access_token);
           } else {
-            setError("Authorization denied.");
+            setError(t("music.authDenied"));
           }
         },
       });
@@ -84,7 +86,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       if (d.error?.code === 401) { disconnect(); return; }
       if (d.error) { setError(d.error.message); return; }
       setPlaylists(d.items || []);
-    } catch { setError("Network error."); }
+    } catch { setError(t("music.networkError")); }
     finally { setLoading(false); }
   };
 
@@ -97,7 +99,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       );
       const d = await r.json();
       setVideos((d.items || []).filter(v => v.snippet?.resourceId?.videoId));
-    } catch { setError("Error loading videos."); }
+    } catch { setError(t("music.videosLoadError")); }
     finally { setLoading(false); }
   };
 
@@ -140,7 +142,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
       if (d.error?.code === 401) { disconnect(); return; }
       if (d.error) { setError(d.error.message); return; }
       setResults((d.items || []).filter(it => it.id?.videoId));
-    } catch { setError("Network error."); }
+    } catch { setError(t("music.networkError")); }
     finally { setLoading(false); }
   };
 
@@ -152,11 +154,11 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
     onNowPlaying(null);
   };
 
-  if (!clientId) return <Placeholder icon="▶" title="YouTube not configured" sub="Add VITE_GOOGLE_CLIENT_ID to your .env file" />;
+  if (!clientId) return <Placeholder icon="▶" title={t("music.ytNotConfigured")} sub={t("music.ytNotConfiguredSub")} />;
 
   if (!token) return (
-    <ConnectScreen icon="▶" title="YouTube" sub="Connect your account to access your playlists"
-      btnLabel="Connect YouTube" btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
+    <ConnectScreen icon="▶" title="YouTube" sub={t("music.connectSub")}
+      btnLabel={t("music.connectYouTube")} btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
   );
 
   return (
@@ -170,17 +172,17 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
         </div>
       )}
 
-      <button onClick={disconnect} style={s.disconnectBtn}>Disconnect account</button>
+      <button onClick={disconnect} style={s.disconnectBtn}>{t("music.disconnect")}</button>
 
       <SearchBar value={query} onChange={setQuery} onSubmit={() => runYtSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
-        placeholder="Search a track or paste a YouTube link" accent="#FF0000" />
+        placeholder={t("music.searchYouTube")} accent="#FF0000" />
       {loading && <Spinner />}
       {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
       {results !== null ? (
         <>
-          <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
-          {results.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>No results.</div>}
+          <BackBtn label={t("music.searchResults")} onClick={() => { setResults(null); setQuery(""); }} />
+          {results.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>{t("music.noResults")}</div>}
           {results.map(it => {
             const vid = it.id.videoId;
             const title = it.snippet?.title;
@@ -199,13 +201,13 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
         </>
       ) : !selectedPl ? (
         <>
-          <SectionLabel>Your playlists</SectionLabel>
+          <SectionLabel>{t("music.yourPlaylists")}</SectionLabel>
           {playlists.map(pl => (
             <button key={pl.id} onClick={() => { setSelectedPl(pl); fetchVideos(pl.id); }} style={s.row}>
               <Thumb url={pl.snippet?.thumbnails?.medium?.url} w={64} h={48} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.snippet?.title}</div>
-                <div style={s.rowSub}>{pl.contentDetails?.itemCount} videos</div>
+                <div style={s.rowSub}>{pl.contentDetails?.itemCount} {t("music.videosCount")}</div>
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
@@ -249,6 +251,7 @@ async function pkce() {
 }
 
 const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref) {
+  const { t } = useLang();
   const [token, setToken]           = useState(() => localStorage.getItem("sp_token") || null);
   const [playlists, setPlaylists]   = useState([]);
   const [selectedPl, setSelectedPl] = useState(null);
@@ -308,9 +311,9 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         setToken(d.access_token);
         fetchPlaylists(d.access_token);
       } else {
-        setError("Authorization failed. Try again.");
+        setError(t("music.authFailed"));
       }
-    } catch { setError("Network error."); }
+    } catch { setError(t("music.networkError")); }
   };
 
   const fetchPlaylists = async (tok) => {
@@ -387,19 +390,19 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
     onNowPlaying(null);
   };
 
-  if (!clientId) return <Placeholder icon="♪" title="Spotify not configured" sub="Add VITE_SPOTIFY_CLIENT_ID to your .env file" />;
+  if (!clientId) return <Placeholder icon="♪" title={t("music.spNotConfigured")} sub={t("music.spNotConfiguredSub")} />;
 
   if (!token) return (
-    <ConnectScreen icon="♪" title="Spotify" sub="Connect your account to access your playlists"
-      btnLabel="Connect Spotify" btnBg="#1DB954" btnColor="#000" onClick={connect} error={error} />
+    <ConnectScreen icon="♪" title="Spotify" sub={t("music.connectSub")}
+      btnLabel={t("music.connectSpotify")} btnBg="#1DB954" btnColor="#000" onClick={connect} error={error} />
   );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
-      <button onClick={disconnect} style={s.disconnectBtn}>Disconnect account</button>
+      <button onClick={disconnect} style={s.disconnectBtn}>{t("music.disconnect")}</button>
 
       <SearchBar value={query} onChange={setQuery} onSubmit={() => runSpSearch(query)} onClear={() => { setQuery(""); setResults(null); }}
-        placeholder="Search tracks/playlists or paste a Spotify link" accent="#1DB954" />
+        placeholder={t("music.searchSpotify")} accent="#1DB954" />
       {loading && <Spinner />}
       {error && <div style={{ color: "#e05050", fontSize: 12 }}>{error}</div>}
 
@@ -420,9 +423,9 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         </>
       ) : results !== null ? (
         <>
-          <BackBtn label="Risultati ricerca" onClick={() => { setResults(null); setQuery(""); }} />
-          {results.tracks.length === 0 && results.playlists.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>No results.</div>}
-          {results.tracks.length > 0 && <SectionLabel>Brani</SectionLabel>}
+          <BackBtn label={t("music.searchResults")} onClick={() => { setResults(null); setQuery(""); }} />
+          {results.tracks.length === 0 && results.playlists.length === 0 && !loading && <div style={{ color: C.muted, fontSize: 12, fontStyle: "italic" }}>{t("music.noResults")}</div>}
+          {results.tracks.length > 0 && <SectionLabel>{t("music.tracksLabel")}</SectionLabel>}
           {results.tracks.map(t => (
             <button key={t.id} onClick={() => selectItem("track", t.id, t.name, t.album?.images?.[0]?.url)} style={s.row}>
               <Thumb url={t.album?.images?.[0]?.url} w={48} h={48} radius={4} />
@@ -433,7 +436,7 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
           ))}
-          {results.playlists.length > 0 && <SectionLabel>Playlist</SectionLabel>}
+          {results.playlists.length > 0 && <SectionLabel>{t("music.playlistsLabel")}</SectionLabel>}
           {results.playlists.map(pl => (
             <button key={pl.id} onClick={() => selectItem("playlist", pl.id, pl.name, pl.images?.[0]?.url)} style={s.row}>
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
@@ -447,13 +450,13 @@ const SpotifySection = forwardRef(function SpotifySection({ onNowPlaying }, ref)
         </>
       ) : (
         <>
-          <SectionLabel>Your playlists &amp; the ones you follow</SectionLabel>
+          <SectionLabel>{t("music.yourPlaylistsFollowed")}</SectionLabel>
           {playlists.map(pl => (
             <button key={pl.id} onClick={() => selectPlaylist(pl)} style={s.row}>
               <Thumb url={pl.images?.[0]?.url} w={48} h={48} radius={4} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={s.rowTitle}>{pl.name}</div>
-                {pl.tracks?.total != null && <div style={s.rowSub}>{pl.tracks.total} tracks</div>}
+                {pl.tracks?.total != null && <div style={s.rowSub}>{pl.tracks.total} {t("music.tracksCount")}</div>}
               </div>
               <span style={{ color: C.muted, fontSize: 16 }}>›</span>
             </button>
@@ -492,7 +495,8 @@ function Placeholder({ icon, title, sub }) {
 }
 
 function Spinner() {
-  return <div style={{ textAlign: "center", color: C.muted, padding: 12, fontSize: 13 }}>Loading…</div>;
+  const { t } = useLang();
+  return <div style={{ textAlign: "center", color: C.muted, padding: 12, fontSize: 13 }}>{t("music.loading")}</div>;
 }
 
 function SearchBar({ value, onChange, onSubmit, onClear, placeholder, accent }) {
@@ -547,6 +551,7 @@ const TABS = [
 ];
 
 const MusicPlayer = forwardRef(function MusicPlayer({ onNowPlaying = () => {} }, ref) {
+  const { t } = useLang();
   const [tab, setTab] = useState(() => {
     const p = new URLSearchParams(window.location.search);
     return p.get("state") === "spotify_auth" ? "spotify" : "youtube";
@@ -566,7 +571,7 @@ const MusicPlayer = forwardRef(function MusicPlayer({ onNowPlaying = () => {} },
         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>
           Warhammer 40,000
         </div>
-        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text, marginBottom: 14 }}>Music</h2>
+        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text, marginBottom: 14 }}>{t("music.heading")}</h2>
         <div style={{ display: "flex" }}>
           {TABS.map(t => {
             const active = tab === t.id;

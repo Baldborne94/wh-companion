@@ -5,8 +5,10 @@ import { C, FC } from "../data/constants";
 import { BOOKS } from "../data/books";
 import CoverImage from "./CoverImage";
 import { getAllNextSuggestions } from "../lib/readingHelpers";
+import { useLang } from "../lib/i18n.jsx";
 
 function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
+  const { t } = useLang();
   const [hhMode, setHhMode] = useState(() => localStorage.getItem('wh40k_hh_mode') || 'full');
 
   useEffect(() => {
@@ -74,11 +76,11 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
   return (
     <div style={{ padding: "14px 16px 0" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>⚔ Next Up</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>⚔ {t("home.nextUp")}</div>
         {hasHH && (
           <button onClick={toggleHhMode} style={{ background: "transparent", border: `1px solid ${C.gold}55`, borderRadius: 20, padding: "3px 10px", cursor: "pointer", display: "flex", gap: 0, overflow: "hidden", flexShrink: 0 }}>
             {['full', 'essential'].map(m => (
-              <span key={m} style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 1, color: hhMode === m ? C.bg : C.muted, background: hhMode === m ? C.gold : "transparent", padding: "2px 8px", borderRadius: 12, transition: "all 0.15s" }}>{m === 'full' ? 'Full' : 'Essential'}</span>
+              <span key={m} style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 1, color: hhMode === m ? C.bg : C.muted, background: hhMode === m ? C.gold : "transparent", padding: "2px 8px", borderRadius: 12, transition: "all 0.15s" }}>{m === 'full' ? t("home.hhFull") : t("home.hhEssential")}</span>
             ))}
           </button>
         )}
@@ -121,6 +123,7 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
 }
 
 export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
+  const { t } = useLang();
   const uid = user?.id || 'anon';
 
   const [uploadedIds, setUploadedIds] = useState(() => {
@@ -217,13 +220,13 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
         {onShowHelp && (
           <button onClick={onShowHelp} style={{ position: "absolute", top: 16, right: 16, width: 28, height: 28, borderRadius: "50%", background: "transparent", border: `1px solid ${C.border}`, color: C.muted, fontSize: 13, fontFamily: "'Cinzel',serif", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>?</button>
         )}
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>Welcome to the</div>
-        <h1 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 26, color: C.text, lineHeight: 1.1, marginBottom: 4 }}>Scriptorium</h1>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 3 }}>YOUR IMPERIAL LIBRARY</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, letterSpacing: 5, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>{t("home.welcomeTo")}</div>
+        <h1 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 26, color: C.text, lineHeight: 1.1, marginBottom: 4 }}>{t("home.title")}</h1>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 10, color: C.goldDim, letterSpacing: 3 }}>{t("home.subtitle")}</div>
       </div>
 
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-        {[{ n: readingCount, l: "Reading", c: C.blue }, { n: readCount, l: "Read", c: C.green }, { n: BOOKS.length, l: "Total", c: C.muted }].map(s => (
+        {[{ n: readingCount, l: t("home.statReading"), c: C.blue }, { n: readCount, l: t("home.statRead"), c: C.green }, { n: BOOKS.length, l: t("home.statTotal"), c: C.muted }].map(s => (
           <div key={s.l} style={{ flex: 1, padding: "12px 4px", textAlign: "center", borderRight: `1px solid ${C.border}` }}>
             <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: s.c, lineHeight: 1 }}>{s.n}</div>
             <div style={{ fontFamily: "'Cinzel',serif", fontSize: 7, color: C.muted, letterSpacing: 2, marginTop: 3, textTransform: "uppercase" }}>{s.l}</div>
@@ -233,7 +236,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
 
       {activeBooks.length > 0 && (
         <div style={{ padding: "14px 16px 0" }}>
-          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.blue, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>📖 Reading</div>
+          <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.blue, letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>{t("home.readingLabel")}</div>
           {activeBooks.map(b => {
             const hasEbook = uploadedIds.has(b.id);
             return (
@@ -272,7 +275,7 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
                 {hasEbook
                   ? (() => { const errCode = openErrorId?.id === b.id ? openErrorId.code : null; return (
                     <span style={{ background: errCode ? `${C.red}22` : `${C.gold}22`, border: `1px solid ${errCode ? C.red : C.gold}55`, borderRadius: 6, padding: "4px 8px", fontFamily: "'Cinzel',serif", fontSize: 9, color: errCode ? C.red : C.gold, letterSpacing: 1, flexShrink: 0 }}>
-                      {openingBookId === b.id ? "…" : errCode === 'no_session' ? "SESSION" : errCode === 'no_meta' ? "ERR-M" : errCode?.startsWith('no_url_s') ? `${errCode.slice(7).replace('_d','/').replace('s','')}` : errCode?.startsWith('no_url') ? `U-${errCode.slice(7)||'?'}` : errCode ? "ERR" : "READ ›"}
+                      {openingBookId === b.id ? "…" : errCode === 'no_session' ? "SESSION" : errCode === 'no_meta' ? "ERR-M" : errCode?.startsWith('no_url_s') ? `${errCode.slice(7).replace('_d','/').replace('s','')}` : errCode?.startsWith('no_url') ? `U-${errCode.slice(7)||'?'}` : errCode ? "ERR" : t("home.readBadge")}
                     </span>
                   ); })()
 
@@ -287,11 +290,11 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
       <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection} userId={user?.id} />
 
       <div style={{ padding: "16px 0 0" }}>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", padding: "0 16px", marginBottom: 10 }}>Your Shelf</div>
+        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", padding: "0 16px", marginBottom: 10 }}>{t("home.yourShelf")}</div>
         {shelfBooks.length === 0 ? (
           <div style={{ padding: "24px 16px", textAlign: "center" }}>
-            <div style={{ color: C.muted, fontSize: 13, fontStyle: "italic", marginBottom: 12 }}>No ebooks uploaded yet.</div>
-            <button onClick={() => setSection('library')} style={{ background: "transparent", border: `1px solid ${C.gold}`, borderRadius: 8, color: C.gold, padding: "8px 20px", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer" }}>Go to Library →</button>
+            <div style={{ color: C.muted, fontSize: 13, fontStyle: "italic", marginBottom: 12 }}>{t("home.emptyShelf")}</div>
+            <button onClick={() => setSection('library')} style={{ background: "transparent", border: `1px solid ${C.gold}`, borderRadius: 8, color: C.gold, padding: "8px 20px", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 2, cursor: "pointer" }}>{t("home.goToLibrary")}</button>
           </div>
         ) : (
           shelfBySeries.map(({ series, books }) => <ShelfRow key={series} books={books} label={series} />)
