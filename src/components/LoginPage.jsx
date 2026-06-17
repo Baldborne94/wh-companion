@@ -8,7 +8,7 @@ const BLUE = "#4a7cb5";
 const AOS_GOLD = "#C9A227";
 
 export default function LoginPage({ authLoading, onEnter, user }) {
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang();
   const handleSignIn = () => {
     if (onEnter) onEnter();
     signInWithGoogle();
@@ -59,6 +59,25 @@ export default function LoginPage({ authLoading, onEnter, user }) {
         .login-btn:active { background:rgba(200,196,188,0.12); }
       `}</style>
 
+
+      {/* Language toggle */}
+      {!authLoading && (
+        <div title={t("language.toggle")} style={{
+          position:"absolute", top:24, left:"50%", transform:"translateX(-50%)",
+          display:"flex", border:`1px solid rgba(200,196,188,0.25)`,
+          borderRadius:2, overflow:"hidden", zIndex:2,
+        }}>
+          {["en","it"].map(lc => (
+            <button key={lc} onClick={() => setLang(lc)} style={{
+              background: lang===lc ? "rgba(200,196,188,0.14)" : "transparent",
+              border:"none", color: lang===lc ? SILVER : SILVER_DIM,
+              fontFamily:"'Cinzel', serif", fontSize:9, letterSpacing:2,
+              fontWeight: lang===lc ? 700 : 400,
+              padding:"5px 13px", cursor:"pointer",
+            }}>{lc.toUpperCase()}</button>
+          ))}
+        </div>
+      )}
 
       {/* Corner accents: top-left 40K red, top-right silver, bottom-left silver, bottom-right AoS blue */}
       {[
