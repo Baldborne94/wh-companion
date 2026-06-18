@@ -67,38 +67,72 @@ async function fromGoogleIsbn(book) {
   return pickGoogleThumb(d);
 }
 
-// 2. The book's own Fandom article — its lead image is essentially always the cover.
-async function fromFandom(book) {
-  const host = `${book.wiki}.fandom.com`;
-  // Find the best-matching page title first, then pull its page image at full size.
-  const search = await fetchJson(
-    `https://${host}/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      book.title
-    )}&srlimit=1&format=json&origin=*`
-  );
-  const hit = search?.query?.search?.[0]?.title;
-  if (!hit) return null;
-  const page = await fetchJson(
-    `https://${host}/api.php?action=query&prop=pageimages&piprop=original&titles=${encodeURIComponent(
-      hit
-    )}&format=json&origin=*`
-  );
-  const pages = page?.query?.pages || {};
-  const first = Object.values(pages)[0];
-  const src = first?.original?.source;
-  return src ? { url: src, via: `fandom:${hit}` } : null;
+// 2. The book's own Fandom article — its infobox image is the cover.
+// Resolve by EXACT page title only (with type suffixes / "The"-stripping), never
+// full-text search: search drifts to characters/factions/series pages and returns
+// their art instead of the book cover (e.g. Soul Hunter -> "Talos Valcoran").
+const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const stripParen = (s) => s.replace(/\s*\([^)]*\)\s*$/, "");
+// Guard: the resolved page must actually be this book, not a faction/character
+// page a bare title redirects to (Mechanicum -> Adeptus Mechanicus).
+function titleMatches(bookTitle, pageTitle) {
+  const b = norm(stripParen(bookTitle));
+  const p = norm(stripParen(pageTitle));
+  return b.length > 0 && (p.includes(b) || b.includes(p));
 }
 
-// 3. Google Books by title + author — last resort, least precise.
-async function fromGoogleTitle(book) {
-  const author = book.author && !/^various$/i.test(book.author) ? ` inauthor:"${book.author}"` : "";
-  const series = book.series ? ` "${book.series}"` : "";
-  const d = await fetchJson(
-    `https://www.googleapis.com/books/v1/volumes?q=intitle:"${encodeURIComponent(
-      book.title
-    )}"${encodeURIComponent(author + series)}&maxResults=1&fields=items(volumeInfo/imageLinks)`
+function fandomTitleCandidates(title) {
+  const variants = [];
+  const bases = [title];
+  if (/^the\s+/i.test(title)) bases.push(title.replace(/^the\s+/i, ""));
+  // Type-suffixed forms FIRST — bare titles often redirect to a faction/character
+  // page (Mechanicum -> Adeptus Mechanicus), so try them only as a last resort.
+  for (const suffix of [" (Novel)", " (Novella)", " (Anthology)", " (Short Story)", " (Audio Drama)"])
+    for (const b of bases) variants.push(b + suffix);
+  for (const b of bases) variants.push(b);
+  return [...new Set(variants)];
+}
+
+async function pageImage(host, title) {
+  const page = await fetchJson(
+    `https://${host}/api.php?action=query&prop=pageimages&piprop=original&redirects=1&format=json&origin=*&titles=${encodeURIComponent(
+      title
+    )}`
   );
-  return pickGoogleThumb(d);
+  const first = Object.values(page?.query?.pages || {})[0];
+  if (!first || first.missing !== undefined) return null;
+  return first.original?.source ? { src: first.original.source, title: first.title || title } : null;
+}
+
+// 2a. Exact wiki page (type-suffixed first). Guarded so redirects to the wrong
+// page are rejected.
+async function fromFandom(book) {
+  const host = `${book.wiki}.fandom.com`;
+  for (const cand of fandomTitleCandidates(book.title)) {
+    let r;
+    try { r = await pageImage(host, cand); } catch { continue; }
+    if (r && titleMatches(book.title, r.title)) return { url: r.src, via: `fandom:${r.title}` };
+  }
+  return null;
+}
+
+// 2b. Constrained search — recovers slightly-renamed pages (e.g. titles the wiki
+// stores without "The") but ACCEPTS the top hit only if it passes the same
+// overlap guard, so it can never drift to a character/faction page.
+async function fromFandomSearch(book) {
+  const host = `${book.wiki}.fandom.com`;
+  const s = await fetchJson(
+    `https://${host}/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      book.title
+    )}&srlimit=3&format=json&origin=*`
+  );
+  for (const hit of s?.query?.search || []) {
+    if (!titleMatches(book.title, hit.title)) continue;
+    let r;
+    try { r = await pageImage(host, hit.title); } catch { continue; }
+    if (r) return { url: r.src, via: `search:${r.title}` };
+  }
+  return null;
 }
 
 function pickGoogleThumb(d) {
@@ -157,7 +191,9 @@ async function main() {
       }
     }
 
-    const strategies = [fromGoogleIsbn, fromFandom, fromGoogleTitle];
+    // Only correct-by-construction sources: ISBN-exact, then exact wiki page.
+    // No fuzzy title search — that was the original wrong-cover bug.
+    const strategies = [fromGoogleIsbn, fromFandom, fromFandomSearch];
     let saved = null;
     let via = null;
     for (const strat of strategies) {
