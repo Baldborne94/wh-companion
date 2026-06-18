@@ -17,6 +17,16 @@ export default defineConfig({
         clientsClaim: true,
         runtimeCaching: [
           {
+            // Self-hosted book covers (/covers/*) — CacheFirst so they persist
+            // offline once viewed, without bloating the install-time precache.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/covers/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'book-covers',
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 90 },
+            },
+          },
+          {
             // Supabase API + Storage — NetworkFirst with short timeout
             urlPattern: ({ url }) => url.hostname.endsWith('.supabase.co'),
             handler: 'NetworkFirst',

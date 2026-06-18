@@ -1,18 +1,28 @@
 import { useState, useEffect, useRef } from "react";
+import { COVERS } from "../data/covers";
 
 // ─── COVER IMAGE ──────────────────────────────────────────────────────────────
+// Resolution order:
+//   0. Self-hosted cover (src/data/covers.js → /public/covers/) — correct + offline.
+//      Everything below is the legacy fuzzy fallback, used only for books that
+//      don't have a self-hosted cover yet (it frequently matches the wrong book).
 // v2 bumped to bust cached "not found" results from before the Various-author fix
 // isbn_ prefix: books with a known ISBN use a separate key to bypass any wrong cached result
 // v3_ prefix: "Various" author books re-fetch with series-aware queries (busts old wrong caches)
 export const COVER_CACHE_PREFIX = "wh40k_cover_v2_";
 
-export async function fetchBookCover(book) {
+function cacheKey(book){
   const various = !book.author || /^various$/i.test(book.author.trim());
-  const key = book.isbn
+  return book.isbn
     ? `${COVER_CACHE_PREFIX}isbn_${book.id}`
     : various
       ? `${COVER_CACHE_PREFIX}v3_${book.id}`
       : COVER_CACHE_PREFIX + book.id;
+}
+
+export async function fetchBookCover(book) {
+  const various = !book.author || /^various$/i.test(book.author.trim());
+  const key = cacheKey(book);
   const cached = localStorage.getItem(key);
   if(cached !== null) return cached; // "" = confirmed not found; url = cover
 
@@ -74,26 +84,32 @@ export async function fetchBookCover(book) {
  */
 export default function CoverImage({ book, width=60, height=90, radius=4, style={}, accentColor="#2a3850" }){
   const fc = accentColor;
-  const [url, setUrl] = useState(()=> {
-    const various = !book.author || /^various$/i.test(book.author.trim());
-    const k = book.isbn
-      ? `${COVER_CACHE_PREFIX}isbn_${book.id}`
-      : various
-        ? `${COVER_CACHE_PREFIX}v3_${book.id}`
-        : COVER_CACHE_PREFIX + book.id;
-    return localStorage.getItem(k) ?? null;
-  });
+  const localCover = COVERS[book.id] || null;
+  const [usingLocal, setUsingLocal] = useState(!!localCover);
+  const [url, setUrl] = useState(()=> localCover ?? (localStorage.getItem(cacheKey(book)) ?? null));
   const [imgLoaded, setImgLoaded] = useState(false);
   const ref = useRef(null);
 
   useEffect(()=>{
+    if(usingLocal) return;          // self-hosted cover — no network lookup needed
     if(url !== null) return;
     const obs = new IntersectionObserver(([e])=>{
       if(e.isIntersecting){ obs.disconnect(); fetchBookCover(book).then(v=>{ if(v!==null) setUrl(v); }); }
     },{rootMargin:"300px"});
     if(ref.current) obs.observe(ref.current);
     return ()=>obs.disconnect();
-  },[book.id]);
+  },[book.id, usingLocal]);
+
+  // If a self-hosted cover 404s (file not committed yet), drop to the fuzzy fallback.
+  const onImgError = ()=>{
+    if(usingLocal){
+      setUsingLocal(false);
+      setImgLoaded(false);
+      setUrl(localStorage.getItem(cacheKey(book)) ?? null);
+    } else {
+      setUrl("");
+    }
+  };
 
   const base = { width, height, borderRadius:radius, overflow:"hidden", flexShrink:0, ...style };
   const skeletonText = { fontFamily:"'Cinzel',serif", fontSize:Math.max(6,width*0.12), lineHeight:1.3, textAlign:"center", wordBreak:"break-word", overflow:"hidden" };
@@ -115,10 +131,10 @@ export default function CoverImage({ book, width=60, height=90, radius=4, style=
           <span style={{...skeletonText, color:"rgba(255,255,255,0.75)"}}>{book.title}</span>
         </div>
       )}
-      <img src={url} alt={book.title}
+      <img src={url} alt={book.title} loading="lazy"
         style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:imgLoaded?1:0,transition:"opacity 0.5s ease"}}
         onLoad={()=>setImgLoaded(true)}
-        onError={()=>setUrl("")}/>
+        onError={onImgError}/>
     </div>
   );
 }
