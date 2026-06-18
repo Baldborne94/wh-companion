@@ -1,0 +1,31 @@
+name: Fetch Book Covers
+
+on:
+  workflow_dispatch:    # triggered manually (or via API)
+
+permissions:
+  contents: write       # needed to commit covers back
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run cover fetcher
+        run: node scripts/fetch-covers.mjs
+
+      - name: Show report
+        run: cat covers-report.json | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log('OK:',d.ok.length,'  MISSED:',d.missed.length,'  ERRORS:',d.errors.length)"
+
+      - name: Commit covers
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/covers src/data/covers.js covers-report.json
+          git diff --cached --quiet && echo "nothing changed" || git commit -m "covers: add self-hosted book covers via fetch-covers.mjs"
+          git push
