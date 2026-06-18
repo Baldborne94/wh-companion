@@ -71,39 +71,66 @@ async function fromGoogleIsbn(book) {
 // Resolve by EXACT page title only (with type suffixes / "The"-stripping), never
 // full-text search: search drifts to characters/factions/series pages and returns
 // their art instead of the book cover (e.g. Soul Hunter -> "Talos Valcoran").
-function fandomTitleCandidates(title) {
-  const variants = new Set();
-  const bases = [title];
-  if (/^the\s+/i.test(title)) bases.push(title.replace(/^the\s+/i, ""));
-  for (const b of bases) {
-    variants.add(b);
-    variants.add(`${b} (Novel)`);
-    variants.add(`${b} (Novella)`);
-    variants.add(`${b} (Anthology)`);
-    variants.add(`${b} (Short Story)`);
-    variants.add(`${b} (Audio Drama)`);
-  }
-  return [...variants];
+const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const stripParen = (s) => s.replace(/\s*\([^)]*\)\s*$/, "");
+// Guard: the resolved page must actually be this book, not a faction/character
+// page a bare title redirects to (Mechanicum -> Adeptus Mechanicus).
+function titleMatches(bookTitle, pageTitle) {
+  const b = norm(stripParen(bookTitle));
+  const p = norm(stripParen(pageTitle));
+  return b.length > 0 && (p.includes(b) || b.includes(p));
 }
 
+function fandomTitleCandidates(title) {
+  const variants = [];
+  const bases = [title];
+  if (/^the\s+/i.test(title)) bases.push(title.replace(/^the\s+/i, ""));
+  // Type-suffixed forms FIRST — bare titles often redirect to a faction/character
+  // page (Mechanicum -> Adeptus Mechanicus), so try them only as a last resort.
+  for (const suffix of [" (Novel)", " (Novella)", " (Anthology)", " (Short Story)", " (Audio Drama)"])
+    for (const b of bases) variants.push(b + suffix);
+  for (const b of bases) variants.push(b);
+  return [...new Set(variants)];
+}
+
+async function pageImage(host, title) {
+  const page = await fetchJson(
+    `https://${host}/api.php?action=query&prop=pageimages&piprop=original&redirects=1&format=json&origin=*&titles=${encodeURIComponent(
+      title
+    )}`
+  );
+  const first = Object.values(page?.query?.pages || {})[0];
+  if (!first || first.missing !== undefined) return null;
+  return first.original?.source ? { src: first.original.source, title: first.title || title } : null;
+}
+
+// 2a. Exact wiki page (type-suffixed first). Guarded so redirects to the wrong
+// page are rejected.
 async function fromFandom(book) {
   const host = `${book.wiki}.fandom.com`;
   for (const cand of fandomTitleCandidates(book.title)) {
-    let page;
-    try {
-      page = await fetchJson(
-        `https://${host}/api.php?action=query&prop=pageimages&piprop=original&redirects=1&format=json&origin=*&titles=${encodeURIComponent(
-          cand
-        )}`
-      );
-    } catch {
-      continue;
-    }
-    const pages = page?.query?.pages || {};
-    const first = Object.values(pages)[0];
-    if (!first || first.missing !== undefined) continue; // page doesn't exist
-    const src = first.original?.source;
-    if (src) return { url: src, via: `fandom:${first.title || cand}` };
+    let r;
+    try { r = await pageImage(host, cand); } catch { continue; }
+    if (r && titleMatches(book.title, r.title)) return { url: r.src, via: `fandom:${r.title}` };
+  }
+  return null;
+}
+
+// 2b. Constrained search — recovers slightly-renamed pages (e.g. titles the wiki
+// stores without "The") but ACCEPTS the top hit only if it passes the same
+// overlap guard, so it can never drift to a character/faction page.
+async function fromFandomSearch(book) {
+  const host = `${book.wiki}.fandom.com`;
+  const s = await fetchJson(
+    `https://${host}/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+      book.title
+    )}&srlimit=3&format=json&origin=*`
+  );
+  for (const hit of s?.query?.search || []) {
+    if (!titleMatches(book.title, hit.title)) continue;
+    let r;
+    try { r = await pageImage(host, hit.title); } catch { continue; }
+    if (r) return { url: r.src, via: `search:${r.title}` };
   }
   return null;
 }
@@ -166,7 +193,7 @@ async function main() {
 
     // Only correct-by-construction sources: ISBN-exact, then exact wiki page.
     // No fuzzy title search — that was the original wrong-cover bug.
-    const strategies = [fromGoogleIsbn, fromFandom];
+    const strategies = [fromGoogleIsbn, fromFandom, fromFandomSearch];
     let saved = null;
     let via = null;
     for (const strat of strategies) {
