@@ -67,38 +67,45 @@ async function fromGoogleIsbn(book) {
   return pickGoogleThumb(d);
 }
 
-// 2. The book's own Fandom article — its lead image is essentially always the cover.
-async function fromFandom(book) {
-  const host = `${book.wiki}.fandom.com`;
-  // Find the best-matching page title first, then pull its page image at full size.
-  const search = await fetchJson(
-    `https://${host}/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-      book.title
-    )}&srlimit=1&format=json&origin=*`
-  );
-  const hit = search?.query?.search?.[0]?.title;
-  if (!hit) return null;
-  const page = await fetchJson(
-    `https://${host}/api.php?action=query&prop=pageimages&piprop=original&titles=${encodeURIComponent(
-      hit
-    )}&format=json&origin=*`
-  );
-  const pages = page?.query?.pages || {};
-  const first = Object.values(pages)[0];
-  const src = first?.original?.source;
-  return src ? { url: src, via: `fandom:${hit}` } : null;
+// 2. The book's own Fandom article — its infobox image is the cover.
+// Resolve by EXACT page title only (with type suffixes / "The"-stripping), never
+// full-text search: search drifts to characters/factions/series pages and returns
+// their art instead of the book cover (e.g. Soul Hunter -> "Talos Valcoran").
+function fandomTitleCandidates(title) {
+  const variants = new Set();
+  const bases = [title];
+  if (/^the\s+/i.test(title)) bases.push(title.replace(/^the\s+/i, ""));
+  for (const b of bases) {
+    variants.add(b);
+    variants.add(`${b} (Novel)`);
+    variants.add(`${b} (Novella)`);
+    variants.add(`${b} (Anthology)`);
+    variants.add(`${b} (Short Story)`);
+    variants.add(`${b} (Audio Drama)`);
+  }
+  return [...variants];
 }
 
-// 3. Google Books by title + author — last resort, least precise.
-async function fromGoogleTitle(book) {
-  const author = book.author && !/^various$/i.test(book.author) ? ` inauthor:"${book.author}"` : "";
-  const series = book.series ? ` "${book.series}"` : "";
-  const d = await fetchJson(
-    `https://www.googleapis.com/books/v1/volumes?q=intitle:"${encodeURIComponent(
-      book.title
-    )}"${encodeURIComponent(author + series)}&maxResults=1&fields=items(volumeInfo/imageLinks)`
-  );
-  return pickGoogleThumb(d);
+async function fromFandom(book) {
+  const host = `${book.wiki}.fandom.com`;
+  for (const cand of fandomTitleCandidates(book.title)) {
+    let page;
+    try {
+      page = await fetchJson(
+        `https://${host}/api.php?action=query&prop=pageimages&piprop=original&redirects=1&format=json&origin=*&titles=${encodeURIComponent(
+          cand
+        )}`
+      );
+    } catch {
+      continue;
+    }
+    const pages = page?.query?.pages || {};
+    const first = Object.values(pages)[0];
+    if (!first || first.missing !== undefined) continue; // page doesn't exist
+    const src = first.original?.source;
+    if (src) return { url: src, via: `fandom:${first.title || cand}` };
+  }
+  return null;
 }
 
 function pickGoogleThumb(d) {
@@ -157,7 +164,9 @@ async function main() {
       }
     }
 
-    const strategies = [fromGoogleIsbn, fromFandom, fromGoogleTitle];
+    // Only correct-by-construction sources: ISBN-exact, then exact wiki page.
+    // No fuzzy title search — that was the original wrong-cover bug.
+    const strategies = [fromGoogleIsbn, fromFandom];
     let saved = null;
     let via = null;
     for (const strat of strategies) {
