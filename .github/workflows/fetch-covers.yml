@@ -1,7 +1,16 @@
 name: Fetch Book Covers
 
 on:
-  workflow_dispatch:    # triggered manually (or via API)
+  # Runs automatically when the fetcher or this workflow changes. The auto-commit
+  # below only touches public/covers, src/data/covers.js and covers-report.json,
+  # none of which match these paths — so it never re-triggers itself.
+  push:
+    branches:
+      - claude/wizardly-fermat-q790e
+    paths:
+      - 'scripts/fetch-covers.mjs'
+      - '.github/workflows/fetch-covers.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write       # needed to commit covers back
