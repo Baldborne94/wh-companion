@@ -1,0 +1,2684 @@
+{
+  "ok": [
+    {
+      "id": "1",
+      "title": "Horus Rising",
+      "via": "fandom:Horus Rising",
+      "path": "/covers/1.webp"
+    },
+    {
+      "id": "2",
+      "title": "False Gods",
+      "via": "fandom:False Gods",
+      "path": "/covers/2.webp"
+    },
+    {
+      "id": "3",
+      "title": "Galaxy in Flames",
+      "via": "fandom:Galaxy in Flames",
+      "path": "/covers/3.webp"
+    },
+    {
+      "id": "4",
+      "title": "The Flight of the Eisenstein",
+      "via": "fandom:Flight of the Eisenstein",
+      "path": "/covers/4.webp"
+    },
+    {
+      "id": "5",
+      "title": "Fulgrim",
+      "via": "fandom:Fulgrim",
+      "path": "/covers/5.webp"
+    },
+    {
+      "id": "6",
+      "title": "Descent of Angels",
+      "via": "fandom:Descent of Angels",
+      "path": "/covers/6.webp"
+    },
+    {
+      "id": "7",
+      "title": "Legion",
+      "via": "fandom:Space Marine Legions",
+      "path": "/covers/7.webp"
+    },
+    {
+      "id": "8",
+      "title": "Battle for the Abyss",
+      "via": "fandom:Battle for the Abyss",
+      "path": "/covers/8.webp"
+    },
+    {
+      "id": "9",
+      "title": "Mechanicum",
+      "via": "fandom:Adeptus Mechanicus",
+      "path": "/covers/9.webp"
+    },
+    {
+      "id": "10",
+      "title": "Tales of Heresy",
+      "via": "fandom:Tales of Heresy (Anthology)",
+      "path": "/covers/10.webp"
+    },
+    {
+      "id": "11",
+      "title": "Fallen Angels",
+      "via": "fandom:Fallen Angels",
+      "path": "/covers/11.webp"
+    },
+    {
+      "id": "12",
+      "title": "A Thousand Sons",
+      "via": "fandom:A Thousand Sons",
+      "path": "/covers/12.webp"
+    },
+    {
+      "id": "13",
+      "title": "Nemesis",
+      "via": "fandom:Nemesis Chapter",
+      "path": "/covers/13.webp"
+    },
+    {
+      "id": "14",
+      "title": "The First Heretic",
+      "via": "fandom:The First Heretic",
+      "path": "/covers/14.webp"
+    },
+    {
+      "id": "15",
+      "title": "Prospero Burns",
+      "via": "fandom:Prospero Burns",
+      "path": "/covers/15.webp"
+    },
+    {
+      "id": "16",
+      "title": "Age of Darkness",
+      "via": "fandom:Horus Heresy",
+      "path": "/covers/16.webp"
+    },
+    {
+      "id": "17",
+      "title": "The Outcast Dead",
+      "via": "fandom:The Outcast Dead (Novel)",
+      "path": "/covers/17.webp"
+    },
+    {
+      "id": "18",
+      "title": "Deliverance Lost",
+      "via": "fandom:Deliverance Lost",
+      "path": "/covers/18.webp"
+    },
+    {
+      "id": "19",
+      "title": "Know No Fear",
+      "via": "fandom:Know No Fear",
+      "path": "/covers/19.webp"
+    },
+    {
+      "id": "20",
+      "title": "The Primarchs",
+      "via": "fandom:The Primarchs (Anthology)",
+      "path": "/covers/20.webp"
+    },
+    {
+      "id": "21",
+      "title": "Fear to Tread",
+      "via": "fandom:Fear to Tread",
+      "path": "/covers/21.webp"
+    },
+    {
+      "id": "22",
+      "title": "Shadows of Treachery",
+      "via": "fandom:Shadows of Treachery (Anthology)",
+      "path": "/covers/22.webp"
+    },
+    {
+      "id": "23",
+      "title": "Angel Exterminatus",
+      "via": "fandom:Angel Exterminatus (Novel)",
+      "path": "/covers/23.webp"
+    },
+    {
+      "id": "24",
+      "title": "Betrayer",
+      "via": "fandom:Betrayer",
+      "path": "/covers/24.webp"
+    },
+    {
+      "id": "25",
+      "title": "Mark of Calth",
+      "via": "fandom:Mark of Calth (Anthology)",
+      "path": "/covers/25.webp"
+    },
+    {
+      "id": "26",
+      "title": "Vulkan Lives",
+      "via": "fandom:Vulkan Lives",
+      "path": "/covers/26.webp"
+    },
+    {
+      "id": "27",
+      "title": "The Unremembered Empire",
+      "via": "fandom:The Unremembered Empire",
+      "path": "/covers/27.webp"
+    },
+    {
+      "id": "28",
+      "title": "Scars",
+      "via": "fandom:Scars",
+      "path": "/covers/28.webp"
+    },
+    {
+      "id": "29",
+      "title": "Vengeful Spirit",
+      "via": "fandom:Vengeful Spirit",
+      "path": "/covers/29.webp"
+    },
+    {
+      "id": "30",
+      "title": "The Damnation of Pythos",
+      "via": "fandom:The Damnation of Pythos",
+      "path": "/covers/30.webp"
+    },
+    {
+      "id": "31",
+      "title": "Legacies of Betrayal",
+      "via": "fandom:Legacies of Betrayal (Anthology)",
+      "path": "/covers/31.webp"
+    },
+    {
+      "id": "32",
+      "title": "Deathfire",
+      "via": "fandom:Deathfire (Novel)",
+      "path": "/covers/32.webp"
+    },
+    {
+      "id": "33",
+      "title": "War Without End",
+      "via": "fandom:War Without End (Anthology)",
+      "path": "/covers/33.webp"
+    },
+    {
+      "id": "34",
+      "title": "Pharos",
+      "via": "fandom:Pharos",
+      "path": "/covers/34.webp"
+    },
+    {
+      "id": "35",
+      "title": "Eye of Terra",
+      "via": "fandom:Eye of Terra (Anthology)",
+      "path": "/covers/35.webp"
+    },
+    {
+      "id": "36",
+      "title": "The Path of Heaven",
+      "via": "fandom:The Path of Heaven",
+      "path": "/covers/36.webp"
+    },
+    {
+      "id": "37",
+      "title": "The Silent War",
+      "via": "fandom:The Silent War (Anthology)",
+      "path": "/covers/37.webp"
+    },
+    {
+      "id": "38",
+      "title": "Angels of Caliban",
+      "via": "fandom:Angels of Caliban",
+      "path": "/covers/38.webp"
+    },
+    {
+      "id": "39",
+      "title": "Praetorian of Dorn",
+      "via": "fandom:Praetorian of Dorn",
+      "path": "/covers/39.webp"
+    },
+    {
+      "id": "40",
+      "title": "Corax",
+      "via": "fandom:Corvus Corax",
+      "path": "/covers/40.webp"
+    },
+    {
+      "id": "41",
+      "title": "The Master of Mankind",
+      "via": "fandom:The Master of Mankind (Novel)",
+      "path": "/covers/41.webp"
+    },
+    {
+      "id": "42",
+      "title": "Garro",
+      "via": "fandom:Garro (Anthology)",
+      "path": "/covers/42.webp"
+    },
+    {
+      "id": "43",
+      "title": "Shattered Legions",
+      "via": "fandom:Shattered Legions",
+      "path": "/covers/43.webp"
+    },
+    {
+      "id": "44",
+      "title": "The Crimson King",
+      "via": "fandom:The Crimson King (Novel)",
+      "path": "/covers/44.webp"
+    },
+    {
+      "id": "45",
+      "title": "Tallarn",
+      "via": "fandom:Tallarn",
+      "path": "/covers/45.webp"
+    },
+    {
+      "id": "46",
+      "title": "Ruinstorm",
+      "via": "fandom:Ruinstorm",
+      "path": "/covers/46.webp"
+    },
+    {
+      "id": "47",
+      "title": "Old Earth",
+      "via": "fandom:Terra",
+      "path": "/covers/47.webp"
+    },
+    {
+      "id": "48",
+      "title": "The Burden of Loyalty",
+      "via": "fandom:The Burden of Loyalty (Anthology)",
+      "path": "/covers/48.webp"
+    },
+    {
+      "id": "49",
+      "title": "Wolfsbane",
+      "via": "fandom:Wolfsbane (Novel)",
+      "path": "/covers/49.webp"
+    },
+    {
+      "id": "50",
+      "title": "Born of Flame",
+      "via": "fandom:Born of Flame (Anthology)",
+      "path": "/covers/50.webp"
+    },
+    {
+      "id": "51",
+      "title": "Slaves to Darkness",
+      "via": "fandom:Slaves to Darkness (Novel)",
+      "path": "/covers/51.webp"
+    },
+    {
+      "id": "52",
+      "title": "Heralds of the Siege",
+      "via": "fandom:Heralds of the Siege (Anthology)",
+      "path": "/covers/52.webp"
+    },
+    {
+      "id": "53",
+      "title": "Titandeath",
+      "via": "fandom:Titandeath (Novel)",
+      "path": "/covers/53.webp"
+    },
+    {
+      "id": "54",
+      "title": "The Buried Dagger",
+      "via": "fandom:The Buried Dagger (Novel)",
+      "path": "/covers/54.webp"
+    },
+    {
+      "id": "56",
+      "title": "The Lost and the Damned",
+      "via": "fandom:Lost and the Damned",
+      "path": "/covers/56.webp"
+    },
+    {
+      "id": "60",
+      "title": "Warhawk",
+      "via": "fandom:Jaghatai Khan",
+      "path": "/covers/60.webp"
+    },
+    {
+      "id": "62",
+      "title": "The End and the Death: Volume I",
+      "via": "fandom:The End and the Death: Volume I (Novel)",
+      "path": "/covers/62.webp"
+    },
+    {
+      "id": "63",
+      "title": "The End and the Death: Volume II",
+      "via": "fandom:The End and the Death: Volume II (Novel)",
+      "path": "/covers/63.webp"
+    },
+    {
+      "id": "64",
+      "title": "The End and the Death: Volume III",
+      "via": "fandom:The End and the Death: Volume III (Novel)",
+      "path": "/covers/64.webp"
+    },
+    {
+      "id": "281",
+      "title": "Fury of Magnus",
+      "via": "fandom:Fury of Magnus (Novella)",
+      "path": "/covers/281.webp"
+    },
+    {
+      "id": "82",
+      "title": "First and Only",
+      "via": "fandom:First and Only (Novel)",
+      "path": "/covers/82.webp"
+    },
+    {
+      "id": "83",
+      "title": "Ghostmaker",
+      "via": "fandom:Ghostmaker (Novel)",
+      "path": "/covers/83.webp"
+    },
+    {
+      "id": "84",
+      "title": "Necropolis",
+      "via": "fandom:Necropolis (Novel)",
+      "path": "/covers/84.webp"
+    },
+    {
+      "id": "85",
+      "title": "Honour Guard",
+      "via": "fandom:Honour Guard",
+      "path": "/covers/85.webp"
+    },
+    {
+      "id": "86",
+      "title": "The Guns of Tanith",
+      "via": "fandom:The Guns of Tanith (Novel)",
+      "path": "/covers/86.webp"
+    },
+    {
+      "id": "87",
+      "title": "Straight Silver",
+      "via": "fandom:Straight Silver (Novel)",
+      "path": "/covers/87.webp"
+    },
+    {
+      "id": "88",
+      "title": "Sabbat Martyr",
+      "via": "fandom:Sabbat Martyr (Novel)",
+      "path": "/covers/88.webp"
+    },
+    {
+      "id": "89",
+      "title": "Traitor General",
+      "via": "fandom:Traitor General (Novel)",
+      "path": "/covers/89.webp"
+    },
+    {
+      "id": "90",
+      "title": "His Last Command",
+      "via": "fandom:His Last Command (Novel)",
+      "path": "/covers/90.webp"
+    },
+    {
+      "id": "91",
+      "title": "The Armour of Contempt",
+      "via": "fandom:The Armour of Contempt (Novel)",
+      "path": "/covers/91.webp"
+    },
+    {
+      "id": "92",
+      "title": "Only in Death",
+      "via": "fandom:Only in Death (Novel)",
+      "path": "/covers/92.webp"
+    },
+    {
+      "id": "93",
+      "title": "Blood Pact",
+      "via": "fandom:Blood Pact",
+      "path": "/covers/93.webp"
+    },
+    {
+      "id": "94",
+      "title": "Salvation's Reach",
+      "via": "fandom:Salvation's Reach (Novel)",
+      "path": "/covers/94.webp"
+    },
+    {
+      "id": "95",
+      "title": "The Warmaster",
+      "via": "fandom:The Warmaster (Novel)",
+      "path": "/covers/95.webp"
+    },
+    {
+      "id": "98",
+      "title": "Xenos",
+      "via": "fandom:Xenos",
+      "path": "/covers/98.webp"
+    },
+    {
+      "id": "101",
+      "title": "The Magos",
+      "via": "fandom:Tech-Priest",
+      "path": "/covers/101.webp"
+    },
+    {
+      "id": "109",
+      "title": "Void Stalker",
+      "via": "fandom:Void Stalker-class Battleship",
+      "path": "/covers/109.webp"
+    },
+    {
+      "id": "118",
+      "title": "The Greater Good",
+      "via": "fandom:Greater Good",
+      "path": "/covers/118.webp"
+    },
+    {
+      "id": "121",
+      "title": "Dark Imperium",
+      "via": "fandom:Imperium Nihilus",
+      "path": "/covers/121.webp"
+    },
+    {
+      "id": "130",
+      "title": "Sea of Souls",
+      "via": "fandom:Immaterium",
+      "path": "/covers/130.webp"
+    },
+    {
+      "id": "133",
+      "title": "Ravenwing",
+      "via": "fandom:Ravenwing",
+      "path": "/covers/133.webp"
+    },
+    {
+      "id": "135",
+      "title": "The Unforgiven",
+      "via": "fandom:Unforgiven",
+      "path": "/covers/135.webp"
+    },
+    {
+      "id": "136",
+      "title": "Azrael",
+      "via": "fandom:Azrael",
+      "path": "/covers/136.webp"
+    },
+    {
+      "id": "137",
+      "title": "The Lion: Son of the Forest",
+      "via": "fandom:The Lion: Son of the Forest (Novel)",
+      "path": "/covers/137.webp"
+    },
+    {
+      "id": "144",
+      "title": "Dante",
+      "via": "fandom:Dante",
+      "path": "/covers/144.webp"
+    },
+    {
+      "id": "145",
+      "title": "Devastation of Baal",
+      "via": "fandom:Devastation of Baal",
+      "path": "/covers/145.webp"
+    },
+    {
+      "id": "147",
+      "title": "Space Wolf",
+      "via": "fandom:Space Wolves",
+      "path": "/covers/147.webp"
+    },
+    {
+      "id": "149",
+      "title": "Grey Hunter",
+      "via": "fandom:Grey Hunter",
+      "path": "/covers/149.webp"
+    },
+    {
+      "id": "150",
+      "title": "Wolfblade",
+      "via": "fandom:Wolfblade",
+      "path": "/covers/150.webp"
+    },
+    {
+      "id": "153",
+      "title": "Nightbringer",
+      "via": "fandom:Nightbringer",
+      "path": "/covers/153.webp"
+    },
+    {
+      "id": "159",
+      "title": "The Talon of Horus",
+      "via": "fandom:Talon of Horus",
+      "path": "/covers/159.webp"
+    },
+    {
+      "id": "160",
+      "title": "Black Legion",
+      "via": "fandom:Black Legion",
+      "path": "/covers/160.webp"
+    },
+    {
+      "id": "166",
+      "title": "The Hollow Mountain",
+      "via": "fandom:Forbidden Fortress",
+      "path": "/covers/166.webp"
+    },
+    {
+      "id": "167",
+      "title": "The Dark City",
+      "via": "fandom:Commorragh",
+      "path": "/covers/167.webp"
+    },
+    {
+      "id": "170",
+      "title": "Grey Knights",
+      "via": "fandom:Grey Knights",
+      "path": "/covers/170.webp"
+    },
+    {
+      "id": "174",
+      "title": "Priests of Mars",
+      "via": "fandom:Adeptus Mechanicus",
+      "path": "/covers/174.webp"
+    },
+    {
+      "id": "178",
+      "title": "Tech-Priest",
+      "via": "fandom:Tech-Priest",
+      "path": "/covers/178.webp"
+    },
+    {
+      "id": "187",
+      "title": "Death World",
+      "via": "fandom:Death World",
+      "path": "/covers/187.webp"
+    },
+    {
+      "id": "190",
+      "title": "Baneblade",
+      "via": "fandom:Baneblade",
+      "path": "/covers/190.webp"
+    },
+    {
+      "id": "191",
+      "title": "Shadowsword",
+      "via": "fandom:Shadowsword",
+      "path": "/covers/191.webp"
+    },
+    {
+      "id": "195",
+      "title": "Catachan Devil",
+      "via": "fandom:Catachan Devil",
+      "path": "/covers/195.webp"
+    },
+    {
+      "id": "196",
+      "title": "The Fall of Cadia",
+      "via": "fandom:Cadia",
+      "path": "/covers/196.webp"
+    },
+    {
+      "id": "197",
+      "title": "Krieg",
+      "via": "fandom:Krieg",
+      "path": "/covers/197.webp"
+    },
+    {
+      "id": "199",
+      "title": "Imperial Creed",
+      "via": "fandom:Imperial Cult",
+      "path": "/covers/199.webp"
+    },
+    {
+      "id": "201",
+      "title": "Path of the Warrior",
+      "via": "fandom:Asuryani Path",
+      "path": "/covers/201.webp"
+    },
+    {
+      "id": "202",
+      "title": "Path of the Seer",
+      "via": "fandom:Asuryani Path",
+      "path": "/covers/202.webp"
+    },
+    {
+      "id": "203",
+      "title": "Path of the Outcast",
+      "via": "fandom:Asuryani Path",
+      "path": "/covers/203.webp"
+    },
+    {
+      "id": "211",
+      "title": "Dark Apostle",
+      "via": "fandom:Dark Apostle",
+      "path": "/covers/211.webp"
+    },
+    {
+      "id": "212",
+      "title": "Dark Disciple",
+      "via": "fandom:Dark Disciple",
+      "path": "/covers/212.webp"
+    },
+    {
+      "id": "214",
+      "title": "The Lords of Silence",
+      "via": "fandom:Lords of Silence",
+      "path": "/covers/214.webp"
+    },
+    {
+      "id": "220",
+      "title": "Double Eagle",
+      "via": "fandom:Double Eagle (Novel)",
+      "path": "/covers/220.webp"
+    },
+    {
+      "id": "221",
+      "title": "Titanicus",
+      "via": "fandom:Titanicus (Novel)",
+      "path": "/covers/221.webp"
+    },
+    {
+      "id": "226",
+      "title": "Deathwatch",
+      "via": "fandom:Deathwatch",
+      "path": "/covers/226.webp"
+    },
+    {
+      "id": "239",
+      "title": "Rynn's World",
+      "via": "fandom:Rynn's World",
+      "path": "/covers/239.webp"
+    },
+    {
+      "id": "240",
+      "title": "Hunt for Voldorius",
+      "via": "fandom:Hunt for Voldorius",
+      "path": "/covers/240.webp"
+    },
+    {
+      "id": "245",
+      "title": "Legion of the Damned",
+      "via": "fandom:Legion of the Damned",
+      "path": "/covers/245.webp"
+    },
+    {
+      "id": "261",
+      "title": "Ragnar Blackmane",
+      "via": "fandom:Ragnar Blackmane",
+      "path": "/covers/261.webp"
+    },
+    {
+      "id": "268",
+      "title": "Salamander",
+      "via": "fandom:Salamanders",
+      "path": "/covers/268.webp"
+    },
+    {
+      "id": "269",
+      "title": "Firedrake",
+      "via": "fandom:Firedrakes",
+      "path": "/covers/269.webp"
+    },
+    {
+      "id": "270",
+      "title": "Nocturne",
+      "via": "fandom:Nocturne",
+      "path": "/covers/270.webp"
+    },
+    {
+      "id": "aos1",
+      "title": "The Gates of Azyr",
+      "via": "fandom:Realmgate",
+      "path": "/covers/aos1.webp"
+    },
+    {
+      "id": "aos3",
+      "title": "Ghal Maraz",
+      "via": "fandom:Ghal Maraz",
+      "path": "/covers/aos3.webp"
+    },
+    {
+      "id": "aos17",
+      "title": "Eight Lamentations: Spear of Shadows",
+      "via": "fandom:Eight Lamentations: Spear of Shadows",
+      "path": "/covers/aos17.webp"
+    },
+    {
+      "id": "aos59",
+      "title": "Overlords of the Iron Dragon",
+      "via": "fandom:Overlords of the Iron Dragon",
+      "path": "/covers/aos59.webp"
+    },
+    {
+      "id": "aosbt2",
+      "title": "Battletome: Nighthaunt",
+      "via": "fandom:Death Battletome: Nighthaunt",
+      "path": "/covers/aosbt2.webp"
+    },
+    {
+      "id": "aosbt7",
+      "title": "Battletome: Gloomspite Gitz",
+      "via": "fandom:Battletome: Gloomspite Gitz",
+      "path": "/covers/aosbt7.webp"
+    },
+    {
+      "id": "aosbt10",
+      "title": "Battletome: Disciples of Tzeentch",
+      "via": "fandom:Battletome: Disciples of Tzeentch",
+      "path": "/covers/aosbt10.webp"
+    },
+    {
+      "id": "aosbt11",
+      "title": "Battletome: Maggotkin of Nurgle",
+      "via": "fandom:Battletome: Maggotkin of Nurgle",
+      "path": "/covers/aosbt11.webp"
+    },
+    {
+      "id": "aosbt16",
+      "title": "Battletome: Idoneth Deepkin",
+      "via": "fandom:Battletome: Idoneth Deepkin",
+      "path": "/covers/aosbt16.webp"
+    },
+    {
+      "id": "aosbt21",
+      "title": "Battletome: Flesh-eater Courts",
+      "via": "fandom:Battletome: Flesh-eater Courts",
+      "path": "/covers/aosbt21.webp"
+    },
+    {
+      "id": "aosbt22",
+      "title": "Battletome: Beasts of Chaos",
+      "via": "fandom:Battletome: Beasts of Chaos",
+      "path": "/covers/aosbt22.webp"
+    },
+    {
+      "id": "aosbt23",
+      "title": "Battletome: Skaven",
+      "via": "fandom:Battletome: Skaven",
+      "path": "/covers/aosbt23.webp"
+    }
+  ],
+  "missed": [
+    {
+      "id": "55",
+      "title": "The Solar War"
+    },
+    {
+      "id": "57",
+      "title": "The First Wall"
+    },
+    {
+      "id": "58",
+      "title": "Saturnine"
+    },
+    {
+      "id": "59",
+      "title": "Mortis"
+    },
+    {
+      "id": "61",
+      "title": "Echoes of Eternity"
+    },
+    {
+      "id": "280",
+      "title": "Sons of the Selenar"
+    },
+    {
+      "id": "282",
+      "title": "Garro: Knight of the Grey"
+    },
+    {
+      "id": "65",
+      "title": "Roboute Guilliman: Lord of Ultramar"
+    },
+    {
+      "id": "66",
+      "title": "Leman Russ: The Great Wolf"
+    },
+    {
+      "id": "67",
+      "title": "Magnus the Red: Master of Prospero"
+    },
+    {
+      "id": "68",
+      "title": "Perturabo: The Hammer of Olympia"
+    },
+    {
+      "id": "69",
+      "title": "Lorgar: Bearer of the Word"
+    },
+    {
+      "id": "70",
+      "title": "Fulgrim: The Palatine Phoenix"
+    },
+    {
+      "id": "71",
+      "title": "Ferrus Manus: The Gorgon of Medusa"
+    },
+    {
+      "id": "72",
+      "title": "Jaghatai Khan: Warhawk of Chogoris"
+    },
+    {
+      "id": "73",
+      "title": "Vulkan: Lord of Drakes"
+    },
+    {
+      "id": "74",
+      "title": "Corax: Lord of Shadows"
+    },
+    {
+      "id": "75",
+      "title": "Angron: Slave of Nuceria"
+    },
+    {
+      "id": "76",
+      "title": "Konrad Curze: The Night Haunter"
+    },
+    {
+      "id": "77",
+      "title": "Lion El'Jonson: Lord of the First"
+    },
+    {
+      "id": "78",
+      "title": "Alpharius: Head of the Hydra"
+    },
+    {
+      "id": "79",
+      "title": "Mortarion: The Pale King"
+    },
+    {
+      "id": "80",
+      "title": "Rogal Dorn: The Emperor's Crusader"
+    },
+    {
+      "id": "81",
+      "title": "Sanguinius: The Great Angel"
+    },
+    {
+      "id": "96",
+      "title": "The Anarch"
+    },
+    {
+      "id": "97",
+      "title": "The Vincula Insurgency"
+    },
+    {
+      "id": "99",
+      "title": "Malleus"
+    },
+    {
+      "id": "100",
+      "title": "Hereticus"
+    },
+    {
+      "id": "102",
+      "title": "Ravenor"
+    },
+    {
+      "id": "103",
+      "title": "Ravenor Returned"
+    },
+    {
+      "id": "104",
+      "title": "Ravenor Rogue"
+    },
+    {
+      "id": "105",
+      "title": "Pariah: Ravenor vs Eisenhorn"
+    },
+    {
+      "id": "106",
+      "title": "Penitent"
+    },
+    {
+      "id": "107",
+      "title": "Soul Hunter"
+    },
+    {
+      "id": "108",
+      "title": "Blood Reaver"
+    },
+    {
+      "id": "110",
+      "title": "For the Emperor"
+    },
+    {
+      "id": "111",
+      "title": "Caves of Ice"
+    },
+    {
+      "id": "112",
+      "title": "The Traitor's Hand"
+    },
+    {
+      "id": "113",
+      "title": "Death or Glory"
+    },
+    {
+      "id": "114",
+      "title": "Duty Calls"
+    },
+    {
+      "id": "115",
+      "title": "Cain's Last Stand"
+    },
+    {
+      "id": "116",
+      "title": "The Emperor's Finest"
+    },
+    {
+      "id": "117",
+      "title": "The Last Ditch"
+    },
+    {
+      "id": "119",
+      "title": "Choose Your Enemies"
+    },
+    {
+      "id": "120",
+      "title": "Vainglorious"
+    },
+    {
+      "id": "122",
+      "title": "Plague War"
+    },
+    {
+      "id": "123",
+      "title": "Godblight"
+    },
+    {
+      "id": "124",
+      "title": "Avenging Son"
+    },
+    {
+      "id": "125",
+      "title": "The Gate of Bones"
+    },
+    {
+      "id": "126",
+      "title": "The Wolftime"
+    },
+    {
+      "id": "127",
+      "title": "Throne of Light"
+    },
+    {
+      "id": "128",
+      "title": "The Iron Kingdom"
+    },
+    {
+      "id": "129",
+      "title": "The Martyr's Tomb"
+    },
+    {
+      "id": "131",
+      "title": "Hand of Abaddon"
+    },
+    {
+      "id": "132",
+      "title": "Angels of Darkness"
+    },
+    {
+      "id": "134",
+      "title": "Master of Sanctity"
+    },
+    {
+      "id": "138",
+      "title": "Cypher: Lord of the Fallen"
+    },
+    {
+      "id": "139",
+      "title": "Lazarus: Enmity's Edge"
+    },
+    {
+      "id": "140",
+      "title": "Deus Encarmine"
+    },
+    {
+      "id": "141",
+      "title": "Deus Sanguinius"
+    },
+    {
+      "id": "142",
+      "title": "Red Fury"
+    },
+    {
+      "id": "143",
+      "title": "Black Tide"
+    },
+    {
+      "id": "146",
+      "title": "Darkness in the Blood"
+    },
+    {
+      "id": "148",
+      "title": "Ragnar's Claw"
+    },
+    {
+      "id": "151",
+      "title": "Sons of Fenris"
+    },
+    {
+      "id": "152",
+      "title": "Wolf's Honour"
+    },
+    {
+      "id": "154",
+      "title": "Warriors of Ultramar"
+    },
+    {
+      "id": "155",
+      "title": "Dead Sky, Black Sun"
+    },
+    {
+      "id": "156",
+      "title": "The Killing Ground"
+    },
+    {
+      "id": "157",
+      "title": "Courage and Honour"
+    },
+    {
+      "id": "158",
+      "title": "The Chapter's Due"
+    },
+    {
+      "id": "161",
+      "title": "Ahriman: Exile"
+    },
+    {
+      "id": "162",
+      "title": "Ahriman: Sorcerer"
+    },
+    {
+      "id": "163",
+      "title": "Ahriman: Unchanged"
+    },
+    {
+      "id": "164",
+      "title": "Ahriman: Eternal"
+    },
+    {
+      "id": "165",
+      "title": "The Carrion Throne"
+    },
+    {
+      "id": "168",
+      "title": "Resurrection"
+    },
+    {
+      "id": "169",
+      "title": "Incarnation"
+    },
+    {
+      "id": "171",
+      "title": "Dark Adeptus"
+    },
+    {
+      "id": "172",
+      "title": "Hammer of Daemons"
+    },
+    {
+      "id": "173",
+      "title": "The Emperor's Gift"
+    },
+    {
+      "id": "175",
+      "title": "Lords of Mars"
+    },
+    {
+      "id": "176",
+      "title": "Gods of Mars"
+    },
+    {
+      "id": "177",
+      "title": "Skitarius"
+    },
+    {
+      "id": "179",
+      "title": "Belisarius Cawl: The Great Work"
+    },
+    {
+      "id": "180",
+      "title": "Day of Ascension"
+    },
+    {
+      "id": "181",
+      "title": "Faith and Fire"
+    },
+    {
+      "id": "182",
+      "title": "Hammer and Anvil"
+    },
+    {
+      "id": "183",
+      "title": "Requiem Infernal"
+    },
+    {
+      "id": "184",
+      "title": "Mark of Faith"
+    },
+    {
+      "id": "185",
+      "title": "Pilgrims of Fire"
+    },
+    {
+      "id": "186",
+      "title": "Fifteen Hours"
+    },
+    {
+      "id": "188",
+      "title": "Cadian Blood"
+    },
+    {
+      "id": "189",
+      "title": "Dead Men Walking"
+    },
+    {
+      "id": "192",
+      "title": "Honourbound"
+    },
+    {
+      "id": "193",
+      "title": "Cadia Stands"
+    },
+    {
+      "id": "194",
+      "title": "Cadian Honour"
+    },
+    {
+      "id": "198",
+      "title": "Steel Tread"
+    },
+    {
+      "id": "200",
+      "title": "The Pyres of Armageddon"
+    },
+    {
+      "id": "204",
+      "title": "Asurmen: Hand of Asuryan"
+    },
+    {
+      "id": "205",
+      "title": "Jain Zar: The Storm of Silence"
+    },
+    {
+      "id": "206",
+      "title": "Path of the Renegade"
+    },
+    {
+      "id": "207",
+      "title": "Path of the Incubus"
+    },
+    {
+      "id": "208",
+      "title": "Path of the Archon"
+    },
+    {
+      "id": "209",
+      "title": "Helsreach"
+    },
+    {
+      "id": "210",
+      "title": "Helbrecht: Knight of the Throne"
+    },
+    {
+      "id": "213",
+      "title": "Dark Creed"
+    },
+    {
+      "id": "215",
+      "title": "Shroud of Night"
+    },
+    {
+      "id": "216",
+      "title": "Sons of the Hydra"
+    },
+    {
+      "id": "217",
+      "title": "Renegades: Harrowmaster"
+    },
+    {
+      "id": "218",
+      "title": "Spear of the Emperor"
+    },
+    {
+      "id": "219",
+      "title": "Valdor: Birth of the Imperium"
+    },
+    {
+      "id": "222",
+      "title": "Warlord: Fury of the God-Machine"
+    },
+    {
+      "id": "223",
+      "title": "Imperator: Wrath of the Omnissiah"
+    },
+    {
+      "id": "224",
+      "title": "Kingsblade"
+    },
+    {
+      "id": "225",
+      "title": "Knightsblade"
+    },
+    {
+      "id": "227",
+      "title": "Shadowbreaker"
+    },
+    {
+      "id": "228",
+      "title": "Rites of Passage"
+    },
+    {
+      "id": "241",
+      "title": "The Purging of Kadillus"
+    },
+    {
+      "id": "242",
+      "title": "Fall of Damnos"
+    },
+    {
+      "id": "243",
+      "title": "Battle of the Fang"
+    },
+    {
+      "id": "244",
+      "title": "The Gildar Rift"
+    },
+    {
+      "id": "246",
+      "title": "Architect of Fate"
+    },
+    {
+      "id": "247",
+      "title": "Wrath of Iron"
+    },
+    {
+      "id": "248",
+      "title": "The Death of Integrity"
+    },
+    {
+      "id": "249",
+      "title": "The Siege of Castellax"
+    },
+    {
+      "id": "250",
+      "title": "Pandorax"
+    },
+    {
+      "id": "251",
+      "title": "Sons of Corax"
+    },
+    {
+      "id": "252",
+      "title": "Malodrax"
+    },
+    {
+      "id": "253",
+      "title": "Overfiend"
+    },
+    {
+      "id": "254",
+      "title": "Storm of Damocles"
+    },
+    {
+      "id": "255",
+      "title": "The Eye of Ezekiel"
+    },
+    {
+      "id": "256",
+      "title": "Stormcaller"
+    },
+    {
+      "id": "257",
+      "title": "The Ashes of Prospero"
+    },
+    {
+      "id": "258",
+      "title": "Of Honour and Iron"
+    },
+    {
+      "id": "259",
+      "title": "War of Secrets"
+    },
+    {
+      "id": "260",
+      "title": "Apocalypse"
+    },
+    {
+      "id": "262",
+      "title": "Lemartes: Guardian of the Lost"
+    },
+    {
+      "id": "263",
+      "title": "Shrike"
+    },
+    {
+      "id": "264",
+      "title": "Cassius"
+    },
+    {
+      "id": "265",
+      "title": "Mephiston: Lord of Death"
+    },
+    {
+      "id": "266",
+      "title": "Mephiston: City of Light"
+    },
+    {
+      "id": "267",
+      "title": "Mephiston: Revenant Crusade"
+    },
+    {
+      "id": "271",
+      "title": "Storm of Iron"
+    },
+    {
+      "id": "272",
+      "title": "Absolution"
+    },
+    {
+      "id": "273",
+      "title": "The Empty Throne"
+    },
+    {
+      "id": "274",
+      "title": "The Twice-Dead King: Ruin"
+    },
+    {
+      "id": "275",
+      "title": "The Twice-Dead King: Reign"
+    },
+    {
+      "id": "276",
+      "title": "The Infinite and the Divine"
+    },
+    {
+      "id": "277",
+      "title": "Brutal Kunnin'"
+    },
+    {
+      "id": "278",
+      "title": "Ghazghkull Thraka: Prophet of the Waaagh!"
+    },
+    {
+      "id": "279",
+      "title": "Outgunned"
+    },
+    {
+      "id": "229",
+      "title": "Codex: Space Marines"
+    },
+    {
+      "id": "230",
+      "title": "Codex: Chaos Space Marines"
+    },
+    {
+      "id": "231",
+      "title": "Codex: Necrons"
+    },
+    {
+      "id": "232",
+      "title": "Codex: Tyranids"
+    },
+    {
+      "id": "233",
+      "title": "Codex: Astra Militarum"
+    },
+    {
+      "id": "234",
+      "title": "Codex: Orks"
+    },
+    {
+      "id": "235",
+      "title": "Codex: Aeldari"
+    },
+    {
+      "id": "236",
+      "title": "Codex: Death Guard"
+    },
+    {
+      "id": "237",
+      "title": "Codex: T'au Empire"
+    },
+    {
+      "id": "238",
+      "title": "Codex: Drukhari"
+    },
+    {
+      "id": "aos2",
+      "title": "War Storm"
+    },
+    {
+      "id": "aos4",
+      "title": "Hammers of Sigmar"
+    },
+    {
+      "id": "aos5",
+      "title": "Wardens of the Everqueen"
+    },
+    {
+      "id": "aos6",
+      "title": "Call of Archaon"
+    },
+    {
+      "id": "aos7",
+      "title": "Warbeast"
+    },
+    {
+      "id": "aos8",
+      "title": "Fury of Gork"
+    },
+    {
+      "id": "aos9",
+      "title": "Bladestorm"
+    },
+    {
+      "id": "aos10",
+      "title": "Mortarch of Night"
+    },
+    {
+      "id": "aos11",
+      "title": "Lord of Undeath"
+    },
+    {
+      "id": "aos12",
+      "title": "The Realmgate Wars: Volume 1"
+    },
+    {
+      "id": "aos13",
+      "title": "The Realmgate Wars: Volume 2"
+    },
+    {
+      "id": "aos14",
+      "title": "Hallowed Knights: Plague Garden"
+    },
+    {
+      "id": "aos15",
+      "title": "Hallowed Knights: Black Pyramid"
+    },
+    {
+      "id": "aos16",
+      "title": "Hallowed Knights: The Denied"
+    },
+    {
+      "id": "aos18",
+      "title": "Eight Lamentations: War-Claw"
+    },
+    {
+      "id": "aos89",
+      "title": "Trollslayer"
+    },
+    {
+      "id": "aos90",
+      "title": "Skavenslayer"
+    },
+    {
+      "id": "aos91",
+      "title": "Daemonslayer"
+    },
+    {
+      "id": "aos92",
+      "title": "Dragonslayer"
+    },
+    {
+      "id": "aos93",
+      "title": "Beastslayer"
+    },
+    {
+      "id": "aos94",
+      "title": "Vampireslayer"
+    },
+    {
+      "id": "aos95",
+      "title": "Giantslayer"
+    },
+    {
+      "id": "aos96",
+      "title": "Orcslayer"
+    },
+    {
+      "id": "aos97",
+      "title": "Manslayer"
+    },
+    {
+      "id": "aos98",
+      "title": "Elfslayer"
+    },
+    {
+      "id": "aos99",
+      "title": "Shamanslayer"
+    },
+    {
+      "id": "aos100",
+      "title": "Zombieslayer"
+    },
+    {
+      "id": "aos101",
+      "title": "Road of Skulls"
+    },
+    {
+      "id": "aos102",
+      "title": "City of the Damned"
+    },
+    {
+      "id": "aos103",
+      "title": "Kinslayer"
+    },
+    {
+      "id": "aos104",
+      "title": "Slayer"
+    },
+    {
+      "id": "aos19",
+      "title": "Realmslayer"
+    },
+    {
+      "id": "aos20",
+      "title": "Realmslayer: Blood of the Old World"
+    },
+    {
+      "id": "aos21",
+      "title": "Ghoulslayer"
+    },
+    {
+      "id": "aos22",
+      "title": "Gitslayer"
+    },
+    {
+      "id": "aos23",
+      "title": "Soulslayer"
+    },
+    {
+      "id": "aos24",
+      "title": "Blightslayer"
+    },
+    {
+      "id": "aos67",
+      "title": "Realmslayer: Legend of the Doomseeker"
+    },
+    {
+      "id": "aos25",
+      "title": "Hamilcar: Champion of the Gods"
+    },
+    {
+      "id": "aos26",
+      "title": "Hamilcar: Champion of Chaos"
+    },
+    {
+      "id": "aos27",
+      "title": "City of Secrets"
+    },
+    {
+      "id": "aos28",
+      "title": "Callis and Toll: The Silver Shard"
+    },
+    {
+      "id": "aos29",
+      "title": "Callis and Toll"
+    },
+    {
+      "id": "aos30",
+      "title": "Blacktalon: First Mark"
+    },
+    {
+      "id": "aos31",
+      "title": "Blacktalon"
+    },
+    {
+      "id": "aos32",
+      "title": "The Arkanaut's Oath"
+    },
+    {
+      "id": "aos33",
+      "title": "The Ghosts of Barak-Minoz"
+    },
+    {
+      "id": "aos66",
+      "title": "Profit's Ruin"
+    },
+    {
+      "id": "aos34",
+      "title": "Warcry: The Anthology"
+    },
+    {
+      "id": "aos35",
+      "title": "Warcry Catacombs: Blood of the Everchosen"
+    },
+    {
+      "id": "aos36",
+      "title": "Shadespire: The Mirrored City"
+    },
+    {
+      "id": "aos37",
+      "title": "Shadespire: The Darkness in the Glass"
+    },
+    {
+      "id": "aos38",
+      "title": "Beastgrave"
+    },
+    {
+      "id": "aos39",
+      "title": "Direchasm"
+    },
+    {
+      "id": "aos40",
+      "title": "Harrowdeep"
+    },
+    {
+      "id": "aos41",
+      "title": "Nagash: The Undying King"
+    },
+    {
+      "id": "aos42",
+      "title": "Soul Wars"
+    },
+    {
+      "id": "aos43",
+      "title": "Neferata: Mortarch of Blood"
+    },
+    {
+      "id": "aos44",
+      "title": "Neferata: The Dominion of Bones"
+    },
+    {
+      "id": "aos45",
+      "title": "Gloomspite"
+    },
+    {
+      "id": "aos46",
+      "title": "Realm-Lords"
+    },
+    {
+      "id": "aos47",
+      "title": "Lady of Sorrows"
+    },
+    {
+      "id": "aos48",
+      "title": "Stormvault"
+    },
+    {
+      "id": "aos49",
+      "title": "Bonereapers"
+    },
+    {
+      "id": "aos50",
+      "title": "The End of Enlightenment"
+    },
+    {
+      "id": "aos51",
+      "title": "Dominion"
+    },
+    {
+      "id": "aos52",
+      "title": "Cursed City"
+    },
+    {
+      "id": "aos53",
+      "title": "The Hollow King"
+    },
+    {
+      "id": "aos54",
+      "title": "Hallowed Ground"
+    },
+    {
+      "id": "aos55",
+      "title": "Skaventide"
+    },
+    {
+      "id": "aos56",
+      "title": "Starseer's Ruin"
+    },
+    {
+      "id": "aos68",
+      "title": "Hammerhal"
+    },
+    {
+      "id": "aos69",
+      "title": "The Red Feast"
+    },
+    {
+      "id": "aos70",
+      "title": "Dark Harvest"
+    },
+    {
+      "id": "aos71",
+      "title": "Gothghul Hollow"
+    },
+    {
+      "id": "aos72",
+      "title": "Godeater's Son"
+    },
+    {
+      "id": "aos73",
+      "title": "The Last Volari"
+    },
+    {
+      "id": "aos74",
+      "title": "Kragnos: Avatar of Destruction"
+    },
+    {
+      "id": "aos75",
+      "title": "Yndrasta: The Celestial Spear"
+    },
+    {
+      "id": "aos76",
+      "title": "A Dynasty of Monsters"
+    },
+    {
+      "id": "aos77",
+      "title": "Hammers of Sigmar: First Forged"
+    },
+    {
+      "id": "aos78",
+      "title": "Bad Loon Rising"
+    },
+    {
+      "id": "aos79",
+      "title": "Godsbane"
+    },
+    {
+      "id": "aos105",
+      "title": "Lioness of the Parch"
+    },
+    {
+      "id": "aos106",
+      "title": "The Dead Kingdom"
+    },
+    {
+      "id": "aos107",
+      "title": "Shade of Khaine"
+    },
+    {
+      "id": "aos108",
+      "title": "Darkoath"
+    },
+    {
+      "id": "aos109",
+      "title": "Ushoran: Mortarch of Delusion"
+    },
+    {
+      "id": "aos57",
+      "title": "Warqueen"
+    },
+    {
+      "id": "aos58",
+      "title": "Heart of Winter"
+    },
+    {
+      "id": "aos80",
+      "title": "The Bone Desert"
+    },
+    {
+      "id": "aos60",
+      "title": "Myths & Revenants"
+    },
+    {
+      "id": "aos61",
+      "title": "Gods and Mortals"
+    },
+    {
+      "id": "aos62",
+      "title": "Sacrosanct & Other Stories"
+    },
+    {
+      "id": "aos63",
+      "title": "Oaths and Conquests"
+    },
+    {
+      "id": "aos64",
+      "title": "Thunderstrike & Other Stories"
+    },
+    {
+      "id": "aos65",
+      "title": "Untamed Realms"
+    },
+    {
+      "id": "aos81",
+      "title": "Hammerhal & Other Stories"
+    },
+    {
+      "id": "aos82",
+      "title": "Call of Chaos"
+    },
+    {
+      "id": "aos83",
+      "title": "Champions of the Mortal Realms"
+    },
+    {
+      "id": "aos84",
+      "title": "Conquest Unbound"
+    },
+    {
+      "id": "aos85",
+      "title": "Grombrindal: Chronicles of the Wanderer"
+    },
+    {
+      "id": "aos86",
+      "title": "Legends of the Age of Sigmar: Fyreslayers"
+    },
+    {
+      "id": "aos87",
+      "title": "Legends of the Age of Sigmar: Skaven Pestilens"
+    },
+    {
+      "id": "aos88",
+      "title": "Legends of the Age of Sigmar: Sylvaneth"
+    },
+    {
+      "id": "ow1",
+      "title": "Heldenhammer"
+    },
+    {
+      "id": "ow2",
+      "title": "Empire"
+    },
+    {
+      "id": "ow3",
+      "title": "God King"
+    },
+    {
+      "id": "ow4",
+      "title": "Nagash the Sorcerer"
+    },
+    {
+      "id": "ow5",
+      "title": "Nagash the Unbroken"
+    },
+    {
+      "id": "ow6",
+      "title": "Nagash Immortal"
+    },
+    {
+      "id": "ow7",
+      "title": "Blood of Aenarion"
+    },
+    {
+      "id": "ow8",
+      "title": "Sword of Caledor"
+    },
+    {
+      "id": "ow9",
+      "title": "Bane of Malekith"
+    },
+    {
+      "id": "ow10",
+      "title": "The Daemon's Curse"
+    },
+    {
+      "id": "ow11",
+      "title": "Bloodstorm"
+    },
+    {
+      "id": "ow12",
+      "title": "Reaper of Souls"
+    },
+    {
+      "id": "ow13",
+      "title": "Warpsword"
+    },
+    {
+      "id": "ow14",
+      "title": "Lord of Ruin"
+    },
+    {
+      "id": "ow15",
+      "title": "Inheritance"
+    },
+    {
+      "id": "ow16",
+      "title": "Dominion"
+    },
+    {
+      "id": "ow17",
+      "title": "Retribution"
+    },
+    {
+      "id": "ow18",
+      "title": "Drachenfels"
+    },
+    {
+      "id": "ow19",
+      "title": "Genevieve Undead"
+    },
+    {
+      "id": "ow20",
+      "title": "Beasts in Velvet"
+    },
+    {
+      "id": "ow21",
+      "title": "Silver Nails"
+    },
+    {
+      "id": "aosbt1",
+      "title": "Battletome: Stormcast Eternals"
+    },
+    {
+      "id": "aosbt3",
+      "title": "Battletome: Ossiarch Bonereapers"
+    },
+    {
+      "id": "aosbt4",
+      "title": "Battletome: Soulblight Gravelords"
+    },
+    {
+      "id": "aosbt5",
+      "title": "Battletome: Ogor Mawtribes"
+    },
+    {
+      "id": "aosbt6",
+      "title": "Battletome: Orruk Warclans"
+    },
+    {
+      "id": "aosbt8",
+      "title": "Battletome: Hedonites of Slaanesh"
+    },
+    {
+      "id": "aosbt9",
+      "title": "Battletome: Blades of Khorne"
+    },
+    {
+      "id": "aosbt12",
+      "title": "Battletome: Slaves to Darkness"
+    },
+    {
+      "id": "aosbt13",
+      "title": "Battletome: Lumineth Realm-lords"
+    },
+    {
+      "id": "aosbt14",
+      "title": "Battletome: Fyreslayers"
+    },
+    {
+      "id": "aosbt15",
+      "title": "Battletome: Kharadron Overlords"
+    },
+    {
+      "id": "aosbt17",
+      "title": "Battletome: Cities of Sigmar"
+    },
+    {
+      "id": "aosbt18",
+      "title": "Battletome: Seraphon"
+    },
+    {
+      "id": "aosbt19",
+      "title": "Battletome: Sylvaneth"
+    },
+    {
+      "id": "aosbt20",
+      "title": "Battletome: Sons of Behemat"
+    }
+  ],
+  "errors": [
+    {
+      "id": "2",
+      "title": "False Gods",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844163700&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "3",
+      "title": "Galaxy in Flames",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844163939&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "4",
+      "title": "The Flight of the Eisenstein",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844164592&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "10",
+      "title": "Tales of Heresy",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844166831&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "12",
+      "title": "A Thousand Sons",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849708203&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "14",
+      "title": "The First Heretic",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844168842&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "15",
+      "title": "Prospero Burns",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844167777&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "16",
+      "title": "Age of Darkness",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849700375&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "19",
+      "title": "Know No Fear",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849701341&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "20",
+      "title": "The Primarchs",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849702089&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "22",
+      "title": "Shadows of Treachery",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849703475&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "25",
+      "title": "Mark of Calth",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849704168&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "31",
+      "title": "Legacies of Betrayal",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784960162&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "33",
+      "title": "War Without End",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784964542&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "35",
+      "title": "Eye of Terra",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784964559&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "37",
+      "title": "The Silent War",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784963743&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "43",
+      "title": "Shattered Legions",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784965747&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "48",
+      "title": "The Burden of Loyalty",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784967529&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "52",
+      "title": "Heralds of the Siege",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969066&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "55",
+      "title": "The Solar War",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969264&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "56",
+      "title": "The Lost and the Damned",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789999341&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "57",
+      "title": "The First Wall",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800260245&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "58",
+      "title": "Saturnine",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261136&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "59",
+      "title": "Mortis",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800262461&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "60",
+      "title": "Warhawk",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789999525&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "61",
+      "title": "Echoes of Eternity",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261952&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "62",
+      "title": "The End and the Death: Volume I",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261204&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "63",
+      "title": "The End and the Death: Volume II",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781804073544&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "64",
+      "title": "The End and the Death: Volume III",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781804074886&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "82",
+      "title": "First and Only",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849708579&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "98",
+      "title": "Xenos",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849708739&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "99",
+      "title": "Malleus",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849709613&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "100",
+      "title": "Hereticus",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849709668&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "101",
+      "title": "The Magos",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784967024&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "102",
+      "title": "Ravenor",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784963316&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "103",
+      "title": "Ravenor Returned",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784965266&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "104",
+      "title": "Ravenor Rogue",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784965716&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "107",
+      "title": "Soul Hunter",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844168118&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "108",
+      "title": "Blood Reaver",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849700399&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "109",
+      "title": "Void Stalker",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849701495&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "110",
+      "title": "For the Emperor",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844160501&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "111",
+      "title": "Caves of Ice",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844160709&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "112",
+      "title": "The Traitor's Hand",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161874&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "121",
+      "title": "Dark Imperium",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966645&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "122",
+      "title": "Plague War",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261235&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "123",
+      "title": "Godblight",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800262034&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "159",
+      "title": "The Talon of Horus",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784960490&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "160",
+      "title": "Black Legion",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784967536&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "165",
+      "title": "The Carrion Throne",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966911&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "209",
+      "title": "Helsreach",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844168637&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "214",
+      "title": "The Lords of Silence",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784968755&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "274",
+      "title": "The Twice-Dead King: Ruin",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261891&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "275",
+      "title": "The Twice-Dead King: Reign",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800262102&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "276",
+      "title": "The Infinite and the Divine",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789998320&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "278",
+      "title": "Ghazghkull Thraka: Prophet of the Waaagh!",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261341&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos14",
+      "title": "Hallowed Knights: Plague Garden",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966218&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos15",
+      "title": "Hallowed Knights: Black Pyramid",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969301&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos17",
+      "title": "Eight Lamentations: Spear of Shadows",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966676&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos89",
+      "title": "Trollslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849705097&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos90",
+      "title": "Skavenslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781841541020&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos91",
+      "title": "Daemonslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781841541044&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos92",
+      "title": "Dragonslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781841541228&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos93",
+      "title": "Beastslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844160525&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos94",
+      "title": "Vampireslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844160532&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos95",
+      "title": "Giantslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844162611&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos96",
+      "title": "Orcslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844163915&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos97",
+      "title": "Manslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844165094&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos98",
+      "title": "Elfslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844165759&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos99",
+      "title": "Shamanslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844167739&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos100",
+      "title": "Zombieslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844168811&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos101",
+      "title": "Road of Skulls",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849702928&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos102",
+      "title": "City of the Damned",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849705295&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos103",
+      "title": "Kinslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784964511&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos104",
+      "title": "Slayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784964757&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos21",
+      "title": "Ghoulslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789990553&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos22",
+      "title": "Gitslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800261044&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos23",
+      "title": "Soulslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800262478&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos24",
+      "title": "Blightslayer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781804073551&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos25",
+      "title": "Hamilcar: Champion of the Gods",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784968298&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos27",
+      "title": "City of Secrets",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784967512&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos28",
+      "title": "Callis and Toll: The Silver Shard",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784968564&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos30",
+      "title": "Blacktalon: First Mark",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969042&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos32",
+      "title": "The Arkanaut's Oath",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789994766&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos41",
+      "title": "Nagash: The Undying King",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966843&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos42",
+      "title": "Soul Wars",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969899&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos51",
+      "title": "Dominion",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781789999556&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos55",
+      "title": "Skaventide",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781804076934&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos68",
+      "title": "Hammerhal",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784967505&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos72",
+      "title": "Godeater's Son",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781800262836&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos81",
+      "title": "Hammerhal & Other Stories",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784966973&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "aos83",
+      "title": "Champions of the Mortal Realms",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781781939581&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow1",
+      "title": "Heldenhammer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844165384&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow2",
+      "title": "Empire",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844166886&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow3",
+      "title": "God King",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844168996&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow4",
+      "title": "Nagash the Sorcerer",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844165568&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow5",
+      "title": "Nagash the Unbroken",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844167913&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow6",
+      "title": "Nagash Immortal",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849700351&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow7",
+      "title": "Blood of Aenarion",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849700900&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow8",
+      "title": "Sword of Caledor",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849702621&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow9",
+      "title": "Bane of Malekith",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781849707664&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow10",
+      "title": "The Daemon's Curse",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161911&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow11",
+      "title": "Bloodstorm",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161928&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow12",
+      "title": "Reaper of Souls",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161935&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow13",
+      "title": "Warpsword",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161942&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow14",
+      "title": "Lord of Ruin",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844161959&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow15",
+      "title": "Inheritance",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844162918&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow16",
+      "title": "Dominion",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844162925&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow17",
+      "title": "Retribution",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781844162932&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow18",
+      "title": "Drachenfels",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784968823&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow19",
+      "title": "Genevieve Undead",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969820&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow20",
+      "title": "Beasts in Velvet",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784968946&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    },
+    {
+      "id": "ow21",
+      "title": "Silver Nails",
+      "strat": "fromGoogleIsbn",
+      "error": "HTTP 429 for https://www.googleapis.com/books/v1/volumes?q=isbn:9781784969097&maxResults=1&fields=items(volumeInfo/imageLinks)"
+    }
+  ]
+}
