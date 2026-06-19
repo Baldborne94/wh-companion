@@ -56,4 +56,14 @@ export function useLang() {
   return ctx;
 }
 
+// Localizes a reading-guide part label like "Prologue" / "Part 1" / "Optional 2"
+// by translating the leading word via the shared `guide` namespace and keeping
+// any trailing number. Unrecognized labels are returned unchanged.
+export function partLabel(label, t) {
+  const m = /^(Prologue|Part|Optional)(?:\s+(.*))?$/.exec(label || "");
+  if (!m) return label;
+  const key = { Prologue: "guide.prologue", Part: "guide.part", Optional: "guide.optional" }[m[1]];
+  return m[2] ? `${t(key)} ${m[2]}` : t(key);
+}
+
 export { SUPPORTED, DEFAULT_LANG };

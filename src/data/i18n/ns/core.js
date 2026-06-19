@@ -4,6 +4,7 @@
 export const core =  {
   en: {
     language: { name: "English", toggle: "Change language", short: "EN" },
+    guide: { prologue: "Prologue", part: "Part", optional: "Optional" },
     nav: {
       home: "Home",
       library: "Library",
@@ -113,6 +114,7 @@ export const core =  {
 
   it: {
     language: { name: "Italiano", toggle: "Cambia lingua", short: "IT" },
+    guide: { prologue: "Prologo", part: "Parte", optional: "Opzionale" },
     nav: {
       home: "Home",
       library: "Libreria",

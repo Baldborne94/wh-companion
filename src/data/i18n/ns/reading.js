@@ -2,6 +2,12 @@
 export const reading = {
   en: {
     reading: {
+      guideNotes: {
+        p0: "Choose ONE of these paths before the Heresy. They introduce key factions and context.",
+        p0_opt2: "Add Descent of Angels to the start of Part 4",
+        p12: "The grand finale — the culmination of 60+ books",
+        m6: "The grand finale — read these last",
+      },
       tabOverview: "Overview",
       tabGuide: "⚔ Heresy Guide",
 
@@ -50,6 +56,12 @@ export const reading = {
   },
   it: {
     reading: {
+      guideNotes: {
+        p0: "Scegli UNO di questi percorsi prima dell'Eresia. Introducono fazioni chiave e contesto.",
+        p0_opt2: "Aggiungi Descent of Angels all'inizio della Parte 4",
+        p12: "Il gran finale — il culmine di oltre 60 libri",
+        m6: "Il gran finale — leggi questi per ultimi",
+      },
       tabOverview: "Panoramica",
       tabGuide: "⚔ Guida Eresia",
 
