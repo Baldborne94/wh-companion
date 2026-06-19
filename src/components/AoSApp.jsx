@@ -14,6 +14,17 @@ export { AOS, AOS_BOOKS };
 const EpubReader = lazy(() => import("./EpubReader"));
 const PdfReader  = lazy(() => import("./PdfReader"));
 
+// Debounce a fast-changing value (e.g. search text) so filtering doesn't run on
+// every keystroke. Mirrors the helper in LibrarySection.jsx.
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 // Series spine colours for shelf display
 const SC = {
   "The Realmgate Wars":             "#5a8fc5",
@@ -574,6 +585,8 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
 
+  const dSearch = useDebounce(search, 250);
+
   // Deep-link: open a specific book's detail when navigated here (e.g. Home shelf).
   useEffect(() => {
     if (openDetailBook) { setDetail(openDetailBook); onDetailConsumed?.(); }
@@ -638,7 +651,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
       const bst = statuses[b.id]?.status || 'none';
       if (status === "unread" ? bst !== 'none' : bst !== status) return false;
     }
-    if (search) { const q = search.toLowerCase(); return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.series.toLowerCase().includes(q); }
+    if (dSearch) { const q = dSearch.toLowerCase(); return b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.series.toLowerCase().includes(q); }
     return true;
   });
 
@@ -731,7 +744,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
               {/* view toggle + count */}
               <div style={{ padding:"8px 16px", display:"flex", gap:8, alignItems:"center" }}>
                 <span style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.muted, flex:1 }}>
-                  {t("aos.library.ebookCount").replace("{n}", shelfBooks.filter(b => !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase())).length)}
+                  {t("aos.library.ebookCount").replace("{n}", shelfBooks.filter(b => !dSearch || b.title.toLowerCase().includes(dSearch.toLowerCase()) || b.author.toLowerCase().includes(dSearch.toLowerCase())).length)}
                 </span>
                 <div style={{ display:"flex", gap:2, background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:2 }}>
                   {[{m:"card",icon:"▦"},{m:"list",icon:"☰"},{m:"shelf",icon:"📚"}].map(v => (
@@ -744,7 +757,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
               </div>
               {/* books — same view modes as catalogue */}
               {(()=>{
-                const sfilt = shelfBooks.filter(b => !search || b.title.toLowerCase().includes(search.toLowerCase()) || b.series.toLowerCase().includes(search.toLowerCase()) || b.author.toLowerCase().includes(search.toLowerCase()));
+                const sfilt = shelfBooks.filter(b => !dSearch || b.title.toLowerCase().includes(dSearch.toLowerCase()) || b.series.toLowerCase().includes(dSearch.toLowerCase()) || b.author.toLowerCase().includes(dSearch.toLowerCase()));
                 if (sfilt.length === 0) return <div style={{ textAlign:"center", padding:"40px 20px", color:AOS.muted, fontStyle:"italic" }}>{t("aos.library.noResults")}</div>;
 
                 if (viewMode === "card") return (
