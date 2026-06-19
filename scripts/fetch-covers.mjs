@@ -9,14 +9,15 @@
 //
 // Sources, tried in order per book (first hit wins):
 //   1. Google Books by ISBN        — exact, when the book has an isbn field
-//   2. Warhammer Fandom wiki page  — lead image of the book's own article
-//   3. Google Books by title+author
+//   2. Open Library by ISBN        — additional free source for ISBN books
+//   3. Warhammer Fandom wiki page  — lead image of the book's own article
+//   4. Google Books by title+author
 //
 // Network: needs egress to www.googleapis.com, books.google.com,
-// warhammer40k.fandom.com, ageofsigmar.fandom.com, whfb.lexicanum.com and
-// static.wikia.nocookie.net. This environment's allowlist blocks them, so run
-// this where the network is open (locally, CI, or after widening egress), then
-// commit public/covers/ and src/data/covers.js.
+// covers.openlibrary.org, warhammer40k.fandom.com, ageofsigmar.fandom.com,
+// whfb.lexicanum.com and static.wikia.nocookie.net. This environment's allowlist
+// blocks them, so run this where the network is open (locally, CI, or after
+// widening egress), then commit public/covers/ and src/data/covers.js.
 //
 // Usage:
 //   node scripts/fetch-covers.mjs            # fetch all, skip already-downloaded
@@ -67,7 +68,22 @@ async function fromGoogleIsbn(book) {
   return pickGoogleThumb(d);
 }
 
-// 2. The book's own Fandom article — its infobox image is the cover.
+// 2. Open Library by ISBN — HEAD request to covers API; if 2xx the cover exists.
+async function fromOpenLibraryIsbn(book) {
+  if (!book.isbn) return null;
+  try {
+    const r = await fetch(
+      `https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg?default=false`,
+      { method: "HEAD", headers: { "User-Agent": "wh-companion-cover-fetcher" } }
+    );
+    if (!r.ok) return null;
+    return { url: `https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg`, via: "openLibraryIsbn" };
+  } catch {
+    return null;
+  }
+}
+
+// 3. The book's own Fandom article — its infobox image is the cover.
 // Resolve by EXACT page title only (with type suffixes / "The"-stripping), never
 // full-text search: search drifts to characters/factions/series pages and returns
 // their art instead of the book cover (e.g. Soul Hunter -> "Talos Valcoran").
@@ -85,10 +101,23 @@ function fandomTitleCandidates(title) {
   const variants = [];
   const bases = [title];
   if (/^the\s+/i.test(title)) bases.push(title.replace(/^the\s+/i, ""));
+  const SUFFIXES = [" (Novel)", " (Novella)", " (Anthology)", " (Short Story)", " (Audio Drama)"];
   // Type-suffixed forms FIRST — bare titles often redirect to a faction/character
   // page (Mechanicum -> Adeptus Mechanicus), so try them only as a last resort.
-  for (const suffix of [" (Novel)", " (Novella)", " (Anthology)", " (Short Story)", " (Audio Drama)"])
+  for (const suffix of SUFFIXES)
     for (const b of bases) variants.push(b + suffix);
+  // Colon-subtitle titles: try subtitle alone (bare + suffixed) then prefix with
+  // suffixes only (NOT bare — prevents wrong faction/character redirects).
+  if (title.includes(":")) {
+    const colonIdx = title.indexOf(":");
+    const prefix   = title.slice(0, colonIdx).trim();
+    const subtitle = title.slice(colonIdx + 1).trim();
+    // Subtitle variants — bare is fine (it's not a generic character/faction name)
+    for (const suffix of SUFFIXES) variants.push(subtitle + suffix);
+    variants.push(subtitle);
+    // Prefix with type suffixes only
+    for (const suffix of SUFFIXES) variants.push(prefix + suffix);
+  }
   for (const b of bases) variants.push(b);
   return [...new Set(variants)];
 }
@@ -104,7 +133,7 @@ async function pageImage(host, title) {
   return first.original?.source ? { src: first.original.source, title: first.title || title } : null;
 }
 
-// 2a. Exact wiki page (type-suffixed first). Guarded so redirects to the wrong
+// 3a. Exact wiki page (type-suffixed first). Guarded so redirects to the wrong
 // page are rejected.
 async function fromFandom(book) {
   const host = `${book.wiki}.fandom.com`;
@@ -116,7 +145,7 @@ async function fromFandom(book) {
   return null;
 }
 
-// 2b. Constrained search — recovers slightly-renamed pages (e.g. titles the wiki
+// 3b. Constrained search — recovers slightly-renamed pages (e.g. titles the wiki
 // stores without "The") but ACCEPTS the top hit only if it passes the same
 // overlap guard, so it can never drift to a character/faction page.
 async function fromFandomSearch(book) {
@@ -193,7 +222,7 @@ async function main() {
 
     // Only correct-by-construction sources: ISBN-exact, then exact wiki page.
     // No fuzzy title search — that was the original wrong-cover bug.
-    const strategies = [fromGoogleIsbn, fromFandom, fromFandomSearch];
+    const strategies = [fromGoogleIsbn, fromOpenLibraryIsbn, fromFandom, fromFandomSearch];
     let saved = null;
     let via = null;
     for (const strat of strategies) {

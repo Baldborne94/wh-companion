@@ -3,6 +3,8 @@ import { supabase, signOut } from "./lib/supabase";
 import { sb } from "./lib/sb";
 import { resolveBookUrl } from "./lib/openBook";
 import { useLang } from "./lib/i18n.jsx";
+import { useMusicPlayer } from "./lib/useMusicPlayer";
+import { useBookStatuses } from "./lib/useBookStatuses";
 import { C } from "./data/constants";
 import { BOOKS } from "./data/books";
 import MusicPlayer from "./components/MusicPlayer";
@@ -10,16 +12,8 @@ import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
 import { AOS, AOS_BOOKS } from "./data/aosBooks";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { loadAllStatuses, loadAoSStatuses, setBookStatusLS } from "./lib/bookStatus";
 import { shouldShowReleaseReminder, dismissReleaseReminder } from "./data/releases";
-import {
-  achievementFromId,
-  computeReadingAchievements,
-  computeAoSReadingAchievements,
-  diffAchievements,
-  loadUnlockedIds,
-  saveUnlockedIds,
-} from "./lib/achievements";
+import { saveUnlockedIds } from "./lib/achievements";
 
 const EpubReader        = lazy(() => import("./components/EpubReader"));
 const PdfReader         = lazy(() => import("./components/PdfReader"));
@@ -55,158 +49,11 @@ export default function App(){
     return ()=>subscription.unsubscribe();
   },[]);
 
-  // ── Global statuses — single source of truth ──────────────────────────────
-  const [statuses,setStatuses]=useState({});
-  const [aosStatuses,setAosStatuses]=useState({});
+  const { musicRef, nowPlaying, setNowPlaying, musicPaused, setMusicPaused, toggleMusicPause } = useMusicPlayer();
+  const { statuses, aosStatuses, updateStatus, updateAoSStatus, unlockedIds, setUnlockedIds, pendingAchievements, setPendingAchievements } = useBookStatuses({ userId: user?.id });
 
-  // Bidirectional sync helper: merges local + DB (newest wins), pushes local-only entries up
-  const syncStatuses = useCallback(async (uid, localMap, isAoS) => {
-    const rows = await sb.get("reading_status",`user_id=eq.${uid}&select=book_id,status,updated_at,started_at,completed_at`);
-    const dbMap = {};
-    if(rows && !rows._error && rows.length) {
-      rows.forEach(r => { dbMap[r.book_id] = r; });
-    }
-    const merged = {...localMap};
-    Object.entries(dbMap).forEach(([bid, dbRow]) => {
-      if(isAoS && !String(bid).startsWith('aos')) return;
-      if(!isAoS && String(bid).startsWith('aos')) return;
-      const local = merged[bid];
-      if(!local || !local.updatedAt || new Date(dbRow.updated_at) > new Date(local.updatedAt)) {
-        merged[bid] = { status:dbRow.status, updatedAt:dbRow.updated_at, startedAt:dbRow.started_at, completedAt:dbRow.completed_at };
-        localStorage.setItem(`wh40k_status_${uid}_${bid}`, JSON.stringify(merged[bid]));
-      }
-    });
-    const toSync = Object.entries(localMap).filter(([bid, local]) => {
-      if(!local?.status || local.status === 'none') return false;
-      if(isAoS && !String(bid).startsWith('aos')) return false;
-      if(!isAoS && String(bid).startsWith('aos')) return false;
-      const db = dbMap[bid];
-      if(!db) return true;
-      if(!local.updatedAt) return false;
-      return new Date(local.updatedAt) > new Date(db.updated_at);
-    });
-    toSync.forEach(([bookId, st]) => sb.upsert("reading_status", {
-      user_id:uid, book_id:bookId, status:st.status,
-      updated_at: st.updatedAt || new Date().toISOString(),
-      ...(st.startedAt ? {started_at:st.startedAt} : {}),
-      ...(st.completedAt ? {completed_at:st.completedAt} : {}),
-    }, "user_id,book_id"));
-    return merged;
-  }, []);
-
-  useEffect(()=>{
-    const uid=user?.id;
-    const local = loadAoSStatuses(uid);
-    setAosStatuses(local);
-    if(!uid) return;
-    syncStatuses(uid, local, true).then(merged => setAosStatuses(merged));
-  },[user?.id, syncStatuses]);
-  useEffect(()=>{
-    const uid=user?.id;
-    const local = loadAllStatuses(uid);
-    setStatuses(local);
-    if(!uid) return;
-    syncStatuses(uid, local, false).then(merged => setStatuses(merged));
-  },[user?.id, syncStatuses]);
-
-  // ── Refs for cross-universe achievement checks (avoids stale closures) ────────
-  const statusesRef    = useRef({});
-  const aosStatusesRef = useRef({});
-  useEffect(() => { statusesRef.current    = statuses;    }, [statuses]);
-  useEffect(() => { aosStatusesRef.current = aosStatuses; }, [aosStatuses]);
-  const didInitialAosCheck = useRef(false);
-
-  // ── Achievement state ─────────────────────────────────────────────────────
-  const [unlockedIds,         setUnlockedIds]         = useState([]);
-  const [unlockedIdsLoaded,   setUnlockedIdsLoaded]   = useState(false);
-  const [pendingAchievements, setPendingAchievements] = useState([]);
-  const [showStats,           setShowStats]           = useState(false);
-  const [showBackup,          setShowBackup]          = useState(false);
-
-  useEffect(() => {
-    if (!user?.id) { setUnlockedIds([]); setUnlockedIdsLoaded(false); didInitialAosCheck.current = false; return; }
-    loadUnlockedIds(supabase, user.id).then(ids => { setUnlockedIds(ids); setUnlockedIdsLoaded(true); });
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id || !unlockedIdsLoaded || didInitialAosCheck.current) return;
-    didInitialAosCheck.current = true;
-    const nowUnlocked = computeAoSReadingAchievements(aosStatuses, AOS_BOOKS);
-    setUnlockedIds(prev => {
-      const nonAos  = prev.filter(id => !id.startsWith('aos_') && !id.startsWith('aos_series:'));
-      const corrected = [...new Set([...nonAos, ...nowUnlocked])];
-      const changed = corrected.length !== prev.length || corrected.some(id => !prev.includes(id)) || prev.some(id => !corrected.includes(id));
-      if (!changed) return prev;
-      saveUnlockedIds(supabase, user.id, corrected);
-      return corrected;
-    });
-  }, [user?.id, unlockedIdsLoaded, aosStatuses]);
-
-  const checkReadingAchievements = useCallback((wh40kStatuses) => {
-    if (!user?.id) return;
-    const nowUnlocked = computeReadingAchievements(wh40kStatuses, BOOKS);
-    setUnlockedIds(prev => {
-      const newIds = diffAchievements(prev, nowUnlocked);
-      if (!newIds.length) return prev;
-      const merged = [...prev, ...newIds];
-      saveUnlockedIds(supabase, user.id, merged);
-      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
-                         .map(d => ({...d, _universe: 'wh40k'}));
-      setPendingAchievements(q => [...q, ...defs]);
-      return merged;
-    });
-  }, [user?.id]);
-
-  const checkAoSReadingAchievements = useCallback((aosStatuses) => {
-    if (!user?.id) return;
-    const nowUnlocked = computeAoSReadingAchievements(aosStatuses, AOS_BOOKS);
-    setUnlockedIds(prev => {
-      const newIds = diffAchievements(prev, nowUnlocked);
-      if (!newIds.length) return prev;
-      const merged = [...prev, ...newIds];
-      saveUnlockedIds(supabase, user.id, merged);
-      const defs = newIds.map(id => achievementFromId(id)).filter(Boolean)
-                         .map(d => ({...d, _universe: 'aos'}));
-      setPendingAchievements(q => [...q, ...defs]);
-      return merged;
-    });
-  }, [user?.id]);
-
-  const updateStatus=useCallback((bookId,newStatus)=>{
-    const uid=user?.id;
-    const updated=setBookStatusLS(uid,bookId,newStatus);
-    setStatuses(prev=>{
-      const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkReadingAchievements(next);
-      return next;
-    });
-    if(uid){
-      sb.upsert("reading_status",{
-        user_id:uid,book_id:bookId,status:newStatus,
-        updated_at:new Date().toISOString(),
-        ...(newStatus==='reading'&&!updated.startedAt?{started_at:new Date().toISOString()}:{}),
-        ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
-      },"user_id,book_id");
-    }
-  },[user?.id, checkReadingAchievements]);
-
-  const updateAoSStatus=useCallback((bookId,newStatus)=>{
-    const uid=user?.id;
-    const updated=setBookStatusLS(uid,bookId,newStatus);
-    setAosStatuses(prev=>{
-      const next={...prev,[bookId]:updated};
-      if(newStatus==='read') checkAoSReadingAchievements(next);
-      return next;
-    });
-    if(uid){
-      sb.upsert("reading_status",{
-        user_id:uid,book_id:bookId,status:newStatus,
-        updated_at:new Date().toISOString(),
-        ...(newStatus==='reading'&&!updated.startedAt?{started_at:new Date().toISOString()}:{}),
-        ...(newStatus==='read'?{completed_at:new Date().toISOString()}:{}),
-      },"user_id,book_id");
-    }
-  },[user?.id, checkAoSReadingAchievements]);
+  const [showStats,  setShowStats]  = useState(false);
+  const [showBackup, setShowBackup] = useState(false);
 
   // Onboarding — shown once on first launch, re-openable via ? button in Home
   const [showOnboarding,setShowOnboarding]=useState(false);
@@ -261,14 +108,7 @@ export default function App(){
     const p=new URLSearchParams(window.location.search);
     return p.get("state")==="spotify_auth"?"music":"home";
   });
-  const [nowPlaying,setNowPlaying]=useState(null);
-  const [musicPaused,setMusicPaused]=useState(false);
-  const musicRef=useRef(null);
   const mainRef=useRef(null);
-  const toggleMusicPause=useCallback(()=>{
-    if(musicPaused){musicRef.current?.resume();setMusicPaused(false);}
-    else{musicRef.current?.pause();setMusicPaused(true);}
-  },[musicPaused]);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
   const navLabel=(id)=>t(id==="reading"?(universe==='aos'?"nav.pathToGlory":"nav.crusade"):`nav.${id}`);
