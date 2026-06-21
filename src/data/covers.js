@@ -156,7 +156,7 @@ export const COVERS = {
   "231": "/covers/231.webp",
   "232": "/covers/232.webp",
   "233": "/covers/233.webp",
-  "234": "/covers/234.webp",
+  "234": "/covers/234.jpg",
   "235": "/covers/235.webp",
   "236": "/covers/236.webp",
   "237": "/covers/237.webp",
