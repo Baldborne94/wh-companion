@@ -953,10 +953,28 @@ export default function EpubReader({
         const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
         const x = (swipeRef.current.x - rect.left) / zoom;
         const y = (swipeRef.current.y - rect.top) / zoom;
-        const el = iframe.contentDocument.elementFromPoint(x, y);
+        const doc = iframe.contentDocument;
+        const win = iframe.contentWindow;
+        const el = doc.elementFromPoint(x, y);
+
+        // Resolve the caret under the tap up front — used as a robust fallback for
+        // lore-keyword hit-testing below. With body{zoom} on tablets, elementFromPoint
+        // can miss the narrow underlined <span> by a pixel, but caretRangeFromPoint
+        // still lands inside it (which is why word-tap/dictionary kept working when
+        // lore links felt dead).
+        let caretRange = null;
+        if (doc.caretRangeFromPoint) {
+          caretRange = doc.caretRangeFromPoint(x, y);
+        } else if (doc.caretPositionFromPoint) {
+          const p = doc.caretPositionFromPoint(x, y);
+          if (p) { caretRange = doc.createRange(); caretRange.setStart(p.offsetNode, p.offset); caretRange.collapse(true); }
+        }
+        const caretEl = caretRange?.startContainer?.nodeType === 3
+          ? caretRange.startContainer.parentElement
+          : caretRange?.startContainer;
 
         // 1. Lore keyword → show wiki/lexicanum picker
-        const kw = el?.closest?.('[data-kw]')?.getAttribute?.('data-kw')
+        const kw = (el?.closest?.('[data-kw]') ?? caretEl?.closest?.('[data-kw]'))?.getAttribute?.('data-kw')
                 ?? el?.getAttribute?.('data-kw');
         if (kw && LORE_DB[kw]) {
           setLorePick(kw);
@@ -973,17 +991,8 @@ export default function EpubReader({
         // 3. Any word → dictionary
         // Use Selection.modify to expand to word boundaries — more robust than
         // manual text-node walking which fails at inline elements or line ends.
-        const doc = iframe.contentDocument;
-        const win = iframe.contentWindow;
         const sel = win.getSelection();
         sel.removeAllRanges();
-        let caretRange = null;
-        if (doc.caretRangeFromPoint) {
-          caretRange = doc.caretRangeFromPoint(x, y);
-        } else if (doc.caretPositionFromPoint) {
-          const p = doc.caretPositionFromPoint(x, y);
-          if (p) { caretRange = doc.createRange(); caretRange.setStart(p.offsetNode, p.offset); caretRange.collapse(true); }
-        }
         if (caretRange) {
           sel.addRange(caretRange);
           if (sel.modify) {
