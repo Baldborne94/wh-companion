@@ -918,18 +918,72 @@ export default function EpubReader({
     const dx = e.changedTouches[0].clientX - swipeRef.current.x;
     const dy = e.changedTouches[0].clientY - swipeRef.current.y;
 
-    // Check if the long-press created a text selection in the iframe.
-    // This must run here because the overlay intercepts all touch events, so
-    // selectionchange listeners inside the iframe never fire on touch devices.
-    // In spread view there are two iframes — pick the one under the touch.
+    // Pick the iframe under the touch (spread view has two).
     const iframes = Array.from(containerRef.current?.querySelectorAll('iframe') ?? []);
     const tapIframe = iframes.find(f => {
       const r = f.getBoundingClientRect();
       return swipeRef.current.x >= r.left && swipeRef.current.x <= r.right &&
              swipeRef.current.y >= r.top  && swipeRef.current.y <= r.bottom;
     }) ?? iframes[0];
-    if (tapIframe?.contentDocument) {
-      const sel = tapIframe.contentDocument.defaultView?.getSelection?.();
+    const doc = tapIframe?.contentDocument;
+
+    // Map the outer touch point to the iframe's own (unzoomed) coordinate space.
+    // Rather than guessing the body{zoom} factor — which may or may not apply to the
+    // position:fixed reader depending on the browser — self-calibrate the scale from
+    // the iframe itself: its rendered width (outer CSS px) over its internal viewport
+    // width (native px). This is exact regardless of zoom/transform on any ancestor.
+    let ix = 0, iy = 0;
+    if (doc) {
+      const rect = tapIframe.getBoundingClientRect();
+      const innerW = doc.documentElement?.clientWidth || rect.width;
+      const scale = rect.width / innerW || 1;
+      ix = (swipeRef.current.x - rect.left) / scale;
+      iy = (swipeRef.current.y - rect.top)  / scale;
+    }
+
+    // Lore keyword first — a tap on an underlined term always opens the wiki picker,
+    // even if the browser auto-selected the word (which would otherwise route it to
+    // the dictionary). Hit-testing is generous: direct element, caret fallback, then
+    // the nearest .lore-kw span within a few px so the small target is easy to tap.
+    const loreKwAt = () => {
+      if (!doc) return null;
+      const el = doc.elementFromPoint(ix, iy);
+      let span = el?.closest?.('[data-kw]');
+      if (!span) {
+        let caret = null;
+        if (doc.caretRangeFromPoint) caret = doc.caretRangeFromPoint(ix, iy);
+        else if (doc.caretPositionFromPoint) {
+          const p = doc.caretPositionFromPoint(ix, iy);
+          if (p) { caret = doc.createRange(); caret.setStart(p.offsetNode, p.offset); }
+        }
+        const cEl = caret?.startContainer?.nodeType === 3
+          ? caret.startContainer.parentElement : caret?.startContainer;
+        span = cEl?.closest?.('[data-kw]');
+      }
+      if (!span) {
+        const PAD = 14;
+        let bestD = Infinity;
+        for (const s of doc.querySelectorAll('.lore-kw')) {
+          const r = s.getBoundingClientRect();
+          if (ix >= r.left - PAD && ix <= r.right + PAD && iy >= r.top - PAD && iy <= r.bottom + PAD) {
+            const d = (ix - (r.left + r.right) / 2) ** 2 + (iy - (r.top + r.bottom) / 2) ** 2;
+            if (d < bestD) { bestD = d; span = s; }
+          }
+        }
+      }
+      const kw = span?.getAttribute?.('data-kw');
+      return kw && LORE_DB[kw] ? kw : null;
+    };
+
+    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) {
+      const kw = loreKwAt();
+      if (kw) { setLorePick(kw); return; }
+    }
+
+    // Long-press text selection → dictionary. The overlay intercepts all touch events,
+    // so selectionchange inside the iframe never fires on touch devices — read it here.
+    if (doc) {
+      const sel = doc.defaultView?.getSelection?.();
       const selText = sel?.toString()?.trim() ?? "";
       const selWord = selText.replace(/[^a-zA-Z'-]/g, "");
       if (selWord.length >= 2 && selWord.length < 40) {
@@ -945,52 +999,23 @@ export default function EpubReader({
       if (tapX < EDGE)                     { prev(); return; }
       if (tapX > window.innerWidth - EDGE) { next(); return; }
 
-      const iframe = tapIframe;
-      if (iframe?.contentDocument) {
-        const rect = iframe.getBoundingClientRect();
-        // body{zoom:N} scales outer clientX/Y but the iframe's internal coordinate
-        // system is unzoomed — divide by zoom so caretRangeFromPoint hits the right word.
-        const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-        const x = (swipeRef.current.x - rect.left) / zoom;
-        const y = (swipeRef.current.y - rect.top) / zoom;
-        const doc = iframe.contentDocument;
-        const win = iframe.contentWindow;
-        const el = doc.elementFromPoint(x, y);
+      if (doc) {
+        const win = tapIframe.contentWindow;
+        const el = doc.elementFromPoint(ix, iy);
 
-        // Resolve the caret under the tap up front — used as a robust fallback for
-        // lore-keyword hit-testing below. With body{zoom} on tablets, elementFromPoint
-        // can miss the narrow underlined <span> by a pixel, but caretRangeFromPoint
-        // still lands inside it (which is why word-tap/dictionary kept working when
-        // lore links felt dead).
+        // Anchor link → let epub.js handle internal navigation or open external URL
+        const anchor = el?.closest?.('a') ?? (el?.tagName === 'A' ? el : null);
+        if (anchor) { anchor.click(); return; }
+
+        // Any word → dictionary. Selection.modify expands to word boundaries — more
+        // robust than manual text-node walking which fails at inline elements / line ends.
         let caretRange = null;
         if (doc.caretRangeFromPoint) {
-          caretRange = doc.caretRangeFromPoint(x, y);
+          caretRange = doc.caretRangeFromPoint(ix, iy);
         } else if (doc.caretPositionFromPoint) {
-          const p = doc.caretPositionFromPoint(x, y);
+          const p = doc.caretPositionFromPoint(ix, iy);
           if (p) { caretRange = doc.createRange(); caretRange.setStart(p.offsetNode, p.offset); caretRange.collapse(true); }
         }
-        const caretEl = caretRange?.startContainer?.nodeType === 3
-          ? caretRange.startContainer.parentElement
-          : caretRange?.startContainer;
-
-        // 1. Lore keyword → show wiki/lexicanum picker
-        const kw = (el?.closest?.('[data-kw]') ?? caretEl?.closest?.('[data-kw]'))?.getAttribute?.('data-kw')
-                ?? el?.getAttribute?.('data-kw');
-        if (kw && LORE_DB[kw]) {
-          setLorePick(kw);
-          return;
-        }
-
-        // 2. Anchor link → let epub.js handle internal navigation or open external URL
-        const anchor = el?.closest?.('a') ?? (el?.tagName === 'A' ? el : null);
-        if (anchor) {
-          anchor.click();
-          return;
-        }
-
-        // 3. Any word → dictionary
-        // Use Selection.modify to expand to word boundaries — more robust than
-        // manual text-node walking which fails at inline elements or line ends.
         const sel = win.getSelection();
         sel.removeAllRanges();
         if (caretRange) {
@@ -1003,11 +1028,11 @@ export default function EpubReader({
             const off  = caretRange.startOffset;
             if (node?.nodeType === 3) {
               const txt = node.textContent;
-              let s = off, e = off;
+              let s = off, en = off;
               while (s > 0 && /[a-zA-Z'-]/.test(txt[s - 1])) s--;
-              while (e < txt.length && /[a-zA-Z'-]/.test(txt[e])) e++;
+              while (en < txt.length && /[a-zA-Z'-]/.test(txt[en])) en++;
               caretRange.setStart(node, s);
-              caretRange.setEnd(node, e);
+              caretRange.setEnd(node, en);
               sel.removeAllRanges();
               sel.addRange(caretRange);
             }
