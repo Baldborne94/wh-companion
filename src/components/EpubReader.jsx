@@ -48,14 +48,30 @@ async function loadBmsFromDB(userId, bookId) {
   } catch { return []; }
 }
 
-async function saveBmsToDB(userId, bookId, bms) {
-  if (!userId || !bookId) return;
+// Per-bookmark DB ops — never a delete-all, so saving on one device does NOT wipe
+// the bookmarks another device added. Add = delete-this-cfi-then-insert (idempotent
+// even without a unique constraint); remove = delete-this-cfi only.
+async function putBmToDB(userId, bookId, bm) {
+  if (!userId || !bookId || !bm?.cfi) return;
   try {
-    await supabase.from("bookmarks").delete().eq("user_id", userId).eq("book_id", bookId);
-    if (bms.length) await supabase.from("bookmarks").insert(
-      bms.map(b => ({ user_id:userId, book_id:bookId, epub_cfi:b.cfi, label:b.label, progress:b.pct|0 }))
-    );
+    await supabase.from("bookmarks").delete()
+      .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", bm.cfi);
+    await supabase.from("bookmarks").insert({
+      user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0,
+    });
   } catch {}
+}
+
+async function deleteBmFromDB(userId, bookId, cfi) {
+  if (!userId || !bookId || !cfi) return;
+  try {
+    await supabase.from("bookmarks").delete()
+      .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", cfi);
+  } catch {}
+}
+
+async function putBmsToDB(userId, bookId, bms) {
+  for (const b of bms) await putBmToDB(userId, bookId, b);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -441,13 +457,26 @@ export default function EpubReader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
 
-  // Pre-load bookmarks from DB if nothing in localStorage (new device)
+  // Reconcile bookmarks with the DB on every open (not just on a fresh device) so
+  // bookmarks added on another device show up here. Merge = union by cfi of local +
+  // DB; then push any local-only bookmarks up so the DB holds the union too.
   useEffect(() => {
-    if (!userId || !bookId || localStorage.getItem(bmKey)) return;
-    loadBmsFromDB(userId, bookId).then(bms => {
-      if (!bms.length) return;
-      setBookmarks(bms);
-      localStorage.setItem(bmKey, JSON.stringify(bms));
+    if (!userId || !bookId) return;
+    loadBmsFromDB(userId, bookId).then(dbBms => {
+      setBookmarks(prev => {
+        const byCfi = new Map();
+        for (const b of [...prev, ...dbBms]) {
+          if (b?.cfi && !byCfi.has(b.cfi)) byCfi.set(b.cfi, b);
+        }
+        const merged = [...byCfi.values()]
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+          .slice(0, 20);
+        localStorage.setItem(bmKey, JSON.stringify(merged));
+        const dbCfis = new Set(dbBms.map(b => b.cfi));
+        const localOnly = merged.filter(b => !dbCfis.has(b.cfi));
+        if (localOnly.length) putBmsToDB(userId, bookId, localOnly);
+        return merged;
+      });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
@@ -467,7 +496,6 @@ export default function EpubReader({
   themeRef.current   = T;
   const settingsRef  = useRef(settings);
   settingsRef.current = settings;
-  const swipeRef     = useRef({ x:0, y:0, active:false });
   // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
   // In paginated mode the lock releases on `relocated` (page turn done).
   // In scroll/continuous mode `relocated` fires on every scroll-position change
@@ -707,13 +735,42 @@ export default function EpubReader({
           });
 
           doc.addEventListener("click", (e) => {
-            const kw = e.target?.getAttribute?.("data-kw");
+            const kw = e.target?.closest?.("[data-kw]")?.getAttribute?.("data-kw");
             if (kw && LORE_DB[kw]) {
               e.preventDefault();
               e.stopPropagation();
               setLorePick(kw);
             }
           });
+
+          // Touch navigation lives here (not on an outer overlay) so taps hit the
+          // iframe natively — the click listener above handles lore/anchors with the
+          // browser's own hit-testing, immune to body{zoom}. This only adds swipe and
+          // edge-tap page-turning for paginated mode.
+          let _tsx = 0, _tsy = 0;
+          doc.addEventListener("touchstart", (ev) => {
+            const tp = ev.touches?.[0];
+            if (tp) { _tsx = tp.clientX; _tsy = tp.clientY; }
+          }, { passive: true });
+          doc.addEventListener("touchend", (ev) => {
+            if (!settingsRef.current.paginate) return;   // scroll mode turns pages by scrolling
+            const tp = ev.changedTouches?.[0];
+            if (!tp) return;
+            const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
+            // Horizontal swipe → page turn
+            if (Math.abs(dx) > 50 && Math.abs(dy) < Math.abs(dx) * 0.7) {
+              if (dx < 0) navFnsRef.current.next(); else navFnsRef.current.prev();
+              return;
+            }
+            // Edge tap → page turn, but never hijack taps on lore terms / links / text
+            if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
+              if (ev.target?.closest?.("[data-kw], a")) return;
+              const w = contents.window.innerWidth || doc.documentElement.clientWidth || 0;
+              const EDGE = 70;
+              if (tp.clientX < EDGE) navFnsRef.current.prev();
+              else if (tp.clientX > w - EDGE) navFnsRef.current.next();
+            }
+          }, { passive: true });
 
           // mouseup: instant dictionary on desktop/phone
           doc.addEventListener("mouseup", () => {
@@ -906,149 +963,12 @@ export default function EpubReader({
   const next = useCallback(() => nav(1),  [nav]);
   const prev = useCallback(() => { if (!atStartRef.current) nav(-1); }, [nav]);
 
-  // Swipe handler attached to the transparent overlay div in JSX (not the epub iframe container)
-  const onSwipeStart = useCallback((e) => {
-    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: true };
-    revealUI();
-  }, [revealUI]);
-
-  const onSwipeEnd = useCallback((e) => {
-    if (!swipeRef.current.active) return;
-    swipeRef.current.active = false;
-    const dx = e.changedTouches[0].clientX - swipeRef.current.x;
-    const dy = e.changedTouches[0].clientY - swipeRef.current.y;
-
-    // Pick the iframe under the touch (spread view has two).
-    const iframes = Array.from(containerRef.current?.querySelectorAll('iframe') ?? []);
-    const tapIframe = iframes.find(f => {
-      const r = f.getBoundingClientRect();
-      return swipeRef.current.x >= r.left && swipeRef.current.x <= r.right &&
-             swipeRef.current.y >= r.top  && swipeRef.current.y <= r.bottom;
-    }) ?? iframes[0];
-    const doc = tapIframe?.contentDocument;
-
-    // Map the outer touch point to the iframe's own (unzoomed) coordinate space.
-    // Rather than guessing the body{zoom} factor — which may or may not apply to the
-    // position:fixed reader depending on the browser — self-calibrate the scale from
-    // the iframe itself: its rendered width (outer CSS px) over its internal viewport
-    // width (native px). This is exact regardless of zoom/transform on any ancestor.
-    let ix = 0, iy = 0;
-    if (doc) {
-      const rect = tapIframe.getBoundingClientRect();
-      const innerW = doc.documentElement?.clientWidth || rect.width;
-      const scale = rect.width / innerW || 1;
-      ix = (swipeRef.current.x - rect.left) / scale;
-      iy = (swipeRef.current.y - rect.top)  / scale;
-    }
-
-    // Lore keyword first — a tap on an underlined term always opens the wiki picker,
-    // even if the browser auto-selected the word (which would otherwise route it to
-    // the dictionary). Hit-testing is generous: direct element, caret fallback, then
-    // the nearest .lore-kw span within a few px so the small target is easy to tap.
-    const loreKwAt = () => {
-      if (!doc) return null;
-      const el = doc.elementFromPoint(ix, iy);
-      let span = el?.closest?.('[data-kw]');
-      if (!span) {
-        let caret = null;
-        if (doc.caretRangeFromPoint) caret = doc.caretRangeFromPoint(ix, iy);
-        else if (doc.caretPositionFromPoint) {
-          const p = doc.caretPositionFromPoint(ix, iy);
-          if (p) { caret = doc.createRange(); caret.setStart(p.offsetNode, p.offset); }
-        }
-        const cEl = caret?.startContainer?.nodeType === 3
-          ? caret.startContainer.parentElement : caret?.startContainer;
-        span = cEl?.closest?.('[data-kw]');
-      }
-      if (!span) {
-        const PAD = 14;
-        let bestD = Infinity;
-        for (const s of doc.querySelectorAll('.lore-kw')) {
-          const r = s.getBoundingClientRect();
-          if (ix >= r.left - PAD && ix <= r.right + PAD && iy >= r.top - PAD && iy <= r.bottom + PAD) {
-            const d = (ix - (r.left + r.right) / 2) ** 2 + (iy - (r.top + r.bottom) / 2) ** 2;
-            if (d < bestD) { bestD = d; span = s; }
-          }
-        }
-      }
-      const kw = span?.getAttribute?.('data-kw');
-      return kw && LORE_DB[kw] ? kw : null;
-    };
-
-    if (Math.abs(dx) < 14 && Math.abs(dy) < 14) {
-      const kw = loreKwAt();
-      if (kw) { setLorePick(kw); return; }
-    }
-
-    // Long-press text selection → dictionary. The overlay intercepts all touch events,
-    // so selectionchange inside the iframe never fires on touch devices — read it here.
-    if (doc) {
-      const sel = doc.defaultView?.getSelection?.();
-      const selText = sel?.toString()?.trim() ?? "";
-      const selWord = selText.replace(/[^a-zA-Z'-]/g, "");
-      if (selWord.length >= 2 && selWord.length < 40) {
-        setDictWord(selWord);
-        return;
-      }
-    }
-
-    // Pure tap — edge zones navigate, centre forwards to epub iframe content.
-    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-      const EDGE = 70;
-      const tapX = swipeRef.current.x;
-      if (tapX < EDGE)                     { prev(); return; }
-      if (tapX > window.innerWidth - EDGE) { next(); return; }
-
-      if (doc) {
-        const win = tapIframe.contentWindow;
-        const el = doc.elementFromPoint(ix, iy);
-
-        // Anchor link → let epub.js handle internal navigation or open external URL
-        const anchor = el?.closest?.('a') ?? (el?.tagName === 'A' ? el : null);
-        if (anchor) { anchor.click(); return; }
-
-        // Any word → dictionary. Selection.modify expands to word boundaries — more
-        // robust than manual text-node walking which fails at inline elements / line ends.
-        let caretRange = null;
-        if (doc.caretRangeFromPoint) {
-          caretRange = doc.caretRangeFromPoint(ix, iy);
-        } else if (doc.caretPositionFromPoint) {
-          const p = doc.caretPositionFromPoint(ix, iy);
-          if (p) { caretRange = doc.createRange(); caretRange.setStart(p.offsetNode, p.offset); caretRange.collapse(true); }
-        }
-        const sel = win.getSelection();
-        sel.removeAllRanges();
-        if (caretRange) {
-          sel.addRange(caretRange);
-          if (sel.modify) {
-            sel.modify('move', 'backward', 'word');
-            sel.modify('extend', 'forward', 'word');
-          } else {
-            const node = caretRange.startContainer;
-            const off  = caretRange.startOffset;
-            if (node?.nodeType === 3) {
-              const txt = node.textContent;
-              let s = off, en = off;
-              while (s > 0 && /[a-zA-Z'-]/.test(txt[s - 1])) s--;
-              while (en < txt.length && /[a-zA-Z'-]/.test(txt[en])) en++;
-              caretRange.setStart(node, s);
-              caretRange.setEnd(node, en);
-              sel.removeAllRanges();
-              sel.addRange(caretRange);
-            }
-          }
-          const word = sel.toString().trim().replace(/[^a-zA-Z'-]/g, '');
-          sel.removeAllRanges();
-          if (word.length >= 2 && word.length < 40) setDictWord(word);
-        }
-      }
-      return;
-    }
-
-    // Ignore if too short or more vertical than horizontal
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx) * 0.7) return;
-    if (dx < 0) next(); else prev();
-  }, [next, prev]);
+  // Touch navigation runs inside each chapter iframe (see content hook) so lore taps,
+  // anchors and word selection are hit-tested natively by the browser — no overlay,
+  // no outer→iframe coordinate translation that the body{zoom} factor kept breaking.
+  // Expose the latest next/prev to that hook via a ref to avoid stale closures.
+  const navFnsRef = useRef({ next: () => {}, prev: () => {} });
+  navFnsRef.current = { next, prev };
 
   // ── Keyboard ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1078,14 +998,15 @@ export default function EpubReader({
       let next;
       if (exists) {
         next = prev.filter(b => b.cfi !== cfi);
+        deleteBmFromDB(userId, bookId, cfi);
       } else {
         const bm = { cfi, label: chLabel || "—", pct: progress, createdAt: new Date().toISOString() };
         next = [bm, ...prev].slice(0, 20);
+        putBmToDB(userId, bookId, bm);
         setBmFlash(true);
         setTimeout(() => setBmFlash(false), 1000);
       }
       localStorage.setItem(bmKey, JSON.stringify(next));
-      saveBmsToDB(userId, bookId, next);
       return next;
     });
   }, [chLabel, progress, bmKey, userId, bookId]);
@@ -1100,7 +1021,7 @@ export default function EpubReader({
     setBookmarks(prev => {
       const next = prev.filter(b => b.cfi !== cfi);
       localStorage.setItem(bmKey, JSON.stringify(next));
-      saveBmsToDB(userId, bookId, next);
+      deleteBmFromDB(userId, bookId, cfi);
       return next;
     });
   }, [bmKey, userId, bookId]);
@@ -1156,15 +1077,6 @@ export default function EpubReader({
         transition: navFade ? "none" : "opacity 0.18s ease",
       }} />
 
-      {/* Swipe overlay — paginated mode only; disabled in scrolled mode so iframe receives scroll touches */}
-      {isTouch.current && (
-        <div
-          onTouchStart={onSwipeStart}
-          onTouchEnd={onSwipeEnd}
-          style={{ position:"absolute", top:54, bottom:0, left:0, right:0, zIndex:10,
-                   pointerEvents: (!settings.paginate || showSettings || showToc || showBmPanel || dictWord) ? "none" : "auto" }}
-        />
-      )}
 
       {/* Bookmark saved flash */}
       {bmFlash && (
