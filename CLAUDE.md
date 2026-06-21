@@ -290,6 +290,10 @@ git push -u origin claude/wizardly-fermat-q790e
 | #229 | My Shelf loads offline (builds shelf from localStorage + IndexedDB); cached PDFs open as PDF not EPUB |
 | #230 | AoS Reading Order guide added to Path to Glory |
 | #231–#233 | AoS guide refinement: Getting Started reframed as newcomer wizard; Reading Order simplified to a single chronological spine (no Essential/Full toggle — AoS has no Horus-Heresy-style mega-arc to isolate); all AoS text translated to English |
+| #259–#260 | EN/IT i18n system (`lib/i18n.jsx` + per-namespace `data/i18n/ns/*`); header toggle; full-app localization of every section |
+| #261 | Localize achievements (names/descriptions via `localizeAchievement`), AoS era headers, and date formatting (lang-aware `locale`) |
+| #262 | EN/IT toggle on the login page (pre-auth) |
+| #270 | Localize reading-guide prose (Horus Heresy + AoS notes, part labels, AoS main-story-arc); part titles kept as IP proper nouns |
 
 ### Offline Reading (key files)
 
@@ -325,5 +329,16 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 - **Fonts**: `'Cinzel Decorative'` for titles, `'Cinzel'` for labels/buttons — imported from Google Fonts in LoginPage.jsx CSS.
 - **No comments in code** unless the WHY is non-obvious.
 - **No external UI libraries** — all styles are inline JSX objects.
-- **Language**: All user-facing text and UI labels in English (standardised June 2026). Code comments in English. A future enhancement may add an EN/IT language toggle; until then, write new strings in English.
+- **Language / i18n**: The app is fully **bilingual EN/IT** via a lightweight in-house i18n system (no external library). Default `en`, persisted to `localStorage` (`wh_language`). English is the source of truth and the fallback for any missing IT key. Warhammer IP proper nouns (book/author/series/faction/realm names, lore terms) and brand names (YouTube, Spotify, EPUB, PDF, Citadel, Black Library) are intentionally left untranslated. **When adding any new user-facing string, add it to both `en` and `it`** in the relevant namespace module and render it through `t()`. See "Internationalization (i18n)" below.
 - **Merge method**: Always squash.
+
+## Internationalization (i18n)
+
+- **`lib/i18n.jsx`** — `LanguageProvider` (wraps `<App/>` in `main.jsx`) + `useLang()` hook returning `{ lang, setLang, toggle, t, locale }`.
+  - `t("namespace.key")` resolves a dot-path against the active language, falls back to English, then to the key string itself.
+  - `locale` is `it-IT` / `en-US` — use it for `toLocaleDateString` so dates follow the language.
+  - `partLabel(label, t)` helper localizes reading-guide labels ("Part 1" → "Parte 1").
+- **`data/i18n/translations.js`** — merges per-namespace modules from `data/i18n/ns/*` (`core`, `home`, `library`, `reading`, `aos`, `lore`, `music`, `painting`, `stats`, `backup`, `reader`, `login`). Each module exports `{ en: { <ns>: {...} }, it: { <ns>: {...} } }`. Keep en/it key structure identical.
+- **Toggle UI**: EN/IT button in the post-auth header (`App.jsx`) **and** on the login page (`LoginPage.jsx`) so first-run users can switch before signing in.
+- **Dynamic content**: achievement names/descriptions live in `lib/achievements.js` (English) with `localizeAchievement(ach, t)` resolving translations from the `stats.ach.*` keys; the popup flavor/opener pools live in the `stats` namespace.
+- **Gotcha**: a sub-component that calls `t()` needs its own `useLang()` (or must close over a parent's) — esbuild does **not** catch a `t` that is undefined at runtime. After i18n edits, grep that every component using `t()` has `useLang()` in scope.
