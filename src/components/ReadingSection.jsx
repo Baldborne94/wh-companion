@@ -6,7 +6,7 @@ import { BOOKS } from "../data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "../data/hhGuide";
 import CoverImage from "./CoverImage";
 import { getNextSuggestion } from "../lib/readingHelpers";
-import { useLang } from "../lib/i18n.jsx";
+import { useLang, partLabel } from "../lib/i18n.jsx";
 
 function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
   const { t } = useLang();
@@ -44,6 +44,7 @@ function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
 
 function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }) {
   const { t } = useLang();
+  const gNote = (key, fb) => { const v = t(key); return v === key ? fb : v; };
   const [open, setOpen] = useState(new Set([hhMode === 'essential' ? 'm1' : 'p0']));
   const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
@@ -66,7 +67,7 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
         <button type="button" onClick={() => toggle(part.id)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: "transparent", border: "none" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: dimmed ? C.muted : C.goldDim, letterSpacing: 2, flexShrink: 0 }}>{part.label}</span>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: dimmed ? C.muted : C.goldDim, letterSpacing: 2, flexShrink: 0 }}>{partLabel(part.label, t)}</span>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: dimmed ? C.muted : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{part.title}</span>
             </div>
             <div style={{ fontSize: 10, color: C.muted }}>
@@ -82,13 +83,13 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
         </button>
         {isOpen && (
           <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 14px 12px" }}>
-            {part.note && <div style={{ fontSize: 11, color: C.gold, fontStyle: "italic", marginBottom: 10, padding: "6px 10px", background: `${C.gold}0a`, borderRadius: 6, borderLeft: `2px solid ${C.gold}44` }}>{part.note}</div>}
+            {part.note && <div style={{ fontSize: 11, color: C.gold, fontStyle: "italic", marginBottom: 10, padding: "6px 10px", background: `${C.gold}0a`, borderRadius: 6, borderLeft: `2px solid ${C.gold}44` }}>{gNote(`reading.guideNotes.${part.id}`, part.note)}</div>}
             {part.pickOne ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {part.options.map((opt, oi) => (
                   <div key={oi} style={{ background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${opt.color || C.gold}`, borderRadius: 8, padding: "8px 10px" }}>
                     <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: opt.color || C.gold, letterSpacing: 2, marginBottom: opt.note ? 4 : 6 }}>{opt.label.toUpperCase()}</div>
-                    {opt.note && <div style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginBottom: 6 }}>💡 {opt.note}</div>}
+                    {opt.note && <div style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginBottom: 6 }}>💡 {gNote(`reading.guideNotes.${part.id}_opt${oi}`, opt.note)}</div>}
                     {opt.books.map((e, i) => <HHBookRow key={i} entry={e} statuses={statuses} isLast={i === opt.books.length - 1} readShorts={readShorts} toggleShort={toggleShort} />)}
                   </div>
                 ))}

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
-import { useLang } from "../lib/i18n.jsx";
+import { useLang, partLabel } from "../lib/i18n.jsx";
 import { sb } from "../lib/sb";
 import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
@@ -1314,12 +1314,12 @@ function AoSGetStartedSection({ statuses }) {
       <div style={{ padding:"10px 16px 16px", display:"flex", flexDirection:"column", gap:6 }}>
         {AOS_STARTER_GUIDE.map(step => <StepCard key={step.id} step={step}/>)}
         <div style={{ marginTop:8, padding:"10px 12px", background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:8, fontSize:10, color:AOS.muted, lineHeight:1.6, textAlign:"center" }}>
-          Guide based on recommendations by{' '}
-          <a href="https://www.trackofwords.com/tag/where-to-start-with-black-library/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline" }}>Track of Words</a>
+          {t("aos.guide.basedOn")}
+          <a href="https://www.trackofwords.com/tag/where-to-start-with-black-library/" target="_blank" rel="noopener noreferrer" style={{ color:AOS.blue, textDecoration:"underline" }}>{t("aos.guide.trackOfWords")}</a>
         </div>
         <div style={{ marginTop:16, borderTop:`1px solid ${AOS.border}`, paddingTop:14 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:4 }}>📖 Main Story Arc</div>
-          <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>The chronological backbone of the Mortal Realms — from Sigmar's dawn to the Dawnbringers.</div>
+          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:4 }}>{t("aos.guide.mainArcTitle")}</div>
+          <div style={{ fontSize:11, color:AOS.muted, marginBottom:10 }}>{t("aos.guide.mainArcSub")}</div>
           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
             {AOS_ESSENTIAL.map(part => (
               <AoSPartCard key={part.id} part={part} isOpen={arcOpen.has(part.id)} onToggle={() => toggleArc(part.id)} statuses={statuses}/>
@@ -1332,6 +1332,8 @@ function AoSGetStartedSection({ statuses }) {
 }
 
 function AoSPartCard({ part, isOpen, onToggle, statuses }) {
+  const { t } = useLang();
+  const gNote = (key, fb) => { const v = t(key); return v === key ? fb : v; };
   const mainBooks = part.books || [];
   const novelEntries = mainBooks.filter(b => !b.type || b.type === 'novel' || b.type === 'novella');
   const extraEntries = mainBooks.filter(b => b.type === 'short' || b.type === 'audio' || b.type === 'anthology');
@@ -1343,20 +1345,20 @@ function AoSPartCard({ part, isOpen, onToggle, statuses }) {
       <button type="button" onClick={onToggle} style={{ padding:"11px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", background:"transparent", border:"none" }}>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:3 }}>
-            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{part.label}</span>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, flexShrink:0 }}>{partLabel(part.label, t)}</span>
             <span style={{ fontFamily:"'Cinzel',serif", fontSize:13, color:AOS.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{part.title}</span>
           </div>
           <div style={{ fontSize:10, color:AOS.muted }}>
-            {novelEntries.length > 0 && `${novelEntries.length} novel${novelEntries.length!==1?"s":""}`}
-            {extraEntries.length > 0 && ` + ${extraEntries.length} more`}
-            {novelMatched.length > 0 && readCount > 0 && <span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{novelMatched.length} read</span>}
+            {novelEntries.length > 0 && `${novelEntries.length} ${novelEntries.length!==1?t("aos.guide.novelMany"):t("aos.guide.novelOne")}`}
+            {extraEntries.length > 0 && ` + ${extraEntries.length} ${t("aos.guide.more")}`}
+            {novelMatched.length > 0 && readCount > 0 && <span style={{ color:allRead?AOS.green:AOS.blue, marginLeft:6 }}>{allRead?"✅":""}{readCount}/{novelMatched.length} {t("aos.guide.read")}</span>}
           </div>
         </div>
         <span style={{ color:AOS.goldDim, fontSize:16, flexShrink:0, transition:"transform 0.2s", transform:isOpen?"rotate(90deg)":"none" }}>›</span>
       </button>
       {isOpen && (
         <div style={{ borderTop:`1px solid ${AOS.border}`, padding:"10px 14px 12px" }}>
-          {part.note && <div style={{ fontSize:11, color:AOS.gold, fontStyle:"italic", marginBottom:10, padding:"6px 10px", background:`${AOS.gold}0a`, borderRadius:6, borderLeft:`2px solid ${AOS.gold}44` }}>{part.note}</div>}
+          {part.note && <div style={{ fontSize:11, color:AOS.gold, fontStyle:"italic", marginBottom:10, padding:"6px 10px", background:`${AOS.gold}0a`, borderRadius:6, borderLeft:`2px solid ${AOS.gold}44` }}>{gNote(`aos.guide.notes.${part.id}`, part.note)}</div>}
           {mainBooks.map((entry, i) => <AoSBookRow key={i} entry={entry} statuses={statuses} isLast={i===mainBooks.length-1}/>)}
         </div>
       )}
