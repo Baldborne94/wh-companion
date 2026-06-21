@@ -219,7 +219,7 @@ const BRANDS = ["Citadel", "AK Interactive", "Army Painter"];
 // ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
 const FACTIONS_40K = {
-  "Space Marines":        ["Intercessors","Hellblasters","Aggressors","Terminators","Assault Marines","Devastators","Chaplain","Librarian","Captain","Ancient","Redemptor Dreadnought"],
+  "Space Marines":        ["Intercessors","Hellblasters","Aggressors","Terminators","Assault Marines","Devastators","Chaplain","Librarian","Captain","Ancient","Redemptor Dreadnought","Vanguard Veterans","Eradicators","Land Speeder"],
   "Blood Angels":         ["Death Company","Sanguinary Guard","Sanguinary Priest","Mephiston","Dante","Lemartes"],
   "Dark Angels":          ["Deathwing Terminators","Ravenwing Black Knights","Interrogator-Chaplain","Azrael","Belial"],
   "Space Wolves":         ["Blood Claws","Grey Hunters","Long Fangs","Wolf Guard","Thunderwolf Cavalry","Bjorn"],
@@ -237,7 +237,7 @@ const FACTIONS_40K = {
   "Grey Knights":         ["Strike Squad","Terminators","Nemesis Dreadknight","Grand Master"],
   "Necrons":              ["Necron Warriors","Immortals","Lychguard","Triarch Praetorians","Overlord","C'tan"],
   "Tyranids":             ["Hormagaunts","Termagants","Genestealers","Warriors","Hive Tyrant","Carnifex","Trygon"],
-  "Orks":                 ["Boyz","Nobz","Mega Nobz","Warboss","Deff Dread","Gretchin","Flash Gitz"],
+  "Orks":                 ["Boyz","Nobz","Mega Nobz","Warboss","Deff Dread","Gretchin","Flash Gitz","Bannernob","Bigboss","Painboy","Weirdboy","Wartrakk","Big Mek Dakkarig"],
   "T'au Empire":          ["Fire Warriors","Pathfinders","Crisis Battlesuit","Riptide","Commander","Ghostkeel"],
   "Aeldari":              ["Guardians","Dire Avengers","Howling Banshees","Wraithguard","Avatar of Khaine","Farseer"],
   "Drukhari":             ["Kabalite Warriors","Wyches","Incubi","Grotesques","Archon"],
