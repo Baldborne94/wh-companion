@@ -747,17 +747,47 @@ export default function EpubReader({
           // iframe natively — the click listener above handles lore/anchors with the
           // browser's own hit-testing, immune to body{zoom}. This only adds swipe and
           // edge-tap page-turning for paginated mode.
+          // A horizontal drag peels the live page in 3D following the finger (curl);
+          // a quick flick or edge-tap still triggers the auto-fold via nav(). We only
+          // commit to a curl once the gesture is clearly horizontal, so vertical
+          // intent (text selection / native menu) is left alone.
           let _tsx = 0, _tsy = 0;
+          let _curlActive = false, _curlDir = 0, _decided = false, _w = 0;
           doc.addEventListener("touchstart", (ev) => {
             const tp = ev.touches?.[0];
-            if (tp) { _tsx = tp.clientX; _tsy = tp.clientY; }
+            if (!tp) return;
+            _tsx = tp.clientX; _tsy = tp.clientY;
+            _curlActive = false; _curlDir = 0; _decided = false;
+            _w = contents.window.innerWidth || doc.documentElement.clientWidth || 0;
+          }, { passive: true });
+          doc.addEventListener("touchmove", (ev) => {
+            if (!settingsRef.current.paginate) return;
+            const tp = ev.touches?.[0];
+            if (!tp) return;
+            const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
+            if (!_decided) {
+              if (Math.abs(dx) < 14 || Math.abs(dx) <= Math.abs(dy)) return;  // wait for clear horizontal intent
+              _decided = true;
+              if (ev.target?.closest?.("[data-kw], a")) return;              // don't grab a page off a link/lore term
+              _curlDir = dx < 0 ? 1 : -1;                                    // drag left → next, right → prev
+              _curlActive = curlApiRef.current.begin(_curlDir);             // false at chapter boundary → falls back to swipe
+            }
+            if (_curlActive) {
+              const dist = _curlDir > 0 ? (_tsx - tp.clientX) : (tp.clientX - _tsx);
+              curlApiRef.current.move(dist / (_w || 1));
+            }
           }, { passive: true });
           doc.addEventListener("touchend", (ev) => {
             if (!settingsRef.current.paginate) return;   // scroll mode turns pages by scrolling
             const tp = ev.changedTouches?.[0];
+            if (_curlActive && tp) {
+              const dist = _curlDir > 0 ? (_tsx - tp.clientX) : (tp.clientX - _tsx);
+              curlApiRef.current.end(Math.max(0, dist) / (_w || 1));
+              return;
+            }
             if (!tp) return;
             const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
-            // Horizontal swipe → page turn
+            // Quick horizontal flick → page turn (auto-fold)
             if (Math.abs(dx) > 50 && Math.abs(dy) < Math.abs(dx) * 0.7) {
               if (dx < 0) navFnsRef.current.next(); else navFnsRef.current.prev();
               return;
@@ -1003,6 +1033,79 @@ export default function EpubReader({
       }, 60);
     }, DUR + 10);
   }, []);
+
+  // ── Draggable page curl (finger-tracked) ───────────────────────────────────
+  // Same live-iframe 3D trick as runFoldTurn, but the rotation follows the finger:
+  //   begin() arms the turn (only within a chapter), move(p) rotates 0→±88° as you
+  //   drag, end(p) either completes the turn (swap content at the hidden edge-on
+  //   point) past the threshold, or springs the page back flat if you let go early.
+  const curlStateRef = useRef(null);
+  const beginCurl = useCallback((dir) => {
+    if (navLockRef.current || foldingRef.current) return false;
+    const sc = containerRef.current?.querySelector('.epub-container');
+    const iframe = sc?.querySelector('iframe') || containerRef.current?.querySelector('iframe');
+    if (!sc || !iframe) return false;
+    const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
+    const withinChapter = dir > 0
+      ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
+      : sc.scrollLeft > 1;
+    if (!withinChapter) return false;       // boundaries fall back to swipe/tap → nav()
+    foldingRef.current = true;
+    sc.style.scrollBehavior = 'auto';
+    const parent = iframe.parentElement;
+    curlStateRef.current = { dir, sc, iframe, parent, prevPerspective: parent.style.perspective };
+    parent.style.perspective = "1800px";
+    iframe.style.transformOrigin = "0% 50%";
+    iframe.style.backfaceVisibility = "hidden";
+    iframe.style.willChange = "transform";
+    iframe.style.transition = "none";
+    return true;
+  }, []);
+
+  const moveCurl = useCallback((progress) => {
+    const st = curlStateRef.current;
+    if (!st) return;
+    const p = Math.max(0, Math.min(1, progress));
+    st.iframe.style.transform = `rotateY(${(st.dir > 0 ? -1 : 1) * p * 88}deg)`;
+  }, []);
+
+  const endCurl = useCallback((progress) => {
+    const st = curlStateRef.current;
+    if (!st) return;
+    const { dir, iframe, parent, prevPerspective } = st;
+    const cleanup = () => {
+      iframe.style.transition = "none";
+      iframe.style.transform = "";
+      iframe.style.transformOrigin = "";
+      iframe.style.backfaceVisibility = "";
+      iframe.style.willChange = "";
+      parent.style.perspective = prevPerspective;
+      curlStateRef.current = null;
+      foldingRef.current = false;
+    };
+    if (progress <= 0.32) {                  // not far enough — spring back flat
+      iframe.style.transition = "transform 180ms cubic-bezier(.2,0,.2,1)";
+      iframe.style.transform = "rotateY(0deg)";
+      setTimeout(cleanup, 200);
+      return;
+    }
+    const DUR = 170;
+    iframe.style.transition = `transform ${DUR}ms cubic-bezier(.4,0,.7,1)`;
+    iframe.style.transform = `rotateY(${dir > 0 ? -88 : 88}deg)`;
+    setTimeout(() => {
+      iframe.style.transition = "none";
+      iframe.style.transform = `rotateY(${dir > 0 ? 88 : -88}deg)`;
+      if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
+      setTimeout(() => {
+        iframe.style.transition = `transform ${DUR}ms cubic-bezier(.3,0,.6,1)`;
+        iframe.style.transform = "rotateY(0deg)";
+        setTimeout(cleanup, DUR + 30);
+      }, 60);
+    }, DUR + 10);
+  }, []);
+
+  const curlApiRef = useRef({ begin: () => false, move: () => {}, end: () => {} });
+  curlApiRef.current = { begin: beginCurl, move: moveCurl, end: endCurl };
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const nav = useCallback((dir) => {
