@@ -954,31 +954,81 @@ export default function EpubReader({
   }, []);
 
 
+  // ── Page-fold animation (prototype) ───────────────────────────────────────
+  // True book-like page turn for paginated mode, with NO snapshot/library: the
+  // current page and the next page are both already rendered side-by-side inside
+  // one wide epub.js iframe (CSS columns clipped by .epub-container scrollLeft).
+  // We rotate the LIVE iframe in 3D around its left edge (the spine):
+  //   phase 1 — current page rotates away to edge-on (≈invisible);
+  //   at that hidden mid-point we advance epub.js underneath;
+  //   phase 2 — the next page drops from edge-on back to flat.
+  // Both phases show real content. Gated to in-chapter turns — chapter boundaries
+  // swap the iframe element, so those stay instant.
+  const foldingRef = useRef(false);
+  const runFoldTurn = useCallback((dir, sc, iframe) => {
+    foldingRef.current = true;
+    const DUR = 260;
+    const parent = iframe.parentElement;
+    const prevPerspective = parent.style.perspective;
+    parent.style.perspective = "1800px";
+    iframe.style.transformOrigin = "0% 50%";
+    iframe.style.backfaceVisibility = "hidden";
+    iframe.style.willChange = "transform";
+
+    const cleanup = () => {
+      iframe.style.transition = "none";
+      iframe.style.transform = "";
+      iframe.style.transformOrigin = "";
+      iframe.style.backfaceVisibility = "";
+      iframe.style.willChange = "";
+      parent.style.perspective = prevPerspective;
+      foldingRef.current = false;
+    };
+
+    // phase 1 — lift current page away (edge-on)
+    iframe.style.transition = `transform ${DUR}ms cubic-bezier(.4,0,.7,1)`;
+    iframe.style.transform = `rotateY(${dir > 0 ? -88 : 88}deg)`;
+
+    setTimeout(() => {
+      // swap underneath while the page is edge-on (hidden), pre-tilt the incoming
+      // page to the opposite edge, then drop it flat in phase 2.
+      iframe.style.transition = "none";
+      iframe.style.transform = `rotateY(${dir > 0 ? 88 : -88}deg)`;
+      if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
+      // let next()/prev() apply the scroll before unfolding
+      setTimeout(() => {
+        iframe.style.transition = `transform ${DUR}ms cubic-bezier(.3,0,.6,1)`;
+        iframe.style.transform = "rotateY(0deg)";
+        setTimeout(cleanup, DUR + 30);
+      }, 60);
+    }, DUR + 10);
+  }, []);
+
   // ── Navigation ────────────────────────────────────────────────────────────
   const nav = useCallback((dir) => {
-    if (navLockRef.current) return;
+    if (navLockRef.current || foldingRef.current) return;
     navLockRef.current = true;
     // Safety release in case relocated never fires (e.g. already at first/last chapter)
     clearTimeout(navLockTimer.current);
     navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
     if (settingsRef.current.paginate) {
-      // Real page-slide (Kindle-style): epub.js turns pages within a chapter by
-      // scrolling its container horizontally — animate that scroll so the actual
-      // page content slides. Only for in-chapter turns; chapter boundaries load a
-      // new iframe (no scroll to animate), so keep those instant to avoid jank.
       const sc = containerRef.current?.querySelector('.epub-container');
-      if (sc) {
+      const iframe = sc?.querySelector('iframe') || containerRef.current?.querySelector('iframe');
+      if (sc) sc.style.scrollBehavior = 'auto';
+      if (sc && iframe) {
         const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
         const withinChapter = dir > 0
           ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
           : sc.scrollLeft > 1;
-        sc.style.scrollBehavior = withinChapter ? 'smooth' : 'auto';
+        if (withinChapter) { runFoldTurn(dir, sc, iframe); return; }
       }
+      // chapter boundary loads a new iframe → mask the white flash, turn instantly
+      setNavFade(true);
     } else {
       setNavFade(true);
     }
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
-  }, []);
+  }, [runFoldTurn]);
   const next = useCallback(() => nav(1),  [nav]);
   const prev = useCallback(() => { if (!atStartRef.current) nav(-1); }, [nav]);
 
