@@ -423,9 +423,6 @@ export default function EpubReader({
   const [bmFlash,     setBmFlash]     = useState(false);
   const [curCfi,      setCurCfi]      = useState(null);
   const [navFade,     setNavFade]     = useState(false);
-  // Paginated page-turn "sweep": a sheet covers the swap instantly, then slides off
-  // in the turn direction to reveal the new page. null = idle.
-  const [sweep,       setSweep]       = useState(null);
 
   const toggleFullscreen = useCallback(() => {
     const el = document.documentElement;
@@ -505,7 +502,6 @@ export default function EpubReader({
   // (too early) — the lock releases on `rendered` instead (chapter in DOM).
   const navLockRef   = useRef(false);
   const navLockTimer = useRef(null);
-  const sweepTimer   = useRef(null);
   // True while a programmatic scroll-mode jump (TOC / bookmark / resume) is in
   // flight. Keeps the nav-fade mask up across the display+settle+snap sequence so
   // the relocated handler doesn't reveal the mid-jump drift.
@@ -827,9 +823,10 @@ export default function EpubReader({
           if (manager !== "continuous") {
             navLockRef.current = false;
             clearTimeout(navLockTimer.current);
-            // New page is in the DOM under the sheet — slide it off to reveal it.
-            clearTimeout(sweepTimer.current);
-            setSweep(s => (s ? { ...s, covering: false } : null));
+            // Page-turn settled — restore instant scroll so CFI jumps (resume, TOC,
+            // bookmarks) don't slowly scroll across the chapter.
+            const sc = containerRef.current?.querySelector('.epub-container');
+            if (sc) sc.style.scrollBehavior = 'auto';
           }
           // Keep the mask up while a programmatic scroll-mode jump settles —
           // runScrollNav lifts it once the snap is done.
@@ -927,7 +924,6 @@ export default function EpubReader({
       clearTimeout(saveTimer.current);
       clearTimeout(hideTimer.current);
       clearTimeout(navLockTimer.current);
-      clearTimeout(sweepTimer.current);
       navLockRef.current = false;
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
@@ -966,12 +962,18 @@ export default function EpubReader({
     clearTimeout(navLockTimer.current);
     navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
     if (settingsRef.current.paginate) {
-      // Cover instantly (hides the content swap), then `relocated` slides the sheet
-      // off. Safety timer reveals anyway if relocated never fires (book start/end).
-      setSweep({ dir, covering: true });
-      clearTimeout(sweepTimer.current);
-      sweepTimer.current = setTimeout(
-        () => setSweep(s => (s && s.covering ? { ...s, covering: false } : s)), 700);
+      // Real page-slide (Kindle-style): epub.js turns pages within a chapter by
+      // scrolling its container horizontally — animate that scroll so the actual
+      // page content slides. Only for in-chapter turns; chapter boundaries load a
+      // new iframe (no scroll to animate), so keep those instant to avoid jank.
+      const sc = containerRef.current?.querySelector('.epub-container');
+      if (sc) {
+        const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
+        const withinChapter = dir > 0
+          ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
+          : sc.scrollLeft > 1;
+        sc.style.scrollBehavior = withinChapter ? 'smooth' : 'auto';
+      }
     } else {
       setNavFade(true);
     }
@@ -1093,25 +1095,6 @@ export default function EpubReader({
         opacity: navFade ? 1 : 0,
         transition: navFade ? "none" : "opacity 0.18s ease",
       }} />
-
-      {/* Page-turn "sweep" sheet (paginated): covers instantly on turn, then slides
-          off in the turn direction with a soft leading-edge shadow, revealing the
-          new page underneath. Forward turns sweep left; back turns sweep right. */}
-      {sweep && (
-        <div
-          onTransitionEnd={() => setSweep(s => (s && !s.covering ? null : s))}
-          style={{
-            position:"absolute", top:54, bottom:0, left:0, right:0,
-            background:T.bg, zIndex:12, pointerEvents:"none",
-            boxShadow: sweep.dir > 0 ? "-12px 0 30px rgba(0,0,0,0.55)"
-                                     : "12px 0 30px rgba(0,0,0,0.55)",
-            transform: sweep.covering ? "translateX(0)"
-                     : `translateX(${sweep.dir > 0 ? "-100%" : "100%"})`,
-            transition: sweep.covering ? "none"
-                      : "transform 0.28s cubic-bezier(.4,0,.2,1)",
-          }}
-        />
-      )}
 
 
       {/* Bookmark saved flash */}
