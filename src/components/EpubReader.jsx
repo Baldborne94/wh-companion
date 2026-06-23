@@ -1337,13 +1337,15 @@ export default function EpubReader({
         zIndex:10, pointerEvents:"none", display:"none", overflow:"hidden",
       }} />
 
-      {/* TEMP page-curl diagnostic — remove once the tablet curl is confirmed. */}
+      {/* TEMP page-curl diagnostic — prominent top bar so it can't be missed.
+          "CURLDBG-3" is a build marker: if you don't see it, the device is still
+          running an older cached build. Remove once the tablet curl is confirmed. */}
       <div style={{
-        position:"absolute", left:6, bottom:6, zIndex:60, pointerEvents:"none",
-        maxWidth:"90%", padding:"3px 7px", borderRadius:6,
-        background:"#000000aa", color:"#c9a84c", fontFamily:"monospace",
-        fontSize:10, lineHeight:1.3, letterSpacing:0.2,
-      }}>{curlDbg}</div>
+        position:"absolute", top:54, left:0, right:0, zIndex:60, pointerEvents:"none",
+        padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
+        color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
+        lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
+      }}>CURLDBG-3 · {curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
