@@ -446,6 +446,11 @@ export default function EpubReader({
   // themes want a softer, warmer "paper" depth — a heavy black gutter/edge looks
   // like ink, not a printed sheet — so we tune the spine + edge shadow per theme.
   const isLight = settings.themeId !== "dark";
+  // Hardcover frame peeking around the page block (top + sides) — a thin darker
+  // board that, with an inner shadow cast onto the page, makes the leaves look
+  // set into a real bound book. Kept narrow so it never eats reading space.
+  const coverW = 13;
+  const coverCol = isLight ? "#3a2a18" : "#15120c";
 
   // ── Book state ─────────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(true);
@@ -1346,25 +1351,40 @@ export default function EpubReader({
         }} />
       )}
 
-      {/* Stacked page edges — thin fanned leaves down ALL four outer borders that
-          mimic the cut edge of a real book's page block. pointerEvents:none so the
-          side tap-to-turn zones (zIndex 6) underneath stay fully tappable. Light
-          themes get warm-brown leaves; Grimdark gets pale leaves catching light.
-          Narrow (14px) so they sit in the blank margin, never over text. */}
+      {/* Stacked page edges — thin fanned leaves down the left/right (and bottom)
+          borders that mimic the cut edge of a real book's page block. No top edge:
+          the hardcover frame sits there instead. Inset by coverW so the leaves
+          nest just inside the cover lip. pointerEvents:none so the side tap-to-turn
+          zones (zIndex 6) stay fully tappable. */}
       {settings.paginate && [
         { edge:"left",   dir:"90deg",  vert:true  },
         { edge:"right",  dir:"270deg", vert:true  },
-        { edge:"top",    dir:"180deg", vert:false },
         { edge:"bottom", dir:"0deg",   vert:false },
       ].map(({ edge, dir, vert }) => (
         <div key={edge} style={{
-          position:"absolute", [edge]:0, zIndex:5, pointerEvents:"none",
-          ...(vert ? { top:0, bottom:0, width:14 } : { left:0, right:0, height:14 }),
+          position:"absolute", zIndex:5, pointerEvents:"none",
+          ...(vert
+            ? { [edge]:coverW, top:coverW, bottom:0, width:22 }
+            : { bottom:0, left:coverW, right:coverW, height:14 }),
           background: isLight
-            ? `linear-gradient(${dir}, rgba(74,46,20,0.16) 0%, rgba(74,46,20,0) 100%), repeating-linear-gradient(${dir}, rgba(120,88,48,0.16) 0 1px, rgba(120,88,48,0) 1px 3px)`
+            ? `linear-gradient(${dir}, rgba(74,46,20,0.18) 0%, rgba(74,46,20,0) 100%), repeating-linear-gradient(${dir}, rgba(120,88,48,0.16) 0 1px, rgba(120,88,48,0) 1px 3px)`
             : `linear-gradient(${dir}, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 100%), repeating-linear-gradient(${dir}, rgba(176,164,140,0.16) 0 1px, rgba(176,164,140,0) 1px 3px)`,
         }} />
       ))}
+
+      {/* Hardcover frame — a thin darker board hugging the top + left + right edges,
+          with an inner shadow cast onto the page so the leaves read as set into a
+          bound book (the cover peeking out around them, like a real open book). No
+          bottom edge — the page block "opens" toward the reader. pointerEvents:none
+          so taps + the side-turn zones pass straight through. */}
+      {settings.paginate && (
+        <div style={{
+          position:"absolute", inset:0, zIndex:5, pointerEvents:"none",
+          borderStyle:"solid", borderColor:coverCol,
+          borderWidth:`${coverW}px ${coverW}px 0 ${coverW}px`,
+          boxShadow: "inset 0 18px 16px -12px rgba(0,0,0,0.55), inset 17px 0 16px -12px rgba(0,0,0,0.42), inset -17px 0 16px -12px rgba(0,0,0,0.42)",
+        }} />
+      )}
 
       {/* Side tap-to-turn zones (paginated only). Transparent strips confined to the
           blank page margins — their width matches the text column's side padding
