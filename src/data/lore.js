@@ -261,7 +261,7 @@ export const LORE_DB = {
   "phosis t'kar":       { name:"Phosis T'kar",               wiki:"Phosis_T%27kar" },
   "jenetia krole":      { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
   "krole":              { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
-  "severian":           { name:"Severian",                   wiki:"Severian_(Legio_Custodes)" },
+  "severian":           { name:"Severian",                   wiki:"Severian", lex:"Severian_(The_Wolf)" },
   "jubal khan":         { name:"Jubal Khan",                 wiki:"Jubal_Khan" },
   "shiban khan":        { name:"Shiban Khan",                wiki:"Shiban_Khan" },
   "shiban":             { name:"Shiban Khan",                wiki:"Shiban_Khan" },
