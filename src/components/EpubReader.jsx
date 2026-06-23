@@ -1412,12 +1412,16 @@ export default function EpubReader({
       <div style={{
         position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
-        boxShadow: navDir > 0
-          ? "-34px 0 60px -4px rgba(0,0,0,0.6), -12px 0 18px -6px rgba(0,0,0,0.45)"
-          : "34px 0 60px -4px rgba(0,0,0,0.6), 12px 0 18px -6px rgba(0,0,0,0.45)",
+        boxShadow: isLight
+          ? (navDir > 0
+              ? "-22px 0 34px -10px rgba(74,46,20,0.22)"
+              : "22px 0 34px -10px rgba(74,46,20,0.22)")
+          : (navDir > 0
+              ? "-22px 0 34px -10px rgba(0,0,0,0.32)"
+              : "22px 0 34px -10px rgba(0,0,0,0.32)"),
         opacity: 1,
         transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
-        transition: navFade ? "none" : "transform 1.45s cubic-bezier(0.25, 0.8, 0.32, 1)",
+        transition: navFade ? "none" : "transform 1.1s cubic-bezier(0.33, 0.85, 0.3, 1)",
       }} />
 
 
