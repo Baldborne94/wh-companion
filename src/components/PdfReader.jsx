@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { C } from "../data/constants";
+import { C, THEMES } from "../data/constants";
 import { useLang } from "../lib/i18n.jsx";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -110,6 +110,19 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef, fit =
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
   const { t, locale } = useLang();
+
+  // Match the surround to the active reader theme (the PDF page itself is left
+  // untouched — only the mat behind it + the cover frame are themed). Read the same
+  // localStorage settings the EPUB reader writes so the two stay consistent.
+  const theme = (() => {
+    try { return THEMES[JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}").themeId] || THEMES.dark; }
+    catch { return THEMES.dark; }
+  })();
+  const isLight   = theme.id !== "dark";
+  const matBg     = isLight ? theme.surface : "#1a1814";
+  const coverCol  = isLight ? "#3a2a18" : "#2e2616";
+  const coverW    = 11;
+
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
     const meta = document.querySelector("meta[name=viewport]");
@@ -162,6 +175,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [showNav,   setShowNav]  = useState(true);
   const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
   const [showBm,    setShowBm]   = useState(false);
+  const [isFs,      setIsFs]     = useState(false);
 
   // Sync bookmarks from DB on new device (localStorage empty)
   useEffect(() => {
@@ -174,6 +188,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   }, [userId, bookId]);
 
   // ── refs ─────────────────────────────────────────────────────────────────
+  const rootRef    = useRef(null);
   const canvasRef  = useRef(null);
   const canvas2Ref = useRef(null);
   const wrapRef    = useRef(null);
@@ -237,6 +252,19 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       .catch(e => { if (!cancelled) setErr(e?.message || t("reader.couldNotLoadPdf")); });
     return () => { cancelled = true; };
   }, [arrayBuffer, url]);
+
+  // ── fullscreen ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const onFs = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+  const toggleFs = useCallback(() => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else rootRef.current?.requestFullscreen?.();
+    } catch {}
+  }, []);
 
   // ── auto-hide nav (mobile) ────────────────────────────────────────────────
   const bumpNav = useCallback(() => {
@@ -467,7 +495,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const step = viewMode === "dual" ? 2 : 1;
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", display: "flex", flexDirection: "column", userSelect: "none" }}
+    <div ref={rootRef} style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", display: "flex", flexDirection: "column", userSelect: "none" }}
       onClick={bumpNav}
     >
       {/* ── Header ── */}
@@ -514,6 +542,10 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           <Btn label="↔" onClick={() => setFitMode(m => m === "width" ? "page" : "width")}
                active={fitMode === "width"} title={fitMode === "width" ? t("reader.fitPage") : t("reader.fitWidth")} />
         )}
+
+        {/* Fullscreen */}
+        <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
+             active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
@@ -604,7 +636,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Single / Dual */}
         {viewMode !== "scroll" && (
           <div ref={wrapRef} style={{
-            width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
+            width: "100%", height: "100%", overflow: "auto", background: matBg,
             display: "flex", alignItems: "safe center", justifyContent: "safe center",
             scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
           }}>
@@ -630,13 +662,32 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Scroll */}
         {viewMode === "scroll" && (
           <div ref={scrollRef} style={{
-            width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
+            width: "100%", height: "100%", overflow: "auto", background: matBg,
             scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
           }}>
             {err && <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>{t("reader.failedToLoadPdfWith").replace("{msg}", err)}</div>}
             {!doc && !err && <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>{t("reader.loading")}</div>}
           </div>
         )}
+
+        {/* Hardcover frame + soft vignette over the reading mat — same bound-book
+            cue as the EPUB reader. pointerEvents:none so swipes, edge-taps, pinch
+            and scrolling on the layers beneath pass straight through. */}
+        {doc && !err && (<>
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none",
+            borderStyle: "solid", borderColor: coverCol, borderWidth: coverW,
+            boxShadow: isLight
+              ? "inset 0 14px 14px -11px rgba(0,0,0,0.4), inset 0 -14px 14px -11px rgba(0,0,0,0.34), inset 14px 0 14px -11px rgba(0,0,0,0.32), inset -14px 0 14px -11px rgba(0,0,0,0.32)"
+              : "inset 0 0 0 1px rgba(201,168,76,0.14), inset 0 14px 14px -11px rgba(0,0,0,0.6), inset 0 -14px 14px -11px rgba(0,0,0,0.5), inset 14px 0 14px -11px rgba(0,0,0,0.5), inset -14px 0 14px -11px rgba(0,0,0,0.5)",
+          }} />
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none",
+            background: isLight
+              ? "radial-gradient(125% 95% at 50% 45%, rgba(74,46,20,0) 64%, rgba(74,46,20,0.05) 100%)"
+              : "radial-gradient(125% 95% at 50% 45%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.26) 100%)",
+          }} />
+        </>)}
       </div>
 
       {/* ── Mobile bottom bar (all modes) ── */}
@@ -659,6 +710,8 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             <Btn label="↔" onClick={() => setFitMode(m => m === "width" ? "page" : "width")}
                  active={fitMode === "width"} title={fitMode === "width" ? t("reader.fitPage") : t("reader.fitWidth")} />
           )}
+          <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
+               active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
 
           <div style={{ flex: 1 }} />
 

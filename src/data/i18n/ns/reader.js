@@ -83,6 +83,8 @@ export const reader = {
       resetZoom: "Reset zoom",
       fitWidth: "Fit width",
       fitPage: "Fit whole page",
+      fullscreen: "Fullscreen",
+      exitFullscreen: "Exit fullscreen",
 
       // Dictionary
       definition: "Definition",
@@ -180,6 +182,8 @@ export const reader = {
       resetZoom: "Reimposta zoom",
       fitWidth: "Adatta larghezza",
       fitPage: "Pagina intera",
+      fullscreen: "Schermo intero",
+      exitFullscreen: "Esci da schermo intero",
 
       // Dictionary
       definition: "Definizione",
