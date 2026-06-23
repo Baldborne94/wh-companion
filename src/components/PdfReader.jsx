@@ -114,6 +114,29 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     return () => { meta.content = prev; };
   }, []);
 
+  // Keep the screen awake while reading. Re-acquire on visibilitychange since the
+  // browser releases the lock when the tab is hidden. Best-effort and silent.
+  useEffect(() => {
+    let lock = null;
+    let cancelled = false;
+    const acquire = async () => {
+      try {
+        if (document.visibilityState === "visible" && navigator.wakeLock) {
+          lock = await navigator.wakeLock.request("screen");
+          if (cancelled) { lock.release?.(); lock = null; }
+        }
+      } catch {}
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") acquire(); };
+    acquire();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      try { lock?.release?.(); } catch {}
+    };
+  }, []);
+
   const initPage = (() => {
     try { return Math.max(1, JSON.parse(localStorage.getItem(`wh40k_prog_${userId}_${bookId}`) || "{}").page_index || 1); }
     catch { return 1; }
