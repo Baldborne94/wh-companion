@@ -89,6 +89,16 @@ const MARGINS = [
   "clamp(16px, 7vw, 120px)",
 ];
 
+// Highlight swatch colours (id → hex). Stored by id so a theme/restyle can
+// remap them later without rewriting saved highlights.
+const HL_COLORS = [
+  { id:"gold",  hex:"#c9a84c" },
+  { id:"blue",  hex:"#4a8adc" },
+  { id:"green", hex:"#4aaa6a" },
+  { id:"red",   hex:"#b85c5c" },
+];
+const hlHex = (id) => (HL_COLORS.find(c => c.id === id) || HL_COLORS[0]).hex;
+
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
   catch { return DEF; }
@@ -463,6 +473,20 @@ export default function EpubReader({
   });
   const [showBmPanel, setShowBmPanel] = useState(false);
   const [bmFlash,     setBmFlash]     = useState(false);
+
+  // ── Highlights ────────────────────────────────────────────────────────────
+  const hlKey = `wh40k_hl_${userId}_${bookId}`;
+  const [highlights, setHighlights] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(hlKey) || "[]"); }
+    catch { return []; }
+  });
+  const [showHlPanel, setShowHlPanel] = useState(false);
+  const [selBar,      setSelBar]      = useState(null);   // { cfi, text } pending selection
+  const hlRef = useRef(highlights);
+  hlRef.current = highlights;
+  // Captures the live selection (cfi+text) from inside the chapter iframe so the
+  // React-layer highlight toolbar can act on it.
+  const pendingSelRef = useRef(null);
   const [curCfi,      setCurCfi]      = useState(null);
   const [navFade,     setNavFade]     = useState(false);
   const [navDir,      setNavDir]      = useState(1);
@@ -658,6 +682,48 @@ export default function EpubReader({
     });
   }, [hrefToCfi, scrollToCfiExact]);
 
+  // ── Highlights ────────────────────────────────────────────────────────────
+  // Paint a highlight onto the rendition. epub.js draws an SVG rect over the
+  // text and re-injects it automatically whenever the section view renders, so
+  // we only register once per highlight. Clicking it jumps to the highlights
+  // panel anchored on that entry isn't needed — the cb removes nothing; the
+  // panel handles deletion.
+  const paintHl = useCallback((h) => {
+    const rend = rendRef.current;
+    if (!rend?.annotations) return;
+    try {
+      rend.annotations.highlight(h.cfi, { id:h.cfi }, () => {}, "wh-hl", {
+        fill: hlHex(h.color), "fill-opacity": "0.30", "mix-blend-mode": "multiply",
+      });
+    } catch {}
+  }, []);
+
+  const addHighlight = useCallback((color) => {
+    const sel = pendingSelRef.current;
+    if (!sel?.cfi) return;
+    const h = { cfi: sel.cfi, text: (sel.text || "").slice(0, 240), color,
+                createdAt: new Date().toISOString() };
+    setHighlights(prev => {
+      if (prev.some(x => x.cfi === h.cfi)) return prev;   // dedupe identical range
+      const next = [h, ...prev];
+      localStorage.setItem(hlKey, JSON.stringify(next));
+      return next;
+    });
+    paintHl(h);
+    try { rendRef.current?.getContents?.().forEach(c => c.window?.getSelection?.()?.removeAllRanges?.()); } catch {}
+    pendingSelRef.current = null;
+    setSelBar(null);
+  }, [hlKey, paintHl]);
+
+  const removeHighlight = useCallback((cfi) => {
+    try { rendRef.current?.annotations?.remove(cfi, "highlight"); } catch {}
+    setHighlights(prev => {
+      const next = prev.filter(x => x.cfi !== cfi);
+      localStorage.setItem(hlKey, JSON.stringify(next));
+      return next;
+    });
+  }, [hlKey]);
+
   // Full-text search across the book. epub.js has no Book-level search, so we
   // walk the spine, load each section, run Section.find(), then unload to free
   // memory. Runs on demand (cancellable via a token so a new query / close
@@ -722,11 +788,11 @@ export default function EpubReader({
 
   // Keep UI visible while a panel is open
   useEffect(() => {
-    if (showSettings || showToc || showBmPanel || showSearch) {
+    if (showSettings || showToc || showBmPanel || showSearch || showHlPanel) {
       clearTimeout(hideTimer.current);
       setShowUI(true);
     }
-  }, [showSettings, showToc, showBmPanel, showSearch]);
+  }, [showSettings, showToc, showBmPanel, showSearch, showHlPanel]);
 
   // TOC navigation is paginated-only — epub.js's continuous manager doesn't land
   // chapter jumps reliably across all books. Close the panel if it's open when
@@ -907,33 +973,55 @@ export default function EpubReader({
             }
           }, { passive: true });
 
-          // mouseup: instant dictionary on desktop/phone
+          // Capture the current selection's CFI + text so the React-layer
+          // highlight toolbar can act on it. Returns the trimmed text (or "").
+          const captureSelection = () => {
+            const sel = contents.window.getSelection?.();
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return "";
+            const text = sel.toString().trim();
+            if (!text) return "";
+            let cfi = null;
+            try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
+            if (cfi) { pendingSelRef.current = { cfi, text }; setSelBar({ cfi, text }); }
+            return text;
+          };
+
+          // mouseup: instant dictionary for a single word; highlight toolbar for
+          // any selection. A multi-word phrase no longer triggers the dictionary
+          // (it's meant for highlighting), only a single word does.
           doc.addEventListener("mouseup", () => {
-            const text = contents.window.getSelection()?.toString()?.trim() ?? "";
+            const text = captureSelection();
             const word = text.replace(/[^a-zA-Z'-]/g, "");
-            if (word.length >= 2 && word.length < 40) setDictWord(word);
+            if (!/\s/.test(text) && word.length >= 2 && word.length < 40) setDictWord(word);
           });
 
           // selectionchange: for tablet where Android clears the selection when its
-          // native menu appears. Store the word when selection exists; only start a
-          // new timer on a valid word so the timer survives the native-menu clear.
+          // native menu appears. Debounced so we capture once the drag settles.
           let pendingWord = "";
           let selTimer = null;
           doc.addEventListener("selectionchange", () => {
             const text = contents.window.getSelection()?.toString()?.trim() ?? "";
+            if (!text) return;
             const word = text.replace(/[^a-zA-Z'-]/g, "");
-            if (word.length >= 2 && word.length < 40) {
-              pendingWord = word;
-              clearTimeout(selTimer);
-              selTimer = setTimeout(() => { if (pendingWord) setDictWord(pendingWord); }, 350);
-            }
-            // Do NOT cancel timer on empty selection — Android native menu clears the
-            // iframe selection when it steals focus, but pendingWord is still valid.
+            clearTimeout(selTimer);
+            selTimer = setTimeout(() => {
+              captureSelection();
+              if (!/\s/.test(text) && word.length >= 2 && word.length < 40) {
+                pendingWord = word;
+                if (pendingWord) setDictWord(pendingWord);
+              }
+            }, 350);
+            // Do NOT clear pendingSel on empty selection — Android native menu
+            // clears the iframe selection when it steals focus.
           });
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
         rend.display(savedCfi || undefined);
+
+        // Re-register saved highlights on this (possibly rebuilt) rendition.
+        // epub.js re-injects each annotation when its section view renders.
+        hlRef.current.forEach(h => paintHl(h));
 
         // loc.start.percentage uses spine position (chapter index / total) before
         // locations are generated — last chapter reads as ~100% regardless of actual
@@ -1112,6 +1200,7 @@ export default function EpubReader({
   // renders on every device, unlike the 3D curl we dropped.
   const nav = useCallback((dir) => {
     if (navLockRef.current) return;
+    pendingSelRef.current = null; setSelBar(null);   // drop any stale selection toolbar
     navLockRef.current = true;
     // Safety release in case relocated never fires (e.g. already at first/last chapter)
     clearTimeout(navLockTimer.current);
@@ -1300,6 +1389,27 @@ export default function EpubReader({
         </div>
       )}
 
+      {/* Selection toolbar — appears when text is selected in the page. Anchored
+          at a fixed spot (not the selection rect) because the body{zoom} factor
+          makes in-iframe coordinates unreliable. Pick a colour to highlight. */}
+      {selBar && (
+        <div style={{ position:"absolute", top:64, left:"50%", transform:"translateX(-50%)",
+                      zIndex:210, display:"flex", alignItems:"center", gap:10,
+                      background:C.card, border:`1px solid ${C.border}`, borderRadius:24,
+                      padding:"8px 14px", boxShadow:"0 6px 22px rgba(0,0,0,0.55)",
+                      animation:"rdrIn .15s ease" }}>
+          <span style={{ fontSize:14 }}>🖍</span>
+          {HL_COLORS.map(c => (
+            <button key={c.id} onClick={() => addHighlight(c.id)} aria-label={`Highlight ${c.id}`}
+              style={{ width:22, height:22, borderRadius:"50%", background:c.hex,
+                       border:"2px solid rgba(255,255,255,0.25)", cursor:"pointer", padding:0 }} />
+          ))}
+          <button onClick={() => { pendingSelRef.current=null; setSelBar(null); }} aria-label="Dismiss"
+            style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer",
+                     fontSize:15, lineHeight:1, paddingLeft:2 }}>✕</button>
+        </div>
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{
         position:"absolute", top:0, left:0, right:0, height:54,
@@ -1353,6 +1463,7 @@ export default function EpubReader({
           )}
           <IBtn onClick={toggleBookmark}               color={isBookmarked ? C.gold : T.muted}    title={isBookmarked ? t("reader.removeBookmark") : t("reader.addBookmark")}>{isBookmarked ? "★" : "☆"}</IBtn>
           <IBtn onClick={() => setShowBmPanel(v=>!v)}  color={bookmarks.length ? C.gold : T.muted} title={t("reader.bookmarks")}>🔖</IBtn>
+          <IBtn onClick={() => setShowHlPanel(v=>!v)}  color={highlights.length ? C.gold : T.muted} title={t("reader.highlights")}>🖍</IBtn>
           <IBtn onClick={() => setShowSettings(true)}  color={T.muted}                           title={t("reader.settings")}>⚙</IBtn>
           {document.fullscreenEnabled && (
             <IBtn onClick={toggleFullscreen} color={isFullscreen?C.gold:T.muted} title={isFullscreen?t("reader.exitFullscreen"):t("reader.fullscreen")}>
@@ -1537,6 +1648,52 @@ export default function EpubReader({
                       </div>
                     </button>
                     <button onClick={() => deleteBookmark(bm.cfi)} title={t("reader.delete")} aria-label="Delete bookmark"
+                      style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
+                               color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
+                               flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Highlights panel ───────────────────────────────────────────────── */}
+      {showHlPanel && (
+        <div onClick={() => setShowHlPanel(false)}
+          style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position:"absolute", right:0, top:0, bottom:0,
+                     width:Math.min(320, window.innerWidth * 0.88),
+                     background:T.surface, borderLeft:`1px solid ${T.border}`,
+                     animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"14px 16px 10px", borderBottom:`1px solid ${T.border}`,
+                          display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0 }}>
+              <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.highlights")}</span>
+              <button onClick={() => setShowHlPanel(false)} aria-label="Close highlights"
+                style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
+            </div>
+            {highlights.length === 0 ? (
+              <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"24px 16px", fontStyle:"italic", lineHeight:1.6 }}>
+                {t("reader.noHighlights")}<br/>{t("reader.highlightHint")}
+              </p>
+            ) : (
+              <div style={{ overflowY:"auto", flex:1 }}>
+                {highlights.map((h, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"stretch", borderBottom:`1px solid ${T.border}` }}>
+                    <button onClick={() => { displayCfi(h.cfi); setShowHlPanel(false); }}
+                      style={{ flex:1, textAlign:"left", background:"transparent", border:"none",
+                               padding:"12px 14px", cursor:"pointer", display:"flex", gap:10, alignItems:"flex-start" }}>
+                      <span style={{ width:10, height:10, borderRadius:"50%", background:hlHex(h.color),
+                                     flexShrink:0, marginTop:3 }} />
+                      <span style={{ fontSize:12, color:T.text, lineHeight:1.5,
+                                     display:"-webkit-box", WebkitLineClamp:3, WebkitBoxOrient:"vertical",
+                                     overflow:"hidden" }}>
+                        {h.text || "—"}
+                      </span>
+                    </button>
+                    <button onClick={() => removeHighlight(h.cfi)} title={t("reader.delete")} aria-label="Delete highlight"
                       style={{ background:"transparent", border:"none", borderLeft:`1px solid ${T.border}`,
                                color:T.muted, padding:"0 14px", cursor:"pointer", fontSize:16,
                                flexShrink:0, display:"flex", alignItems:"center" }}>✕</button>
