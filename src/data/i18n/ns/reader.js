@@ -48,6 +48,13 @@ export const reader = {
       minLeftInChapter: "{n} min left in chapter",
       lessThanMinLeft: "Less than a minute left",
 
+      // Search-in-book
+      search: "Search",
+      searchPlaceholder: "Search in this book…",
+      searching: "Searching…",
+      noResults: "No results found.",
+      searchResults: "{n} results",
+
       // Settings panel
       readingSettings: "Reading Settings",
       typeface: "Typeface",
@@ -126,6 +133,13 @@ export const reader = {
       // Chapter footer (time-left estimate)
       minLeftInChapter: "{n} min alla fine del capitolo",
       lessThanMinLeft: "Meno di un minuto alla fine",
+
+      // Search-in-book
+      search: "Cerca",
+      searchPlaceholder: "Cerca in questo libro…",
+      searching: "Ricerca in corso…",
+      noResults: "Nessun risultato.",
+      searchResults: "{n} risultati",
 
       // Settings panel
       readingSettings: "Impostazioni di lettura",
