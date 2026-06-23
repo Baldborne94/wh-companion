@@ -777,12 +777,21 @@ export default function EpubReader({
               curlApiRef.current.move(dist / (_w || 1));
             }
           }, { passive: true });
+          doc.addEventListener("touchcancel", () => {
+            if (_curlActive) { curlApiRef.current.cancel(); _curlActive = false; _decided = false; }
+          }, { passive: true });
           doc.addEventListener("touchend", (ev) => {
-            if (!settingsRef.current.paginate) return;   // scroll mode turns pages by scrolling
+            if (!settingsRef.current.paginate) {
+              if (_curlActive) { curlApiRef.current.cancel(); _curlActive = false; }
+              return;   // scroll mode turns pages by scrolling
+            }
             const tp = ev.changedTouches?.[0];
             if (_curlActive && tp) {
               const dist = _curlDir > 0 ? (_tsx - tp.clientX) : (tp.clientX - _tsx);
-              curlApiRef.current.end(Math.max(0, dist) / (_w || 1));
+              // A deliberate flick (moved well past the swipe threshold in the curl
+              // direction) always completes the turn; a short drag uses the 32% gate.
+              curlApiRef.current.end(Math.max(0, dist) / (_w || 1), dist > 55);
+              _curlActive = false;
               return;
             }
             if (!tp) return;
@@ -1040,6 +1049,26 @@ export default function EpubReader({
   //   drag, end(p) either completes the turn (swap content at the hidden edge-on
   //   point) past the threshold, or springs the page back flat if you let go early.
   const curlStateRef = useRef(null);
+  const curlWatchdog = useRef(null);
+
+  // Single source of truth for tearing a curl down — always releases foldingRef so
+  // navigation can never get permanently wedged (e.g. if touchcancel fires instead
+  // of touchend on a browser-level edge gesture). Safe to call more than once.
+  const clearCurl = useCallback(() => {
+    clearTimeout(curlWatchdog.current);
+    const st = curlStateRef.current;
+    curlStateRef.current = null;
+    foldingRef.current = false;
+    if (!st) return;
+    const { iframe, parent, prevPerspective } = st;
+    iframe.style.transition = "none";
+    iframe.style.transform = "";
+    iframe.style.transformOrigin = "";
+    iframe.style.backfaceVisibility = "";
+    iframe.style.willChange = "";
+    parent.style.perspective = prevPerspective;
+  }, []);
+
   const beginCurl = useCallback((dir) => {
     if (navLockRef.current || foldingRef.current) return false;
     const sc = containerRef.current?.querySelector('.epub-container');
@@ -1053,40 +1082,40 @@ export default function EpubReader({
     foldingRef.current = true;
     sc.style.scrollBehavior = 'auto';
     const parent = iframe.parentElement;
-    curlStateRef.current = { dir, sc, iframe, parent, prevPerspective: parent.style.perspective };
+    curlStateRef.current = { dir, sc, iframe, parent, prevPerspective: parent.style.perspective, ending: false };
     parent.style.perspective = "1800px";
     iframe.style.transformOrigin = "0% 50%";
     iframe.style.backfaceVisibility = "hidden";
     iframe.style.willChange = "transform";
     iframe.style.transition = "none";
+    // Watchdog: if the gesture never reports an end (touchcancel, lost touch),
+    // force-release so the reader doesn't freeze.
+    clearTimeout(curlWatchdog.current);
+    curlWatchdog.current = setTimeout(() => clearCurl(), 2500);
     return true;
-  }, []);
+  }, [clearCurl]);
 
   const moveCurl = useCallback((progress) => {
     const st = curlStateRef.current;
-    if (!st) return;
+    if (!st || st.ending) return;
     const p = Math.max(0, Math.min(1, progress));
     st.iframe.style.transform = `rotateY(${(st.dir > 0 ? -1 : 1) * p * 88}deg)`;
   }, []);
 
-  const endCurl = useCallback((progress) => {
+  // forceCommit: a deliberate flick completes the turn regardless of how far it
+  // dragged — otherwise a quick swipe (well under 32% of the page width) would
+  // spring back and feel like the page won't turn.
+  const endCurl = useCallback((progress, forceCommit) => {
     const st = curlStateRef.current;
-    if (!st) return;
-    const { dir, iframe, parent, prevPerspective } = st;
-    const cleanup = () => {
-      iframe.style.transition = "none";
-      iframe.style.transform = "";
-      iframe.style.transformOrigin = "";
-      iframe.style.backfaceVisibility = "";
-      iframe.style.willChange = "";
-      parent.style.perspective = prevPerspective;
-      curlStateRef.current = null;
-      foldingRef.current = false;
-    };
-    if (progress <= 0.32) {                  // not far enough — spring back flat
+    if (!st || st.ending) return;
+    st.ending = true;
+    clearTimeout(curlWatchdog.current);
+    const { dir, iframe } = st;
+    const commit = forceCommit || progress > 0.32;
+    if (!commit) {                           // not far enough — spring back flat
       iframe.style.transition = "transform 180ms cubic-bezier(.2,0,.2,1)";
       iframe.style.transform = "rotateY(0deg)";
-      setTimeout(cleanup, 200);
+      setTimeout(clearCurl, 200);
       return;
     }
     const DUR = 170;
@@ -1099,13 +1128,13 @@ export default function EpubReader({
       setTimeout(() => {
         iframe.style.transition = `transform ${DUR}ms cubic-bezier(.3,0,.6,1)`;
         iframe.style.transform = "rotateY(0deg)";
-        setTimeout(cleanup, DUR + 30);
+        setTimeout(clearCurl, DUR + 30);
       }, 60);
     }, DUR + 10);
-  }, []);
+  }, [clearCurl]);
 
-  const curlApiRef = useRef({ begin: () => false, move: () => {}, end: () => {} });
-  curlApiRef.current = { begin: beginCurl, move: moveCurl, end: endCurl };
+  const curlApiRef = useRef({ begin: () => false, move: () => {}, end: () => {}, cancel: () => {} });
+  curlApiRef.current = { begin: beginCurl, move: moveCurl, end: endCurl, cancel: clearCurl };
 
   // ── Navigation ────────────────────────────────────────────────────────────
   const nav = useCallback((dir) => {
