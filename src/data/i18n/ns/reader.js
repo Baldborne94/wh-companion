@@ -44,6 +44,10 @@ export const reader = {
       delete: "Delete",
       page: "Page {n}",
 
+      // Chapter footer (time-left estimate)
+      minLeftInChapter: "{n} min left in chapter",
+      lessThanMinLeft: "Less than a minute left",
+
       // Settings panel
       readingSettings: "Reading Settings",
       typeface: "Typeface",
@@ -118,6 +122,10 @@ export const reader = {
       bookmarkLabel: "Segnalibro",
       delete: "Elimina",
       page: "Pagina {n}",
+
+      // Chapter footer (time-left estimate)
+      minLeftInChapter: "{n} min alla fine del capitolo",
+      lessThanMinLeft: "Meno di un minuto alla fine",
 
       // Settings panel
       readingSettings: "Impostazioni di lettura",
