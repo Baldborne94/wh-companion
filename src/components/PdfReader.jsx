@@ -174,10 +174,17 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
   const [showBm,    setShowBm]   = useState(false);
   const [isFs,      setIsFs]     = useState(false);
-  // Lateral page-turn: a snapshot of the outgoing page that slides off-screen,
-  // revealing the freshly-rendered new page underneath. { src, dir } | null.
-  const [slideImg,  setSlideImg] = useState(null);
+  // Lateral page-turn: the outgoing page is copied (pixel-blit, no image encoding)
+  // into a persistent overlay canvas that slides off-screen, revealing the new page.
+  const [slide,     setSlide]    = useState(null);   // { dir } | null
   const [slideOut,  setSlideOut] = useState(false);
+  // Night brightness: 0 = off, 1 = dim, 2 = dimmer. Persisted app-wide.
+  const [dim,       setDim]      = useState(() => {
+    const v = parseInt(localStorage.getItem("wh_pdf_dim") || "0", 10);
+    return v >= 0 && v <= 2 ? v : 0;
+  });
+  // Page being scrubbed on the navigation slider (null when not dragging).
+  const [scrubPage, setScrubPage] = useState(null);
 
   // Sync bookmarks from DB on new device (localStorage empty)
   useEffect(() => {
@@ -194,6 +201,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const mainRef    = useRef(null);
   const canvasRef  = useRef(null);
   const canvas2Ref = useRef(null);
+  const slideCanvasRef = useRef(null);
   const wrapRef    = useRef(null);
   const scrollRef  = useRef(null);
   const task1      = useRef(null);
@@ -277,20 +285,21 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const toggleNav = useCallback(() => { if (!isDesktop) setShowNav(v => !v); }, [isDesktop]);
 
   // ── navigation ────────────────────────────────────────────────────────────
-  // Snapshot exactly what's on screen in the main area (mat + current page canvases)
-  // so it can be slid off-screen during a page turn. Captures the visible viewport
-  // regardless of page height / scroll, so tall fit-width pages slide cleanly too.
-  const snapshotPages = useCallback(() => {
-    const main = mainRef.current;
-    if (!main) return null;
+  // Copy what's on screen (mat + current page canvases) into the persistent overlay
+  // canvas with a fast canvas→canvas blit (no toDataURL/image decode = no hitch).
+  // Captures the visible viewport, so tall fit-width pages slide cleanly too.
+  const paintSlideCanvas = useCallback(() => {
+    const main = mainRef.current, sc = slideCanvasRef.current;
+    if (!main || !sc) return false;
     const mr  = main.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    const tmp = document.createElement("canvas");
-    tmp.width  = Math.max(1, Math.floor(mr.width  * dpr));
-    tmp.height = Math.max(1, Math.floor(mr.height * dpr));
-    const ctx = tmp.getContext("2d");
-    if (!ctx) return null;
-    ctx.scale(dpr, dpr);
+    sc.width  = Math.max(1, Math.floor(mr.width  * dpr));
+    sc.height = Math.max(1, Math.floor(mr.height * dpr));
+    sc.style.width  = `${mr.width}px`;
+    sc.style.height = `${mr.height}px`;
+    const ctx = sc.getContext("2d");
+    if (!ctx) return false;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = matBg;
     ctx.fillRect(0, 0, mr.width, mr.height);
     [canvasRef.current, canvas2Ref.current].forEach(cv => {
@@ -298,7 +307,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       const cr = cv.getBoundingClientRect();
       ctx.drawImage(cv, cr.left - mr.left, cr.top - mr.top, cr.width, cr.height);
     });
-    try { return tmp.toDataURL(); } catch { return null; }
+    return true;
   }, [matBg]);
 
   const goTo = useCallback((n) => {
@@ -307,25 +316,43 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const raw  = mode === "dual" && n % 2 === 0 ? n - 1 : n;
     const p    = Math.min(Math.max(raw, 1), total);
     if (p === pageRef.current) return;
-    if (mode !== "scroll") {
-      const src = snapshotPages();
-      if (src) setSlideImg({ src, dir: p > pageRef.current ? 1 : -1 });
+    if (mode !== "scroll" && paintSlideCanvas()) {
+      setSlide({ dir: p > pageRef.current ? 1 : -1 });
     }
     setPage(p);
     bumpNav();
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveProgress(userId, bookId, p, total), 1200);
-  }, [total, userId, bookId, bumpNav, snapshotPages]);
+  }, [total, userId, bookId, bumpNav, paintSlideCanvas]);
 
-  // Drive the slide: start at translateX(0), then animate the snapshot off-screen in
-  // the reading direction, then drop it once the new page is rendered underneath.
+  const cycleDim = useCallback(() => {
+    setDim(d => { const n = (d + 1) % 3; localStorage.setItem("wh_pdf_dim", String(n)); return n; });
+  }, []);
+
+  // Jump straight to a page (navigation slider) — scrolls in scroll mode, paginates
+  // otherwise. No slide animation for big jumps; that's for adjacent turns.
+  const jumpToPage = useCallback((p) => {
+    const pg = Math.min(Math.max(p, 1), total);
+    if (viewRef.current === "scroll") {
+      const item = scrollPages.current[pg - 1];
+      if (item) item.wrapper.scrollIntoView({ block: "start" });
+      setPage(pg);
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveProgress(userId, bookId, pg, total), 1000);
+    } else {
+      goTo(pg);
+    }
+  }, [total, userId, bookId, goTo]);
+
+  // Drive the slide: start at translateX(0), then animate the overlay canvas off-screen
+  // in the reading direction, then hide it once the new page is rendered underneath.
   useEffect(() => {
-    if (!slideImg) return;
+    if (!slide) return;
     setSlideOut(false);
     const r = requestAnimationFrame(() => requestAnimationFrame(() => setSlideOut(true)));
-    const tm = setTimeout(() => { setSlideImg(null); setSlideOut(false); }, 360);
+    const tm = setTimeout(() => { setSlide(null); setSlideOut(false); }, 340);
     return () => { cancelAnimationFrame(r); clearTimeout(tm); };
-  }, [slideImg]);
+  }, [slide]);
 
   // ── render single / dual ─────────────────────────────────────────────────
   useEffect(() => {
@@ -543,6 +570,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
   const navVisible = isDesktop || showNav;
   const step = viewMode === "dual" ? 2 : 1;
+  const dispPage = scrubPage ?? page;
 
   return (
     <div ref={rootRef} style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", userSelect: "none" }}>
@@ -595,6 +623,10 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Fullscreen */}
         <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
              active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
+
+        {/* Night brightness (cycles off / dim / dimmer) */}
+        <Btn label={dim === 0 ? "☼" : "🌙"} onClick={e => { e.stopPropagation(); cycleDim(); }}
+             active={dim > 0} title={t("reader.brightness")} />
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
@@ -719,18 +751,27 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           </div>
         )}
 
-        {/* Lateral page-turn — the outgoing page (a snapshot of the viewport) slides
-            off in the reading direction, revealing the freshly-rendered new page.
-            pointerEvents:none so it never blocks the next gesture. */}
-        {slideImg && (
-          <img src={slideImg.src} alt="" draggable={false} style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            display: "block", zIndex: 6, pointerEvents: "none",
-            transform: slideOut ? `translateX(${slideImg.dir > 0 ? "-100%" : "100%"})` : "translateX(0)",
-            transition: slideOut ? "transform 0.34s cubic-bezier(0.4,0.0,0.2,1)" : "none",
-            boxShadow: slideImg.dir > 0
-              ? "8px 0 24px -6px rgba(0,0,0,0.5)"
-              : "-8px 0 24px -6px rgba(0,0,0,0.5)",
+        {/* Lateral page-turn — the outgoing page is blitted into this always-mounted
+            overlay canvas (no image encode = no hitch) and slid off in the reading
+            direction, revealing the freshly-rendered new page. pointerEvents:none so
+            it never blocks the next gesture. */}
+        <canvas ref={slideCanvasRef} aria-hidden="true" style={{
+          position: "absolute", top: 0, left: 0, zIndex: 6, pointerEvents: "none",
+          display: slide ? "block" : "none",
+          transform: slideOut && slide ? `translateX(${slide.dir > 0 ? "-100%" : "100%"})` : "translateX(0)",
+          transition: slideOut ? "transform 0.32s cubic-bezier(0.33,0.0,0.2,1)" : "none",
+          boxShadow: slide && slide.dir > 0
+            ? "8px 0 24px -6px rgba(0,0,0,0.5)"
+            : "-8px 0 24px -6px rgba(0,0,0,0.5)",
+        }} />
+
+        {/* Night brightness veil — dims the page for night reading. Sits above the
+            page/slide (zIndex 15) but below the bars (20) so controls stay legible.
+            pointerEvents:none so gestures pass through. */}
+        {dim > 0 && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 15, pointerEvents: "none",
+            background: "#000", opacity: dim === 1 ? 0.26 : 0.46, transition: "opacity 0.25s",
           }} />
         )}
 
@@ -753,22 +794,34 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
 
-          <div style={{ flex: 1 }} />
+          {/* Navigation slider — drag to jump anywhere (handy on long PDFs) */}
+          {total > 1 && (
+            <input
+              type="range" min={1} max={total} step={1} value={Math.min(dispPage, total)}
+              aria-label={t("reader.jumpToPage")}
+              onChange={e => setScrubPage(parseInt(e.target.value, 10))}
+              onPointerUp={() => { if (scrubPage != null) { jumpToPage(scrubPage); setScrubPage(null); } }}
+              onPointerCancel={() => setScrubPage(null)}
+              onTouchEnd={() => { if (scrubPage != null) { jumpToPage(scrubPage); setScrubPage(null); } }}
+              style={{ flex: 1, minWidth: 60, height: 22, accentColor: C.gold, cursor: "pointer" }}
+            />
+          )}
+          {total <= 1 && <div style={{ flex: 1 }} />}
 
           {/* Page nav — single / dual */}
           {viewMode !== "scroll" && (<>
             <button onClick={() => goTo(page - step)} disabled={page <= 1} aria-label="Previous page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-              color: page <= 1 ? C.dim : C.gold, padding: "6px 14px",
+              color: page <= 1 ? C.dim : C.gold, padding: "6px 12px",
               cursor: page <= 1 ? "default" : "pointer",
               fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page <= 1 ? 0.3 : 1,
             }}>‹</button>
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, minWidth: 46, textAlign: "center" }}>
-              {viewMode === "dual" ? `${page}–${Math.min(page + 1, total)}` : page} / {total}
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: scrubPage != null ? C.gold : C.muted, minWidth: 46, textAlign: "center" }}>
+              {viewMode === "dual" ? `${dispPage}–${Math.min(dispPage + 1, total)}` : dispPage} / {total}
             </span>
             <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} aria-label="Next page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-              color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 14px",
+              color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 12px",
               cursor: page + step - 1 >= total ? "default" : "pointer",
               fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page + step - 1 >= total ? 0.3 : 1,
             }}>›</button>
@@ -776,7 +829,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
           {/* Page counter — scroll */}
           {viewMode === "scroll" && (
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted }}>{page} / {total}</span>
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: scrubPage != null ? C.gold : C.muted, minWidth: 46, textAlign: "center" }}>{dispPage} / {total}</span>
           )}
         </div>
       )}
