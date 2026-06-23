@@ -1081,7 +1081,7 @@ export default function EpubReader({
       `position:absolute;left:${L.toFixed(1)}px;top:${Tp.toFixed(1)}px;width:${w}px;height:${h}px;` +
       `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:rotateY(0deg);` +
       `transform-style:preserve-3d;will-change:transform;backface-visibility:hidden;` +
-      `box-shadow:0 0 22px rgba(0,0,0,.45);`;
+      `box-shadow:0 0 22px rgba(0,0,0,.45);outline:3px solid #ff3b3b;`;  /* TEMP border to confirm the fold by eye */
     const cv = snap.canvas;
     cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;backface-visibility:hidden;";
     const sh = document.createElement("div");   // fold shadow that deepens toward the spine
@@ -1112,17 +1112,22 @@ export default function EpubReader({
     const sc = containerRef.current?.querySelector('.epub-container');
     if (sc) sc.style.scrollBehavior = "auto";
     leaf.advance(); leaf.advanced = true;       // real next page now sits under the snapshot
-    void leaf.wrap.offsetWidth;                 // flush so the transition runs
-    const DUR = 540;
-    leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-    leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
-    leaf.sh.style.transition = `opacity ${DUR}ms ease`;
-    leaf.sh.style.opacity = "1";
+    const DUR = 620;
+    // Double rAF: mobile browsers skip the transition if the target transform is set
+    // in the same frame the element was added — the initial rotateY(0) must paint
+    // first. void offsetWidth alone isn't reliable on tablet Chrome/Safari.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
+      leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
+      leaf.sh.style.opacity = "1";
+      setCurlDbg(`CURL animazione → ${leaf.end}° (${DUR}ms)`);
+    }));
     clearTimeout(curlAutoRef.current);
     curlAutoRef.current = setTimeout(() => {
       teardownLeaf(leaf);
       foldingRef.current = false;
-    }, DUR + 40);
+    }, DUR + 120);
     return true;
   }, [buildLeaf, teardownLeaf]);
 
@@ -1348,7 +1353,7 @@ export default function EpubReader({
         padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
         color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
         lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
-      }}>CURLDBG-4 · {curlDbg}</div>
+      }}>CURLDBG-5 · {curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
