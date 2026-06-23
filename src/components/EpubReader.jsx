@@ -1009,17 +1009,19 @@ export default function EpubReader({
   const pageSnapRef    = useRef(null);  // { cfi, canvas, w, h } of the current page
   const snapBusyRef    = useRef(false);
   const snapTimer      = useRef(null);
+  // TEMP diagnostic — reports why the page-curl runs or falls back, on-device.
+  const [curlDbg, setCurlDbg] = useState("curl: in attesa…");
 
   const captureCurrentPage = useCallback(async () => {
     if (snapBusyRef.current || foldingRef.current) return;
     const s = settingsRef.current;
-    if (!s.paginate || s.twoPage) return;     // curl is single-page paginated only
+    if (!s.paginate || s.twoPage) { setCurlDbg(`scatto saltato: ${!s.paginate ? "modalità scroll (niente pagine)" : "due-pagine"}`); return; }
     const sc = containerRef.current?.querySelector('.epub-container');
     const iframe = sc?.querySelector('iframe');
     const doc = iframe?.contentDocument;
-    if (!sc || !iframe || !doc?.body) return;
+    if (!sc || !iframe || !doc?.body) { setCurlDbg("scatto saltato: iframe/doc non pronto"); return; }
     const w = sc.clientWidth, h = sc.clientHeight, sl = sc.scrollLeft;
-    if (w < 2 || h < 2) return;
+    if (w < 2 || h < 2) { setCurlDbg(`scatto saltato: dimensioni ${w}x${h}`); return; }
     const cfi = cfiRef.current;
     snapBusyRef.current = true;
     try {
@@ -1037,7 +1039,8 @@ export default function EpubReader({
         logging: false, useCORS: true, imageTimeout: 800, removeContainer: true,
       });
       pageSnapRef.current = { cfi, canvas, w, h };
-    } catch { /* leave stale/null → instant turns */ }
+      setCurlDbg(`scatto OK ${Math.round(canvas.width)}x${Math.round(canvas.height)} (pag ${w}x${h})`);
+    } catch (e) { setCurlDbg("scatto ERRORE: " + String(e?.message || e).slice(0, 70)); }
     finally { snapBusyRef.current = false; }
   }, []);
 
@@ -1058,11 +1061,14 @@ export default function EpubReader({
     const sc = containerRef.current?.querySelector('.epub-container');
     const iframe = sc?.querySelector('iframe');
     const snap = pageSnapRef.current;
-    if (!layer || !sc || !iframe || !snap || snap.cfi !== cfiRef.current) return null;
-    if (snap.canvas.width < 2) return null;
+    if (!layer || !sc || !iframe) { setCurlDbg("leaf: DOM mancante"); return null; }
+    if (!snap) { setCurlDbg("leaf: nessuno scatto pronto"); return null; }
+    if (snap.cfi !== cfiRef.current) { setCurlDbg("leaf: scatto non aggiornato"); return null; }
+    if (snap.canvas.width < 2) { setCurlDbg("leaf: canvas vuoto"); return null; }
     const layerR = layer.getBoundingClientRect();
     const scR = sc.getBoundingClientRect();
     const L = scR.left - layerR.left, Tp = scR.top - layerR.top, w = scR.width, h = scR.height;
+    setCurlDbg(`CURL ✓ a (${L.toFixed(0)},${Tp.toFixed(0)}) ${w.toFixed(0)}x${h.toFixed(0)}`);
     const hingeLeft = dir > 0;                 // forward hinges on the left spine
     layer.style.display = "block";
     layer.style.perspective = "1700px";
@@ -1330,6 +1336,14 @@ export default function EpubReader({
         position:"absolute", top:54, bottom:0, left:0, right:0,
         zIndex:10, pointerEvents:"none", display:"none", overflow:"hidden",
       }} />
+
+      {/* TEMP page-curl diagnostic — remove once the tablet curl is confirmed. */}
+      <div style={{
+        position:"absolute", left:6, bottom:6, zIndex:60, pointerEvents:"none",
+        maxWidth:"90%", padding:"3px 7px", borderRadius:6,
+        background:"#000000aa", color:"#c9a84c", fontFamily:"monospace",
+        fontSize:10, lineHeight:1.3, letterSpacing:0.2,
+      }}>{curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
