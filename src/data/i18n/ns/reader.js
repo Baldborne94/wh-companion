@@ -66,6 +66,10 @@ export const reader = {
       layout: "Layout",
       single: "Single",
       twoPage: "Two-page",
+      margins: "Margins",
+      marginNarrow: "Narrow",
+      marginMedium: "Medium",
+      marginWide: "Wide",
       theme: "Theme",
 
       // PDF toolbar
@@ -152,6 +156,10 @@ export const reader = {
       layout: "Disposizione",
       single: "Singola",
       twoPage: "Doppia",
+      margins: "Margini",
+      marginNarrow: "Stretti",
+      marginMedium: "Medi",
+      marginWide: "Ampi",
       theme: "Tema",
 
       // PDF toolbar

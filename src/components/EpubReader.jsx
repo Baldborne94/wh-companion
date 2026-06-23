@@ -77,7 +77,17 @@ async function putBmsToDB(userId, bookId, bms) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia" };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1 };
+
+// Side-margin presets (index → CSS for the text column's left/right padding).
+// Both the page container and the tap-to-turn strips use the same value so the
+// strips always sit exactly in the blank margin. Index 1 reproduces the old
+// hard-coded clamp(8px, 3.5vw, 64px) default.
+const MARGINS = [
+  "clamp(6px, 2vw, 28px)",
+  "clamp(8px, 3.5vw, 64px)",
+  "clamp(16px, 7vw, 120px)",
+];
 
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
@@ -367,6 +377,14 @@ function SettingsPanel({ settings, onChange, onClose }) {
           </Row>
         )}
 
+        {settings.paginate && (
+          <Row label={t("reader.margins")}>
+            <Chip label={t("reader.marginNarrow")} active={settings.margin===0} onClick={() => onChange("margin",0)} />
+            <Chip label={t("reader.marginMedium")} active={(settings.margin??1)===1} onClick={() => onChange("margin",1)} />
+            <Chip label={t("reader.marginWide")}   active={settings.margin===2} onClick={() => onChange("margin",2)} />
+          </Row>
+        )}
+
         <Row label={t("reader.theme")}>
           {Object.values(THEMES).map(th => (
             <Chip key={th.id} label={th.label} active={settings.themeId===th.id} onClick={() => onChange("themeId", th.id)} />
@@ -400,6 +418,7 @@ export default function EpubReader({
   }, []);
   const T   = THEMES[settings.themeId] ?? THEMES.dark;
   const fnt = FONTS[settings.fontIndex];
+  const sideClamp = MARGINS[settings.margin] ?? MARGINS[1];
 
   // ── Book state ─────────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(true);
@@ -1201,7 +1220,7 @@ export default function EpubReader({
           top padding on the host (not the body) gives breathing room without
           breaking epub's column pagination. */}
       <div ref={containerRef} style={{ position:"absolute", top:0, bottom:0, left:0, right:0, background:T.bg,
-                                        padding: settings.paginate ? "12px clamp(8px, 3.5vw, 64px) 0" : 0 }} />
+                                        padding: settings.paginate ? `12px ${sideClamp} 0` : 0 }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look,
@@ -1216,14 +1235,14 @@ export default function EpubReader({
 
       {/* Side tap-to-turn zones (paginated only). Transparent strips confined to the
           blank page margins — their width matches the text column's side padding
-          (clamp(8px,3.5vw,64px) on line ~1100) exactly, so they never overlap the
-          text and word selection stays free everywhere the text actually is. They
-          live in the React layer for reliable native coordinates. */}
+          (sideClamp, driven by the Margins setting) exactly, so they never overlap
+          the text and word selection stays free everywhere the text actually is.
+          They live in the React layer for reliable native coordinates. */}
       {settings.paginate && !loading && (<>
         <div onClick={prev} aria-label={t("reader.prevPage") || "Previous page"}
-             style={{ position:"absolute", top:54, bottom:0, left:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
+             style={{ position:"absolute", top:54, bottom:0, left:0, width:sideClamp, zIndex:6, cursor:"pointer" }} />
         <div onClick={next} aria-label={t("reader.nextPage") || "Next page"}
-             style={{ position:"absolute", top:54, bottom:0, right:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
+             style={{ position:"absolute", top:54, bottom:0, right:0, width:sideClamp, zIndex:6, cursor:"pointer" }} />
         {/* tap zones stay below top:54 so they never sit under the header's
             back / bookmark / settings buttons while it's visible */}
       </>)}
