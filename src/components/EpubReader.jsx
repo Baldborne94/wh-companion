@@ -1074,13 +1074,14 @@ export default function EpubReader({
     setCurlDbg(`CURL ✓ a (${L.toFixed(0)},${Tp.toFixed(0)}) ${w.toFixed(0)}x${h.toFixed(0)}`);
     const hingeLeft = dir > 0;                 // forward hinges on the left spine
     layer.style.display = "block";
-    layer.style.perspective = "1700px";
-    layer.style.perspectiveOrigin = `${(L + w / 2).toFixed(1)}px ${(Tp + h / 2).toFixed(1)}px`;
+    layer.style.perspective = "";              // per-element perspective() instead (more robust on mobile)
+    layer.style.perspectiveOrigin = "";
+    layer.style.overflow = "visible";          // don't flatten/clip the 3D fold
     const wrap = document.createElement("div");
     wrap.style.cssText =
       `position:absolute;left:${L.toFixed(1)}px;top:${Tp.toFixed(1)}px;width:${w}px;height:${h}px;` +
-      `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:rotateY(0deg);` +
-      `transform-style:preserve-3d;will-change:transform;backface-visibility:hidden;` +
+      `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:perspective(1400px) rotateY(0deg);` +
+      `will-change:transform;backface-visibility:hidden;background:${T.bg};` +
       `box-shadow:0 0 22px rgba(0,0,0,.45);outline:3px solid #ff3b3b;`;  /* TEMP border to confirm the fold by eye */
     const cv = snap.canvas;
     cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;backface-visibility:hidden;";
@@ -1092,7 +1093,8 @@ export default function EpubReader({
     layer.appendChild(wrap);
     const advance = () => { if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev(); };
     const revert  = () => { if (dir > 0) rendRef.current?.prev(); else rendRef.current?.next(); };
-    return { wrap, sh, layer, dir, hingeLeft, end: hingeLeft ? -180 : 180, advance, revert, advanced: false };
+    const tf = (deg) => `perspective(1400px) rotateY(${deg}deg)`;
+    return { wrap, sh, layer, dir, hingeLeft, end: hingeLeft ? -180 : 180, tf, advance, revert, advanced: false };
   }, []);
 
   const teardownLeaf = useCallback((leaf) => {
@@ -1118,7 +1120,7 @@ export default function EpubReader({
     // first. void offsetWidth alone isn't reliable on tablet Chrome/Safari.
     requestAnimationFrame(() => requestAnimationFrame(() => {
       leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-      leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+      leaf.wrap.style.transform = leaf.tf(leaf.end);
       leaf.sh.style.transition = `opacity ${DUR}ms ease`;
       leaf.sh.style.opacity = "1";
       setCurlDbg(`CURL animazione → ${leaf.end}° (${DUR}ms)`);
@@ -1173,7 +1175,7 @@ export default function EpubReader({
     if (!st || st.ending) return;
     const p = Math.max(0, Math.min(1, progress));
     st.leaf.wrap.style.transition = "none";
-    st.leaf.wrap.style.transform = `rotateY(${(st.leaf.end) * p}deg)`;
+    st.leaf.wrap.style.transform = st.leaf.tf(st.leaf.end * p);
     st.leaf.sh.style.opacity = String(Math.min(1, p * 1.4));
   }, []);
 
@@ -1187,7 +1189,7 @@ export default function EpubReader({
     if (commit) {
       const DUR = 260;
       leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-      leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+      leaf.wrap.style.transform = leaf.tf(leaf.end);
       leaf.sh.style.transition = `opacity ${DUR}ms ease`;
       leaf.sh.style.opacity = "1";
       setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; captureFnRef.current(); }, DUR + 30);
@@ -1195,7 +1197,7 @@ export default function EpubReader({
       if (leaf.advanced) { leaf.revert(); leaf.advanced = false; }   // undo the beneath-advance
       const DUR = 200;
       leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.2,0,.2,1)`;
-      leaf.wrap.style.transform = "rotateY(0deg)";
+      leaf.wrap.style.transform = leaf.tf(0);
       leaf.sh.style.transition = `opacity ${DUR}ms ease`;
       leaf.sh.style.opacity = "0";
       setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; }, DUR + 30);
@@ -1353,7 +1355,7 @@ export default function EpubReader({
         padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
         color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
         lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
-      }}>CURLDBG-5 · {curlDbg}</div>
+      }}>CURLDBG-6 · {curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
