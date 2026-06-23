@@ -973,22 +973,24 @@ export default function EpubReader({
             }
           }, { passive: true });
 
-          // Capture the current selection's CFI + text so the React-layer
-          // highlight toolbar can act on it. Returns the trimmed text (or "").
+          // Capture the current selection's CFI + text. The highlight toolbar is
+          // shown ONLY for a multi-word phrase; a single word is reserved for the
+          // dictionary. Returns the trimmed selection text (or "").
           const captureSelection = () => {
             const sel = contents.window.getSelection?.();
             if (!sel || sel.isCollapsed || sel.rangeCount === 0) return "";
             const text = sel.toString().trim();
             if (!text) return "";
-            let cfi = null;
-            try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
-            if (cfi) { pendingSelRef.current = { cfi, text }; setSelBar({ cfi, text }); }
+            if (/\s/.test(text)) {   // more than one word → highlight
+              let cfi = null;
+              try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
+              if (cfi) { pendingSelRef.current = { cfi, text }; setSelBar({ cfi, text }); }
+            }
             return text;
           };
 
-          // mouseup: instant dictionary for a single word; highlight toolbar for
-          // any selection. A multi-word phrase no longer triggers the dictionary
-          // (it's meant for highlighting), only a single word does.
+          // mouseup: single word → dictionary; multi-word phrase → highlight
+          // toolbar (handled by captureSelection). The two never appear together.
           doc.addEventListener("mouseup", () => {
             const text = captureSelection();
             const word = text.replace(/[^a-zA-Z'-]/g, "");
@@ -1362,7 +1364,7 @@ export default function EpubReader({
           : "34px 0 60px -4px rgba(0,0,0,0.6), 12px 0 18px -6px rgba(0,0,0,0.45)",
         opacity: 1,
         transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
-        transition: navFade ? "none" : "transform 0.95s cubic-bezier(0.25, 0.8, 0.32, 1)",
+        transition: navFade ? "none" : "transform 1.45s cubic-bezier(0.25, 0.8, 0.32, 1)",
       }} />
 
 
