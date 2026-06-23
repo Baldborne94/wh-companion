@@ -83,6 +83,7 @@ export const reader = {
       resetZoom: "Reset zoom",
 
       // Dictionary
+      definition: "Definition",
       lookingUp: "Looking up “{word}”…",
       noDefinition: "No definition found for “{word}”",
       synonyms: "Syn:",
@@ -177,6 +178,7 @@ export const reader = {
       resetZoom: "Reimposta zoom",
 
       // Dictionary
+      definition: "Definizione",
       lookingUp: "Ricerca di “{word}”…",
       noDefinition: "Nessuna definizione trovata per “{word}”",
       synonyms: "Sin:",

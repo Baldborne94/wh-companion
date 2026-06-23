@@ -973,49 +973,32 @@ export default function EpubReader({
             }
           }, { passive: true });
 
-          // Capture the current selection's CFI + text. The highlight toolbar is
-          // shown ONLY for a multi-word phrase; a single word is reserved for the
-          // dictionary. Returns the trimmed selection text (or "").
+          // Capture the current selection and surface the action toolbar. Nothing
+          // fires automatically: a single word offers the 📖 dictionary, a phrase
+          // offers the 🖍 highlight colours. This lets the reader keep extending
+          // the selection without the dictionary popping open mid-gesture.
           const captureSelection = () => {
             const sel = contents.window.getSelection?.();
-            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return "";
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
             const text = sel.toString().trim();
-            if (!text) return "";
-            if (/\s/.test(text)) {   // more than one word → highlight
-              let cfi = null;
-              try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
-              if (cfi) { pendingSelRef.current = { cfi, text }; setSelBar({ cfi, text }); }
-            }
-            return text;
+            if (!text) return;
+            let cfi = null;
+            try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
+            const word = text.replace(/[^a-zA-Z'-]/g, "");
+            const single = !/\s/.test(text) && word.length >= 2 && word.length < 40 ? word : "";
+            if (!single && !cfi) return;   // nothing actionable
+            pendingSelRef.current = cfi ? { cfi, text } : null;
+            setSelBar({ cfi, text, word: single });
           };
 
-          // mouseup: single word → dictionary; multi-word phrase → highlight
-          // toolbar (handled by captureSelection). The two never appear together.
-          doc.addEventListener("mouseup", () => {
-            const text = captureSelection();
-            const word = text.replace(/[^a-zA-Z'-]/g, "");
-            if (!/\s/.test(text) && word.length >= 2 && word.length < 40) setDictWord(word);
-          });
-
-          // selectionchange: for tablet where Android clears the selection when its
-          // native menu appears. Debounced so we capture once the drag settles.
-          let pendingWord = "";
+          // Re-evaluate once the selection settles. Debounced so dragging the
+          // selection handles doesn't thrash the toolbar. We never clear selBar
+          // on an empty selection — Android wipes the iframe selection when its
+          // native menu steals focus, but the user's choice should persist.
           let selTimer = null;
-          doc.addEventListener("selectionchange", () => {
-            const text = contents.window.getSelection()?.toString()?.trim() ?? "";
-            if (!text) return;
-            const word = text.replace(/[^a-zA-Z'-]/g, "");
-            clearTimeout(selTimer);
-            selTimer = setTimeout(() => {
-              captureSelection();
-              if (!/\s/.test(text) && word.length >= 2 && word.length < 40) {
-                pendingWord = word;
-                if (pendingWord) setDictWord(pendingWord);
-              }
-            }, 350);
-            // Do NOT clear pendingSel on empty selection — Android native menu
-            // clears the iframe selection when it steals focus.
-          });
+          const settle = () => { clearTimeout(selTimer); selTimer = setTimeout(captureSelection, 250); };
+          doc.addEventListener("mouseup", () => { clearTimeout(selTimer); captureSelection(); });
+          doc.addEventListener("selectionchange", settle);
         });
 
         const savedCfi = cfiRef.current || localStorage.getItem(`wh40k_cfi_${userId}_${bookId}`);
@@ -1400,12 +1383,23 @@ export default function EpubReader({
                       background:C.card, border:`1px solid ${C.border}`, borderRadius:24,
                       padding:"8px 14px", boxShadow:"0 6px 22px rgba(0,0,0,0.55)",
                       animation:"rdrIn .15s ease" }}>
-          <span style={{ fontSize:14 }}>🖍</span>
-          {HL_COLORS.map(c => (
-            <button key={c.id} onClick={() => addHighlight(c.id)} aria-label={`Highlight ${c.id}`}
-              style={{ width:22, height:22, borderRadius:"50%", background:c.hex,
-                       border:"2px solid rgba(255,255,255,0.25)", cursor:"pointer", padding:0 }} />
-          ))}
+          {selBar.word ? (
+            <button onClick={() => { const w = selBar.word; setSelBar(null); pendingSelRef.current=null; setDictWord(w); }}
+              style={{ display:"flex", alignItems:"center", gap:6, background:"transparent",
+                       border:"none", color:C.gold, fontFamily:"'Cinzel',serif", fontSize:12,
+                       letterSpacing:0.5, cursor:"pointer", padding:0 }}>
+              <span style={{ fontSize:14 }}>📖</span>{t("reader.definition")}
+            </button>
+          ) : (
+            <>
+              <span style={{ fontSize:14 }}>🖍</span>
+              {HL_COLORS.map(c => (
+                <button key={c.id} onClick={() => addHighlight(c.id)} aria-label={`Highlight ${c.id}`}
+                  style={{ width:22, height:22, borderRadius:"50%", background:c.hex,
+                           border:"2px solid rgba(255,255,255,0.25)", cursor:"pointer", padding:0 }} />
+              ))}
+            </>
+          )}
           <button onClick={() => { pendingSelRef.current=null; setSelBar(null); }} aria-label="Dismiss"
             style={{ background:"transparent", border:"none", color:C.muted, cursor:"pointer",
                      fontSize:15, lineHeight:1, paddingLeft:2 }}>✕</button>
