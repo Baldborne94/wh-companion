@@ -176,6 +176,10 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [bookmarks, setBookmarks]= useState(() => loadBm(userId, bookId));
   const [showBm,    setShowBm]   = useState(false);
   const [isFs,      setIsFs]     = useState(false);
+  // Lateral page-turn: a snapshot of the outgoing page that slides off-screen,
+  // revealing the freshly-rendered new page underneath. { src, dir } | null.
+  const [slideImg,  setSlideImg] = useState(null);
+  const [slideOut,  setSlideOut] = useState(false);
 
   // Sync bookmarks from DB on new device (localStorage empty)
   useEffect(() => {
@@ -189,6 +193,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
   // ── refs ─────────────────────────────────────────────────────────────────
   const rootRef    = useRef(null);
+  const mainRef    = useRef(null);
   const canvasRef  = useRef(null);
   const canvas2Ref = useRef(null);
   const wrapRef    = useRef(null);
@@ -197,7 +202,6 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const task2      = useRef(null);
   const saveTimer  = useRef(null);
   const navTimer   = useRef(null);
-  const dimTimer   = useRef(null);
   const touchX     = useRef(null);
   const touchY     = useRef(null);
   const tapStart   = useRef(null);
@@ -275,16 +279,55 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const toggleNav = useCallback(() => { if (!isDesktop) setShowNav(v => !v); }, [isDesktop]);
 
   // ── navigation ────────────────────────────────────────────────────────────
+  // Snapshot exactly what's on screen in the main area (mat + current page canvases)
+  // so it can be slid off-screen during a page turn. Captures the visible viewport
+  // regardless of page height / scroll, so tall fit-width pages slide cleanly too.
+  const snapshotPages = useCallback(() => {
+    const main = mainRef.current;
+    if (!main) return null;
+    const mr  = main.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const tmp = document.createElement("canvas");
+    tmp.width  = Math.max(1, Math.floor(mr.width  * dpr));
+    tmp.height = Math.max(1, Math.floor(mr.height * dpr));
+    const ctx = tmp.getContext("2d");
+    if (!ctx) return null;
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = matBg;
+    ctx.fillRect(0, 0, mr.width, mr.height);
+    [canvasRef.current, canvas2Ref.current].forEach(cv => {
+      if (!cv || !cv.width) return;
+      const cr = cv.getBoundingClientRect();
+      ctx.drawImage(cv, cr.left - mr.left, cr.top - mr.top, cr.width, cr.height);
+    });
+    try { return tmp.toDataURL(); } catch { return null; }
+  }, [matBg]);
+
   const goTo = useCallback((n) => {
     if (!total) return;
     const mode = viewRef.current;
     const raw  = mode === "dual" && n % 2 === 0 ? n - 1 : n;
     const p    = Math.min(Math.max(raw, 1), total);
+    if (p === pageRef.current) return;
+    if (mode !== "scroll") {
+      const src = snapshotPages();
+      if (src) setSlideImg({ src, dir: p > pageRef.current ? 1 : -1 });
+    }
     setPage(p);
     bumpNav();
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveProgress(userId, bookId, p, total), 1200);
-  }, [total, userId, bookId, bumpNav]);
+  }, [total, userId, bookId, bumpNav, snapshotPages]);
+
+  // Drive the slide: start at translateX(0), then animate the snapshot off-screen in
+  // the reading direction, then drop it once the new page is rendered underneath.
+  useEffect(() => {
+    if (!slideImg) return;
+    setSlideOut(false);
+    const r = requestAnimationFrame(() => requestAnimationFrame(() => setSlideOut(true)));
+    const tm = setTimeout(() => { setSlideImg(null); setSlideOut(false); }, 360);
+    return () => { cancelAnimationFrame(r); clearTimeout(tm); };
+  }, [slideImg]);
 
   // ── render single / dual ─────────────────────────────────────────────────
   useEffect(() => {
@@ -298,16 +341,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     // Fit-to-width only makes sense single page; dual fits both pages whole.
     const fit  = viewMode === "single" ? fitMode : "page";
     setRendering(true);
-    clearTimeout(dimTimer.current);
     const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1, fit).catch(() => {});
     const p2 = (viewMode === "dual" && page + 1 <= total)
       ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2, "page").catch(() => {})
       : Promise.resolve();
-    // Hold the dimmed state a beat after the new page is painted so it eases back in
-    // as a soft cross-page fade rather than snapping (PDF renders are near-instant).
-    Promise.all([p1, p2]).finally(() => {
-      dimTimer.current = setTimeout(() => setRendering(false), 130);
-    });
+    Promise.all([p1, p2]).finally(() => setRendering(false));
   }, [doc, page, zoom, viewMode, total, fitMode]);
 
   // On page turn in single/dual, jump back to the top of the page (fit-width pages
@@ -643,7 +681,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       )}
 
       {/* ── Main area (full-screen — bars overlay on top) ── */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
+      <div ref={mainRef} style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
 
         {/* Single / Dual */}
         {viewMode !== "scroll" && (
@@ -662,9 +700,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
               <div style={{ margin: 0, padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
-                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.18 : 1, transition: "opacity 0.42s ease-in-out" }} />
+                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
                 {viewMode === "dual" && page + 1 <= total && (
-                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.18 : 1, transition: "opacity 0.42s ease-in-out" }} />
+                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
                 )}
               </div>
             )}
@@ -680,6 +718,21 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             {err && <div style={{ color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 40 }}>{t("reader.failedToLoadPdfWith").replace("{msg}", err)}</div>}
             {!doc && !err && <div style={{ color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2, textAlign: "center", padding: 40 }}>{t("reader.loading")}</div>}
           </div>
+        )}
+
+        {/* Lateral page-turn — the outgoing page (a snapshot of the viewport) slides
+            off in the reading direction, revealing the freshly-rendered new page.
+            pointerEvents:none so it never blocks the next gesture. */}
+        {slideImg && (
+          <img src={slideImg.src} alt="" draggable={false} style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            display: "block", zIndex: 6, pointerEvents: "none",
+            transform: slideOut ? `translateX(${slideImg.dir > 0 ? "-100%" : "100%"})` : "translateX(0)",
+            transition: slideOut ? "transform 0.34s cubic-bezier(0.4,0.0,0.2,1)" : "none",
+            boxShadow: slideImg.dir > 0
+              ? "8px 0 24px -6px rgba(0,0,0,0.5)"
+              : "-8px 0 24px -6px rgba(0,0,0,0.5)",
+          }} />
         )}
 
         {/* Hardcover frame + soft vignette over the reading mat — same bound-book
