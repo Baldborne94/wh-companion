@@ -185,6 +185,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   });
   // Page being scrubbed on the navigation slider (null when not dragging).
   const [scrubPage, setScrubPage] = useState(null);
+  // Bumped whenever the reading area resizes (e.g. portrait↔landscape) so the page
+  // re-renders to fit the new dimensions immediately.
+  const [resizeTick, setResizeTick] = useState(0);
 
   // Sync bookmarks from DB on new device (localStorage empty)
   useEffect(() => {
@@ -276,6 +279,19 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       if (document.fullscreenElement) document.exitFullscreen?.();
       else rootRef.current?.requestFullscreen?.();
     } catch {}
+  }, []);
+
+  // ── re-fit on resize / orientation change ─────────────────────────────────
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let t;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => setResizeTick(x => x + 1), 120);
+    });
+    ro.observe(el);
+    return () => { clearTimeout(t); ro.disconnect(); };
   }, []);
 
   // ── nav bars: manual show/hide via centre tap (reclaims full-screen space) ──
@@ -371,7 +387,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2, "page").catch(() => {})
       : Promise.resolve();
     Promise.all([p1, p2]).finally(() => setRendering(false));
-  }, [doc, page, zoom, viewMode, total, fitMode]);
+  }, [doc, page, zoom, viewMode, total, fitMode, resizeTick]);
 
   // On page turn in single/dual, jump back to the top of the page (fit-width pages
   // run taller than the viewport, so a new page should start at its top, not wherever
@@ -444,11 +460,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally minimal deps
   }, [viewMode, doc]);
 
-  // ── zoom update for scroll mode (re-render rendered pages in place) ───────
+  // ── re-render scroll pages in place on zoom / fit / resize ───────────────
   useEffect(() => {
     if (viewMode !== "scroll" || !doc || !scrollRef.current) return;
     const container = scrollRef.current;
-    const W = container.clientWidth - 32;
+    const W = container.clientWidth - 8;
     const H = container.clientHeight;
     scrollPages.current.forEach(item => {
       if (!item.rendered || !item.canvas) return;
@@ -456,7 +472,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       scrollTasks.current.set(item.pageNum, taskRef);
       renderPage(doc, item.pageNum, item.canvas, W, H, zoom, taskRef, fitMode).catch(() => {});
     });
-  }, [zoom, viewMode, doc, fitMode]);
+  }, [zoom, viewMode, doc, fitMode, resizeTick]);
 
   // ── keyboard ─────────────────────────────────────────────────────────────
   useEffect(() => {
