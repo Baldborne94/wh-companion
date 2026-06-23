@@ -407,6 +407,7 @@ export default function EpubReader({
   const [toc,      setToc]      = useState([]);
   const [chLabel,  setChLabel]  = useState("");
   const [progress, setProgress] = useState(0);
+  const [chMinLeft, setChMinLeft] = useState(null);
 
   // ── UI state ──────────────────────────────────────────────────────────────
   const [showUI,        setShowUI]        = useState(false);
@@ -896,6 +897,23 @@ export default function EpubReader({
             );
             setChLabel(found?.label?.trim() || "");
           }
+          // Time-left-in-chapter estimate (paginated only). epub.js gives the
+          // current page / total pages of the displayed section; multiply the
+          // remaining fraction by the rendered section's word count and divide
+          // by an average reading speed (~220 wpm). Best-effort — hidden if the
+          // page counters aren't available (e.g. scroll mode).
+          const disp = loc.start?.displayed;
+          if (settingsRef.current.paginate && disp && disp.total > 0) {
+            let words = 0;
+            (rend.getContents?.() || []).forEach(c => {
+              const txt = c?.document?.body?.innerText?.trim() || "";
+              if (txt) words += txt.split(/\s+/).length;
+            });
+            const remainFrac = Math.max(0, (disp.total - disp.page) / disp.total);
+            setChMinLeft(words > 0 ? Math.round((words * remainFrac) / 220) : null);
+          } else {
+            setChMinLeft(null);
+          }
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             setProgress(Math.round(pct * 100));
@@ -1253,6 +1271,31 @@ export default function EpubReader({
         </div>
       </div>
 
+
+      {/* ── Footer: chapter + time-left estimate ───────────────────────────── */}
+      {settings.paginate && chMinLeft !== null && (
+        <div style={{
+          position:"absolute", bottom:0, left:0, right:0,
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          gap:12, padding:"0 16px", height:34,
+          background:`${T.bg}cc`, backdropFilter:"blur(8px)",
+          borderTop:`1px solid ${T.border}`,
+          opacity:uiVisible?1:0, pointerEvents:"none",
+          transition:"opacity .25s ease", zIndex:18,
+        }}>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9.5, color:T.muted,
+                         letterSpacing:0.5, overflow:"hidden", textOverflow:"ellipsis",
+                         whiteSpace:"nowrap", flex:1 }}>
+            {chLabel}
+          </span>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:9.5, color:C.gold,
+                         letterSpacing:0.5, whiteSpace:"nowrap", flexShrink:0 }}>
+            {chMinLeft >= 1
+              ? t("reader.minLeftInChapter").replace("{n}", chMinLeft)
+              : t("reader.lessThanMinLeft")}
+          </span>
+        </div>
+      )}
 
       {/* ── Table of Contents ──────────────────────────────────────────────── */}
       {showToc && (
