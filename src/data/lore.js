@@ -261,7 +261,7 @@ export const LORE_DB = {
   "phosis t'kar":       { name:"Phosis T'kar",               wiki:"Phosis_T%27kar" },
   "jenetia krole":      { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
   "krole":              { name:"Jenetia Krole",              wiki:"Jenetia_Krole" },
-  "severian":           { name:"Severian",                   wiki:"Severian_(Legio_Custodes)" },
+  "severian":           { name:"Severian",                   wiki:"Severian", lex:"Severian_(The_Wolf)" },
   "jubal khan":         { name:"Jubal Khan",                 wiki:"Jubal_Khan" },
   "shiban khan":        { name:"Shiban Khan",                wiki:"Shiban_Khan" },
   "shiban":             { name:"Shiban Khan",                wiki:"Shiban_Khan" },
@@ -375,7 +375,19 @@ export function wikiUrl(key) {
 
 export function lexUrl(key) {
   const e = LORE_DB[key];
-  return `https://wh40k.lexicanum.com/wiki/${e?.lex || e?.wiki || encodeURIComponent(e?.name || key)}`;
+  // A curated Lexicanum slug is always exact — use it directly.
+  if (e?.lex) return `https://wh40k.lexicanum.com/wiki/${e.lex}`;
+  // A plain (non-disambiguated) Fandom slug like "Sanguinius" matches Lexicanum
+  // 1:1, so reuse it directly. But a parenthesised slug uses Fandom-only
+  // conventions ("Terra_(Warhammer_40,000)", "Salamanders_(Chapter)") that don't
+  // exist on Lexicanum and land on an empty/wrong page — for those, use
+  // Lexicanum's "Go" search by canonical name, which redirects straight to the
+  // article when unambiguous or shows results to pick from otherwise. Either way
+  // the user reaches a real page with a description instead of a dead stub.
+  const slug = e?.wiki;
+  if (slug && !slug.includes("(")) return `https://wh40k.lexicanum.com/wiki/${slug}`;
+  const term = encodeURIComponent(e?.name || key);
+  return `https://wh40k.lexicanum.com/index.php?search=${term}&go=Go`;
 }
 
 export const KW_KEYS  = Object.keys(LORE_DB).sort((a, b) => b.length - a.length);
