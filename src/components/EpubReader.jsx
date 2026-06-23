@@ -1354,11 +1354,11 @@ export default function EpubReader({
       )}
 
       {/* Stacked page edges — thin fanned leaves down the left/right borders that
-          mimic the cut edge of a real book's page block. No top/bottom edge: the
-          hardcover frame sits there instead. Inset by coverW so the leaves nest just
-          inside the cover lip. pointerEvents:none so the side tap-to-turn zones
-          (zIndex 6) stay fully tappable. */}
-      {settings.paginate && [
+          mimic the cut edge of a real book's page block. Only in the two-page spread
+          (single page is a single sheet, so no cut-block edges). Inset by coverW so
+          the leaves nest just inside the cover lip. pointerEvents:none so the side
+          tap-to-turn zones (zIndex 6) stay fully tappable. */}
+      {settings.paginate && settings.twoPage && isWide && [
         { edge:"left",   dir:"90deg",  vert:true  },
         { edge:"right",  dir:"270deg", vert:true  },
       ].map(({ edge, dir, vert }) => (
