@@ -770,19 +770,11 @@ export default function EpubReader({
             const tp = ev.changedTouches?.[0];
             if (!tp) return;
             const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
-            // Horizontal swipe → page turn
+            // Horizontal swipe → page turn. (Side-tap-to-turn is handled by the
+            // transparent React-layer strips, which use reliable native coordinates
+            // — in-iframe clientX was unreliable across single/two-page layouts.)
             if (Math.abs(dx) > 50 && Math.abs(dy) < Math.abs(dx) * 0.7) {
               if (dx < 0) navFnsRef.current.next(); else navFnsRef.current.prev();
-              return;
-            }
-            // Side tap → page turn: left third = previous, right third = next, with
-            // a center band left free (reveals the UI). Never hijack taps on lore
-            // terms / links / text selection.
-            if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
-              if (ev.target?.closest?.("[data-kw], a")) return;
-              const w = contents.window.innerWidth || doc.documentElement.clientWidth || 0;
-              if (tp.clientX < w * 0.33) navFnsRef.current.prev();
-              else if (tp.clientX > w * 0.67) navFnsRef.current.next();
             }
           }, { passive: true });
 
@@ -1091,6 +1083,17 @@ export default function EpubReader({
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg,
                                         padding: settings.paginate ? "0 clamp(8px, 3.5vw, 64px)" : 0 }} />
+
+      {/* Side tap-to-turn zones (paginated only). Transparent strips over the page
+          margins, in the React layer so they use reliable native coordinates — the
+          in-iframe tap math was unreliable across single/two-page layouts. The wide
+          centre stays free for text selection, lore taps and revealing the UI. */}
+      {settings.paginate && !loading && (<>
+        <div onClick={prev} aria-label={t("reader.prevPage") || "Previous page"}
+             style={{ position:"absolute", top:54, bottom:0, left:0, width:"14%", zIndex:6, cursor:"pointer" }} />
+        <div onClick={next} aria-label={t("reader.nextPage") || "Next page"}
+             style={{ position:"absolute", top:54, bottom:0, right:0, width:"14%", zIndex:6, cursor:"pointer" }} />
+      </>)}
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
