@@ -1316,15 +1316,17 @@ export default function EpubReader({
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look.
           Light themes (Sepia / Paper) get a softer, warm-brown gutter so it reads
-          as a folded sheet rather than a hard ink line; the dark theme keeps a
-          deeper black that disappears into the background. */}
+          as a folded sheet rather than a hard ink line. Grimdark's background is
+          near-black, so a black gutter vanishes — instead the fold is drawn with
+          a faint light sheen at the centre flanked by shadow, like a spine
+          catching the page light. */}
       {settings.paginate && settings.twoPage && isWide && (
         <div style={{
           position:"absolute", top:0, bottom:0, left:"50%", width:isLight ? 56 : 64, marginLeft:isLight ? -28 : -32,
           zIndex:4, pointerEvents:"none",
           background: isLight
             ? "linear-gradient(90deg, rgba(74,46,20,0) 0%, rgba(74,46,20,0.05) 44%, rgba(74,46,20,0.10) 50%, rgba(74,46,20,0.05) 56%, rgba(74,46,20,0) 100%)"
-            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 100%)",
+            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.45) 44%, rgba(201,168,76,0.10) 50%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0) 100%)",
         }} />
       )}
 
