@@ -178,6 +178,13 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   // revealing the freshly-rendered new page underneath. { src, dir } | null.
   const [slideImg,  setSlideImg] = useState(null);
   const [slideOut,  setSlideOut] = useState(false);
+  // Night brightness: 0 = off, 1 = dim, 2 = dimmer. Persisted app-wide.
+  const [dim,       setDim]      = useState(() => {
+    const v = parseInt(localStorage.getItem("wh_pdf_dim") || "0", 10);
+    return v >= 0 && v <= 2 ? v : 0;
+  });
+  // Page being scrubbed on the navigation slider (null when not dragging).
+  const [scrubPage, setScrubPage] = useState(null);
 
   // Sync bookmarks from DB on new device (localStorage empty)
   useEffect(() => {
@@ -316,6 +323,25 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => saveProgress(userId, bookId, p, total), 1200);
   }, [total, userId, bookId, bumpNav, snapshotPages]);
+
+  const cycleDim = useCallback(() => {
+    setDim(d => { const n = (d + 1) % 3; localStorage.setItem("wh_pdf_dim", String(n)); return n; });
+  }, []);
+
+  // Jump straight to a page (navigation slider) — scrolls in scroll mode, paginates
+  // otherwise. No slide animation for big jumps; that's for adjacent turns.
+  const jumpToPage = useCallback((p) => {
+    const pg = Math.min(Math.max(p, 1), total);
+    if (viewRef.current === "scroll") {
+      const item = scrollPages.current[pg - 1];
+      if (item) item.wrapper.scrollIntoView({ block: "start" });
+      setPage(pg);
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveProgress(userId, bookId, pg, total), 1000);
+    } else {
+      goTo(pg);
+    }
+  }, [total, userId, bookId, goTo]);
 
   // Drive the slide: start at translateX(0), then animate the snapshot off-screen in
   // the reading direction, then drop it once the new page is rendered underneath.
@@ -543,6 +569,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
   const navVisible = isDesktop || showNav;
   const step = viewMode === "dual" ? 2 : 1;
+  const dispPage = scrubPage ?? page;
 
   return (
     <div ref={rootRef} style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", userSelect: "none" }}>
@@ -595,6 +622,10 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Fullscreen */}
         <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
              active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
+
+        {/* Night brightness (cycles off / dim / dimmer) */}
+        <Btn label={dim === 0 ? "☼" : "🌙"} onClick={e => { e.stopPropagation(); cycleDim(); }}
+             active={dim > 0} title={t("reader.brightness")} />
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
@@ -734,6 +765,16 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           }} />
         )}
 
+        {/* Night brightness veil — dims the page for night reading. Sits above the
+            page/slide (zIndex 15) but below the bars (20) so controls stay legible.
+            pointerEvents:none so gestures pass through. */}
+        {dim > 0 && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 15, pointerEvents: "none",
+            background: "#000", opacity: dim === 1 ? 0.26 : 0.46, transition: "opacity 0.25s",
+          }} />
+        )}
+
       </div>
 
       {/* ── Mobile bottom bar (overlay, all modes) ── */}
@@ -753,22 +794,34 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
 
-          <div style={{ flex: 1 }} />
+          {/* Navigation slider — drag to jump anywhere (handy on long PDFs) */}
+          {total > 1 && (
+            <input
+              type="range" min={1} max={total} step={1} value={Math.min(dispPage, total)}
+              aria-label={t("reader.jumpToPage")}
+              onChange={e => setScrubPage(parseInt(e.target.value, 10))}
+              onPointerUp={() => { if (scrubPage != null) { jumpToPage(scrubPage); setScrubPage(null); } }}
+              onPointerCancel={() => setScrubPage(null)}
+              onTouchEnd={() => { if (scrubPage != null) { jumpToPage(scrubPage); setScrubPage(null); } }}
+              style={{ flex: 1, minWidth: 60, height: 22, accentColor: C.gold, cursor: "pointer" }}
+            />
+          )}
+          {total <= 1 && <div style={{ flex: 1 }} />}
 
           {/* Page nav — single / dual */}
           {viewMode !== "scroll" && (<>
             <button onClick={() => goTo(page - step)} disabled={page <= 1} aria-label="Previous page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-              color: page <= 1 ? C.dim : C.gold, padding: "6px 14px",
+              color: page <= 1 ? C.dim : C.gold, padding: "6px 12px",
               cursor: page <= 1 ? "default" : "pointer",
               fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page <= 1 ? 0.3 : 1,
             }}>‹</button>
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, minWidth: 46, textAlign: "center" }}>
-              {viewMode === "dual" ? `${page}–${Math.min(page + 1, total)}` : page} / {total}
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: scrubPage != null ? C.gold : C.muted, minWidth: 46, textAlign: "center" }}>
+              {viewMode === "dual" ? `${dispPage}–${Math.min(dispPage + 1, total)}` : dispPage} / {total}
             </span>
             <button onClick={() => goTo(page + step)} disabled={page + step - 1 >= total} aria-label="Next page" style={{
               background: "transparent", border: `1px solid ${C.border}`, borderRadius: 8,
-              color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 14px",
+              color: page + step - 1 >= total ? C.dim : C.gold, padding: "6px 12px",
               cursor: page + step - 1 >= total ? "default" : "pointer",
               fontFamily: "'Cinzel',serif", fontSize: 12, opacity: page + step - 1 >= total ? 0.3 : 1,
             }}>›</button>
@@ -776,7 +829,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
           {/* Page counter — scroll */}
           {viewMode === "scroll" && (
-            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted }}>{page} / {total}</span>
+            <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: scrubPage != null ? C.gold : C.muted, minWidth: 46, textAlign: "center" }}>{dispPage} / {total}</span>
           )}
         </div>
       )}

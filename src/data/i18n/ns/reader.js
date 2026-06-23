@@ -85,6 +85,8 @@ export const reader = {
       fitPage: "Fit whole page",
       fullscreen: "Fullscreen",
       exitFullscreen: "Exit fullscreen",
+      brightness: "Night brightness",
+      jumpToPage: "Jump to page",
 
       // Dictionary
       definition: "Definition",
@@ -184,6 +186,8 @@ export const reader = {
       fitPage: "Pagina intera",
       fullscreen: "Schermo intero",
       exitFullscreen: "Esci da schermo intero",
+      brightness: "Luminosità notturna",
+      jumpToPage: "Vai alla pagina",
 
       // Dictionary
       definition: "Definizione",
