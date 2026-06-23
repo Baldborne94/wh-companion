@@ -872,6 +872,8 @@ export default function EpubReader({
           if (!navHoldRef.current) setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
+          // Pre-rasterise the now-current page so the next turn can fold instantly.
+          captureFnRef.current?.();
           if (tocRef.current.length > 0 && loc.start?.href) {
             const base = decodeURIComponent(loc.start.href).split("#")[0].split("/").pop();
             const found = tocRef.current.find(ch =>
@@ -993,145 +995,198 @@ export default function EpubReader({
   }, []);
 
 
-  // ── Page-fold animation (prototype) ───────────────────────────────────────
-  // True book-like page turn for paginated mode, with NO snapshot/library: the
-  // current page and the next page are both already rendered side-by-side inside
-  // one wide epub.js iframe (CSS columns clipped by .epub-container scrollLeft).
-  // We rotate the LIVE iframe in 3D around its left edge (the spine):
-  //   phase 1 — current page rotates away to edge-on (≈invisible);
-  //   at that hidden mid-point we advance epub.js underneath;
-  //   phase 2 — the next page drops from edge-on back to flat.
-  // Both phases show real content. Gated to in-chapter turns — chapter boundaries
-  // swap the iframe element, so those stay instant.
-  const foldingRef = useRef(false);
-  const runFoldTurn = useCallback((dir, sc, iframe) => {
-    foldingRef.current = true;
-    const DUR = 260;
-    const parent = iframe.parentElement;
-    const prevPerspective = parent.style.perspective;
-    parent.style.perspective = "1800px";
-    iframe.style.transformOrigin = "0% 50%";
-    iframe.style.backfaceVisibility = "hidden";
-    iframe.style.willChange = "transform";
+  // ── Real page-curl (snapshot overlay) ──────────────────────────────────────
+  // Transforming epub.js's live iframe in 3D is unreliable on tablet browsers and
+  // pivots on the off-screen chapter start, so instead we rasterise the current
+  // page to a <canvas> (html2canvas), lay that snapshot over the page, advance
+  // epub.js underneath (the REAL next page is now beneath the snapshot), then fold
+  // the snapshot away in 3D. The snapshot is a normal DOM element, so the transform
+  // composites reliably and the next page is revealed as the leaf turns.
+  // Everything degrades to an instant masked turn if a snapshot isn't available,
+  // and foldingRef is always released so navigation can never wedge.
+  const foldingRef    = useRef(false);
+  const curlLayerRef  = useRef(null);   // overlay host (in JSX)
+  const pageSnapRef    = useRef(null);  // { cfi, canvas, w, h } of the current page
+  const snapBusyRef    = useRef(false);
+  const snapTimer      = useRef(null);
 
-    const cleanup = () => {
-      iframe.style.transition = "none";
-      iframe.style.transform = "";
-      iframe.style.transformOrigin = "";
-      iframe.style.backfaceVisibility = "";
-      iframe.style.willChange = "";
-      parent.style.perspective = prevPerspective;
-      foldingRef.current = false;
-    };
-
-    // phase 1 — lift current page away (edge-on)
-    iframe.style.transition = `transform ${DUR}ms cubic-bezier(.4,0,.7,1)`;
-    iframe.style.transform = `rotateY(${dir > 0 ? -88 : 88}deg)`;
-
-    setTimeout(() => {
-      // swap underneath while the page is edge-on (hidden), pre-tilt the incoming
-      // page to the opposite edge, then drop it flat in phase 2.
-      iframe.style.transition = "none";
-      iframe.style.transform = `rotateY(${dir > 0 ? 88 : -88}deg)`;
-      if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
-      // let next()/prev() apply the scroll before unfolding
-      setTimeout(() => {
-        iframe.style.transition = `transform ${DUR}ms cubic-bezier(.3,0,.6,1)`;
-        iframe.style.transform = "rotateY(0deg)";
-        setTimeout(cleanup, DUR + 30);
-      }, 60);
-    }, DUR + 10);
+  const captureCurrentPage = useCallback(async () => {
+    if (snapBusyRef.current || foldingRef.current) return;
+    const s = settingsRef.current;
+    if (!s.paginate || s.twoPage) return;     // curl is single-page paginated only
+    const sc = containerRef.current?.querySelector('.epub-container');
+    const iframe = sc?.querySelector('iframe');
+    const doc = iframe?.contentDocument;
+    if (!sc || !iframe || !doc?.body) return;
+    const w = sc.clientWidth, h = sc.clientHeight, sl = sc.scrollLeft;
+    if (w < 2 || h < 2) return;
+    const cfi = cfiRef.current;
+    snapBusyRef.current = true;
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      if (foldingRef.current) return;          // a turn started meanwhile
+      let bg = "";
+      try { bg = getComputedStyle(doc.body).backgroundColor; } catch {}
+      if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") bg = T.bg;
+      const canvas = await html2canvas(doc.body, {
+        backgroundColor: bg,
+        x: sl, y: 0, width: w, height: h,
+        scrollX: 0, scrollY: 0,
+        windowWidth: doc.body.scrollWidth, windowHeight: h,
+        scale: Math.min(2, iframe.contentWindow?.devicePixelRatio || 1),
+        logging: false, useCORS: true, imageTimeout: 800, removeContainer: true,
+      });
+      pageSnapRef.current = { cfi, canvas, w, h };
+    } catch { /* leave stale/null → instant turns */ }
+    finally { snapBusyRef.current = false; }
   }, []);
 
-  // ── Draggable page curl (finger-tracked) ───────────────────────────────────
-  // Same live-iframe 3D trick as runFoldTurn, but the rotation follows the finger:
-  //   begin() arms the turn (only within a chapter), move(p) rotates 0→±88° as you
-  //   drag, end(p) either completes the turn (swap content at the hidden edge-on
-  //   point) past the threshold, or springs the page back flat if you let go early.
+  const scheduleCapture = useCallback(() => {
+    clearTimeout(snapTimer.current);
+    snapTimer.current = setTimeout(() => {
+      if (foldingRef.current) { scheduleCapture(); return; }   // wait until idle
+      captureCurrentPage();
+    }, 220);
+  }, [captureCurrentPage]);
+  const captureFnRef = useRef(() => {});
+  captureFnRef.current = scheduleCapture;
+
+  // Build the folding leaf over the current page. Returns the handle, or null when
+  // no fresh snapshot exists (caller then falls back to an instant turn).
+  const buildLeaf = useCallback((dir) => {
+    const layer = curlLayerRef.current;
+    const sc = containerRef.current?.querySelector('.epub-container');
+    const iframe = sc?.querySelector('iframe');
+    const snap = pageSnapRef.current;
+    if (!layer || !sc || !iframe || !snap || snap.cfi !== cfiRef.current) return null;
+    if (snap.canvas.width < 2) return null;
+    const layerR = layer.getBoundingClientRect();
+    const scR = sc.getBoundingClientRect();
+    const L = scR.left - layerR.left, Tp = scR.top - layerR.top, w = scR.width, h = scR.height;
+    const hingeLeft = dir > 0;                 // forward hinges on the left spine
+    layer.style.display = "block";
+    layer.style.perspective = "1700px";
+    layer.style.perspectiveOrigin = `${(L + w / 2).toFixed(1)}px ${(Tp + h / 2).toFixed(1)}px`;
+    const wrap = document.createElement("div");
+    wrap.style.cssText =
+      `position:absolute;left:${L.toFixed(1)}px;top:${Tp.toFixed(1)}px;width:${w}px;height:${h}px;` +
+      `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:rotateY(0deg);` +
+      `transform-style:preserve-3d;will-change:transform;backface-visibility:hidden;` +
+      `box-shadow:0 0 22px rgba(0,0,0,.45);`;
+    const cv = snap.canvas;
+    cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;backface-visibility:hidden;";
+    const sh = document.createElement("div");   // fold shadow that deepens toward the spine
+    sh.style.cssText =
+      `position:absolute;inset:0;pointer-events:none;opacity:0;` +
+      `background:linear-gradient(${hingeLeft ? "90deg" : "270deg"},rgba(0,0,0,.40),rgba(0,0,0,0) 42%);`;
+    wrap.append(cv, sh);
+    layer.appendChild(wrap);
+    const advance = () => { if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev(); };
+    const revert  = () => { if (dir > 0) rendRef.current?.prev(); else rendRef.current?.next(); };
+    return { wrap, sh, layer, dir, hingeLeft, end: hingeLeft ? -180 : 180, advance, revert, advanced: false };
+  }, []);
+
+  const teardownLeaf = useCallback((leaf) => {
+    if (!leaf) return;
+    try { leaf.wrap.remove(); } catch {}
+    const layer = leaf.layer;
+    if (layer && !layer.firstChild) layer.style.display = "none";
+  }, []);
+
+  // Auto turn (tap / flick / keyboard): snapshot covers the page, epub advances
+  // beneath it immediately (hidden), then the leaf folds away to reveal the page.
+  const curlAutoRef = useRef(null);
+  const runCurlTurn = useCallback((dir) => {
+    const leaf = buildLeaf(dir);
+    if (!leaf) return false;
+    foldingRef.current = true;
+    const sc = containerRef.current?.querySelector('.epub-container');
+    if (sc) sc.style.scrollBehavior = "auto";
+    leaf.advance(); leaf.advanced = true;       // real next page now sits under the snapshot
+    void leaf.wrap.offsetWidth;                 // flush so the transition runs
+    const DUR = 540;
+    leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
+    leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+    leaf.sh.style.transition = `opacity ${DUR}ms ease`;
+    leaf.sh.style.opacity = "1";
+    clearTimeout(curlAutoRef.current);
+    curlAutoRef.current = setTimeout(() => {
+      teardownLeaf(leaf);
+      foldingRef.current = false;
+    }, DUR + 40);
+    return true;
+  }, [buildLeaf, teardownLeaf]);
+
+  // ── Draggable curl (finger-tracked) ─────────────────────────────────────────
+  // begin() arms the leaf and advances epub beneath it; move(p) folds 0→±180° with
+  // the finger (the real next page shows through as it lifts); end() completes the
+  // fold past the threshold, or reverts the page and springs the leaf back flat.
   const curlStateRef = useRef(null);
   const curlWatchdog = useRef(null);
 
-  // Single source of truth for tearing a curl down — always releases foldingRef so
-  // navigation can never get permanently wedged (e.g. if touchcancel fires instead
-  // of touchend on a browser-level edge gesture). Safe to call more than once.
   const clearCurl = useCallback(() => {
     clearTimeout(curlWatchdog.current);
     const st = curlStateRef.current;
     curlStateRef.current = null;
     foldingRef.current = false;
-    if (!st) return;
-    const { iframe, parent, prevPerspective } = st;
-    iframe.style.transition = "none";
-    iframe.style.transform = "";
-    iframe.style.transformOrigin = "";
-    iframe.style.backfaceVisibility = "";
-    iframe.style.willChange = "";
-    parent.style.perspective = prevPerspective;
-  }, []);
+    if (st?.leaf) teardownLeaf(st.leaf);
+    // page changed under the snapshot — refresh it for the next turn
+    captureFnRef.current();
+  }, [teardownLeaf]);
 
   const beginCurl = useCallback((dir) => {
     if (navLockRef.current || foldingRef.current) return false;
     const sc = containerRef.current?.querySelector('.epub-container');
-    const iframe = sc?.querySelector('iframe') || containerRef.current?.querySelector('iframe');
-    if (!sc || !iframe) return false;
+    if (!sc) return false;
     const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
     const withinChapter = dir > 0
       ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
       : sc.scrollLeft > 1;
-    if (!withinChapter) return false;       // boundaries fall back to swipe/tap → nav()
+    if (!withinChapter) return false;          // boundaries fall back to swipe/tap → nav()
+    const leaf = buildLeaf(dir);
+    if (!leaf) return false;                    // no snapshot → fall back to swipe → nav()
     foldingRef.current = true;
-    sc.style.scrollBehavior = 'auto';
-    const parent = iframe.parentElement;
-    curlStateRef.current = { dir, sc, iframe, parent, prevPerspective: parent.style.perspective, ending: false };
-    parent.style.perspective = "1800px";
-    iframe.style.transformOrigin = "0% 50%";
-    iframe.style.backfaceVisibility = "hidden";
-    iframe.style.willChange = "transform";
-    iframe.style.transition = "none";
-    // Watchdog: if the gesture never reports an end (touchcancel, lost touch),
-    // force-release so the reader doesn't freeze.
+    sc.style.scrollBehavior = "auto";
+    leaf.advance(); leaf.advanced = true;       // next page beneath, hidden by the snapshot
+    curlStateRef.current = { dir, leaf, ending: false };
     clearTimeout(curlWatchdog.current);
-    curlWatchdog.current = setTimeout(() => clearCurl(), 2500);
+    curlWatchdog.current = setTimeout(() => clearCurl(), 3000);
     return true;
-  }, [clearCurl]);
+  }, [buildLeaf, clearCurl]);
 
   const moveCurl = useCallback((progress) => {
     const st = curlStateRef.current;
     if (!st || st.ending) return;
     const p = Math.max(0, Math.min(1, progress));
-    st.iframe.style.transform = `rotateY(${(st.dir > 0 ? -1 : 1) * p * 88}deg)`;
+    st.leaf.wrap.style.transition = "none";
+    st.leaf.wrap.style.transform = `rotateY(${(st.leaf.end) * p}deg)`;
+    st.leaf.sh.style.opacity = String(Math.min(1, p * 1.4));
   }, []);
 
-  // forceCommit: a deliberate flick completes the turn regardless of how far it
-  // dragged — otherwise a quick swipe (well under 32% of the page width) would
-  // spring back and feel like the page won't turn.
   const endCurl = useCallback((progress, forceCommit) => {
     const st = curlStateRef.current;
     if (!st || st.ending) return;
     st.ending = true;
     clearTimeout(curlWatchdog.current);
-    const { dir, iframe } = st;
-    const commit = forceCommit || progress > 0.32;
-    if (!commit) {                           // not far enough — spring back flat
-      iframe.style.transition = "transform 180ms cubic-bezier(.2,0,.2,1)";
-      iframe.style.transform = "rotateY(0deg)";
-      setTimeout(clearCurl, 200);
-      return;
+    const { leaf } = st;
+    const commit = forceCommit || progress > 0.3;
+    if (commit) {
+      const DUR = 260;
+      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
+      leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
+      leaf.sh.style.opacity = "1";
+      setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; captureFnRef.current(); }, DUR + 30);
+    } else {
+      if (leaf.advanced) { leaf.revert(); leaf.advanced = false; }   // undo the beneath-advance
+      const DUR = 200;
+      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.2,0,.2,1)`;
+      leaf.wrap.style.transform = "rotateY(0deg)";
+      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
+      leaf.sh.style.opacity = "0";
+      setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; }, DUR + 30);
     }
-    const DUR = 170;
-    iframe.style.transition = `transform ${DUR}ms cubic-bezier(.4,0,.7,1)`;
-    iframe.style.transform = `rotateY(${dir > 0 ? -88 : 88}deg)`;
-    setTimeout(() => {
-      iframe.style.transition = "none";
-      iframe.style.transform = `rotateY(${dir > 0 ? 88 : -88}deg)`;
-      if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
-      setTimeout(() => {
-        iframe.style.transition = `transform ${DUR}ms cubic-bezier(.3,0,.6,1)`;
-        iframe.style.transform = "rotateY(0deg)";
-        setTimeout(clearCurl, DUR + 30);
-      }, 60);
-    }, DUR + 10);
-  }, [clearCurl]);
+  }, [teardownLeaf]);
 
   const curlApiRef = useRef({ begin: () => false, move: () => {}, end: () => {}, cancel: () => {} });
   curlApiRef.current = { begin: beginCurl, move: moveCurl, end: endCurl, cancel: clearCurl };
@@ -1145,22 +1200,22 @@ export default function EpubReader({
     navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
     if (settingsRef.current.paginate) {
       const sc = containerRef.current?.querySelector('.epub-container');
-      const iframe = sc?.querySelector('iframe') || containerRef.current?.querySelector('iframe');
       if (sc) sc.style.scrollBehavior = 'auto';
-      if (sc && iframe) {
+      if (sc) {
         const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
         const withinChapter = dir > 0
           ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
           : sc.scrollLeft > 1;
-        if (withinChapter) { runFoldTurn(dir, sc, iframe); return; }
+        // animated curl when a fresh snapshot exists; otherwise instant turn below
+        if (withinChapter && runCurlTurn(dir)) return;
       }
-      // chapter boundary loads a new iframe → mask the white flash, turn instantly
+      // chapter boundary / no snapshot → mask the white flash, turn instantly
       setNavFade(true);
     } else {
       setNavFade(true);
     }
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
-  }, [runFoldTurn]);
+  }, [runCurlTurn]);
   const next = useCallback(() => nav(1),  [nav]);
   const prev = useCallback(() => { if (!atStartRef.current) nav(-1); }, [nav]);
 
@@ -1268,6 +1323,13 @@ export default function EpubReader({
 
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg }} />
+
+      {/* Page-curl overlay host — the folding leaf (a snapshot <canvas>) is mounted
+          here imperatively during a turn. Hidden and non-interactive otherwise. */}
+      <div ref={curlLayerRef} style={{
+        position:"absolute", top:54, bottom:0, left:0, right:0,
+        zIndex:10, pointerEvents:"none", display:"none", overflow:"hidden",
+      }} />
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
