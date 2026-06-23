@@ -1322,11 +1322,11 @@ export default function EpubReader({
           catching the page light. */}
       {settings.paginate && settings.twoPage && isWide && (
         <div style={{
-          position:"absolute", top:0, bottom:0, left:"50%", width:isLight ? 56 : 64, marginLeft:isLight ? -28 : -32,
+          position:"absolute", top:0, bottom:0, left:"50%", width:isLight ? 84 : 84, marginLeft:isLight ? -42 : -42,
           zIndex:4, pointerEvents:"none",
           background: isLight
-            ? "linear-gradient(90deg, rgba(74,46,20,0) 0%, rgba(74,46,20,0.05) 44%, rgba(74,46,20,0.10) 50%, rgba(74,46,20,0.05) 56%, rgba(74,46,20,0) 100%)"
-            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.45) 44%, rgba(201,168,76,0.10) 50%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.35) 70%, rgba(0,0,0,0) 100%)",
+            ? "linear-gradient(90deg, rgba(74,46,20,0) 0%, rgba(255,255,255,0.22) 34%, rgba(74,46,20,0.04) 44%, rgba(74,46,20,0.13) 50%, rgba(74,46,20,0.04) 56%, rgba(255,255,255,0.22) 66%, rgba(74,46,20,0) 100%)"
+            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(201,168,76,0.06) 30%, rgba(0,0,0,0.42) 42%, rgba(0,0,0,0.5) 47%, rgba(201,168,76,0.12) 50%, rgba(0,0,0,0.5) 53%, rgba(0,0,0,0.42) 58%, rgba(201,168,76,0.06) 70%, rgba(0,0,0,0) 100%)",
         }} />
       )}
 
@@ -1337,20 +1337,29 @@ export default function EpubReader({
       {settings.paginate && (
         <div style={{
           position:"absolute", top:0, bottom:0, left:0, right:0, zIndex:3, pointerEvents:"none",
+          background: isLight
+            ? "radial-gradient(120% 90% at 50% 45%, rgba(74,46,20,0) 62%, rgba(74,46,20,0.06) 100%)"
+            : "radial-gradient(120% 90% at 50% 45%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.28) 100%)",
           boxShadow: isLight
             ? "inset 0 0 22px 2px rgba(74,46,20,0.10), inset 0 0 70px 8px rgba(74,46,20,0.05)"
             : "inset 0 0 26px 4px rgba(0,0,0,0.40), inset 0 0 80px 10px rgba(0,0,0,0.22)",
         }} />
       )}
 
-      {/* Stacked page edges — thin fanned lines down the outer left/right borders
-          that mimic the cut edge of a real book's page block. pointerEvents:none
-          so the side tap-to-turn zones (zIndex 6) underneath stay fully tappable.
-          Light themes get warm-brown leaves; Grimdark gets pale leaves catching
-          light. Narrow (14px) so they sit in the blank margin, never over text. */}
-      {settings.paginate && [["left", "90deg"], ["right", "270deg"]].map(([side, dir]) => (
-        <div key={side} style={{
-          position:"absolute", top:0, bottom:0, [side]:0, width:14, zIndex:5, pointerEvents:"none",
+      {/* Stacked page edges — thin fanned leaves down ALL four outer borders that
+          mimic the cut edge of a real book's page block. pointerEvents:none so the
+          side tap-to-turn zones (zIndex 6) underneath stay fully tappable. Light
+          themes get warm-brown leaves; Grimdark gets pale leaves catching light.
+          Narrow (14px) so they sit in the blank margin, never over text. */}
+      {settings.paginate && [
+        { edge:"left",   dir:"90deg",  vert:true  },
+        { edge:"right",  dir:"270deg", vert:true  },
+        { edge:"top",    dir:"180deg", vert:false },
+        { edge:"bottom", dir:"0deg",   vert:false },
+      ].map(({ edge, dir, vert }) => (
+        <div key={edge} style={{
+          position:"absolute", [edge]:0, zIndex:5, pointerEvents:"none",
+          ...(vert ? { top:0, bottom:0, width:14 } : { left:0, right:0, height:14 }),
           background: isLight
             ? `linear-gradient(${dir}, rgba(74,46,20,0.16) 0%, rgba(74,46,20,0) 100%), repeating-linear-gradient(${dir}, rgba(120,88,48,0.16) 0 1px, rgba(120,88,48,0) 1px 3px)`
             : `linear-gradient(${dir}, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 100%), repeating-linear-gradient(${dir}, rgba(176,164,140,0.16) 0 1px, rgba(176,164,140,0) 1px 3px)`,
