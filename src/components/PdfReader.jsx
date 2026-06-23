@@ -209,6 +209,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const scrollRef  = useRef(null);
   const task1      = useRef(null);
   const task2      = useRef(null);
+  // Offscreen prerender cache (key → canvas) so adjacent pages are ready instantly
+  // when you turn. Capped to a handful of entries.
+  const preCache   = useRef(new Map());
   const saveTimer  = useRef(null);
   const navTimer   = useRef(null);
   const touchX     = useRef(null);
@@ -370,24 +373,61 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     return () => { cancelAnimationFrame(r); clearTimeout(tm); };
   }, [slide]);
 
-  // ── render single / dual ─────────────────────────────────────────────────
+  // Render a page once into an offscreen canvas and cache it, so the next time it's
+  // needed (e.g. you turn to it) it's blitted instantly instead of re-rasterised.
+  const ensurePrerender = useCallback(async (num, W, H, zoom, fit) => {
+    if (!doc || num < 1 || num > doc.numPages) return null;
+    const key = `${num}|${Math.round(W)}|${Math.round(H)}|${zoom}|${fit}`;
+    const hit = preCache.current.get(key);
+    if (hit) return hit;
+    const oc = document.createElement("canvas");
+    await renderPage(doc, num, oc, W, H, zoom, { current: null }, fit);
+    const entry = { canvas: oc };
+    preCache.current.set(key, entry);
+    if (preCache.current.size > 6) {
+      preCache.current.delete(preCache.current.keys().next().value);
+    }
+    return entry;
+  }, [doc]);
+
+  // ── render single / dual (blit from cache, then prefetch neighbours) ──────
   useEffect(() => {
     if (!doc || viewMode === "scroll") return;
     const wrap = wrapRef.current;
     if (!wrap) return;
+    let cancelled = false;
     const cols = viewMode === "dual" ? 2 : 1;
     const gap  = cols === 2 ? 12 : 0;
     const W    = Math.floor((wrap.clientWidth  - 8 - gap) / cols);
     const H    = wrap.clientHeight - 8;
     // Fit-to-width only makes sense single page; dual fits both pages whole.
     const fit  = viewMode === "single" ? fitMode : "page";
+    const step = viewMode === "dual" ? 2 : 1;
+    const blit = (entry, canvas) => {
+      if (!entry || !canvas) return;
+      const src = entry.canvas;
+      canvas.width = src.width; canvas.height = src.height;
+      canvas.style.width = src.style.width; canvas.style.height = src.style.height;
+      canvas.getContext("2d").drawImage(src, 0, 0);
+    };
     setRendering(true);
-    const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1, fit).catch(() => {});
-    const p2 = (viewMode === "dual" && page + 1 <= total)
-      ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2, "page").catch(() => {})
-      : Promise.resolve();
-    Promise.all([p1, p2]).finally(() => setRendering(false));
-  }, [doc, page, zoom, viewMode, total, fitMode, resizeTick]);
+    (async () => {
+      const e1 = await ensurePrerender(page, W, H, zoom, fit);
+      if (cancelled) return;
+      blit(e1, canvasRef.current);
+      if (viewMode === "dual" && page + 1 <= total) {
+        const e2 = await ensurePrerender(page + 1, W, H, zoom, "page");
+        if (cancelled) return;
+        blit(e2, canvas2Ref.current);
+      }
+      setRendering(false);
+      // Warm the neighbours so the next turn is instant.
+      ensurePrerender(page + step, W, H, zoom, fit);
+      ensurePrerender(page - step, W, H, zoom, fit);
+      if (viewMode === "dual") ensurePrerender(page + step + 1, W, H, zoom, "page");
+    })();
+    return () => { cancelled = true; };
+  }, [doc, page, zoom, viewMode, total, fitMode, resizeTick, ensurePrerender]);
 
   // On page turn in single/dual, jump back to the top of the page (fit-width pages
   // run taller than the viewport, so a new page should start at its top, not wherever
