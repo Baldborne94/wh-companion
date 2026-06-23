@@ -1095,16 +1095,20 @@ export default function EpubReader({
         </div>
       )}
 
-      {/* epub.js renders here */}
-      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg,
-                                        padding: settings.paginate ? "0 clamp(8px, 3.5vw, 64px)" : 0 }} />
+      {/* epub.js renders here. Full-height (top:0) so hiding the floating header
+          leaves no empty band — the page fills the screen like a real book. The
+          header is a translucent overlay that floats over the top margin. A small
+          top padding on the host (not the body) gives breathing room without
+          breaking epub's column pagination. */}
+      <div ref={containerRef} style={{ position:"absolute", top:0, bottom:0, left:0, right:0, background:T.bg,
+                                        padding: settings.paginate ? "12px clamp(8px, 3.5vw, 64px) 0" : 0 }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look,
           especially on the warm Sepia / Paper themes. */}
       {settings.paginate && settings.twoPage && isWide && (
         <div style={{
-          position:"absolute", top:54, bottom:0, left:"50%", width:64, marginLeft:-32,
+          position:"absolute", top:0, bottom:0, left:"50%", width:64, marginLeft:-32,
           zIndex:4, pointerEvents:"none",
           background:"linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 100%)",
         }} />
@@ -1120,6 +1124,8 @@ export default function EpubReader({
              style={{ position:"absolute", top:54, bottom:0, left:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
         <div onClick={next} aria-label={t("reader.nextPage") || "Next page"}
              style={{ position:"absolute", top:54, bottom:0, right:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
+        {/* tap zones stay below top:54 so they never sit under the header's
+            back / bookmark / settings buttons while it's visible */}
       </>)}
 
       {/* Page-turn overlay — a solid page-coloured panel that masks the white iframe
@@ -1128,7 +1134,7 @@ export default function EpubReader({
           overlay div (never touches epub.js' scroll), so it paints on every device —
           unlike the 3D curl we dropped. dir>0 (forward) → old page slides left. */}
       <div style={{
-        position:"absolute", top:54, bottom:0, left:0, right:0,
+        position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
         boxShadow: navDir > 0
           ? "-34px 0 60px -4px rgba(0,0,0,0.6), -12px 0 18px -6px rgba(0,0,0,0.45)"
