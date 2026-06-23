@@ -1015,7 +1015,10 @@ export default function EpubReader({
   const captureCurrentPage = useCallback(async () => {
     if (snapBusyRef.current || foldingRef.current) return;
     const s = settingsRef.current;
-    if (!s.paginate || s.twoPage) { setCurlDbg(`scatto saltato: ${!s.paginate ? "modalità scroll (niente pagine)" : "due-pagine"}`); return; }
+    // Works in single-page AND two-page (spread) mode — the snapshot just spans the
+    // whole visible width, so the whole spread folds away. Only scroll mode (no
+    // discrete pages) has nothing to fold.
+    if (!s.paginate) { setCurlDbg("scatto saltato: modalità scroll (niente pagine)"); return; }
     const sc = containerRef.current?.querySelector('.epub-container');
     const iframe = sc?.querySelector('iframe');
     const doc = iframe?.contentDocument;
@@ -1078,7 +1081,7 @@ export default function EpubReader({
       `position:absolute;left:${L.toFixed(1)}px;top:${Tp.toFixed(1)}px;width:${w}px;height:${h}px;` +
       `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:rotateY(0deg);` +
       `transform-style:preserve-3d;will-change:transform;backface-visibility:hidden;` +
-      `box-shadow:0 0 22px rgba(0,0,0,.45);`;
+      `box-shadow:0 0 22px rgba(0,0,0,.45);outline:3px solid #ff3b3b;`;  /* TEMP border to confirm the fold by eye */
     const cv = snap.canvas;
     cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;backface-visibility:hidden;";
     const sh = document.createElement("div");   // fold shadow that deepens toward the spine
@@ -1109,17 +1112,22 @@ export default function EpubReader({
     const sc = containerRef.current?.querySelector('.epub-container');
     if (sc) sc.style.scrollBehavior = "auto";
     leaf.advance(); leaf.advanced = true;       // real next page now sits under the snapshot
-    void leaf.wrap.offsetWidth;                 // flush so the transition runs
-    const DUR = 540;
-    leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-    leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
-    leaf.sh.style.transition = `opacity ${DUR}ms ease`;
-    leaf.sh.style.opacity = "1";
+    const DUR = 620;
+    // Double rAF: mobile browsers skip the transition if the target transform is set
+    // in the same frame the element was added — the initial rotateY(0) must paint
+    // first. void offsetWidth alone isn't reliable on tablet Chrome/Safari.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
+      leaf.wrap.style.transform = `rotateY(${leaf.end}deg)`;
+      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
+      leaf.sh.style.opacity = "1";
+      setCurlDbg(`CURL animazione → ${leaf.end}° (${DUR}ms)`);
+    }));
     clearTimeout(curlAutoRef.current);
     curlAutoRef.current = setTimeout(() => {
       teardownLeaf(leaf);
       foldingRef.current = false;
-    }, DUR + 40);
+    }, DUR + 120);
     return true;
   }, [buildLeaf, teardownLeaf]);
 
@@ -1337,13 +1345,15 @@ export default function EpubReader({
         zIndex:10, pointerEvents:"none", display:"none", overflow:"hidden",
       }} />
 
-      {/* TEMP page-curl diagnostic — remove once the tablet curl is confirmed. */}
+      {/* TEMP page-curl diagnostic — prominent top bar so it can't be missed.
+          "CURLDBG-3" is a build marker: if you don't see it, the device is still
+          running an older cached build. Remove once the tablet curl is confirmed. */}
       <div style={{
-        position:"absolute", left:6, bottom:6, zIndex:60, pointerEvents:"none",
-        maxWidth:"90%", padding:"3px 7px", borderRadius:6,
-        background:"#000000aa", color:"#c9a84c", fontFamily:"monospace",
-        fontSize:10, lineHeight:1.3, letterSpacing:0.2,
-      }}>{curlDbg}</div>
+        position:"absolute", top:54, left:0, right:0, zIndex:60, pointerEvents:"none",
+        padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
+        color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
+        lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
+      }}>CURLDBG-5 · {curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
