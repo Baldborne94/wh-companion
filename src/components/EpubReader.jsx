@@ -1134,7 +1134,7 @@ export default function EpubReader({
           : "18px 0 28px -8px rgba(0,0,0,0.35)",
         opacity: navFade ? 1 : 0,
         transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
-        transition: navFade ? "none" : "transform 0.32s ease, opacity 0.34s ease",
+        transition: navFade ? "none" : "transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.62s ease-out",
       }} />
 
 
