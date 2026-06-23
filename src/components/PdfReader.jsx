@@ -197,6 +197,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const task2      = useRef(null);
   const saveTimer  = useRef(null);
   const navTimer   = useRef(null);
+  const dimTimer   = useRef(null);
   const touchX     = useRef(null);
   const touchY     = useRef(null);
   const pinch      = useRef(null);
@@ -300,11 +301,16 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     // Fit-to-width only makes sense single page; dual fits both pages whole.
     const fit  = viewMode === "single" ? fitMode : "page";
     setRendering(true);
+    clearTimeout(dimTimer.current);
     const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1, fit).catch(() => {});
     const p2 = (viewMode === "dual" && page + 1 <= total)
       ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2, "page").catch(() => {})
       : Promise.resolve();
-    Promise.all([p1, p2]).finally(() => setRendering(false));
+    // Hold the dimmed state a beat after the new page is painted so it eases back in
+    // as a soft cross-page fade rather than snapping (PDF renders are near-instant).
+    Promise.all([p1, p2]).finally(() => {
+      dimTimer.current = setTimeout(() => setRendering(false), 130);
+    });
   }, [doc, page, zoom, viewMode, total, fitMode]);
 
   // On page turn in single/dual, jump back to the top of the page (fit-width pages
@@ -650,9 +656,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
               <div style={{ margin: 0, padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
-                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
+                <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.18 : 1, transition: "opacity 0.42s ease-in-out" }} />
                 {viewMode === "dual" && page + 1 <= total && (
-                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
+                  <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.18 : 1, transition: "opacity 0.42s ease-in-out" }} />
                 )}
               </div>
             )}
