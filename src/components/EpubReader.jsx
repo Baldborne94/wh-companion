@@ -426,6 +426,7 @@ export default function EpubReader({
   const [bmFlash,     setBmFlash]     = useState(false);
   const [curCfi,      setCurCfi]      = useState(null);
   const [navFade,     setNavFade]     = useState(false);
+  const [navDir,      setNavDir]      = useState(1);
   const [isWide,      setIsWide]      = useState(() => typeof window !== "undefined" && window.innerWidth > window.innerHeight);
 
   const toggleFullscreen = useCallback(() => {
@@ -985,6 +986,7 @@ export default function EpubReader({
     navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
     const sc = containerRef.current?.querySelector('.epub-container');
     if (sc) sc.style.scrollBehavior = 'auto';
+    setNavDir(dir);
     setNavFade(true);
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
   }, []);
@@ -1119,13 +1121,20 @@ export default function EpubReader({
              style={{ position:"absolute", top:54, bottom:0, right:0, width:"14%", zIndex:6, cursor:"pointer" }} />
       </>)}
 
-      {/* Page-turn overlay — covers the white iframe flash during chapter load.
-          Appears instantly on next/prev, fades out once relocated fires. */}
+      {/* Page-turn overlay — a solid page-coloured panel that masks the white iframe
+          flash during chapter load, then SLIDES away in the reading direction once
+          relocated fires, revealing the new page underneath. Pure 2D translate on an
+          overlay div (never touches epub.js' scroll), so it paints on every device —
+          unlike the 3D curl we dropped. dir>0 (forward) → old page slides left. */}
       <div style={{
         position:"absolute", top:54, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
+        boxShadow: navDir > 0
+          ? "-18px 0 28px -8px rgba(0,0,0,0.35)"
+          : "18px 0 28px -8px rgba(0,0,0,0.35)",
         opacity: navFade ? 1 : 0,
-        transition: navFade ? "none" : "opacity 0.34s ease",
+        transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
+        transition: navFade ? "none" : "transform 0.32s ease, opacity 0.34s ease",
       }} />
 
 
