@@ -77,7 +77,7 @@ async function putBmsToDB(userId, bookId, bms) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1 };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100 };
 
 // Side-margin presets (index → CSS for the text column's left/right padding).
 // Both the page container and the tap-to-turn strips use the same value so the
@@ -390,6 +390,19 @@ function SettingsPanel({ settings, onChange, onClose }) {
             <Chip key={th.id} label={th.label} active={settings.themeId===th.id} onClick={() => onChange("themeId", th.id)} />
           ))}
         </Row>
+
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0 4px" }}>
+          <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
+                         letterSpacing:1, flexShrink:0 }}>
+            {t("reader.brightness").replace("{n}", settings.brightness ?? 100)}
+          </span>
+          <span style={{ fontSize:13, flexShrink:0 }}>🌙</span>
+          <input type="range" min={20} max={100} step={10}
+            value={settings.brightness ?? 100}
+            onChange={(e) => onChange("brightness", Number(e.target.value))}
+            style={{ flex:1, accentColor:C.gold, cursor:"pointer" }} />
+          <span style={{ fontSize:13, flexShrink:0 }}>☀️</span>
+        </div>
       </div>
     </div>
   );
@@ -1262,6 +1275,18 @@ export default function EpubReader({
         transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
         transition: navFade ? "none" : "transform 0.95s cubic-bezier(0.25, 0.8, 0.32, 1)",
       }} />
+
+
+      {/* Brightness dim overlay — a pointer-transparent black veil for night
+          reading. zIndex 30 sits above the page + header but below the settings
+          sheet (1100), so the live preview dims behind the slider while the
+          panel itself stays readable. Capped at 0.72 so it never goes fully black. */}
+      {settings.brightness < 100 && (
+        <div style={{ position:"absolute", inset:0, zIndex:30, pointerEvents:"none",
+                      background:"#000",
+                      opacity:((100 - settings.brightness) / 100) * 0.72,
+                      transition:"opacity .15s ease" }} />
+      )}
 
 
       {/* Bookmark saved flash */}

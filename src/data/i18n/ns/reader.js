@@ -71,6 +71,7 @@ export const reader = {
       marginMedium: "Medium",
       marginWide: "Wide",
       theme: "Theme",
+      brightness: "Brightness — {n}%",
 
       // PDF toolbar
       singlePage: "Single page",
@@ -161,6 +162,7 @@ export const reader = {
       marginMedium: "Medi",
       marginWide: "Ampi",
       theme: "Tema",
+      brightness: "Luminosità — {n}%",
 
       // PDF toolbar
       singlePage: "Pagina singola",
