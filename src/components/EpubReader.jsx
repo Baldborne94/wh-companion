@@ -1343,6 +1343,20 @@ export default function EpubReader({
         }} />
       )}
 
+      {/* Stacked page edges — thin fanned lines down the outer left/right borders
+          that mimic the cut edge of a real book's page block. pointerEvents:none
+          so the side tap-to-turn zones (zIndex 6) underneath stay fully tappable.
+          Light themes get warm-brown leaves; Grimdark gets pale leaves catching
+          light. Narrow (14px) so they sit in the blank margin, never over text. */}
+      {settings.paginate && [["left", "90deg"], ["right", "270deg"]].map(([side, dir]) => (
+        <div key={side} style={{
+          position:"absolute", top:0, bottom:0, [side]:0, width:14, zIndex:5, pointerEvents:"none",
+          background: isLight
+            ? `linear-gradient(${dir}, rgba(74,46,20,0.16) 0%, rgba(74,46,20,0) 100%), repeating-linear-gradient(${dir}, rgba(120,88,48,0.16) 0 1px, rgba(120,88,48,0) 1px 3px)`
+            : `linear-gradient(${dir}, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 100%), repeating-linear-gradient(${dir}, rgba(176,164,140,0.16) 0 1px, rgba(176,164,140,0) 1px 3px)`,
+        }} />
+      ))}
+
       {/* Side tap-to-turn zones (paginated only). Transparent strips confined to the
           blank page margins — their width matches the text column's side padding
           (sideClamp, driven by the Margins setting) exactly, so they never overlap
