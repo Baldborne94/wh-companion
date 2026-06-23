@@ -151,6 +151,9 @@ function buildReaderCss(settings, T, fnt) {
       hyphens: auto !important; -webkit-hyphens: auto !important;
       orphans: 3 !important; widows: 3 !important;
     }
+    /* Force the chosen line spacing onto text elements — many EPUBs set their own
+       line-height on <p>, which overrides an inherited value set only on body. */
+    p, li, dd, dt, blockquote { line-height: ${settings.lineHeight} !important; }
     p:first-child, h1+p, h2+p, h3+p, h4+p, hr+p { text-indent: 0 !important; }
     h1, h2, h3, h4 {
       font-variant: small-caps !important;
@@ -423,6 +426,7 @@ export default function EpubReader({
   const [bmFlash,     setBmFlash]     = useState(false);
   const [curCfi,      setCurCfi]      = useState(null);
   const [navFade,     setNavFade]     = useState(false);
+  const [isWide,      setIsWide]      = useState(() => typeof window !== "undefined" && window.innerWidth > window.innerHeight);
 
   const toggleFullscreen = useCallback(() => {
     const el = document.documentElement;
@@ -505,6 +509,15 @@ export default function EpubReader({
     const prev = document.body.style.zoom;
     document.body.style.zoom = "1";
     return () => { document.body.style.zoom = prev; };
+  }, []);
+
+  // Track landscape/portrait so the open-book centre spine only shows when two
+  // pages are actually side by side (landscape).
+  useEffect(() => {
+    const on = () => setIsWide(window.innerWidth > window.innerHeight);
+    window.addEventListener("resize", on);
+    window.addEventListener("orientationchange", on);
+    return () => { window.removeEventListener("resize", on); window.removeEventListener("orientationchange", on); };
   }, []);
   // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
   // In paginated mode the lock releases on `relocated` (page turn done).
@@ -1083,6 +1096,17 @@ export default function EpubReader({
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg,
                                         padding: settings.paginate ? "0 clamp(8px, 3.5vw, 64px)" : 0 }} />
+
+      {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
+          side by side (landscape, paginated, two-page). Sells the "real book" look,
+          especially on the warm Sepia / Paper themes. */}
+      {settings.paginate && settings.twoPage && isWide && (
+        <div style={{
+          position:"absolute", top:54, bottom:0, left:"50%", width:64, marginLeft:-32,
+          zIndex:4, pointerEvents:"none",
+          background:"linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 100%)",
+        }} />
+      )}
 
       {/* Side tap-to-turn zones (paginated only). Transparent strips over the page
           margins, in the React layer so they use reliable native coordinates — the
