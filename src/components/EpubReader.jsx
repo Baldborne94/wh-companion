@@ -450,7 +450,9 @@ export default function EpubReader({
   // board that, with an inner shadow cast onto the page, makes the leaves look
   // set into a real bound book. Kept narrow so it never eats reading space.
   const coverW = 13;
-  const coverCol = isLight ? "#3a2a18" : "#15120c";
+  // Dark theme needs a board light enough to read against the near-black page bg
+  // (#0f0e09) — a deep warm brown, not near-black, so the cover is actually visible.
+  const coverCol = isLight ? "#3a2a18" : "#2e2616";
 
   // ── Book state ─────────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(true);
@@ -1364,25 +1366,27 @@ export default function EpubReader({
         <div key={edge} style={{
           position:"absolute", zIndex:5, pointerEvents:"none",
           ...(vert
-            ? { [edge]:coverW, top:coverW, bottom:0, width:22 }
-            : { bottom:0, left:coverW, right:coverW, height:14 }),
+            ? { [edge]:coverW, top:coverW, bottom:coverW, width:22 }
+            : { bottom:coverW, left:coverW, right:coverW, height:14 }),
           background: isLight
             ? `linear-gradient(${dir}, rgba(74,46,20,0.18) 0%, rgba(74,46,20,0) 100%), repeating-linear-gradient(${dir}, rgba(120,88,48,0.16) 0 1px, rgba(120,88,48,0) 1px 3px)`
             : `linear-gradient(${dir}, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 100%), repeating-linear-gradient(${dir}, rgba(176,164,140,0.16) 0 1px, rgba(176,164,140,0) 1px 3px)`,
         }} />
       ))}
 
-      {/* Hardcover frame — a thin darker board hugging the top + left + right edges,
-          with an inner shadow cast onto the page so the leaves read as set into a
-          bound book (the cover peeking out around them, like a real open book). No
-          bottom edge — the page block "opens" toward the reader. pointerEvents:none
-          so taps + the side-turn zones pass straight through. */}
+      {/* Hardcover frame — a thin darker board hugging all four edges, with an inner
+          shadow cast onto the page so the leaves read as set into a bound book (the
+          cover peeking out around them, like a real open book). On dark/Grimdark a
+          faint warm highlight line rims the board so it stays visible against the
+          near-black page. pointerEvents:none so taps + side-turn zones pass through. */}
       {settings.paginate && (
         <div style={{
           position:"absolute", inset:0, zIndex:5, pointerEvents:"none",
           borderStyle:"solid", borderColor:coverCol,
-          borderWidth:`${coverW}px ${coverW}px 0 ${coverW}px`,
-          boxShadow: "inset 0 18px 16px -12px rgba(0,0,0,0.55), inset 17px 0 16px -12px rgba(0,0,0,0.42), inset -17px 0 16px -12px rgba(0,0,0,0.42)",
+          borderWidth:`${coverW}px`,
+          boxShadow: isLight
+            ? "inset 0 18px 16px -12px rgba(0,0,0,0.55), inset 0 -18px 16px -12px rgba(0,0,0,0.45), inset 17px 0 16px -12px rgba(0,0,0,0.42), inset -17px 0 16px -12px rgba(0,0,0,0.42)"
+            : "inset 0 0 0 1px rgba(201,168,76,0.16), inset 0 18px 16px -12px rgba(0,0,0,0.7), inset 0 -18px 16px -12px rgba(0,0,0,0.6), inset 17px 0 16px -12px rgba(0,0,0,0.6), inset -17px 0 16px -12px rgba(0,0,0,0.6)",
         }} />
       )}
 
