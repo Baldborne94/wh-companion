@@ -200,6 +200,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const dimTimer   = useRef(null);
   const touchX     = useRef(null);
   const touchY     = useRef(null);
+  const tapStart   = useRef(null);
   const pinch      = useRef(null);
   const zoomRef    = useRef(zoom);
   const pageRef    = useRef(page);
@@ -267,15 +268,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     } catch {}
   }, []);
 
-  // ── auto-hide nav (mobile) ────────────────────────────────────────────────
-  const bumpNav = useCallback(() => {
-    if (isDesktop) return;
-    setShowNav(true);
-    clearTimeout(navTimer.current);
-    navTimer.current = setTimeout(() => setShowNav(false), 4000);
-  }, [isDesktop]);
-
-  useEffect(() => { if (!isDesktop) bumpNav(); }, []); // eslint-disable-line
+  // ── nav bars: manual show/hide via centre tap (reclaims full-screen space) ──
+  // No auto-hide — the bars stay as the user left them; a centre tap toggles them.
+  // Kept as a no-op callback so existing call sites (goTo, scroll, touch) are inert.
+  const bumpNav = useCallback(() => {}, []);
+  const toggleNav = useCallback(() => { if (!isDesktop) setShowNav(v => !v); }, [isDesktop]);
 
   // ── navigation ────────────────────────────────────────────────────────────
   const goTo = useCallback((n) => {
@@ -418,16 +415,19 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
 
     const onStart = (e) => {
-      bumpNav();
       if (e.touches.length === 2) {
         pinch.current = { d: dist(e.touches), z: zoomRef.current };
         touchX.current = null;
+        tapStart.current = null;
         e.preventDefault();
       } else {
         pinch.current = null;
         const mode = viewRef.current;
         touchX.current = (mode !== "scroll" && zoomRef.current <= 1.0) ? e.touches[0].clientX : null;
         touchY.current = e.touches[0].clientY;
+        // Track every single-finger start (independent of the swipe gate) so a plain
+        // tap can be detected in any mode — used to toggle the nav bars.
+        tapStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }
     };
 
@@ -440,26 +440,33 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     };
 
     const onEnd = (e) => {
-      if (pinch.current) { pinch.current = null; touchX.current = null; return; }
-      if (touchX.current === null || viewRef.current === "scroll") return;
-      const startX = touchX.current;
-      const startY = touchY.current;
-      const dx = e.changedTouches[0].clientX - startX;
-      const dy = startY == null ? 0 : e.changedTouches[0].clientY - startY;
-      touchX.current = null;
-      touchY.current = null;
+      if (pinch.current) { pinch.current = null; touchX.current = null; tapStart.current = null; return; }
+      const ts = tapStart.current;
+      tapStart.current = null;
+      const ex = e.changedTouches[0].clientX;
+      const ey = e.changedTouches[0].clientY;
+      const tdx = ts ? ex - ts.x : 999;
+      const tdy = ts ? ey - ts.y : 999;
+      const isTap = Math.abs(tdx) <= 15 && Math.abs(tdy) <= 15;
       const step = viewRef.current === "dual" ? 2 : 1;
-      // Edge tap (≤15 px movement in left/right 70 px strip) → prev/next.
-      // Require small vertical movement too so a vertical scroll near the edge
-      // (common with fit-to-width tall pages) never flips the page.
-      if (Math.abs(dx) <= 15 && Math.abs(dy) <= 15) {
+
+      if (isTap && ts) {
         const EDGE = 70;
-        if (startX < EDGE)                     { goTo(pageRef.current - step); return; }
-        if (startX > window.innerWidth - EDGE) { goTo(pageRef.current + step); return; }
+        // Edge tap (single/dual only) → prev/next; centre tap (any mode) → toggle bars.
+        if (viewRef.current !== "scroll" && ts.x < EDGE)                     { touchX.current = null; goTo(pageRef.current - step); return; }
+        if (viewRef.current !== "scroll" && ts.x > window.innerWidth - EDGE) { touchX.current = null; goTo(pageRef.current + step); return; }
+        touchX.current = null;
+        toggleNav();
         return;
       }
-      // Horizontal swipe → page turn (ignore mostly-vertical drags = scrolling).
-      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) goTo(pageRef.current + (dx < 0 ? step : -step));
+
+      // Horizontal swipe → page turn (single/dual; ignore mostly-vertical = scrolling).
+      if (touchX.current !== null && viewRef.current !== "scroll") {
+        const dx = ex - touchX.current;
+        const dy = ts ? ey - ts.y : 0;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) goTo(pageRef.current + (dx < 0 ? step : -step));
+      }
+      touchX.current = null;
     };
 
     el.addEventListener("touchstart", onStart, { passive: false });
@@ -470,7 +477,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       el.removeEventListener("touchmove",  onMove);
       el.removeEventListener("touchend",   onEnd);
     };
-  }, [viewMode, doc, goTo, bumpNav]);
+  }, [viewMode, doc, goTo, toggleNav]);
 
   // ── bookmarks ─────────────────────────────────────────────────────────────
   const isBookmarked = bookmarks.some(b => b.page === page);
@@ -501,12 +508,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const step = viewMode === "dual" ? 2 : 1;
 
   return (
-    <div ref={rootRef} style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", display: "flex", flexDirection: "column", userSelect: "none" }}
-      onClick={bumpNav}
-    >
-      {/* ── Header ── */}
+    <div ref={rootRef} style={{ position: "fixed", inset: 0, zIndex: 600, background: "#0a0905", userSelect: "none" }}>
+      {/* ── Header (overlay — toggled by centre tap to reclaim full-screen space) ── */}
       <div style={{
-        flexShrink: 0, height: 48, background: "#111009", borderBottom: `1px solid ${C.border}`,
+        position: "absolute", top: 0, left: 0, right: 0,
+        height: 48, background: "#111009", borderBottom: `1px solid ${C.border}`,
         display: "flex", alignItems: "center", padding: "0 6px", gap: 4, zIndex: 20,
         opacity: navVisible ? 1 : 0, transition: "opacity 0.3s",
         pointerEvents: navVisible ? "auto" : "none",
@@ -636,8 +642,8 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         </div>
       )}
 
-      {/* ── Main area ── */}
-      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+      {/* ── Main area (full-screen — bars overlay on top) ── */}
+      <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
 
         {/* Single / Dual */}
         {viewMode !== "scroll" && (
@@ -696,11 +702,12 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         </>)}
       </div>
 
-      {/* ── Mobile bottom bar (all modes) ── */}
+      {/* ── Mobile bottom bar (overlay, all modes) ── */}
       {!isDesktop && total > 0 && (
         <div style={{
-          flexShrink: 0, height: 48, background: "#111009", borderTop: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", padding: "0 6px", gap: 4,
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          height: 48, background: "#111009", borderTop: `1px solid ${C.border}`,
+          display: "flex", alignItems: "center", padding: "0 6px", gap: 4, zIndex: 20,
           opacity: navVisible ? 1 : 0, transition: "opacity 0.3s",
           pointerEvents: navVisible ? "auto" : "none",
         }}>
