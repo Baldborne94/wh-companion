@@ -1353,15 +1353,14 @@ export default function EpubReader({
         }} />
       )}
 
-      {/* Stacked page edges — thin fanned leaves down the left/right (and bottom)
-          borders that mimic the cut edge of a real book's page block. No top edge:
-          the hardcover frame sits there instead. Inset by coverW so the leaves
-          nest just inside the cover lip. pointerEvents:none so the side tap-to-turn
-          zones (zIndex 6) stay fully tappable. */}
+      {/* Stacked page edges — thin fanned leaves down the left/right borders that
+          mimic the cut edge of a real book's page block. No top/bottom edge: the
+          hardcover frame sits there instead. Inset by coverW so the leaves nest just
+          inside the cover lip. pointerEvents:none so the side tap-to-turn zones
+          (zIndex 6) stay fully tappable. */}
       {settings.paginate && [
         { edge:"left",   dir:"90deg",  vert:true  },
         { edge:"right",  dir:"270deg", vert:true  },
-        { edge:"bottom", dir:"0deg",   vert:false },
       ].map(({ edge, dir, vert }) => (
         <div key={edge} style={{
           position:"absolute", zIndex:5, pointerEvents:"none",
@@ -1412,7 +1411,7 @@ export default function EpubReader({
       <div style={{
         position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
-        opacity: navFade ? 1 : 0,
+        opacity: navFade ? 0.82 : 0,
         transition: navFade ? "none" : "opacity 0.8s ease-in-out",
       }} />
 
