@@ -77,7 +77,7 @@ async function putBmsToDB(userId, bookId, bms) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:false, themeId:"dark" };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"dark" };
 
 function loadSettings() {
   try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
@@ -496,6 +496,16 @@ export default function EpubReader({
   themeRef.current   = T;
   const settingsRef  = useRef(settings);
   settingsRef.current = settings;
+
+  // The tablet body{zoom} hack (index.html) scales the whole app, but inside the
+  // reader it only hurts: it renders text at a lower effective resolution and
+  // breaks transforms/coordinate math. The reader has its own font-size controls,
+  // so suspend body zoom while it's open and restore it on close.
+  useEffect(() => {
+    const prev = document.body.style.zoom;
+    document.body.style.zoom = "1";
+    return () => { document.body.style.zoom = prev; };
+  }, []);
   // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
   // In paginated mode the lock releases on `relocated` (page turn done).
   // In scroll/continuous mode `relocated` fires on every scroll-position change
@@ -620,7 +630,10 @@ export default function EpubReader({
 
     const flow    = settings.paginate ? "paginated" : "scrolled";
     const manager = settings.paginate ? "default"   : "continuous";
-    const spread  = settings.paginate && settings.twoPage ? "always" : "none";
+    // "auto" gives the open-book feel: two pages side by side when there's room
+    // (landscape tablet) and one page when narrow (portrait / phone). "none" forces
+    // a single page. minSpreadWidth tuned so landscape tablets trigger the spread.
+    const spread  = settings.paginate && settings.twoPage ? "auto" : "none";
 
     (async () => {
       if (cancelled || !containerRef.current) return;
@@ -650,7 +663,7 @@ export default function EpubReader({
           height:         "100%",
           spread,
           flow,
-          minSpreadWidth: 900,
+          minSpreadWidth: 820,
           manager,
         });
         rendRef.current = rend;
@@ -745,58 +758,19 @@ export default function EpubReader({
 
           // Touch navigation lives here (not on an outer overlay) so taps hit the
           // iframe natively — the click listener above handles lore/anchors with the
-          // browser's own hit-testing, immune to body{zoom}. This only adds swipe and
-          // edge-tap page-turning for paginated mode.
-          // A horizontal drag peels the live page in 3D following the finger (curl);
-          // a quick flick or edge-tap still triggers the auto-fold via nav(). We only
-          // commit to a curl once the gesture is clearly horizontal, so vertical
-          // intent (text selection / native menu) is left alone.
+          // browser's own hit-testing. Swipe + edge-tap turn the page in paginated
+          // mode; scroll mode turns by scrolling.
           let _tsx = 0, _tsy = 0;
-          let _curlActive = false, _curlDir = 0, _decided = false, _w = 0;
           doc.addEventListener("touchstart", (ev) => {
             const tp = ev.touches?.[0];
-            if (!tp) return;
-            _tsx = tp.clientX; _tsy = tp.clientY;
-            _curlActive = false; _curlDir = 0; _decided = false;
-            _w = contents.window.innerWidth || doc.documentElement.clientWidth || 0;
-          }, { passive: true });
-          doc.addEventListener("touchmove", (ev) => {
-            if (!settingsRef.current.paginate) return;
-            const tp = ev.touches?.[0];
-            if (!tp) return;
-            const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
-            if (!_decided) {
-              if (Math.abs(dx) < 14 || Math.abs(dx) <= Math.abs(dy)) return;  // wait for clear horizontal intent
-              _decided = true;
-              if (ev.target?.closest?.("[data-kw], a")) return;              // don't grab a page off a link/lore term
-              _curlDir = dx < 0 ? 1 : -1;                                    // drag left → next, right → prev
-              _curlActive = curlApiRef.current.begin(_curlDir);             // false at chapter boundary → falls back to swipe
-            }
-            if (_curlActive) {
-              const dist = _curlDir > 0 ? (_tsx - tp.clientX) : (tp.clientX - _tsx);
-              curlApiRef.current.move(dist / (_w || 1));
-            }
-          }, { passive: true });
-          doc.addEventListener("touchcancel", () => {
-            if (_curlActive) { curlApiRef.current.cancel(); _curlActive = false; _decided = false; }
+            if (tp) { _tsx = tp.clientX; _tsy = tp.clientY; }
           }, { passive: true });
           doc.addEventListener("touchend", (ev) => {
-            if (!settingsRef.current.paginate) {
-              if (_curlActive) { curlApiRef.current.cancel(); _curlActive = false; }
-              return;   // scroll mode turns pages by scrolling
-            }
+            if (!settingsRef.current.paginate) return;   // scroll mode turns pages by scrolling
             const tp = ev.changedTouches?.[0];
-            if (_curlActive && tp) {
-              const dist = _curlDir > 0 ? (_tsx - tp.clientX) : (tp.clientX - _tsx);
-              // A deliberate flick (moved well past the swipe threshold in the curl
-              // direction) always completes the turn; a short drag uses the 32% gate.
-              curlApiRef.current.end(Math.max(0, dist) / (_w || 1), dist > 55);
-              _curlActive = false;
-              return;
-            }
             if (!tp) return;
             const dx = tp.clientX - _tsx, dy = tp.clientY - _tsy;
-            // Quick horizontal flick → page turn (auto-fold)
+            // Horizontal swipe → page turn
             if (Math.abs(dx) > 50 && Math.abs(dy) < Math.abs(dx) * 0.7) {
               if (dx < 0) navFnsRef.current.next(); else navFnsRef.current.prev();
               return;
@@ -872,8 +846,6 @@ export default function EpubReader({
           if (!navHoldRef.current) setNavFade(false);
           const cfi = loc.start?.cfi;
           if (cfi) { cfiRef.current = cfi; setCurCfi(cfi); }
-          // Pre-rasterise the now-current page so the next turn can fold instantly.
-          captureFnRef.current?.();
           if (tocRef.current.length > 0 && loc.start?.href) {
             const base = decodeURIComponent(loc.start.href).split("#")[0].split("/").pop();
             const found = tocRef.current.find(ch =>
@@ -995,246 +967,21 @@ export default function EpubReader({
   }, []);
 
 
-  // ── Real page-curl (snapshot overlay) ──────────────────────────────────────
-  // Transforming epub.js's live iframe in 3D is unreliable on tablet browsers and
-  // pivots on the off-screen chapter start, so instead we rasterise the current
-  // page to a <canvas> (html2canvas), lay that snapshot over the page, advance
-  // epub.js underneath (the REAL next page is now beneath the snapshot), then fold
-  // the snapshot away in 3D. The snapshot is a normal DOM element, so the transform
-  // composites reliably and the next page is revealed as the leaf turns.
-  // Everything degrades to an instant masked turn if a snapshot isn't available,
-  // and foldingRef is always released so navigation can never wedge.
-  const foldingRef    = useRef(false);
-  const curlLayerRef  = useRef(null);   // overlay host (in JSX)
-  const pageSnapRef    = useRef(null);  // { cfi, canvas, w, h } of the current page
-  const snapBusyRef    = useRef(false);
-  const snapTimer      = useRef(null);
-  // TEMP diagnostic — reports why the page-curl runs or falls back, on-device.
-  const [curlDbg, setCurlDbg] = useState("curl: in attesa…");
-
-  const captureCurrentPage = useCallback(async () => {
-    if (snapBusyRef.current || foldingRef.current) return;
-    const s = settingsRef.current;
-    // Works in single-page AND two-page (spread) mode — the snapshot just spans the
-    // whole visible width, so the whole spread folds away. Only scroll mode (no
-    // discrete pages) has nothing to fold.
-    if (!s.paginate) { setCurlDbg("scatto saltato: modalità scroll (niente pagine)"); return; }
-    const sc = containerRef.current?.querySelector('.epub-container');
-    const iframe = sc?.querySelector('iframe');
-    const doc = iframe?.contentDocument;
-    if (!sc || !iframe || !doc?.body) { setCurlDbg("scatto saltato: iframe/doc non pronto"); return; }
-    const w = sc.clientWidth, h = sc.clientHeight, sl = sc.scrollLeft;
-    if (w < 2 || h < 2) { setCurlDbg(`scatto saltato: dimensioni ${w}x${h}`); return; }
-    const cfi = cfiRef.current;
-    snapBusyRef.current = true;
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      if (foldingRef.current) return;          // a turn started meanwhile
-      let bg = "";
-      try { bg = getComputedStyle(doc.body).backgroundColor; } catch {}
-      if (!bg || bg === "rgba(0, 0, 0, 0)" || bg === "transparent") bg = T.bg;
-      const canvas = await html2canvas(doc.body, {
-        backgroundColor: bg,
-        x: sl, y: 0, width: w, height: h,
-        scrollX: 0, scrollY: 0,
-        windowWidth: doc.body.scrollWidth, windowHeight: h,
-        scale: Math.min(2, iframe.contentWindow?.devicePixelRatio || 1),
-        logging: false, useCORS: true, imageTimeout: 800, removeContainer: true,
-      });
-      pageSnapRef.current = { cfi, canvas, w, h };
-      setCurlDbg(`scatto OK ${Math.round(canvas.width)}x${Math.round(canvas.height)} (pag ${w}x${h})`);
-    } catch (e) { setCurlDbg("scatto ERRORE: " + String(e?.message || e).slice(0, 70)); }
-    finally { snapBusyRef.current = false; }
-  }, []);
-
-  const scheduleCapture = useCallback(() => {
-    clearTimeout(snapTimer.current);
-    snapTimer.current = setTimeout(() => {
-      if (foldingRef.current) { scheduleCapture(); return; }   // wait until idle
-      captureCurrentPage();
-    }, 220);
-  }, [captureCurrentPage]);
-  const captureFnRef = useRef(() => {});
-  captureFnRef.current = scheduleCapture;
-
-  // Build the folding leaf over the current page. Returns the handle, or null when
-  // no fresh snapshot exists (caller then falls back to an instant turn).
-  const buildLeaf = useCallback((dir) => {
-    const layer = curlLayerRef.current;
-    const sc = containerRef.current?.querySelector('.epub-container');
-    const iframe = sc?.querySelector('iframe');
-    const snap = pageSnapRef.current;
-    if (!layer || !sc || !iframe) { setCurlDbg("leaf: DOM mancante"); return null; }
-    if (!snap) { setCurlDbg("leaf: nessuno scatto pronto"); return null; }
-    if (snap.cfi !== cfiRef.current) { setCurlDbg("leaf: scatto non aggiornato"); return null; }
-    if (snap.canvas.width < 2) { setCurlDbg("leaf: canvas vuoto"); return null; }
-    const layerR = layer.getBoundingClientRect();
-    const scR = sc.getBoundingClientRect();
-    const L = scR.left - layerR.left, Tp = scR.top - layerR.top, w = scR.width, h = scR.height;
-    setCurlDbg(`CURL ✓ a (${L.toFixed(0)},${Tp.toFixed(0)}) ${w.toFixed(0)}x${h.toFixed(0)}`);
-    const hingeLeft = dir > 0;                 // forward folds toward the left spine
-    layer.style.display = "block";
-    layer.style.perspective = "";
-    layer.style.perspectiveOrigin = "";
-    layer.style.overflow = "visible";
-    const wrap = document.createElement("div");
-    // 2D fold (scaleX toward the spine) — basic transform that renders on every
-    // engine, including under the tablet body{zoom} where 3D rotateY didn't paint.
-    wrap.style.cssText =
-      `position:absolute;left:${L.toFixed(1)}px;top:${Tp.toFixed(1)}px;width:${w}px;height:${h}px;` +
-      `transform-origin:${hingeLeft ? "0% 50%" : "100% 50%"};transform:scaleX(1);` +
-      `will-change:transform;background:${T.bg};` +
-      `box-shadow:0 0 22px rgba(0,0,0,.45);outline:3px solid #ff3b3b;`;  /* TEMP border to confirm by eye */
-    const cv = snap.canvas;
-    cv.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:block;";
-    const sh = document.createElement("div");   // fold shadow that deepens toward the spine
-    sh.style.cssText =
-      `position:absolute;inset:0;pointer-events:none;opacity:0;` +
-      `background:linear-gradient(${hingeLeft ? "270deg" : "90deg"},rgba(0,0,0,.55),rgba(0,0,0,0) 55%);`;
-    wrap.append(cv, sh);
-    layer.appendChild(wrap);
-    const advance = () => { if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev(); };
-    const revert  = () => { if (dir > 0) rendRef.current?.prev(); else rendRef.current?.next(); };
-    // p: 0 = flat (full page), 1 = fully folded (closed onto the spine)
-    const tf = (p) => `scaleX(${Math.max(0, 1 - p).toFixed(4)})`;
-    return { wrap, sh, layer, dir, hingeLeft, tf, advance, revert, advanced: false };
-  }, []);
-
-  const teardownLeaf = useCallback((leaf) => {
-    if (!leaf) return;
-    try { leaf.wrap.remove(); } catch {}
-    const layer = leaf.layer;
-    if (layer && !layer.firstChild) layer.style.display = "none";
-  }, []);
-
-  // Auto turn (tap / flick / keyboard): snapshot covers the page, epub advances
-  // beneath it immediately (hidden), then the leaf folds away to reveal the page.
-  const curlAutoRef = useRef(null);
-  const runCurlTurn = useCallback((dir) => {
-    const leaf = buildLeaf(dir);
-    if (!leaf) return false;
-    foldingRef.current = true;
-    const sc = containerRef.current?.querySelector('.epub-container');
-    if (sc) sc.style.scrollBehavior = "auto";
-    leaf.advance(); leaf.advanced = true;       // real next page now sits under the snapshot
-    const DUR = 620;
-    // Double rAF: mobile browsers skip the transition if the target transform is set
-    // in the same frame the element was added — the initial scaleX(1) must paint
-    // first. void offsetWidth alone isn't reliable on tablet Chrome/Safari.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-      leaf.wrap.style.transform = leaf.tf(1);
-      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
-      leaf.sh.style.opacity = "1";
-      setCurlDbg(`CURL 2D scaleX→0 (${DUR}ms)`);
-    }));
-    clearTimeout(curlAutoRef.current);
-    curlAutoRef.current = setTimeout(() => {
-      teardownLeaf(leaf);
-      foldingRef.current = false;
-    }, DUR + 120);
-    return true;
-  }, [buildLeaf, teardownLeaf]);
-
-  // ── Draggable curl (finger-tracked) ─────────────────────────────────────────
-  // begin() arms the leaf and advances epub beneath it; move(p) folds 0→±180° with
-  // the finger (the real next page shows through as it lifts); end() completes the
-  // fold past the threshold, or reverts the page and springs the leaf back flat.
-  const curlStateRef = useRef(null);
-  const curlWatchdog = useRef(null);
-
-  const clearCurl = useCallback(() => {
-    clearTimeout(curlWatchdog.current);
-    const st = curlStateRef.current;
-    curlStateRef.current = null;
-    foldingRef.current = false;
-    if (st?.leaf) teardownLeaf(st.leaf);
-    // page changed under the snapshot — refresh it for the next turn
-    captureFnRef.current();
-  }, [teardownLeaf]);
-
-  const beginCurl = useCallback((dir) => {
-    if (navLockRef.current || foldingRef.current) return false;
-    const sc = containerRef.current?.querySelector('.epub-container');
-    if (!sc) return false;
-    const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
-    const withinChapter = dir > 0
-      ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
-      : sc.scrollLeft > 1;
-    if (!withinChapter) return false;          // boundaries fall back to swipe/tap → nav()
-    const leaf = buildLeaf(dir);
-    if (!leaf) return false;                    // no snapshot → fall back to swipe → nav()
-    foldingRef.current = true;
-    sc.style.scrollBehavior = "auto";
-    leaf.advance(); leaf.advanced = true;       // next page beneath, hidden by the snapshot
-    curlStateRef.current = { dir, leaf, ending: false };
-    clearTimeout(curlWatchdog.current);
-    curlWatchdog.current = setTimeout(() => clearCurl(), 3000);
-    return true;
-  }, [buildLeaf, clearCurl]);
-
-  const moveCurl = useCallback((progress) => {
-    const st = curlStateRef.current;
-    if (!st || st.ending) return;
-    const p = Math.max(0, Math.min(1, progress));
-    st.leaf.wrap.style.transition = "none";
-    st.leaf.wrap.style.transform = st.leaf.tf(p);
-    st.leaf.sh.style.opacity = String(Math.min(1, p * 1.4));
-  }, []);
-
-  const endCurl = useCallback((progress, forceCommit) => {
-    const st = curlStateRef.current;
-    if (!st || st.ending) return;
-    st.ending = true;
-    clearTimeout(curlWatchdog.current);
-    const { leaf } = st;
-    const commit = forceCommit || progress > 0.3;
-    if (commit) {
-      const DUR = 260;
-      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.36,.06,.25,1)`;
-      leaf.wrap.style.transform = leaf.tf(1);
-      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
-      leaf.sh.style.opacity = "1";
-      setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; captureFnRef.current(); }, DUR + 30);
-    } else {
-      if (leaf.advanced) { leaf.revert(); leaf.advanced = false; }   // undo the beneath-advance
-      const DUR = 200;
-      leaf.wrap.style.transition = `transform ${DUR}ms cubic-bezier(.2,0,.2,1)`;
-      leaf.wrap.style.transform = leaf.tf(0);
-      leaf.sh.style.transition = `opacity ${DUR}ms ease`;
-      leaf.sh.style.opacity = "0";
-      setTimeout(() => { teardownLeaf(leaf); curlStateRef.current = null; foldingRef.current = false; }, DUR + 30);
-    }
-  }, [teardownLeaf]);
-
-  const curlApiRef = useRef({ begin: () => false, move: () => {}, end: () => {}, cancel: () => {} });
-  curlApiRef.current = { begin: beginCurl, move: moveCurl, end: endCurl, cancel: clearCurl };
-
   // ── Navigation ────────────────────────────────────────────────────────────
+  // Instant page turn. The navFade overlay (page-bg colour) masks the brief flash
+  // while a new chapter iframe loads and doubles as a subtle cross-page fade — it
+  // renders on every device, unlike the 3D curl we dropped.
   const nav = useCallback((dir) => {
-    if (navLockRef.current || foldingRef.current) return;
+    if (navLockRef.current) return;
     navLockRef.current = true;
     // Safety release in case relocated never fires (e.g. already at first/last chapter)
     clearTimeout(navLockTimer.current);
     navLockTimer.current = setTimeout(() => { navLockRef.current = false; }, 3000);
-    if (settingsRef.current.paginate) {
-      const sc = containerRef.current?.querySelector('.epub-container');
-      if (sc) sc.style.scrollBehavior = 'auto';
-      if (sc) {
-        const delta = rendRef.current?.manager?.layout?.delta || sc.offsetWidth;
-        const withinChapter = dir > 0
-          ? sc.scrollLeft + sc.offsetWidth + delta <= sc.scrollWidth + 1
-          : sc.scrollLeft > 1;
-        // animated curl when a fresh snapshot exists; otherwise instant turn below
-        if (withinChapter && runCurlTurn(dir)) return;
-      }
-      // chapter boundary / no snapshot → mask the white flash, turn instantly
-      setNavFade(true);
-    } else {
-      setNavFade(true);
-    }
+    const sc = containerRef.current?.querySelector('.epub-container');
+    if (sc) sc.style.scrollBehavior = 'auto';
+    setNavFade(true);
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
-  }, [runCurlTurn]);
+  }, []);
   const next = useCallback(() => nav(1),  [nav]);
   const prev = useCallback(() => { if (!atStartRef.current) nav(-1); }, [nav]);
 
@@ -1341,24 +1088,8 @@ export default function EpubReader({
       )}
 
       {/* epub.js renders here */}
-      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg }} />
-
-      {/* Page-curl overlay host — the folding leaf (a snapshot <canvas>) is mounted
-          here imperatively during a turn. Hidden and non-interactive otherwise. */}
-      <div ref={curlLayerRef} style={{
-        position:"absolute", top:54, bottom:0, left:0, right:0,
-        zIndex:10, pointerEvents:"none", display:"none", overflow:"hidden",
-      }} />
-
-      {/* TEMP page-curl diagnostic — prominent top bar so it can't be missed.
-          "CURLDBG-3" is a build marker: if you don't see it, the device is still
-          running an older cached build. Remove once the tablet curl is confirmed. */}
-      <div style={{
-        position:"absolute", top:54, left:0, right:0, zIndex:60, pointerEvents:"none",
-        padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
-        color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
-        lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
-      }}>CURLDBG-7 · {curlDbg}</div>
+      <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg,
+                                        padding: settings.paginate ? "0 clamp(8px, 3.5vw, 64px)" : 0 }} />
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
