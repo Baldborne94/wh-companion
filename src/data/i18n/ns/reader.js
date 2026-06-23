@@ -81,6 +81,8 @@ export const reader = {
       dualPage: "Dual page",
       scrollMode: "Scroll",
       resetZoom: "Reset zoom",
+      fitWidth: "Fit width",
+      fitPage: "Fit whole page",
 
       // Dictionary
       definition: "Definition",
@@ -176,6 +178,8 @@ export const reader = {
       dualPage: "Pagina doppia",
       scrollMode: "Scorrimento",
       resetZoom: "Reimposta zoom",
+      fitWidth: "Adatta larghezza",
+      fitPage: "Pagina intera",
 
       // Dictionary
       definition: "Definizione",
