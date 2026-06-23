@@ -416,6 +416,12 @@ export default function EpubReader({
   const [dictWord,      setDictWord]      = useState(null);
   const [lorePick,      setLorePick]      = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
+  const [showSearch,    setShowSearch]    = useState(false);
+  const [searchQuery,   setSearchQuery]   = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching,     setSearching]     = useState(false);
+  const [searched,      setSearched]      = useState(false);
+  const searchToken = useRef(0);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
   const bmKey = `wh40k_bm_${userId}_${bookId}`;
@@ -620,6 +626,46 @@ export default function EpubReader({
     });
   }, [hrefToCfi, scrollToCfiExact]);
 
+  // Full-text search across the book. epub.js has no Book-level search, so we
+  // walk the spine, load each section, run Section.find(), then unload to free
+  // memory. Runs on demand (cancellable via a token so a new query / close
+  // aborts the previous walk). Capped at 300 hits to keep the list usable.
+  const runSearch = useCallback(async (raw) => {
+    const q = (raw || "").trim();
+    const book = bookRef.current;
+    if (!q || q.length < 2 || !book) return;
+    const token = ++searchToken.current;
+    setSearching(true);
+    setSearched(true);
+    setSearchResults([]);
+    const results = [];
+    try {
+      await book.ready;
+      const sections = [];
+      book.spine.each((s) => sections.push(s));
+      for (const section of sections) {
+        if (token !== searchToken.current) return;   // superseded / closed
+        try {
+          await section.load(book.load.bind(book));
+          const found = section.find(q);
+          if (found.length) {
+            const base = decodeURIComponent(section.href || "").split("#")[0].split("/").pop();
+            const label = tocRef.current.find(ch =>
+              ch.href && decodeURIComponent(ch.href).split("#")[0].split("/").pop() === base
+            )?.label?.trim() || "";
+            found.forEach(m => results.push({ cfi: m.cfi, excerpt: m.excerpt, label }));
+          }
+        } catch {}
+        finally { try { section.unload(); } catch {} }
+        if (results.length >= 300) break;
+        if (token === searchToken.current) setSearchResults([...results]);
+      }
+      if (token === searchToken.current) setSearchResults([...results]);
+    } finally {
+      if (token === searchToken.current) setSearching(false);
+    }
+  }, []);
+
   // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
   const uiVisible = !isTouch.current || !settings.paginate || showUI;
 
@@ -644,11 +690,11 @@ export default function EpubReader({
 
   // Keep UI visible while a panel is open
   useEffect(() => {
-    if (showSettings || showToc || showBmPanel) {
+    if (showSettings || showToc || showBmPanel || showSearch) {
       clearTimeout(hideTimer.current);
       setShowUI(true);
     }
-  }, [showSettings, showToc, showBmPanel]);
+  }, [showSettings, showToc, showBmPanel, showSearch]);
 
   // TOC navigation is paginated-only — epub.js's continuous manager doesn't land
   // chapter jumps reliably across all books. Close the panel if it's open when
@@ -1257,6 +1303,7 @@ export default function EpubReader({
               </button>
             </>
           )}
+          <IBtn onClick={() => setShowSearch(true)}     color={T.muted}                           title={t("reader.search")}>🔍</IBtn>
           {settings.paginate && (
             <IBtn onClick={() => setShowToc(v=>!v)}       color={T.muted}                           title={t("reader.contents")}>☰</IBtn>
           )}
@@ -1331,6 +1378,76 @@ export default function EpubReader({
                   {ch.label}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Search-in-book ─────────────────────────────────────────────────── */}
+      {showSearch && (
+        <div onClick={() => { searchToken.current++; setShowSearch(false); }}
+          style={{ position:"absolute", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)" }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ position:"absolute", left:0, top:0, bottom:0,
+                     width:Math.min(360, window.innerWidth * 0.9),
+                     background:T.surface, borderRight:`1px solid ${T.border}`,
+                     animation:"rdrIn .2s ease", display:"flex", flexDirection:"column" }}>
+            <div style={{ padding:"14px 14px 12px", borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:13, color:T.text }}>{t("reader.search")}</span>
+                <button onClick={() => { searchToken.current++; setShowSearch(false); }} aria-label="Close search"
+                  style={{ background:"transparent", border:"none", color:T.muted, cursor:"pointer", fontSize:18 }}>✕</button>
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); runSearch(searchQuery); }}
+                    style={{ display:"flex", gap:8 }}>
+                <input autoFocus value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={t("reader.searchPlaceholder")}
+                  style={{ flex:1, background:T.bg, border:`1px solid ${T.border}`, borderRadius:8,
+                           color:T.text, padding:"9px 12px", fontFamily:"'Cinzel',serif", fontSize:12,
+                           outline:"none" }} />
+                <button type="submit"
+                  style={{ background:`${C.gold}1c`, border:`1px solid ${C.gold}55`, borderRadius:8,
+                           color:C.gold, padding:"0 14px", cursor:"pointer", fontSize:14, flexShrink:0 }}>🔍</button>
+              </form>
+            </div>
+            <div style={{ overflowY:"auto", flex:1 }}>
+              {searching && searchResults.length === 0 ? (
+                <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"24px 16px", fontStyle:"italic" }}>
+                  {t("reader.searching")}
+                </p>
+              ) : searched && !searching && searchResults.length === 0 ? (
+                <p style={{ textAlign:"center", color:T.muted, fontSize:12, padding:"24px 16px", fontStyle:"italic" }}>
+                  {t("reader.noResults")}
+                </p>
+              ) : (<>
+                {searchResults.length > 0 && (
+                  <p style={{ color:T.muted, fontSize:10, letterSpacing:1, padding:"10px 16px 4px",
+                              margin:0, textTransform:"uppercase", fontFamily:"'Cinzel',serif" }}>
+                    {t("reader.searchResults").replace("{n}", searchResults.length)}
+                    {searching ? " …" : ""}
+                  </p>
+                )}
+                {searchResults.map((r, i) => (
+                  <button key={i}
+                    onClick={() => { displayCfi(r.cfi); searchToken.current++; setShowSearch(false); }}
+                    style={{ display:"block", width:"100%", textAlign:"left",
+                             background:"transparent", border:"none",
+                             borderBottom:`1px solid ${T.border}`,
+                             padding:"11px 16px", cursor:"pointer" }}>
+                    {r.label && (
+                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9.5, color:C.gold,
+                                    letterSpacing:0.5, marginBottom:4, overflow:"hidden",
+                                    textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {r.label}
+                      </div>
+                    )}
+                    <div style={{ fontSize:12, color:T.text, lineHeight:1.5 }}>
+                      {highlightExcerpt(r.excerpt, searchQuery)}
+                    </div>
+                  </button>
+                ))}
+              </>)}
             </div>
           </div>
         </div>
@@ -1432,6 +1549,26 @@ export default function EpubReader({
 // ─────────────────────────────────────────────────────────────────────────────
 // Small helpers
 // ─────────────────────────────────────────────────────────────────────────────
+// Bold the matched query inside a search excerpt (case-insensitive), keeping
+// the original casing of the surrounding text.
+function highlightExcerpt(excerpt, query) {
+  const q = (query || "").trim();
+  if (!q) return excerpt;
+  const lower = (excerpt || "").toLowerCase();
+  const lq = q.toLowerCase();
+  const out = [];
+  let i = 0, pos;
+  while ((pos = lower.indexOf(lq, i)) !== -1) {
+    if (pos > i) out.push(excerpt.slice(i, pos));
+    out.push(<mark key={pos} style={{ background:"transparent", color:C.gold, fontWeight:700 }}>
+      {excerpt.slice(pos, pos + q.length)}
+    </mark>);
+    i = pos + q.length;
+  }
+  if (i < excerpt.length) out.push(excerpt.slice(i));
+  return out;
+}
+
 function IBtn({ onClick, color, title, children }) {
   return (
     <button onClick={onClick} title={title} aria-label={title}
