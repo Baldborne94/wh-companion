@@ -629,6 +629,18 @@ export default function EpubReader({
     hideTimer.current = setTimeout(() => setShowUI(false), 4000);
   }, []);
 
+  // Center tap toggles the header (immersive control). When showing, arm the
+  // same 4s auto-hide; when hiding, dismiss instantly. Side strips + swipe still
+  // turn pages — only a plain tap on the text column reaches here.
+  const toggleUI = useCallback(() => {
+    if (!isTouch.current) return;
+    setShowUI(prev => {
+      clearTimeout(hideTimer.current);
+      if (!prev) hideTimer.current = setTimeout(() => setShowUI(false), 4000);
+      return !prev;
+    });
+  }, []);
+
   // Keep UI visible while a panel is open
   useEffect(() => {
     if (showSettings || showToc || showBmPanel) {
@@ -905,7 +917,7 @@ export default function EpubReader({
           }
         });
 
-        rend.on("click", () => revealUI());
+        rend.on("click", () => toggleUI());
 
         const readyTimeout = setTimeout(() => {
           if (!cancelled) { setError(t("reader.tookTooLong")); setLoading(false); }
