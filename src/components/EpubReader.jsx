@@ -1405,23 +1405,15 @@ export default function EpubReader({
       </>)}
 
       {/* Page-turn overlay — a solid page-coloured panel that masks the white iframe
-          flash during chapter load, then SLIDES away in the reading direction once
-          relocated fires, revealing the new page underneath. Pure 2D translate on an
-          overlay div (never touches epub.js' scroll), so it paints on every device —
-          unlike the 3D curl we dropped. dir>0 (forward) → old page slides left. */}
+          flash during chapter load, then gently FADES out once relocated fires,
+          revealing the new page underneath. A soft opacity dissolve (no slide, no
+          shadow) so the turn reads as a quiet cross-page transition rather than a
+          sweeping panel — paints on every device, unlike the 3D curl we dropped. */}
       <div style={{
         position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
-        boxShadow: isLight
-          ? (navDir > 0
-              ? "-22px 0 34px -10px rgba(74,46,20,0.22)"
-              : "22px 0 34px -10px rgba(74,46,20,0.22)")
-          : (navDir > 0
-              ? "-22px 0 34px -10px rgba(0,0,0,0.32)"
-              : "22px 0 34px -10px rgba(0,0,0,0.32)"),
-        opacity: 1,
-        transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
-        transition: navFade ? "none" : "transform 1.1s cubic-bezier(0.33, 0.85, 0.3, 1)",
+        opacity: navFade ? 1 : 0,
+        transition: navFade ? "none" : "opacity 0.5s ease",
       }} />
 
 
