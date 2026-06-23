@@ -373,10 +373,18 @@ export function wikiUrl(key) {
   return `https://warhammer40k.fandom.com/wiki/${e?.wiki || encodeURIComponent(e?.name || key)}`;
 }
 
+// Force MediaWiki's desktop skin even on tablets/phones. Lexicanum (MobileFrontend)
+// otherwise serves a cramped dark mobile layout to touch devices; this query param
+// flips it to the full desktop view the user sees on PC. Appended with the right
+// separator since the "Go" search fallback already carries a query string.
+function withDesktop(url) {
+  return url + (url.includes("?") ? "&" : "?") + "mobileaction=toggle_view_desktop";
+}
+
 export function lexUrl(key) {
   const e = LORE_DB[key];
   // A curated Lexicanum slug is always exact — use it directly.
-  if (e?.lex) return `https://wh40k.lexicanum.com/wiki/${e.lex}`;
+  if (e?.lex) return withDesktop(`https://wh40k.lexicanum.com/wiki/${e.lex}`);
   // A plain (non-disambiguated) Fandom slug like "Sanguinius" matches Lexicanum
   // 1:1, so reuse it directly. But a parenthesised slug uses Fandom-only
   // conventions ("Terra_(Warhammer_40,000)", "Salamanders_(Chapter)") that don't
@@ -385,9 +393,9 @@ export function lexUrl(key) {
   // article when unambiguous or shows results to pick from otherwise. Either way
   // the user reaches a real page with a description instead of a dead stub.
   const slug = e?.wiki;
-  if (slug && !slug.includes("(")) return `https://wh40k.lexicanum.com/wiki/${slug}`;
+  if (slug && !slug.includes("(")) return withDesktop(`https://wh40k.lexicanum.com/wiki/${slug}`);
   const term = encodeURIComponent(e?.name || key);
-  return `https://wh40k.lexicanum.com/index.php?search=${term}&go=Go`;
+  return withDesktop(`https://wh40k.lexicanum.com/index.php?search=${term}&go=Go`);
 }
 
 export const KW_KEYS  = Object.keys(LORE_DB).sort((a, b) => b.length - a.length);
