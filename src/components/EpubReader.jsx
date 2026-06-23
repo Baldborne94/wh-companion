@@ -1130,11 +1130,11 @@ export default function EpubReader({
         position:"absolute", top:54, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
         boxShadow: navDir > 0
-          ? "-18px 0 28px -8px rgba(0,0,0,0.35)"
-          : "18px 0 28px -8px rgba(0,0,0,0.35)",
-        opacity: navFade ? 1 : 0,
+          ? "-34px 0 60px -4px rgba(0,0,0,0.6), -12px 0 18px -6px rgba(0,0,0,0.45)"
+          : "34px 0 60px -4px rgba(0,0,0,0.6), 12px 0 18px -6px rgba(0,0,0,0.45)",
+        opacity: 1,
         transform: navFade ? "translateX(0)" : `translateX(${navDir > 0 ? "-100%" : "100%"})`,
-        transition: navFade ? "none" : "transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.62s ease-out",
+        transition: navFade ? "none" : "transform 0.95s cubic-bezier(0.25, 0.8, 0.32, 1)",
       }} />
 
 
