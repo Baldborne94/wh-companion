@@ -442,6 +442,10 @@ export default function EpubReader({
   const T   = THEMES[settings.themeId] ?? THEMES.dark;
   const fnt = FONTS[settings.fontIndex];
   const sideClamp = MARGINS[settings.margin] ?? MARGINS[1];
+  // Sepia / Paper are light backgrounds; Grimdark is the only dark theme. Light
+  // themes want a softer, warmer "paper" depth — a heavy black gutter/edge looks
+  // like ink, not a printed sheet — so we tune the spine + edge shadow per theme.
+  const isLight = settings.themeId !== "dark";
 
   // ── Book state ─────────────────────────────────────────────────────────────
   const [loading,  setLoading]  = useState(true);
@@ -1310,13 +1314,30 @@ export default function EpubReader({
                                         padding: settings.paginate ? `12px ${sideClamp} 0` : 0 }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
-          side by side (landscape, paginated, two-page). Sells the "real book" look,
-          especially on the warm Sepia / Paper themes. */}
+          side by side (landscape, paginated, two-page). Sells the "real book" look.
+          Light themes (Sepia / Paper) get a softer, warm-brown gutter so it reads
+          as a folded sheet rather than a hard ink line; the dark theme keeps a
+          deeper black that disappears into the background. */}
       {settings.paginate && settings.twoPage && isWide && (
         <div style={{
-          position:"absolute", top:0, bottom:0, left:"50%", width:64, marginLeft:-32,
+          position:"absolute", top:0, bottom:0, left:"50%", width:isLight ? 56 : 64, marginLeft:isLight ? -28 : -32,
           zIndex:4, pointerEvents:"none",
-          background:"linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 100%)",
+          background: isLight
+            ? "linear-gradient(90deg, rgba(74,46,20,0) 0%, rgba(74,46,20,0.05) 44%, rgba(74,46,20,0.10) 50%, rgba(74,46,20,0.05) 56%, rgba(74,46,20,0) 100%)"
+            : "linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0) 100%)",
+        }} />
+      )}
+
+      {/* Outer-edge page shadow — a soft inset frame that lifts the page off the
+          backdrop for a subtle paper/3D depth. pointerEvents:none so it never
+          intercepts taps, selection, or the side-turn zones. Warm + a touch
+          deeper on light themes (a sheet on a desk), barely-there on Grimdark. */}
+      {settings.paginate && (
+        <div style={{
+          position:"absolute", top:0, bottom:0, left:0, right:0, zIndex:3, pointerEvents:"none",
+          boxShadow: isLight
+            ? "inset 0 0 22px 2px rgba(74,46,20,0.10), inset 0 0 70px 8px rgba(74,46,20,0.05)"
+            : "inset 0 0 26px 4px rgba(0,0,0,0.40), inset 0 0 80px 10px rgba(0,0,0,0.22)",
         }} />
       )}
 
