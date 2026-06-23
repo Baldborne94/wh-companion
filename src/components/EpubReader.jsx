@@ -775,13 +775,14 @@ export default function EpubReader({
               if (dx < 0) navFnsRef.current.next(); else navFnsRef.current.prev();
               return;
             }
-            // Edge tap → page turn, but never hijack taps on lore terms / links / text
+            // Side tap → page turn: left third = previous, right third = next, with
+            // a center band left free (reveals the UI). Never hijack taps on lore
+            // terms / links / text selection.
             if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
               if (ev.target?.closest?.("[data-kw], a")) return;
               const w = contents.window.innerWidth || doc.documentElement.clientWidth || 0;
-              const EDGE = 70;
-              if (tp.clientX < EDGE) navFnsRef.current.prev();
-              else if (tp.clientX > w - EDGE) navFnsRef.current.next();
+              if (tp.clientX < w * 0.33) navFnsRef.current.prev();
+              else if (tp.clientX > w * 0.67) navFnsRef.current.next();
             }
           }, { passive: true });
 
@@ -1097,7 +1098,7 @@ export default function EpubReader({
         position:"absolute", top:54, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
         opacity: navFade ? 1 : 0,
-        transition: navFade ? "none" : "opacity 0.18s ease",
+        transition: navFade ? "none" : "opacity 0.34s ease",
       }} />
 
 
