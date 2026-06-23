@@ -155,17 +155,6 @@ function buildReaderCss(settings, T, fnt) {
        line-height on <p>, which overrides an inherited value set only on body. */
     p, li, dd, dt, blockquote { line-height: ${settings.lineHeight} !important; }
     p:first-child, h1+p, h2+p, h3+p, h4+p, hr+p { text-indent: 0 !important; }
-    /* Illuminated drop cap on the first paragraph of each chapter (same "first
-       paragraph" set used above for the no-indent rule). Sells the printed-book feel. */
-    p:first-child::first-letter, h1+p::first-letter, h2+p::first-letter,
-    h3+p::first-letter, h4+p::first-letter, hr+p::first-letter {
-      float: left !important;
-      font-size: 3.1em !important;
-      line-height: 0.72 !important;
-      padding: 0.06em 0.1em 0 0 !important;
-      font-weight: 700 !important;
-      color: ${T.id === "dark" ? "#c9a84c" : "#6e4a22"} !important;
-    }
     h1, h2, h3, h4 {
       font-variant: small-caps !important;
       text-align: center !important;
@@ -1107,16 +1096,6 @@ export default function EpubReader({
       {/* epub.js renders here */}
       <div ref={containerRef} style={{ position:"absolute", top:54, bottom:0, left:0, right:0, background:T.bg,
                                         padding: settings.paginate ? "0 clamp(8px, 3.5vw, 64px)" : 0 }} />
-
-      {/* Page-edge vignette — subtle darkening toward the borders so the text block
-          feels like an inked page rather than a flat screen. Warmer/lighter tint on
-          the Sepia & Paper themes, cool black on Grimdark. */}
-      <div style={{
-        position:"absolute", top:54, bottom:0, left:0, right:0, zIndex:3, pointerEvents:"none",
-        background: T.id === "dark"
-          ? "radial-gradient(ellipse 78% 88% at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,0.22) 100%)"
-          : "radial-gradient(ellipse 78% 88% at 50% 50%, rgba(60,40,18,0) 62%, rgba(60,40,18,0.13) 100%)",
-      }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look,
