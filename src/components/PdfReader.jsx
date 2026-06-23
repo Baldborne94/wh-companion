@@ -120,8 +120,6 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   })();
   const isLight   = theme.id !== "dark";
   const matBg     = isLight ? theme.surface : "#1a1814";
-  const coverCol  = isLight ? "#3a2a18" : "#2e2616";
-  const coverW    = 11;
 
   // Lock viewport to prevent browser zoom interfering
   useEffect(() => {
@@ -335,9 +333,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const wrap = wrapRef.current;
     if (!wrap) return;
     const cols = viewMode === "dual" ? 2 : 1;
-    const gap  = cols === 2 ? 16 : 0;
-    const W    = Math.floor((wrap.clientWidth  - 24 - gap) / cols);
-    const H    = wrap.clientHeight - 24;
+    const gap  = cols === 2 ? 12 : 0;
+    const W    = Math.floor((wrap.clientWidth  - 8 - gap) / cols);
+    const H    = wrap.clientHeight - 8;
     // Fit-to-width only makes sense single page; dual fits both pages whole.
     const fit  = viewMode === "single" ? fitMode : "page";
     setRendering(true);
@@ -374,7 +372,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         canvas.style.cssText = "display:block;margin:0 auto;border-radius:2px;box-shadow:0 4px 24px rgba(0,0,0,.7)";
         item.wrapper.appendChild(canvas);
         item.canvas = canvas;
-        const W = container.clientWidth - 32;
+        const W = container.clientWidth - 8;
         const H = container.clientHeight;
         const taskRef = { current: null };
         scrollTasks.current.set(item.pageNum, taskRef);
@@ -384,15 +382,16 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
     for (let i = 1; i <= doc.numPages; i++) {
       const wrapper = document.createElement("div");
-      wrapper.style.cssText = "margin:12px auto;max-width:calc(100% - 24px);min-height:180px;display:flex;align-items:center;justify-content:center";
+      wrapper.style.cssText = "margin:8px auto;max-width:calc(100% - 8px);min-height:180px;display:flex;align-items:center;justify-content:center";
       wrapper.dataset.page = i;
       container.appendChild(wrapper);
       scrollPages.current.push({ wrapper, canvas: null, pageNum: i, rendered: false });
       scrollObs.current.observe(wrapper);
     }
 
-    // Scroll to saved page
-    const target = scrollPages.current[initPage - 1];
+    // Jump to the page we were already on (so switching into scroll keeps your place,
+    // not the page the reader was opened at).
+    const target = scrollPages.current[(pageRef.current || initPage) - 1];
     if (target) setTimeout(() => target.wrapper.scrollIntoView({ block: "start" }), 50);
 
     // Track current page
@@ -699,7 +698,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             ) : !doc ? (
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
-              <div style={{ margin: 0, padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ margin: 0, padding: 4, display: "flex", gap: 8, flexShrink: 0 }}>
                 <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
                 {viewMode === "dual" && page + 1 <= total && (
                   <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
@@ -735,24 +734,6 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           }} />
         )}
 
-        {/* Hardcover frame + soft vignette over the reading mat — same bound-book
-            cue as the EPUB reader. pointerEvents:none so swipes, edge-taps, pinch
-            and scrolling on the layers beneath pass straight through. */}
-        {doc && !err && (<>
-          <div style={{
-            position: "absolute", inset: 0, zIndex: 4, pointerEvents: "none",
-            borderStyle: "solid", borderColor: coverCol, borderWidth: coverW,
-            boxShadow: isLight
-              ? "inset 0 14px 14px -11px rgba(0,0,0,0.4), inset 0 -14px 14px -11px rgba(0,0,0,0.34), inset 14px 0 14px -11px rgba(0,0,0,0.32), inset -14px 0 14px -11px rgba(0,0,0,0.32)"
-              : "inset 0 0 0 1px rgba(201,168,76,0.14), inset 0 14px 14px -11px rgba(0,0,0,0.6), inset 0 -14px 14px -11px rgba(0,0,0,0.5), inset 14px 0 14px -11px rgba(0,0,0,0.5), inset -14px 0 14px -11px rgba(0,0,0,0.5)",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none",
-            background: isLight
-              ? "radial-gradient(125% 95% at 50% 45%, rgba(74,46,20,0) 64%, rgba(74,46,20,0.05) 100%)"
-              : "radial-gradient(125% 95% at 50% 45%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.26) 100%)",
-          }} />
-        </>)}
       </div>
 
       {/* ── Mobile bottom bar (overlay, all modes) ── */}
@@ -771,13 +752,6 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           </span>
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
-
-          {viewMode !== "dual" && (
-            <Btn label="↔" onClick={() => setFitMode(m => m === "width" ? "page" : "width")}
-                 active={fitMode === "width"} title={fitMode === "width" ? t("reader.fitPage") : t("reader.fitWidth")} />
-          )}
-          <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
-               active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
 
           <div style={{ flex: 1 }} />
 
