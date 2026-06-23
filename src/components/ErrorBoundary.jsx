@@ -6,6 +6,23 @@ function isChunkError(error) {
   return msg.includes('dynamically imported module') || msg.includes('Loading chunk') || msg.includes('Loading CSS chunk');
 }
 
+// A stale service worker can strand a freshly-hashed lazy chunk (the section loads
+// forever / renders blank). Purge caches + unregister the SW, then reload to pull a
+// clean build. Guarded by the caller: only when online and only once per session.
+async function healStaleCacheAndReload() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  } catch { /* fall through to a plain reload */ }
+  window.location.reload();
+}
+
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -16,9 +33,12 @@ export default class ErrorBoundary extends Component {
   }
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary]', error, info);
-    // Stale service worker served old chunk hashes — force reload to pick up new build
-    if (isChunkError(error)) {
-      window.location.reload();
+    // Stale service worker stranded a chunk hash. Self-heal once: clear caches +
+    // unregister the SW, then reload for a clean build. Only when online — an
+    // offline cache-miss must keep the error UI instead of nuking the offline cache.
+    if (isChunkError(error) && navigator.onLine && !sessionStorage.getItem('wh_chunk_heal')) {
+      try { sessionStorage.setItem('wh_chunk_heal', '1'); } catch {}
+      healStaleCacheAndReload();
     }
   }
   render() {
@@ -39,7 +59,7 @@ export default class ErrorBoundary extends Component {
             {this.state.error?.message || tr.generic}
           </div>
           <button
-            onClick={() => chunkErr ? window.location.reload() : this.setState({ hasError:false, error:null })}
+            onClick={() => chunkErr ? healStaleCacheAndReload() : this.setState({ hasError:false, error:null })}
             style={{background:'transparent', border:'1px solid #c9a84c55', borderRadius:8,
                     padding:'8px 20px', color:'#c9a84c', fontFamily:"'Cinzel',serif",
                     fontSize:11, letterSpacing:2, cursor:'pointer', textTransform:'uppercase'}}
