@@ -82,13 +82,18 @@ async function savePdfBmsToDB(userId, bookId, bms) {
   } catch {}
 }
 
-// Render one page onto a canvas, fit to available space × zoom
-async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef) {
+// Render one page onto a canvas, fit to available space × zoom.
+// fit="width" fills the available width (page can run taller than the viewport and
+// is scrolled vertically) — far more readable on phones than fitting the whole page;
+// fit="page" keeps the whole page visible.
+async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef, fit = "page") {
   if (!doc || !canvas || num < 1 || num > doc.numPages) return;
   if (taskRef?.current) { try { taskRef.current.cancel(); } catch {} taskRef.current = null; }
   const pg   = await doc.getPage(num);
   const vp0  = pg.getViewport({ scale: 1 });
-  const scale = Math.min(availW / vp0.width, availH / vp0.height) * zoom;
+  const base = fit === "width" ? availW / vp0.width
+                               : Math.min(availW / vp0.width, availH / vp0.height);
+  const scale = base * zoom;
   const vp   = pg.getViewport({ scale });
   const dpr  = window.devicePixelRatio || 1;
   canvas.width  = Math.floor(vp.width  * dpr);
@@ -148,6 +153,10 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [page,      setPage]     = useState(initPage);
   const [zoom,      setZoom]     = useState(1.0);
   const [viewMode,  setViewMode] = useState("single");
+  // Fit-to-width by default on touch devices (readable text on phones); whole-page
+  // on desktop where the viewport is large enough to read a full page comfortably.
+  const [fitMode,   setFitMode]  = useState(() =>
+    window.matchMedia("(pointer:fine)").matches ? "page" : "width");
   const [err,       setErr]      = useState(null);
   const [rendering, setRendering]= useState(false);
   const [showNav,   setShowNav]  = useState(true);
@@ -174,10 +183,12 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const saveTimer  = useRef(null);
   const navTimer   = useRef(null);
   const touchX     = useRef(null);
+  const touchY     = useRef(null);
   const pinch      = useRef(null);
   const zoomRef    = useRef(zoom);
   const pageRef    = useRef(page);
   const viewRef    = useRef(viewMode);
+  const fitRef     = useRef(fitMode);
   // Scroll mode page list: { wrapper, canvas, pageNum, rendered }
   const scrollPages = useRef([]);
   const scrollObs   = useRef(null);
@@ -190,6 +201,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { pageRef.current = page; }, [page]);
   useEffect(() => { viewRef.current = viewMode; }, [viewMode]);
+  useEffect(() => { fitRef.current = fitMode; }, [fitMode]);
 
   // On new device (no localStorage), restore position from DB
   useEffect(() => {
@@ -257,13 +269,22 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const gap  = cols === 2 ? 16 : 0;
     const W    = Math.floor((wrap.clientWidth  - 24 - gap) / cols);
     const H    = wrap.clientHeight - 24;
+    // Fit-to-width only makes sense single page; dual fits both pages whole.
+    const fit  = viewMode === "single" ? fitMode : "page";
     setRendering(true);
-    const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1).catch(() => {});
+    const p1 = renderPage(doc, page, canvasRef.current, W, H, zoom, task1, fit).catch(() => {});
     const p2 = (viewMode === "dual" && page + 1 <= total)
-      ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2).catch(() => {})
+      ? renderPage(doc, page + 1, canvas2Ref.current, W, H, zoom, task2, "page").catch(() => {})
       : Promise.resolve();
     Promise.all([p1, p2]).finally(() => setRendering(false));
-  }, [doc, page, zoom, viewMode, total]);
+  }, [doc, page, zoom, viewMode, total, fitMode]);
+
+  // On page turn in single/dual, jump back to the top of the page (fit-width pages
+  // run taller than the viewport, so a new page should start at its top, not wherever
+  // the previous one was scrolled to).
+  useEffect(() => {
+    if (viewMode !== "scroll") wrapRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [page, viewMode]);
 
   // ── scroll mode setup — deps minimal, use refs inside ────────────────────
   useEffect(() => {
@@ -288,7 +309,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         const H = container.clientHeight;
         const taskRef = { current: null };
         scrollTasks.current.set(item.pageNum, taskRef);
-        renderPage(doc, item.pageNum, canvas, W, H, zoomRef.current, taskRef).catch(() => {});
+        renderPage(doc, item.pageNum, canvas, W, H, zoomRef.current, taskRef, fitRef.current).catch(() => {});
       });
     }, { root: container, rootMargin: "300px 0px" });
 
@@ -338,9 +359,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       if (!item.rendered || !item.canvas) return;
       const taskRef = scrollTasks.current.get(item.pageNum) || { current: null };
       scrollTasks.current.set(item.pageNum, taskRef);
-      renderPage(doc, item.pageNum, item.canvas, W, H, zoom, taskRef).catch(() => {});
+      renderPage(doc, item.pageNum, item.canvas, W, H, zoom, taskRef, fitMode).catch(() => {});
     });
-  }, [zoom, viewMode, doc]);
+  }, [zoom, viewMode, doc, fitMode]);
 
   // ── keyboard ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -372,6 +393,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         pinch.current = null;
         const mode = viewRef.current;
         touchX.current = (mode !== "scroll" && zoomRef.current <= 1.0) ? e.touches[0].clientX : null;
+        touchY.current = e.touches[0].clientY;
       }
     };
 
@@ -387,18 +409,23 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
       if (pinch.current) { pinch.current = null; touchX.current = null; return; }
       if (touchX.current === null || viewRef.current === "scroll") return;
       const startX = touchX.current;
+      const startY = touchY.current;
       const dx = e.changedTouches[0].clientX - startX;
+      const dy = startY == null ? 0 : e.changedTouches[0].clientY - startY;
       touchX.current = null;
+      touchY.current = null;
       const step = viewRef.current === "dual" ? 2 : 1;
-      // Edge tap (≤15 px drag in left/right 70 px strip) → prev/next
-      if (Math.abs(dx) <= 15) {
+      // Edge tap (≤15 px movement in left/right 70 px strip) → prev/next.
+      // Require small vertical movement too so a vertical scroll near the edge
+      // (common with fit-to-width tall pages) never flips the page.
+      if (Math.abs(dx) <= 15 && Math.abs(dy) <= 15) {
         const EDGE = 70;
         if (startX < EDGE)                     { goTo(pageRef.current - step); return; }
         if (startX > window.innerWidth - EDGE) { goTo(pageRef.current + step); return; }
         return;
       }
-      // Swipe
-      if (Math.abs(dx) > 40) goTo(pageRef.current + (dx < 0 ? step : -step));
+      // Horizontal swipe → page turn (ignore mostly-vertical drags = scrolling).
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) goTo(pageRef.current + (dx < 0 ? step : -step));
     };
 
     el.addEventListener("touchstart", onStart, { passive: false });
@@ -481,6 +508,12 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         <Btn label="▯"  onClick={() => setViewMode("single")} active={viewMode === "single"} title={t("reader.singlePage")} />
         <Btn label="▯▯" onClick={() => setViewMode("dual")}   active={viewMode === "dual"}   title={t("reader.dualPage")} />
         <Btn label="≡"  onClick={() => setViewMode("scroll")} active={viewMode === "scroll"} title={t("reader.scrollMode")} />
+
+        {/* Fit width / whole page (not meaningful in dual) */}
+        {viewMode !== "dual" && (
+          <Btn label="↔" onClick={() => setFitMode(m => m === "width" ? "page" : "width")}
+               active={fitMode === "width"} title={fitMode === "width" ? t("reader.fitPage") : t("reader.fitWidth")} />
+        )}
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
@@ -572,7 +605,8 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {viewMode !== "scroll" && (
           <div ref={wrapRef} style={{
             width: "100%", height: "100%", overflow: "auto", background: "#1a1814",
-            display: "flex", scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
+            display: "flex", alignItems: "safe center", justifyContent: "safe center",
+            scrollbarWidth: "thin", scrollbarColor: `${C.border} transparent`,
           }}>
             {err ? (
               <div style={{ margin: "auto", color: C.red, fontFamily: "'Cinzel',serif", fontSize: 13, textAlign: "center", padding: 32 }}>
@@ -583,7 +617,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             ) : !doc ? (
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
-              <div style={{ margin: "auto", padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ margin: 0, padding: 12, display: "flex", gap: 8, flexShrink: 0 }}>
                 <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
                 {viewMode === "dual" && page + 1 <= total && (
                   <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)", opacity: rendering ? 0.6 : 1, transition: "opacity .15s" }} />
@@ -620,6 +654,11 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           </span>
           <Btn label="+" onClick={() => setZoom(z => Math.min(4, +(z + 0.25).toFixed(2)))} disabled={zoom >= 4} title="Zoom in" />
           <Btn label="⊡" onClick={() => setZoom(1)} title={t("reader.resetZoom")} />
+
+          {viewMode !== "dual" && (
+            <Btn label="↔" onClick={() => setFitMode(m => m === "width" ? "page" : "width")}
+                 active={fitMode === "width"} title={fitMode === "width" ? t("reader.fitPage") : t("reader.fitWidth")} />
+          )}
 
           <div style={{ flex: 1 }} />
 
