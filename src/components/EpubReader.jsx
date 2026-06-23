@@ -1015,7 +1015,10 @@ export default function EpubReader({
   const captureCurrentPage = useCallback(async () => {
     if (snapBusyRef.current || foldingRef.current) return;
     const s = settingsRef.current;
-    if (!s.paginate || s.twoPage) { setCurlDbg(`scatto saltato: ${!s.paginate ? "modalità scroll (niente pagine)" : "due-pagine"}`); return; }
+    // Works in single-page AND two-page (spread) mode — the snapshot just spans the
+    // whole visible width, so the whole spread folds away. Only scroll mode (no
+    // discrete pages) has nothing to fold.
+    if (!s.paginate) { setCurlDbg("scatto saltato: modalità scroll (niente pagine)"); return; }
     const sc = containerRef.current?.querySelector('.epub-container');
     const iframe = sc?.querySelector('iframe');
     const doc = iframe?.contentDocument;
@@ -1345,7 +1348,7 @@ export default function EpubReader({
         padding:"7px 10px", background:"#1a0000f2", borderBottom:"2px solid #c9a84c",
         color:"#ffd76a", fontFamily:"monospace", fontSize:13, fontWeight:700,
         lineHeight:1.3, letterSpacing:0.3, textAlign:"center",
-      }}>CURLDBG-3 · {curlDbg}</div>
+      }}>CURLDBG-4 · {curlDbg}</div>
 
       {/* Page-turn overlay — covers the white iframe flash during chapter load.
           Appears instantly on next/prev, fades out once relocated fires. */}
