@@ -1110,15 +1110,16 @@ export default function EpubReader({
         }} />
       )}
 
-      {/* Side tap-to-turn zones (paginated only). Transparent strips over the page
-          margins, in the React layer so they use reliable native coordinates — the
-          in-iframe tap math was unreliable across single/two-page layouts. The wide
-          centre stays free for text selection, lore taps and revealing the UI. */}
+      {/* Side tap-to-turn zones (paginated only). Transparent strips confined to the
+          blank page margins — their width matches the text column's side padding
+          (clamp(8px,3.5vw,64px) on line ~1100) exactly, so they never overlap the
+          text and word selection stays free everywhere the text actually is. They
+          live in the React layer for reliable native coordinates. */}
       {settings.paginate && !loading && (<>
         <div onClick={prev} aria-label={t("reader.prevPage") || "Previous page"}
-             style={{ position:"absolute", top:54, bottom:0, left:0, width:"14%", zIndex:6, cursor:"pointer" }} />
+             style={{ position:"absolute", top:54, bottom:0, left:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
         <div onClick={next} aria-label={t("reader.nextPage") || "Next page"}
-             style={{ position:"absolute", top:54, bottom:0, right:0, width:"14%", zIndex:6, cursor:"pointer" }} />
+             style={{ position:"absolute", top:54, bottom:0, right:0, width:"clamp(8px, 3.5vw, 64px)", zIndex:6, cursor:"pointer" }} />
       </>)}
 
       {/* Page-turn overlay — a solid page-coloured panel that masks the white iframe
