@@ -112,12 +112,26 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const { t, locale } = useLang();
 
   // Match the surround to the active reader theme (the PDF page itself is left
-  // untouched — only the mat behind it + the cover frame are themed). Read the same
-  // localStorage settings the EPUB reader writes so the two stay consistent.
-  const theme = (() => {
-    try { return THEMES[JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}").themeId] || THEMES.dark; }
-    catch { return THEMES.dark; }
-  })();
+  // untouched — only the mat behind it is themed). Shares the same localStorage
+  // settings the EPUB reader writes, so the two stay consistent; can be changed
+  // here too via the header theme button.
+  const [themeId, setThemeId] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}").themeId || "dark"; }
+    catch { return "dark"; }
+  });
+  const theme     = THEMES[themeId] || THEMES.dark;
+  const cycleTheme = useCallback(() => {
+    const order = ["dark", "sepia", "paper"];
+    setThemeId(prev => {
+      const next = order[(order.indexOf(prev) + 1) % order.length];
+      try {
+        const s = JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}");
+        s.themeId = next;
+        localStorage.setItem("wh40k_reader_v2", JSON.stringify(s));
+      } catch {}
+      return next;
+    });
+  }, []);
   const isLight   = theme.id !== "dark";
   const matBg     = isLight ? theme.surface : "#1a1814";
 
@@ -681,6 +695,12 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
         {/* Fullscreen */}
         <Btn label={isFs ? "⤢" : "⛶"} onClick={e => { e.stopPropagation(); toggleFs(); }}
              active={isFs} title={isFs ? t("reader.exitFullscreen") : t("reader.fullscreen")} />
+
+        {/* Theme (cycles Grimdark / Sepia / Paper — themes the surround) */}
+        <Btn label={<span style={{ display:"inline-block", width:13, height:13, borderRadius:"50%",
+                                   background: theme.bg, border:`1px solid ${C.muted}`, verticalAlign:"middle" }} />}
+             onClick={e => { e.stopPropagation(); cycleTheme(); }}
+             title={`${t("reader.theme")}: ${theme.label}`} />
 
         {/* Night brightness (cycles off / dim / dimmer) */}
         <Btn label={dim === 0 ? "☼" : "🌙"} onClick={e => { e.stopPropagation(); cycleDim(); }}
