@@ -113,14 +113,7 @@ function useReaderViewport() {
     if (meta) {
       const prev = meta.content;
       meta.content = "width=device-width,initial-scale=1,user-scalable=no";
-      // Suspend body zoom so epub.js measures the real viewport.
-      // The zoom stylesheet rule (body{zoom:N}) is overridden by this inline style;
-      // removing the inline property restores the rule when the reader closes.
-      document.body.style.zoom = "1";
-      return () => {
-        meta.content = prev;
-        document.body.style.removeProperty("zoom");
-      };
+      return () => { meta.content = prev; };
     }
   }, []);
 }
@@ -600,14 +593,24 @@ export default function EpubReader({
   const settingsRef  = useRef(settings);
   settingsRef.current = settings;
 
-  // The tablet body{zoom} hack (index.html) scales the whole app, but inside the
-  // reader it only hurts: it renders text at a lower effective resolution and
-  // breaks transforms/coordinate math. The reader has its own font-size controls,
-  // so suspend body zoom while it's open and restore it on close.
+  // The tablet body{zoom} scaling (index.html) scales the whole app, but inside the
+  // reader it only hurts: it renders text at a lower effective resolution and breaks
+  // transforms/coordinate math. The reader has its own font-size controls, so suspend
+  // body zoom while it's open. The data-reader-open flag stops index.html's resize
+  // handler from re-zooming on rotation; on close we recompute the tablet zoom.
   useEffect(() => {
-    const prev = document.body.style.zoom;
+    const html = document.documentElement;
+    const prevZoom = document.body.style.zoom;
+    const prevHeight = document.body.style.height;
+    html.dataset.readerOpen = "1";
     document.body.style.zoom = "1";
-    return () => { document.body.style.zoom = prev; };
+    document.body.style.removeProperty("height");
+    return () => {
+      delete html.dataset.readerOpen;
+      document.body.style.zoom = prevZoom;
+      document.body.style.height = prevHeight;
+      window.__applyTabletZoom?.();
+    };
   }, []);
 
   // Track landscape/portrait so the open-book centre spine only shows when two
