@@ -335,7 +335,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const raw  = mode === "dual" && n % 2 === 0 ? n - 1 : n;
     const p    = Math.min(Math.max(raw, 1), total);
     if (p === pageRef.current) return;
-    if (mode !== "scroll" && paintSlideCanvas()) {
+    // Lateral slide only in single page — a two-page spread sliding as one block
+    // reads oddly; dual turns instantly (prerender makes it immediate anyway).
+    if (mode === "single" && paintSlideCanvas()) {
       setSlide({ dir: p > pageRef.current ? 1 : -1 });
     }
     setPage(p);
@@ -397,9 +399,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     if (!wrap) return;
     let cancelled = false;
     const cols = viewMode === "dual" ? 2 : 1;
-    const gap  = cols === 2 ? 12 : 0;
-    const W    = Math.floor((wrap.clientWidth  - 8 - gap) / cols);
-    const H    = wrap.clientHeight - 8;
+    const gap  = cols === 2 ? 4 : 0;
+    const W    = Math.floor((wrap.clientWidth  - gap) / cols);
+    const H    = wrap.clientHeight;
     // Fit-to-width only makes sense single page; dual fits both pages whole.
     const fit  = viewMode === "single" ? fitMode : "page";
     const step = viewMode === "dual" ? 2 : 1;
@@ -786,7 +788,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
             ) : !doc ? (
               <div style={{ margin: "auto", color: C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 2 }}>{t("reader.loading")}</div>
             ) : (
-              <div style={{ margin: 0, padding: 4, display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ margin: 0, padding: 0, display: "flex", gap: 4, flexShrink: 0 }}>
                 <canvas ref={canvasRef} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
                 {viewMode === "dual" && page + 1 <= total && (
                   <canvas ref={canvas2Ref} style={{ display: "block", borderRadius: 2, boxShadow: "0 8px 40px rgba(0,0,0,.8)" }} />
