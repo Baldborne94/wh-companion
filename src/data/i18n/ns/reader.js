@@ -87,6 +87,7 @@ export const reader = {
       exitFullscreen: "Exit fullscreen",
       brightness: "Night brightness",
       jumpToPage: "Jump to page",
+      theme: "Theme",
 
       // Dictionary
       definition: "Definition",
@@ -188,6 +189,7 @@ export const reader = {
       exitFullscreen: "Esci da schermo intero",
       brightness: "Luminosità notturna",
       jumpToPage: "Vai alla pagina",
+      theme: "Tema",
 
       // Dictionary
       definition: "Definizione",
