@@ -4,13 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script>
-      /* Tablet rendering: no artificial zoom — the app renders at native
-         resolution everywhere (same as the reader), which keeps every screen
-         fully adaptive and avoids vertical overflow in landscape. We only keep
-         the --nav-h CSS variable (bottom nav height) so the mini player sits
-         correctly above the nav bar. */
+      /* Tablet scaling: on touch screens wider than a phone, scale the whole UI up
+         so content fills large tablet screens and stays readable (otherwise it
+         renders at phone size and looks tiny — especially as an installed PWA).
+         Body zoom (not html) keeps Android rotation working; we compensate the body
+         height by 1/scale so the zoom never overflows vertically (the old bug). A
+         reader (EPUB/PDF) sets data-reader-open so its own native rendering isn't
+         re-zoomed on rotation. --nav-h tracks the scaled bottom-nav height for the
+         mini player. */
       (function () {
-        document.documentElement.style.setProperty('--nav-h', '56px');
+        var html = document.documentElement;
+        function apply() {
+          if (html.dataset.readerOpen === '1') return;
+          var w = window.innerWidth, h = window.innerHeight;
+          var touch = (navigator.maxTouchPoints || 0) >= 1;
+          if (document.body && touch && w > 520) {
+            var landscape = w > h;
+            var cap = landscape ? 1.35 : 1.7;
+            var sc = Math.max(1, Math.min(cap, w / 430));
+            document.body.style.zoom = sc.toFixed(4);
+            document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
+            html.style.setProperty('--nav-h', (56 * sc).toFixed(1) + 'px');
+          } else if (document.body) {
+            document.body.style.removeProperty('zoom');
+            document.body.style.removeProperty('height');
+            html.style.setProperty('--nav-h', '56px');
+          } else {
+            html.style.setProperty('--nav-h', '56px');
+          }
+        }
+        if (document.body) apply(); else document.addEventListener('DOMContentLoaded', apply);
+        window.addEventListener('resize', apply);
+        window.addEventListener('orientationchange', function () { setTimeout(apply, 300); });
+        window.__applyTabletZoom = apply;
       })();
     </script>
     <meta name="theme-color" content="#0a0905" />

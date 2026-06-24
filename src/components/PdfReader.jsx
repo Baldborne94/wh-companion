@@ -144,6 +144,24 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     return () => { meta.content = prev; };
   }, []);
 
+  // Suspend the tablet body{zoom} scaling (index.html) so PDF pages render sharp at
+  // native resolution. data-reader-open stops the resize handler re-zooming on
+  // rotation; recompute the tablet zoom on close.
+  useEffect(() => {
+    const html = document.documentElement;
+    const prevZoom = document.body.style.zoom;
+    const prevHeight = document.body.style.height;
+    html.dataset.readerOpen = "1";
+    document.body.style.zoom = "1";
+    document.body.style.removeProperty("height");
+    return () => {
+      delete html.dataset.readerOpen;
+      document.body.style.zoom = prevZoom;
+      document.body.style.height = prevHeight;
+      window.__applyTabletZoom?.();
+    };
+  }, []);
+
   // Keep the screen awake while reading. Re-acquire on visibilitychange since the
   // browser releases the lock when the tab is hidden. Best-effort and silent.
   useEffect(() => {
