@@ -1064,13 +1064,18 @@ export default function EpubReader({
           }
           // Time-left-in-chapter estimate (paginated only). epub.js gives the
           // current page / total pages of the displayed section; multiply the
-          // remaining fraction by the rendered section's word count and divide
-          // by an average reading speed (~220 wpm). Best-effort — hidden if the
-          // page counters aren't available (e.g. scroll mode).
+          // remaining fraction by the section's word count and divide by an average
+          // reading speed (~220 wpm). Only count the CURRENT section's contents —
+          // getContents() can also return prefetched/adjacent sections (and both
+          // pages of a two-page spread), which would inflate the word count and
+          // throw the estimate off. Best-effort — hidden if page counters aren't
+          // available (e.g. scroll mode).
           const disp = loc.start?.displayed;
           if (settingsRef.current.paginate && disp && disp.total > 0) {
+            const secIdx = loc.start?.index;
             let words = 0;
             (rend.getContents?.() || []).forEach(c => {
+              if (secIdx != null && c?.sectionIndex != null && c.sectionIndex !== secIdx) return;
               const txt = c?.document?.body?.innerText?.trim() || "";
               if (txt) words += txt.split(/\s+/).length;
             });
