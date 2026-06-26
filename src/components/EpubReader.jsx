@@ -74,6 +74,44 @@ async function putBmsToDB(userId, bookId, bms) {
   for (const b of bms) await putBmToDB(userId, bookId, b);
 }
 
+// Highlights sync — same per-row, delete-then-insert pattern as bookmarks so one
+// device never wipes another's. Requires the `highlights` table (migration 010);
+// all calls are best-effort (try/catch) so highlights keep working locally even
+// if the table isn't present yet.
+async function loadHlsFromDB(userId, bookId) {
+  if (!userId || !bookId) return [];
+  try {
+    const { data } = await supabase.from("highlights")
+      .select("epub_cfi,text,color,created_at")
+      .eq("user_id", userId).eq("book_id", bookId)
+      .order("created_at", { ascending: false }).limit(500);
+    return (data || []).map(h => ({ cfi: h.epub_cfi, text: h.text || "", color: h.color || "gold", createdAt: h.created_at }));
+  } catch { return []; }
+}
+
+async function putHlToDB(userId, bookId, h) {
+  if (!userId || !bookId || !h?.cfi) return;
+  try {
+    await supabase.from("highlights").delete()
+      .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", h.cfi);
+    await supabase.from("highlights").insert({
+      user_id:userId, book_id:bookId, epub_cfi:h.cfi, text:(h.text || "").slice(0, 240), color:h.color || "gold",
+    });
+  } catch {}
+}
+
+async function deleteHlFromDB(userId, bookId, cfi) {
+  if (!userId || !bookId || !cfi) return;
+  try {
+    await supabase.from("highlights").delete()
+      .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", cfi);
+  } catch {}
+}
+
+async function putHlsToDB(userId, bookId, hls) {
+  for (const h of hls) await putHlToDB(userId, bookId, h);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
@@ -577,6 +615,33 @@ export default function EpubReader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
 
+  // Reconcile highlights with the DB on open (same union-by-cfi merge as bookmarks)
+  // so highlights made on another device show up here. Paints the DB-only ones onto
+  // the rendition if it's already up, and pushes local-only ones to the DB.
+  useEffect(() => {
+    if (!userId || !bookId) return;
+    loadHlsFromDB(userId, bookId).then(dbHls => {
+      if (!dbHls.length && !hlRef.current.length) return;
+      setHighlights(prev => {
+        const localCfis = new Set(prev.map(h => h.cfi));
+        const byCfi = new Map();
+        for (const h of [...prev, ...dbHls]) {
+          if (h?.cfi && !byCfi.has(h.cfi)) byCfi.set(h.cfi, h);
+        }
+        const merged = [...byCfi.values()]
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        localStorage.setItem(hlKey, JSON.stringify(merged));
+        const dbCfis = new Set(dbHls.map(h => h.cfi));
+        const localOnly = merged.filter(h => !dbCfis.has(h.cfi));
+        if (localOnly.length) putHlsToDB(userId, bookId, localOnly);
+        // Paint the ones that arrived from the DB (not already shown locally).
+        dbHls.filter(h => !localCfis.has(h.cfi)).forEach(h => paintHl(h));
+        return merged;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, bookId]);
+
   // ── Refs ───────────────────────────────────────────────────────────────────
   const containerRef  = useRef(null);
   const bookRef       = useRef(null);
@@ -723,11 +788,12 @@ export default function EpubReader({
       localStorage.setItem(hlKey, JSON.stringify(next));
       return next;
     });
+    putHlToDB(userId, bookId, h);
     paintHl(h);
     try { rendRef.current?.getContents?.().forEach(c => c.window?.getSelection?.()?.removeAllRanges?.()); } catch {}
     pendingSelRef.current = null;
     setSelBar(null);
-  }, [hlKey, paintHl]);
+  }, [hlKey, paintHl, userId, bookId]);
 
   const removeHighlight = useCallback((cfi) => {
     try { rendRef.current?.annotations?.remove(cfi, "highlight"); } catch {}
@@ -736,7 +802,8 @@ export default function EpubReader({
       localStorage.setItem(hlKey, JSON.stringify(next));
       return next;
     });
-  }, [hlKey]);
+    deleteHlFromDB(userId, bookId, cfi);
+  }, [hlKey, userId, bookId]);
 
   // Full-text search across the book. epub.js has no Book-level search, so we
   // walk the spine, load each section, run Section.find(), then unload to free
