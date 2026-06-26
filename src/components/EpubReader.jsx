@@ -1251,18 +1251,30 @@ export default function EpubReader({
   }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.themeId]);
 
   // ── Resize observer ───────────────────────────────────────────────────────
+  // Debounced + guarded: only resize once the rendition is ready and the container
+  // has real dimensions. Calling epub.js resize() too eagerly (e.g. during the brief
+  // body-zoom toggle when the reader opens, or before the first render) can throw
+  // deep inside its async layout and break page turning — so we gate it carefully.
   useEffect(() => {
     if (!containerRef.current) return;
+    let timer;
     const ro = new ResizeObserver(() => {
-      try {
-        rendRef.current?.resize();
-        const cfi = cfiRef.current;
-        if (cfi) setTimeout(() => rendRef.current?.display(cfi), 100);
-      } catch {}
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const el = containerRef.current;
+        const rend = rendRef.current;
+        if (!el || !rend || loading) return;
+        if (el.clientWidth < 2 || el.clientHeight < 2) return;
+        try {
+          rend.resize();
+          const cfi = cfiRef.current;
+          if (cfi) setTimeout(() => { try { rendRef.current?.display(cfi); } catch {} }, 100);
+        } catch {}
+      }, 200);
     });
     ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, []);
+    return () => { clearTimeout(timer); ro.disconnect(); };
+  }, [loading]);
 
 
   // ── Navigation ────────────────────────────────────────────────────────────
