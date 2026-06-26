@@ -18,7 +18,10 @@
           if (html.dataset.readerOpen === '1') return;
           var w = window.innerWidth, h = window.innerHeight;
           var touch = (navigator.maxTouchPoints || 0) >= 1;
-          if (document.body && touch && w > 520) {
+          // Only scale tablet-sized touch screens (520–1500px). Large desktops —
+          // including touchscreen laptops — render native: scaling them up isn't
+          // needed and toggling body zoom around the reader destabilised epub.js.
+          if (document.body && touch && w > 520 && w <= 1500) {
             var landscape = w > h;
             var cap = landscape ? 1.35 : 1.7;
             var sc = Math.max(1, Math.min(cap, w / 430));
