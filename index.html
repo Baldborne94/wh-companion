@@ -23,7 +23,7 @@
           // needed and toggling body zoom around the reader destabilised epub.js.
           if (document.body && touch && w > 520 && w <= 1500) {
             var landscape = w > h;
-            var cap = landscape ? 1.35 : 1.7;
+            var cap = landscape ? 1.55 : 1.9;
             var sc = Math.max(1, Math.min(cap, w / 430));
             document.body.style.zoom = sc.toFixed(4);
             document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
