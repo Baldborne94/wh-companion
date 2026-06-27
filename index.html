@@ -17,13 +17,13 @@
         function apply() {
           if (html.dataset.readerOpen === '1') return;
           var w = window.innerWidth, h = window.innerHeight;
-          var touch = (navigator.maxTouchPoints || 0) >= 1;
-          // Only scale tablet-sized touch screens (520–1500px). Large desktops —
-          // including touchscreen laptops — render native: scaling them up isn't
-          // needed and toggling body zoom around the reader destabilised epub.js.
-          if (document.body && touch && w > 520 && w <= 1500) {
+          // Scale up anything wider than a phone — tablets AND desktops — so the
+          // phone-tuned UI reads comfortably on big screens. Phones (≤600px) render
+          // native. The reader suspends this zoom (data-reader-open) and its resize
+          // handler is guarded, so scaling no longer destabilises epub.js.
+          if (document.body && w > 600) {
             var landscape = w > h;
-            var cap = landscape ? 1.55 : 1.9;
+            var cap = landscape ? 1.65 : 1.95;
             var sc = Math.max(1, Math.min(cap, w / 430));
             document.body.style.zoom = sc.toFixed(4);
             document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
