@@ -503,9 +503,12 @@ function SearchBar({ value, onChange, onSubmit, onClear, placeholder, accent }) 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} style={{ position: "relative" }}>
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} enterKeyHint="search"
-        style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "11px 40px 11px 38px", fontSize: 14, outline: "none" }} />
-      <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: accent || C.muted, fontSize: 16, pointerEvents: "none" }}>🔍</span>
-      {value && <button type="button" onClick={onClear} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
+        style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, color: C.text, padding: "11px 40px 11px 44px", fontSize: 14, outline: "none" }} />
+      {/* Tappable magnifier so search can be started without the keyboard's enter key
+          (not obvious on tablets). */}
+      <button type="submit" aria-label="Search"
+        style={{ position: "absolute", left: 4, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: accent || C.muted, fontSize: 16, cursor: "pointer", padding: "6px 8px", lineHeight: 1 }}>🔍</button>
+      {value && <button type="button" onClick={onClear} aria-label="Clear" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, lineHeight: 1 }}>×</button>}
     </form>
   );
 }
