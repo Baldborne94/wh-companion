@@ -315,7 +315,7 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
   // server-side by the proxy, so the request body stays small.
   let userText;
   if (hasPhotos) {
-    userText = `What ${game} miniature model is shown in these photos? Identify every distinct physical component you can actually see in the images, then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.${faction ? ` This model belongs to the ${faction} faction — use this only to inform lore-accurate colour choices, not to add parts that are not visible.` : ""}`;
+    userText = `Identify the ${game} miniature shown in these photos. Look carefully and list every distinct physical component you can actually see — describe each part as what it really is: distinguish organic/natural forms (fungi, mushrooms, fur, hide, bone, claws, teeth, tentacles, plants) from mechanical weapons, armour and gear, and do NOT force an ambiguous shape into a generic weapon.${faction ? ` This model belongs to the ${faction} faction — use its characteristic anatomy, wargear and iconography to name the parts correctly (e.g. faction-typical creatures and motifs), and to inform lore-accurate colours, but never add parts that aren't visible.` : ""} Then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.`;
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
     userText = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
