@@ -23,7 +23,9 @@
           // handler is guarded, so scaling no longer destabilises epub.js.
           if (document.body && w > 600) {
             var landscape = w > h;
-            var cap = landscape ? 1.65 : 1.95;
+            // Tablets scale up more; large desktop screens (>1500px) take a more
+            // modest scale so the UI isn't oversized on a big monitor.
+            var cap = w > 1500 ? 1.35 : (landscape ? 1.65 : 1.95);
             var sc = Math.max(1, Math.min(cap, w / 430));
             document.body.style.zoom = sc.toFixed(4);
             document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
