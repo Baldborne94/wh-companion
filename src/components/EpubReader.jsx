@@ -250,11 +250,23 @@ function applyTheme(rend, settings, T, fnt) {
 // ─────────────────────────────────────────────────────────────────────────────
 // TOC helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function flattenToc(items, depth = 0) {
-  return (items || []).flatMap(item => [
-    { label: item.label, href: item.href, depth },
-    ...flattenToc(item.subitems, depth + 1),
-  ]);
+// Depth-capped + cycle-guarded so a malformed/deeply-nested TOC (some EPUBs have
+// subitems that loop back) can never blow the call stack — that surfaced as a fatal
+// "Maximum call stack size exceeded" on limited browsers (e.g. TV browsers).
+function flattenToc(items) {
+  const out = [];
+  const seen = new Set();
+  const walk = (list, depth) => {
+    if (!Array.isArray(list) || depth > 12) return;
+    for (const item of list) {
+      if (!item || seen.has(item)) continue;
+      seen.add(item);
+      out.push({ label: item.label, href: item.href, depth });
+      if (item.subitems && item.subitems.length) walk(item.subitems, depth + 1);
+    }
+  };
+  walk(items, 0);
+  return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1190,13 +1202,6 @@ export default function EpubReader({
             if (manager === "continuous" && savedCfi) {
               setTimeout(() => { if (!cancelled) displayCfi(savedCfi); }, 250);
             }
-            return book.loaded.navigation;
-          })
-          .then(nav => {
-            if (cancelled || !nav) return;
-            const flat = flattenToc(nav.toc);
-            setToc(flat);
-            tocRef.current = flat;
           })
           .catch(e => {
             clearTimeout(readyTimeout);
@@ -1208,6 +1213,20 @@ export default function EpubReader({
             setError(friendly);
             setLoading(false);
           });
+
+        // Table of contents — loaded separately so a TOC parse failure (or a stack
+        // overflow flattening a weird TOC on a limited browser) never blocks reading
+        // the book itself. Best-effort: no TOC just means an empty contents panel.
+        book.loaded.navigation
+          .then(nav => {
+            if (cancelled || !nav) return;
+            try {
+              const flat = flattenToc(nav.toc);
+              setToc(flat);
+              tocRef.current = flat;
+            } catch {}
+          })
+          .catch(() => {});
 
         book.locations.generate(1536).then(() => {
           if (cancelled) return;
