@@ -105,7 +105,7 @@ export const BOOKS=[
   {id:101,title:"The Magos",series:"Eisenhorn",num:4,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium",isbn:"9781784967024"},
   {id:102,title:"Ravenor",series:"Ravenor",num:1,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium",isbn:"9781784963316"},
   {id:103,title:"Ravenor Returned",series:"Ravenor",num:2,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium",isbn:"9781784965266"},
-  {id:104,title:"Ravenor Rogue",series:"Ravenor",num:3,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium"},
+  {id:104,title:"Ravenor Rogue",series:"Ravenor",num:3,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium",isbn:"1844164616"},
   {id:105,title:"Pariah: Ravenor vs Eisenhorn",series:"Bequin",num:1,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium"},
   {id:106,title:"Penitent",series:"Bequin",num:2,author:"Dan Abnett",type:"Novel",faction:"Imperium",era:"41st Millennium"},
   {id:107,title:"Soul Hunter",series:"Night Lords",num:1,author:"Aaron Dembski-Bowden",type:"Novel",faction:"Chaos",era:"41st Millennium",isbn:"9781844168118",desc:"The Night Lords Chaos Space Marines seen from the inside — broken, bitter traitors clinging to purpose ten millennia after their fall. ADB makes you feel sympathy for monsters. Deeply compelling."},
