@@ -361,7 +361,7 @@ function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChang
 }
 
 // ─── AoS HOME PAGE ────────────────────────────────────────────────────────────
-export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
+export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp, onStartGuide }) {
   const { t } = useLang();
   const uid = user?.id || 'anon';
 
@@ -409,6 +409,8 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
   const activeBooks = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'reading');
   const allSuggestions = useMemo(() => getAoSAllNextSuggestions(statuses), [statuses]);
   const suggestions = allSuggestions.filter(s => !activeBooks.some(b => b.id === s.book.id));
+  // Brand-new user: skip "Next Up", invite them into the Getting Started guide.
+  const isNewcomer = readCount === 0 && readingCount === 0 && activeBooks.length === 0 && shelfBooks.length === 0;
 
   const [opening, setOpening] = useState(false);
   const openBookHandle = async (book) => {
@@ -524,8 +526,20 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
         </div>
       )}
 
+      {/* Newcomer CTA — invite into the Getting Started guide */}
+      {isNewcomer && (
+        <div style={{ padding:"14px 16px 0" }}>
+          <button type="button" onClick={() => (onStartGuide ? onStartGuide() : setSection('reading'))}
+            style={{ width:"100%", textAlign:"left", cursor:"pointer", background:`linear-gradient(135deg,${AOS.gold}18,${AOS.card})`, border:`1px solid ${AOS.gold}55`, borderLeft:`3px solid ${AOS.gold}`, borderRadius:12, padding:"16px 16px" }}>
+            <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", marginBottom:6 }}>✦ {t("aos.home.newHere")}</div>
+            <div style={{ fontSize:12, color:AOS.muted, lineHeight:1.6, marginBottom:12 }}>{t("aos.home.newHereSub")}</div>
+            <span style={{ display:"inline-block", background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, color:AOS.gold, padding:"9px 16px", fontFamily:"'Cinzel',serif", fontSize:10, letterSpacing:1 }}>{t("aos.home.startHere")}</span>
+          </button>
+        </div>
+      )}
+
       {/* Next Up — one card per active AoS saga */}
-      {suggestions.length > 0 && (
+      {!isNewcomer && suggestions.length > 0 && (
         <div style={{ padding:"14px 16px 0" }}>
           <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.gold, letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("aos.home.nextUp")}</div>
           {suggestions.map(s => (
@@ -1367,12 +1381,19 @@ function AoSPartCard({ part, isOpen, onToggle, statuses }) {
 }
 
 // ─── AoS PATH TO GLORY ────────────────────────────────────────────────────────
-export function AoSCrusadeSection({ user, statuses: propStatuses }) {
+export function AoSCrusadeSection({ user, statuses: propStatuses, initialTab, onTabConsumed }) {
   const { t } = useLang();
-  const [tab,            setTab]          = useState('overview');
+  const [tab,            setTab]          = useState(initialTab || 'overview');
   const [localStatuses,  setLocalStatuses] = useState({});
   const [expanded,       setExpanded]     = useState(null);
   const statuses = propStatuses ?? localStatuses;
+
+  // Honour the Home "where to start" CTA once (it routes here on the guide tab).
+  useEffect(() => {
+    if (!initialTab) return;
+    setTab(initialTab);
+    onTabConsumed?.();
+  }, [initialTab, onTabConsumed]);
 
   useEffect(() => {
     if (propStatuses !== undefined) return;

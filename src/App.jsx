@@ -105,6 +105,10 @@ export default function App(){
   const handleLogout=()=>{ localStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
   const [section,setSection]=useState("home");
+  // Newcomer "where to start" CTA on Home routes into the reading section's
+  // starter tab (40K: Getting Started · AoS: the guide). Consumed once on arrival.
+  const [readingInitialTab,setReadingInitialTab]=useState(null);
+  const startGuide=useCallback(()=>{ setReadingInitialTab(universe==='aos'?'guide':'start'); setSection('reading'); },[universe]);
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
@@ -264,13 +268,13 @@ export default function App(){
               <div key={section} className="section-fade">
               <ErrorBoundary>
                 <Suspense fallback={<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"50vh"}}><div style={{fontSize:34,color:C.goldDim,animation:"spin 1.4s linear infinite"}}>⚙</div></div>}>
-                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)}/>}
-                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)}/>}
+                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
+                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
                   {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
                   {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
                   {section==="lore"    &&<LoreSection universe={universe}/>}
-                  {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection}/>}
-                  {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses}/>}
+                  {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}
+                  {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}
                   {section==="painting"&&<PaintingTracker user={user} universe={universe}
                     onAchievement={defs=>setPendingAchievements(q=>[...q,...defs])}
                     unlockedIds={unlockedIds}

@@ -10,8 +10,18 @@ export const reading = {
       },
       tabOverview: "Overview",
       tabGuide: "⚔ Heresy Guide",
+      tabStart: "🌟 Start Here",
 
       optional: "(optional)",
+
+      starterTitle: "Where to Start",
+      starterIntro: "New to Warhammer 40,000? Follow this curated path — at each step, pick whatever appeals to you most.",
+      starterStep: "Step",
+      starterPickOne: "Pick one",
+      starterBookOne: "{n} book",
+      starterBookMany: "{n} books",
+      starterBasedOn: "Beginner picks inspired by community guides such as ",
+      starterArticle: "FanFiAddict",
 
       guideTitle: "Heresy Reading Guide",
       guideCuratedPre: "Curated by Reddit user ",
@@ -64,8 +74,55 @@ export const reading = {
       },
       tabOverview: "Panoramica",
       tabGuide: "⚔ Guida Eresia",
+      tabStart: "🌟 Per Iniziare",
 
       optional: "(opzionale)",
+
+      starterTitle: "Da Dove Iniziare",
+      starterIntro: "Nuovo a Warhammer 40.000? Segui questo percorso curato — a ogni passo scegli ciò che ti ispira di più.",
+      starterStep: "Passo",
+      starterPickOne: "Scegline uno",
+      starterBookOne: "{n} libro",
+      starterBookMany: "{n} libri",
+      starterBasedOn: "Scelte per principianti ispirate a guide della community come ",
+      starterArticle: "FanFiAddict",
+
+      starter: {
+        g1: {
+          title: "Il Primo Libro Perfetto",
+          note: "Se leggi un solo libro di Warhammer 40.000, leggi questo. Xenos segue l'Inquisitore Gregor Eisenhorn mentre dà la caccia a eretici e alieni nell'Impero — un thriller autoconclusivo che ti mostra l'intera ambientazione attraverso gli occhi di un uomo. Non serve alcuna conoscenza pregressa.",
+        },
+        g2: {
+          title: "Scegli il Tuo Campo di Battaglia",
+          note: "Non esiste un unico modo 'giusto' di entrare nel 40K — scegli il tipo di storia che ti entusiasma di più. Ognuno di questi è un ottimo punto di partenza a sé stante.",
+          opt1Label: "Fanteria sul Campo",
+          opt1Note: "La Guardia Imperiale: esseri umani comuni contro ogni previsione. First and Only apre l'amata saga dei Gaunt's Ghosts — il 40K militare più crudo e riuscito.",
+          opt2Label: "Eroici Space Marine",
+          opt2Note: "Helsreach: un solitario Cappellano dei Black Templars difende una città-alveare condannata da un'invasione Ork. Uno dei romanzi 40K più amati di sempre.",
+          opt3Label: "Ironia e Avventura",
+          opt3Note: "For the Emperor: il Commissario Ciaphas Cain è un codardo egoista con la fama di eroe. Divertente, scorrevole e il 40K più accessibile che ci sia.",
+          opt4Label: "Dentro i Cattivi",
+          opt4Note: "Soul Hunter: i Night Lords sono Space Marine traditori — e ti ritroverai comunque a fare il tifo per loro. Il Caos visto dall'interno.",
+        },
+        g3: {
+          title: "Autoconclusivi da Non Perdere",
+          note: "Storie complete che non richiedono alcun contesto — perfette quando vuoi semplicemente un bel libro singolo.",
+        },
+        g4: {
+          title: "L'Ambientazione Oggi",
+          note: "Dark Imperium è il romanzo che apre l'era moderna: il Primarca Roboute Guilliman si risveglia dopo diecimila anni per guidare un Impero spezzato. Il miglior ingresso nella linea temporale 'attuale' del 40K.",
+        },
+        g5: {
+          title: "Vai più a Fondo — Scegli un Percorso",
+          note: "Ti ha preso? Immergiti in una serie più lunga, oppure affronta la saga che ha dato origine a tutto.",
+          opt1Label: "Ultramarines",
+          opt1Note: "Le Uriel Ventris Chronicles di Graham McNeill — un giovane capitano degli Ultramarines, onore e guerra contro gli xenos. Azione classica degli Space Marine, a partire da Nightbringer.",
+          opt2Label: "Inquisizione",
+          opt2Note: "Prosegui con Eisenhorn (Malleus, Hereticus), poi con il suo protetto Ravenor — il capolavoro intrecciato di Dan Abnett sulla guerra segreta dell'Impero.",
+          opt3Label: "L'Eresia di Horus",
+          opt3Note: "Diecimila anni prima del 'presente', il figlio prediletto dell'Imperatore lo tradisce. L'epopea di 54 libri che definisce l'ambientazione — inizia con Horus Rising, poi usa il tab ⚔ Guida Eresia per orientarti.",
+        },
+      },
 
       guideTitle: "Guida di Lettura dell'Eresia",
       guideCuratedPre: "Curata dall'utente Reddit ",

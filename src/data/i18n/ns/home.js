@@ -16,6 +16,9 @@ export const home = {
       yourShelf: "Your Shelf",
       emptyShelf: "No ebooks uploaded yet.",
       goToLibrary: "Go to Library →",
+      newHere: "New to Warhammer 40,000?",
+      newHereSub: "Not sure where to begin? Follow a curated path into the grim darkness — we'll suggest exactly which books to start with.",
+      startHere: "Show me where to start →",
     },
   },
   it: {
@@ -34,6 +37,9 @@ export const home = {
       yourShelf: "Il Tuo Scaffale",
       emptyShelf: "Nessun ebook ancora caricato.",
       goToLibrary: "Vai alla Library →",
+      newHere: "Nuovo a Warhammer 40.000?",
+      newHereSub: "Non sai da dove cominciare? Segui un percorso guidato nell'oscurità più cupa — ti suggeriamo esattamente da quali libri partire.",
+      startHere: "Mostrami da dove iniziare →",
     },
   },
 };

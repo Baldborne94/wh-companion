@@ -4,9 +4,100 @@ import { sb } from "../lib/sb";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import { BOOKS } from "../data/books";
 import { HH_FULL, HH_OPTIONAL, HH_MIN, findHHBook } from "../data/hhGuide";
+import { START_40K } from "../data/start40k";
 import CoverImage from "./CoverImage";
 import { getNextSuggestion } from "../lib/readingHelpers";
 import { useLang, partLabel } from "../lib/i18n.jsx";
+
+const findStartBook = (entry) => BOOKS.find(b => b.id === entry.id) || null;
+
+function StartBookRow({ entry, statuses, isLast }) {
+  const { t } = useLang();
+  const book = findStartBook(entry);
+  const status = book ? statuses[book.id]?.status || 'none' : null;
+  const stCfg = status && status !== 'none' ? STATUS_CFG[status] : null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: isLast ? "none" : `1px solid ${C.border}22` }}>
+      <CoverImage book={book} width={28} height={42} radius={3} accentColor={FC[book?.faction] || C.dim} style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: entry.opt ? C.muted : C.text, fontStyle: entry.opt ? 'italic' : 'normal', overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Cinzel',serif" }}>
+          {book?.title || '—'}
+          {entry.opt && <span style={{ fontSize: 9, color: C.muted, marginLeft: 4 }}>{t("reading.optional")}</span>}
+        </div>
+        <div style={{ fontSize: 10, color: C.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {book?.author}{book?.series ? ` · ${book.series}` : ""}
+        </div>
+      </div>
+      {stCfg && <span style={{ fontSize: 13, flexShrink: 0 }}>{stCfg.icon}</span>}
+    </div>
+  );
+}
+
+function Start40kSection({ statuses }) {
+  const { t } = useLang();
+  const sTxt = (key, fb) => { const v = t(key); return v === key ? fb : v; };
+  const [open, setOpen] = useState(new Set(['g1']));
+  const toggle = id => setOpen(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const StepCard = ({ step, index }) => {
+    const isOpen = open.has(step.id);
+    const allBooks = step.pickOne ? (step.options || []).flatMap(o => o.books || []) : (step.books || []);
+    const matched = allBooks.map(findStartBook).filter(Boolean);
+    const readCount = matched.filter(b => statuses[b.id]?.status === 'read').length;
+    const allRead = matched.length > 0 && readCount === matched.length;
+    return (
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderLeft: `3px solid ${allRead ? C.green : C.dim}`, borderRadius: 10, overflow: "hidden" }}>
+        <div onClick={() => toggle(step.id)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.goldDim, letterSpacing: 2, flexShrink: 0 }}>{t("reading.starterStep")} {index + 1}</span>
+              <span style={{ fontFamily: "'Cinzel',serif", fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sTxt(`reading.starter.${step.id}.title`, step.title)}</span>
+            </div>
+            <div style={{ fontSize: 10, color: C.muted }}>
+              {step.pickOne ? t("reading.starterPickOne") : (allBooks.length !== 1 ? t("reading.starterBookMany") : t("reading.starterBookOne")).replace("{n}", allBooks.length)}
+              {matched.length > 0 && readCount > 0 && <span style={{ color: allRead ? C.green : C.blue, marginLeft: 6 }}>{allRead ? "✅ " : ""}{t("reading.readCount").replace("{n}", readCount).replace("{total}", matched.length)}</span>}
+            </div>
+          </div>
+          <span style={{ color: C.goldDim, fontSize: 16, flexShrink: 0, transition: "transform 0.2s", transform: isOpen ? "rotate(90deg)" : "none" }}>›</span>
+        </div>
+        {isOpen && (
+          <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 14px 12px" }}>
+            {step.note && <div style={{ fontSize: 11, color: C.gold, fontStyle: "italic", marginBottom: 10, padding: "6px 10px", background: `${C.gold}0a`, borderRadius: 6, borderLeft: `2px solid ${C.gold}44` }}>{sTxt(`reading.starter.${step.id}.note`, step.note)}</div>}
+            {step.pickOne ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(step.options || []).map((opt, oi) => (
+                  <div key={oi} style={{ background: C.surface, border: `1px solid ${C.border}`, borderLeft: `3px solid ${opt.color || C.gold}`, borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: opt.color || C.gold, letterSpacing: 2, marginBottom: opt.note ? 4 : 6 }}>{sTxt(`reading.starter.${step.id}.opt${oi + 1}Label`, opt.label).toUpperCase()}</div>
+                    {opt.note && <div style={{ fontSize: 10, color: C.muted, fontStyle: "italic", marginBottom: 6 }}>💡 {sTxt(`reading.starter.${step.id}.opt${oi + 1}Note`, opt.note)}</div>}
+                    {(opt.books || []).map((e, i) => <StartBookRow key={i} entry={e} statuses={statuses} isLast={i === opt.books.length - 1} />)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              (step.books || []).map((e, i) => <StartBookRow key={i} entry={e} statuses={statuses} isLast={i === step.books.length - 1} />)
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ padding: "12px 16px 10px", borderBottom: `1px solid ${C.border}`, background: `linear-gradient(180deg,${C.surface},${C.bg})` }}>
+        <div style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 18, color: C.text, marginBottom: 4 }}>{t("reading.starterTitle")}</div>
+        <div style={{ fontSize: 11, color: C.muted }}>{t("reading.starterIntro")}</div>
+      </div>
+      <div style={{ padding: "10px 16px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {START_40K.map((step, i) => <StepCard key={step.id} step={step} index={i} />)}
+        <div style={{ marginTop: 8, padding: "10px 12px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 10, color: C.muted, lineHeight: 1.6, textAlign: "center" }}>
+          {t("reading.starterBasedOn")}
+          <a href="https://fanfiaddict.com/so-you-want-to-start-reading-warhammer-40000-heres-where-to-start/" target="_blank" rel="noopener noreferrer" style={{ color: C.blue, textDecoration: "underline" }}>{t("reading.starterArticle")}</a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function HHBookRow({ entry, statuses, isLast, readShorts, toggleShort }) {
   const { t } = useLang();
@@ -147,10 +238,18 @@ function HHGuideSection({ statuses, readShorts, toggleShort, hhMode, setHhMode }
 }
 
 
-export default function ReadingSection({ user, statuses = {}, onOpenBook, setSection }) {
+export default function ReadingSection({ user, statuses = {}, onOpenBook, setSection, initialTab, onTabConsumed }) {
   const { t } = useLang();
-  const [crusadeTab, setCrusadeTab] = useState('overview');
+  const [crusadeTab, setCrusadeTab] = useState(initialTab || 'overview');
   const [expanded, setExpanded] = useState(null);
+
+  // When the Home "where to start" CTA navigates here it sets initialTab; honour
+  // it once, then clear the pending tab so later visits open on Overview.
+  useEffect(() => {
+    if (!initialTab) return;
+    setCrusadeTab(initialTab);
+    onTabConsumed?.();
+  }, [initialTab, onTabConsumed]);
 
   const lsKey = `wh40k_hh_shorts_${user?.id || 'guest'}`;
   const [readShorts, setReadShorts] = useState(() => {
@@ -235,12 +334,13 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   return (
     <div style={{ paddingBottom: 80 }}>
       <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, background: C.surface, position: "sticky", top: 0, zIndex: 5 }}>
-        {[{ id: "overview", label: t("reading.tabOverview") }, { id: "guide", label: t("reading.tabGuide") }].map(tab => (
+        {[{ id: "start", label: t("reading.tabStart") }, { id: "overview", label: t("reading.tabOverview") }, { id: "guide", label: t("reading.tabGuide") }].map(tab => (
           <button key={tab.id} onClick={() => setCrusadeTab(tab.id)} style={{ flex: 1, padding: "12px 4px", background: "transparent", border: "none", borderBottom: `2px solid ${crusadeTab === tab.id ? C.gold : "transparent"}`, color: crusadeTab === tab.id ? C.gold : C.muted, fontFamily: "'Cinzel',serif", fontSize: 11, letterSpacing: 1, cursor: "pointer", textTransform: "uppercase", transition: "color 0.15s" }}>
             {tab.label}
           </button>
         ))}
       </div>
+      {crusadeTab === "start" && <Start40kSection statuses={statuses} />}
       {crusadeTab === "guide" && <HHGuideSection statuses={statuses} readShorts={readShorts} toggleShort={toggleShort} hhMode={hhMode} setHhMode={handleSetHhMode} />}
       {crusadeTab === "overview" && <>
         <div style={{ padding: "20px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
