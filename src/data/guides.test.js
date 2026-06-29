@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BOOKS } from "./books.js";
+import { AOS_BOOKS } from "./aosBooks.js";
 import { START_40K } from "./start40k.js";
 import { HH_FULL, HH_MIN, HH_OPTIONAL, findHHBook } from "./hhGuide.js";
 import { AOS_ESSENTIAL, findAoSGuideBook } from "./aosGuide.js";
@@ -69,7 +70,54 @@ describe("Horus Heresy guides (R7)", () => {
         .map((e) => e.t);
       expect(unresolved).toEqual([]);
     });
+
+    it(`${name}: the guide's reading number matches the catalogue's num`, () => {
+      // The `n` shown in the guide must equal the book's canonical `num`, else
+      // the user is told the wrong reading-order position.
+      const mismatches = hhEntries(guide)
+        .filter((e) => typeof e.n === "number" && e.t)
+        .map((e) => ({ t: e.t, guideN: e.n, bookNum: findHHBook(e)?.num }))
+        .filter((r) => r.bookNum !== r.guideN);
+      expect(mismatches).toEqual([]);
+    });
+
+    it(`${name}: no two entries share the same reading number`, () => {
+      const nums = hhEntries(guide).filter((e) => typeof e.n === "number").map((e) => e.n);
+      const dupes = nums.filter((n, i) => nums.indexOf(n) !== i);
+      expect([...new Set(dupes)]).toEqual([]);
+    });
   }
+});
+
+// ─── catalogue saga numbering — both universes ─────────────────────────────────
+// Within a saga, `num` is the reading position. Two books sharing a num (or a
+// gap) means a mis-numbered series. We assert uniqueness per series (gaps can be
+// legitimate — omnibus/anthology side-entries — so we don't force contiguity).
+function dupeNumsBySeries(catalogue) {
+  const bySeries = {};
+  for (const b of catalogue) {
+    if (!b.series || b.series === "Standalone" || b.series === "Codex") continue;
+    // num:0 (or absent) is the sentinel for "unnumbered / loose category"
+    // (e.g. Battletome, Astra Militarum collections) — not an ordered saga.
+    if (typeof b.num !== "number" || b.num <= 0) continue;
+    (bySeries[b.series] ??= []).push(b.num);
+  }
+  const offenders = [];
+  for (const [series, nums] of Object.entries(bySeries)) {
+    const dupes = nums.filter((n, i) => nums.indexOf(n) !== i);
+    if (dupes.length) offenders.push({ series, dupes: [...new Set(dupes)] });
+  }
+  return offenders;
+}
+
+describe("catalogue saga numbering (R7)", () => {
+  it("WH40K: no series has two books sharing the same num", () => {
+    expect(dupeNumsBySeries(BOOKS)).toEqual([]);
+  });
+
+  it("AoS: no series has two books sharing the same num", () => {
+    expect(dupeNumsBySeries(AOS_BOOKS)).toEqual([]);
+  });
 });
 
 describe("AOS_ESSENTIAL guide (R7)", () => {
