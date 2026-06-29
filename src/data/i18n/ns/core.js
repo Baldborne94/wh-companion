@@ -83,8 +83,8 @@ export const core =  {
           tag: "MUSIC",
           title: "Ambient Soundscapes",
           bullets: [
-            "Search any track or playlist on YouTube & Spotify",
-            "Paste a YouTube or Spotify link to play it instantly",
+            "Search any track or playlist on YouTube",
+            "Paste a YouTube link to play it instantly",
             "Your own & followed playlists, full-length playback",
             "Mini player keeps the music going across the whole app",
           ],
@@ -193,8 +193,8 @@ export const core =  {
           tag: "MUSICA",
           title: "Atmosfere sonore",
           bullets: [
-            "Cerca qualsiasi brano o playlist su YouTube e Spotify",
-            "Incolla un link YouTube o Spotify per riprodurlo subito",
+            "Cerca qualsiasi brano o playlist su YouTube",
+            "Incolla un link YouTube per riprodurlo subito",
             "Le tue playlist e quelle che segui, riproduzione completa",
             "Il mini player mantiene la musica attiva in tutta l'app",
           ],

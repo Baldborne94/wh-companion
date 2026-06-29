@@ -104,10 +104,7 @@ export default function App(){
   };
   const handleLogout=()=>{ localStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
-  const [section,setSection]=useState(()=>{
-    const p=new URLSearchParams(window.location.search);
-    return p.get("state")==="spotify_auth"?"music":"home";
-  });
+  const [section,setSection]=useState("home");
   const mainRef=useRef(null);
   useEffect(()=>{ if(mainRef.current) mainRef.current.scrollTop=0; },[section]);
   const curNav=NAV.find(n=>n.id===section);
