@@ -8,6 +8,7 @@ import { useBookStatuses } from "./lib/useBookStatuses";
 import { C } from "./data/constants";
 import { BOOKS } from "./data/books";
 import MusicPlayer from "./components/MusicPlayer";
+import MiniPlayer from "./components/MiniPlayer";
 import LoginPage from "./components/LoginPage";
 import UniverseSelector from "./components/UniverseSelector";
 import { AOS, AOS_BOOKS } from "./data/aosBooks";
@@ -199,22 +200,11 @@ export default function App(){
                 {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                {nowPlaying&&section!=="music"&&!appReader&&(<>
-                  <button onClick={()=>setSection("music")} title={nowPlaying.title} aria-label={`Now playing: ${nowPlaying.title}. Open music section`}
-                    style={{background:"transparent",border:"none",cursor:"pointer",padding:"3px 2px",maxWidth:72,overflow:"hidden",flexShrink:0}}>
-                    <span style={{fontSize:9,color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>
-                      {nowPlaying.title}
-                    </span>
-                  </button>
-                  <button onClick={toggleMusicPause} title={musicPaused?t("header.resume"):t("header.pause")} aria-label={musicPaused?"Resume music":"Pause music"}
-                    style={{background:"transparent",border:"none",cursor:"pointer",color:nowPlaying.type==="youtube"?"#FF4444":"#1DB954",fontSize:13,lineHeight:1,padding:"3px 3px",flexShrink:0}}>
-                    {musicPaused?"▶":"⏸"}
-                  </button>
-                  <button onClick={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} title={t("header.stopMusic")} aria-label="Stop music"
-                    style={{background:"transparent",border:"none",cursor:"pointer",color:`${hMuted}99`,fontSize:14,lineHeight:1,padding:"3px 4px",flexShrink:0}}>
-                    ✕
-                  </button>
-                </>)}
+                {nowPlaying&&section!=="music"&&!appReader&&(
+                  <MiniPlayer nowPlaying={nowPlaying} musicPaused={musicPaused} mutedColor={hMuted}
+                    onOpen={()=>setSection("music")} onTogglePause={toggleMusicPause}
+                    onStop={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}}/>
+                )}
                 <button onClick={()=>setShowStats(true)} title={t("header.achievements")} aria-label="Achievements and stats"
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>🏆</button>
                 <button onClick={()=>setShowBackup(true)} title={t("header.backup")}
