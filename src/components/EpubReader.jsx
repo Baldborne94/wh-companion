@@ -119,12 +119,13 @@ const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:t
 
 // Side-margin presets (index → CSS for the text column's left/right padding).
 // Both the page container and the tap-to-turn strips use the same value so the
-// strips always sit exactly in the blank margin. Index 1 reproduces the old
-// hard-coded clamp(8px, 3.5vw, 64px) default.
+// strips always sit exactly in the blank margin. Minimums are kept generous so
+// that on narrow phones the text never hugs the decorative page-edge / margin
+// line — there is always a clear blank gutter before the first/last glyph.
 const MARGINS = [
-  "clamp(6px, 2vw, 28px)",
-  "clamp(8px, 3.5vw, 64px)",
-  "clamp(16px, 7vw, 120px)",
+  "clamp(12px, 3vw, 36px)",
+  "clamp(18px, 4.5vw, 72px)",
+  "clamp(28px, 8vw, 130px)",
 ];
 
 // Highlight swatch colours (id → hex). Stored by id so a theme/restyle can
