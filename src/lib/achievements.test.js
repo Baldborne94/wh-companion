@@ -233,10 +233,27 @@ describe("monthly + streak (clock frozen to 2026-06-15)", () => {
     expect(got).not.toContain("monthly_bronze");
   });
 
-  it("awards monthly_gold for four books this month", () => {
-    const statuses = statusesFromIds([1, 2, 3, 4], "2026-06-10T00:00:00Z");
+  it("awards monthly_gold at exactly three books this month (not platinum)", () => {
+    const statuses = statusesFromIds([1, 2, 3], "2026-06-10T00:00:00Z");
     const got = computeReadingAchievements(statuses, []);
     expect(got).toContain("monthly_gold");
+    expect(got).not.toContain("monthly_platinum");
+  });
+
+  it("awards monthly_platinum at four+ books this month (plus all lower tiers)", () => {
+    const statuses = statusesFromIds([1, 2, 3, 4], "2026-06-10T00:00:00Z");
+    const got = computeReadingAchievements(statuses, []);
+    expect(got).toEqual(
+      expect.arrayContaining(["monthly_bronze", "monthly_silver", "monthly_gold", "monthly_platinum"])
+    );
+  });
+
+  it("mirrors the monthly bands for AoS (gold at 3, platinum at 4+)", () => {
+    const three = computeAoSReadingAchievements(statusesFromIds([10, 11, 12], "2026-06-10T00:00:00Z"), []);
+    expect(three).toContain("aos_monthly_gold");
+    expect(three).not.toContain("aos_monthly_platinum");
+    const four = computeAoSReadingAchievements(statusesFromIds([10, 11, 12, 13], "2026-06-10T00:00:00Z"), []);
+    expect(four).toContain("aos_monthly_platinum");
   });
 });
 
