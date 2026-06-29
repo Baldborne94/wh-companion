@@ -13,9 +13,10 @@ export const READING_ACHIEVEMENTS = [
   { id:"streak_3",      label:"Eternal Warrior",         desc:"Three months without pause. You do not merely read these stories — you live them.",                 icon:"🛡",  cat:"streak"    },
   { id:"streak_6",      label:"Veteran of the Long War", desc:"Six months of relentless reading. Few reach this far. You make it look effortless.",                icon:"⚡", cat:"streak"    },
   { id:"streak_12",     label:"Deathwatch Champion",     desc:"A full year of unbroken reading. Your name belongs in the chronicles themselves.",                  icon:"👁",  cat:"streak"    },
-  { id:"monthly_bronze",label:"Bronze Aquila",           desc:"One book this month. The Aquila watches over those who keep their vow.",                           icon:"🥉", cat:"monthly"   },
-  { id:"monthly_silver",label:"Silver Aquila",           desc:"Two to three books this month. Your reading pace rivals the Astartes themselves.",                  icon:"🥈", cat:"monthly"   },
-  { id:"monthly_gold",  label:"Gold Aquila",             desc:"Four or more books this month. An extraordinary display of devotion to the written word.",          icon:"🥇", cat:"monthly"   },
+  { id:"monthly_bronze",  label:"Bronze Aquila",         desc:"One book this month. The Aquila watches over those who keep their vow.",                           icon:"🥉", cat:"monthly"   },
+  { id:"monthly_silver",  label:"Silver Aquila",         desc:"Two books this month. Your reading pace rivals the Astartes themselves.",                          icon:"🥈", cat:"monthly"   },
+  { id:"monthly_gold",    label:"Gold Aquila",           desc:"Three books this month. An extraordinary display of devotion to the written word.",                 icon:"🥇", cat:"monthly"   },
+  { id:"monthly_platinum",label:"Platinum Aquila",       desc:"Four or more books this month. Your devotion to the written word knows no equal.",                  icon:"💎", cat:"monthly"   },
   { id:"hh_10",         label:"Herald of Heresy",         desc:"Ten Horus Heresy novels. The seeds of treachery are taking root within your mind.",               icon:"🌌", cat:"series"    },
   { id:"hh_30",         label:"Heresy Veteran",           desc:"Thirty novels deep into the greatest betrayal in history. You live and breathe the Heresy.",         icon:"💀", cat:"series"    },
   { id:"faction_3",     label:"Faction Devotee",         desc:"Three books under the same banner. You know exactly where your loyalties lie.",                     icon:"🎖",  cat:"faction"   },
@@ -52,9 +53,10 @@ export const AOS_READING_ACHIEVEMENTS = [
   { id:"aos_streak_3",       label:"Eternal Stormcast",      desc:"Three months without pause. You have been reforged in the fires of devotion. You are eternal.",          icon:"🛡",  cat:"streak"    },
   { id:"aos_streak_6",       label:"Hallowed Knight",        desc:"Six months of ceaseless reading. Your soul shines with a light even Nagash cannot extinguish.",          icon:"⚡", cat:"streak"    },
   { id:"aos_streak_12",      label:"Champion of Azyr",       desc:"A full year of unbroken reading. Sigmar has taken notice. Your name rings out across Azyr.",             icon:"👁",  cat:"streak"    },
-  { id:"aos_monthly_bronze", label:"Bronze Sigmarite",       desc:"One book this month. The God-King's light falls on all who honour their vow.",                           icon:"🥉", cat:"monthly"   },
-  { id:"aos_monthly_silver", label:"Silver Sigmarite",       desc:"Two or three books this month. Your reading pace rivals a Stormcast on campaign.",                       icon:"🥈", cat:"monthly"   },
-  { id:"aos_monthly_gold",   label:"Gold Sigmarite",         desc:"Four or more books this month. Even the Celestant-Prime would honour your devotion.",                    icon:"🥇", cat:"monthly"   },
+  { id:"aos_monthly_bronze",   label:"Bronze Sigmarite",     desc:"One book this month. The God-King's light falls on all who honour their vow.",                           icon:"🥉", cat:"monthly"   },
+  { id:"aos_monthly_silver",   label:"Silver Sigmarite",     desc:"Two books this month. Your reading pace rivals a Stormcast on campaign.",                                icon:"🥈", cat:"monthly"   },
+  { id:"aos_monthly_gold",     label:"Gold Sigmarite",       desc:"Three books this month. Even the Celestant-Prime would honour your devotion.",                           icon:"🥇", cat:"monthly"   },
+  { id:"aos_monthly_platinum", label:"Platinum Sigmarite",   desc:"Four or more books this month. Sigmar himself marvels at your boundless devotion.",                      icon:"💎", cat:"monthly"   },
   { id:"aos_series_3",       label:"Series Devotee",         desc:"Three books from the same saga. Your loyalty to a single story runs deep.",                              icon:"🎖",  cat:"series_dev"},
   { id:"aos_series_5",       label:"Series Champion",        desc:"Five books, one saga. You do not merely read this story — you have become part of it.",                  icon:"🏆", cat:"series_dev"},
   { id:"aos_series_10",      label:"Series Exemplar",        desc:"Ten books of a single saga. Your devotion is absolute. Even Sigmar himself stands in awe.",              icon:"👑", cat:"series_dev"},
@@ -202,7 +204,8 @@ export function computeReadingAchievements(statuses, books) {
   const thisMonthCount = readEntries.filter(([, v]) => monthKey(v.completedAt) === thisMonth).length;
   if (thisMonthCount >= 1) unlocked.push("monthly_bronze");
   if (thisMonthCount >= 2) unlocked.push("monthly_silver");
-  if (thisMonthCount >= 4) unlocked.push("monthly_gold");
+  if (thisMonthCount >= 3) unlocked.push("monthly_gold");
+  if (thisMonthCount >= 4) unlocked.push("monthly_platinum");
 
   // Horus Heresy milestones
   const hhRead = books.filter(b => b.series === 'Horus Heresy' && readIds.has(String(b.id))).length;
@@ -317,7 +320,8 @@ export function computeAoSReadingAchievements(aosStatuses, aosBooks) {
   const thisMonthCount = readEntries.filter(([, v]) => monthKey(v.completedAt) === thisMonth).length;
   if (thisMonthCount >= 1) unlocked.push("aos_monthly_bronze");
   if (thisMonthCount >= 2) unlocked.push("aos_monthly_silver");
-  if (thisMonthCount >= 4) unlocked.push("aos_monthly_gold");
+  if (thisMonthCount >= 3) unlocked.push("aos_monthly_gold");
+  if (thisMonthCount >= 4) unlocked.push("aos_monthly_platinum");
 
   // Series devotion (same as faction devotion for WH40K)
   const seriesCounts = {};

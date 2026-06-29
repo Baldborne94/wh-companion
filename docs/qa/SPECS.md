@@ -62,10 +62,9 @@ Based on books whose `completedAt` falls in the **current calendar month**.
 | Platinum Aquila (`monthly_platinum`) | 4+ |
 
 > "Current month" = `YYYY-MM` of *now*. A book finished last month does not count.
-> ✅ **CONFIRMED bands:** 1 = Bronze, 2 = Silver, 3 = Gold, 4+ = Platinum (new tier).
-> 🛠 **TO IMPLEMENT:** Gold moves from `>=4` to `>=3`, and a new `monthly_platinum`
-> (+ `aos_monthly_platinum`) tier unlocks at 4. Needs new achievement defs + i18n.
-> Standalone/Codex books **do** count toward these monthly medals (see §1.4).
+> ✅ **CONFIRMED & IMPLEMENTED:** 1 = Bronze, 2 = Silver, 3 = Gold, 4+ = Platinum.
+> `monthly_platinum` (+ `aos_monthly_platinum`) added with EN/IT labels, descs and
+> popup flavor. Standalone/Codex books **do** count toward these medals (see §1.4).
 
 ### 1.3 Reading streak (consecutive months)
 
