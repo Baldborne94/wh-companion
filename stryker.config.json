@@ -11,7 +11,9 @@
     "src/lib/bookStatus.js",
     "src/lib/bookmarkHelpers.js",
     "src/lib/readerNav.js",
-    "src/lib/openBook.js"
+    "src/lib/openBook.js",
+    "src/lib/readingHelpers.js",
+    "src/data/lore.js"
   ],
   "thresholds": {
     "high": 85,
