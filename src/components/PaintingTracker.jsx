@@ -1929,8 +1929,13 @@ export default function PaintingTracker({ user, universe, onAchievement, unlocke
       }
       setMinis(data);
 
-      // Track completed minis + write missing timestamps to localStorage
-      if (user?.id && data) {
+      // Track completed minis + write missing timestamps to localStorage.
+      // ONLY derive achievements from the user's OWN collection (collection/army
+      // tabs). The gallery shows everyone's public minis — counting those would
+      // let a brand-new user unlock trophies just by browsing other painters'
+      // work. Gallery loads leave the user's own completedMinis untouched.
+      const isOwnData = (tab === "collection" || tab === "army");
+      if (user?.id && data && isOwnData) {
         const lsKey = `wh40k_painted_${user.id}`;
         let ts = {};
         try { ts = JSON.parse(localStorage.getItem(lsKey) || '{}'); } catch {}
