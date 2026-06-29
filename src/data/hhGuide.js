@@ -46,7 +46,7 @@ export const HH_FULL = [
     {n:27,t:"The Unremembered Empire",a:"Dan Abnett"},
     {t:"A Safe and Shadowed Place",a:"Guy Haley",type:"short",src:"War Without End (33)"},
     {t:"Heart of Pharos",a:"L.J. Goulding",type:"audio",src:"Burden of Loyalty (48)"},
-    {n:26,t:"Pharos",a:"Guy Haley"},
+    {n:34,t:"Pharos",a:"Guy Haley"},
     {n:38,t:"Angels of Caliban",a:"Gav Thorpe"},
     {n:46,t:"Ruinstorm",a:"David Annandale"},
     {t:"Scythes of the Emperor Anthology",a:"L.J. Goulding",b40k:true},

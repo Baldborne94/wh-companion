@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing — measures whether our tests actually catch bugs by introducing deliberate faults ('mutants') and checking the suite kills them. Scoped to the pure logic modules we unit-test; data catalogues are excluded (mutating book arrays is noise, not signal). See docs/qa/MUTATION-TESTING.md.",
+  "packageManager": "npm",
+  "testRunner": "vitest",
+  "reporters": ["html", "clear-text", "progress"],
+  "coverageAnalysis": "perTest",
+  "ignoreStatic": true,
+  "mutate": [
+    "src/lib/achievements.js",
+    "src/lib/bookStatus.js",
+    "src/lib/bookmarkHelpers.js",
+    "src/lib/readerNav.js",
+    "src/lib/openBook.js"
+  ],
+  "thresholds": {
+    "high": 85,
+    "low": 60,
+    "break": null
+  }
+}

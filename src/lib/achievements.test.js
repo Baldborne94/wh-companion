@@ -341,3 +341,142 @@ describe("computeAoSReadingAchievements", () => {
     expect(got).not.toContain("aos_series:Codex");
   });
 });
+
+// ─── boundary ladders — mutation hardening ────────────────────────────────────
+// Every threshold is tested at exactly N (unlocks) and at N-1 (does not). This
+// kills the "off-by-one" / changed-number mutants that survive when a ladder is
+// only spot-checked at its first rung.
+
+const ids = (n, from = 1) => Array.from({ length: n }, (_, i) => from + i);
+const nRead = (n) => statusesFromIds(ids(n), "2020-01-01T00:00:00Z"); // old date → no monthly noise
+
+describe("reading milestone boundaries", () => {
+  for (const [n, id] of [[1, "read_1"], [5, "read_5"], [10, "read_10"], [25, "read_25"], [50, "read_50"], [100, "read_100"]]) {
+    it(`${id}: unlocks at ${n}, not at ${n - 1}`, () => {
+      expect(computeReadingAchievements(nRead(n), [])).toContain(id);
+      if (n > 1) expect(computeReadingAchievements(nRead(n - 1), [])).not.toContain(id);
+    });
+  }
+});
+
+describe("faction / explorer / Horus Heresy boundaries", () => {
+  const sameFaction = (n) => ids(n).map((id) => ({ id, faction: "Space Marines", series: "Standalone" }));
+  const distinctFactions = (n) => ids(n).map((id) => ({ id, faction: `Fac${id}`, series: "Standalone" }));
+  const hh = (n) => ids(n).map((id) => ({ id, faction: "Space Marines", series: "Horus Heresy" }));
+
+  for (const [n, id] of [[3, "faction_3"], [5, "faction_5"], [10, "faction_10"]]) {
+    it(`${id}: unlocks at ${n}, not at ${n - 1}`, () => {
+      expect(computeReadingAchievements(nRead(n), sameFaction(n))).toContain(id);
+      expect(computeReadingAchievements(nRead(n - 1), sameFaction(n - 1))).not.toContain(id);
+    });
+  }
+
+  for (const [n, id] of [[3, "explorer_3"], [5, "explorer_5"], [8, "explorer_8"]]) {
+    it(`${id}: unlocks at ${n} distinct factions, not at ${n - 1}`, () => {
+      expect(computeReadingAchievements(nRead(n), distinctFactions(n))).toContain(id);
+      expect(computeReadingAchievements(nRead(n - 1), distinctFactions(n - 1))).not.toContain(id);
+    });
+  }
+
+  for (const [n, id] of [[10, "hh_10"], [30, "hh_30"]]) {
+    it(`${id}: unlocks at ${n} Horus Heresy books, not at ${n - 1}`, () => {
+      expect(computeReadingAchievements(nRead(n), hh(n))).toContain(id);
+      expect(computeReadingAchievements(nRead(n - 1), hh(n - 1))).not.toContain(id);
+    });
+  }
+});
+
+// Build statuses spanning `k` consecutive months ending at 2026-06.
+const consecutiveMonths = (k) => {
+  const out = {};
+  for (let i = 0; i < k; i++) {
+    let m = 6 - i, y = 2026;
+    while (m <= 0) { m += 12; y--; }
+    out[`b${i}`] = read(`${y}-${String(m).padStart(2, "0")}-10T00:00:00Z`);
+  }
+  return out;
+};
+
+describe("reading streak boundaries (clock frozen to 2026-06-15)", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z")); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  for (const [k, id] of [[2, "streak_2"], [3, "streak_3"], [6, "streak_6"], [12, "streak_12"]]) {
+    it(`${id}: unlocks at ${k} consecutive months, not at ${k - 1}`, () => {
+      expect(computeReadingAchievements(consecutiveMonths(k), [])).toContain(id);
+      expect(computeReadingAchievements(consecutiveMonths(k - 1), [])).not.toContain(id);
+    });
+  }
+});
+
+describe("painting milestone / army / streak boundaries (clock frozen)", () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z")); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  // minis with an OLD completedAt → no monthly/streak noise for milestone checks
+  const minis = (n, faction = "Orks") => ids(n).map(() => ({ faction, completedAt: "2020-01-01T00:00:00Z" }));
+
+  for (const [n, id] of [[1, "paint_1"], [5, "paint_5"], [10, "paint_10"], [25, "paint_25"], [50, "paint_50"], [100, "paint_100"]]) {
+    it(`${id}: unlocks at ${n}, not at ${n - 1}`, () => {
+      expect(computePaintingAchievements(minis(n))).toContain(id);
+      if (n > 1) expect(computePaintingAchievements(minis(n - 1))).not.toContain(id);
+    });
+  }
+
+  for (const [n, label] of [[5, "army:Orks:5"], [10, "army:Orks:10"], [20, "army:Orks:20"]]) {
+    it(`${label}: unlocks at ${n} same-faction minis, not at ${n - 1}`, () => {
+      expect(computePaintingAchievements(minis(n))).toContain(label);
+      expect(computePaintingAchievements(minis(n - 1))).not.toContain(label);
+    });
+  }
+
+  const paintMonths = (k) => {
+    const out = [];
+    for (let i = 0; i < k; i++) {
+      let m = 6 - i, y = 2026;
+      while (m <= 0) { m += 12; y--; }
+      out.push({ faction: "Orks", completedAt: `${y}-${String(m).padStart(2, "0")}-10T00:00:00Z` });
+    }
+    return out;
+  };
+  for (const [k, id] of [[2, "paint_streak_2"], [3, "paint_streak_3"], [6, "paint_streak_6"]]) {
+    it(`${id}: unlocks at ${k} consecutive months, not at ${k - 1}`, () => {
+      expect(computePaintingAchievements(paintMonths(k))).toContain(id);
+      expect(computePaintingAchievements(paintMonths(k - 1))).not.toContain(id);
+    });
+  }
+
+  for (const [n, id] of [[1, "monthly_painter_1"], [3, "monthly_painter_3"], [5, "monthly_painter_5"]]) {
+    it(`${id}: unlocks at ${n} minis this month, not at ${n - 1}`, () => {
+      const thisMonth = (c) => Array.from({ length: c }, () => ({ faction: "Orks", completedAt: "2026-06-05T00:00:00Z" }));
+      expect(computePaintingAchievements(thisMonth(n))).toContain(id);
+      if (n > 1) expect(computePaintingAchievements(thisMonth(n - 1))).not.toContain(id);
+    });
+  }
+});
+
+describe("AoS milestone / devotion / explorer boundaries", () => {
+  const sameSeries = (n) => ids(n).map((id) => ({ id, series: "Gotrek" }));
+  const distinctSeries = (n) => ids(n).map((id) => ({ id, series: `Saga${id}` }));
+
+  for (const [n, id] of [[1, "aos_read_1"], [5, "aos_read_5"], [10, "aos_read_10"], [25, "aos_read_25"], [50, "aos_read_50"], [100, "aos_read_100"]]) {
+    it(`${id}: unlocks at ${n}, not at ${n - 1}`, () => {
+      expect(computeAoSReadingAchievements(nRead(n), [])).toContain(id);
+      if (n > 1) expect(computeAoSReadingAchievements(nRead(n - 1), [])).not.toContain(id);
+    });
+  }
+
+  for (const [n, id] of [[3, "aos_series_3"], [5, "aos_series_5"], [10, "aos_series_10"]]) {
+    it(`${id}: unlocks at ${n} same-saga books, not at ${n - 1}`, () => {
+      expect(computeAoSReadingAchievements(nRead(n), sameSeries(n))).toContain(id);
+      expect(computeAoSReadingAchievements(nRead(n - 1), sameSeries(n - 1))).not.toContain(id);
+    });
+  }
+
+  for (const [n, id] of [[3, "aos_explorer_3"], [5, "aos_explorer_5"], [8, "aos_explorer_8"]]) {
+    it(`${id}: unlocks at ${n} distinct sagas, not at ${n - 1}`, () => {
+      expect(computeAoSReadingAchievements(nRead(n), distinctSeries(n))).toContain(id);
+      expect(computeAoSReadingAchievements(nRead(n - 1), distinctSeries(n - 1))).not.toContain(id);
+    });
+  }
+});

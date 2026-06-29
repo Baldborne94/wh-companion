@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   setBookStatusLS,
   getBookStatus,
@@ -33,6 +33,26 @@ describe("setBookStatusLS / getBookStatus", () => {
 
   it("returns {status:'none'} for an unknown book", () => {
     expect(getBookStatus(UID, 999)).toEqual({ status: "none" });
+  });
+
+  it("preserves the original startedAt when going reading -> read", () => {
+    // Mutation-testing found this gap: marking read must NOT overwrite an
+    // existing startedAt (the `if (!d.startedAt)` guard). The two writes must
+    // land on DIFFERENT timestamps or the `if (true)` mutant is invisible —
+    // so we control the clock (FIRST: Repeatable) instead of trusting it.
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-06-01T00:00:00.000Z"));
+      const started = setBookStatusLS(UID, 7, "reading").startedAt;
+      expect(started).toBe("2026-06-01T00:00:00.000Z");
+
+      vi.setSystemTime(new Date("2026-06-10T00:00:00.000Z")); // 9 days later
+      const finished = setBookStatusLS(UID, 7, "read");
+      expect(finished.startedAt).toBe(started); // unchanged
+      expect(finished.completedAt).toBe("2026-06-10T00:00:00.000Z");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
