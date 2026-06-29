@@ -158,7 +158,8 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
 
   if (!token) return (
     <ConnectScreen icon="▶" title="YouTube" sub={t("music.connectSub")}
-      btnLabel={t("music.connectYouTube")} btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error} />
+      btnLabel={t("music.connectYouTube")} btnBg="#FF0000" btnColor="#fff" onClick={connect} error={error}
+      note={t("music.connectNote")} />
   );
 
   return (
@@ -238,7 +239,7 @@ const YouTubeSection = forwardRef(function YouTubeSection({ onNowPlaying }, ref)
 
 // ─── SHARED UI ────────────────────────────────────────────────────────────────
 
-function ConnectScreen({ icon, title, sub, btnLabel, btnBg, btnColor, onClick, error }) {
+function ConnectScreen({ icon, title, sub, btnLabel, btnBg, btnColor, onClick, error, note }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "48px 24px", textAlign: "center" }}>
       <div style={{ fontSize: 56, lineHeight: 1 }}>{icon}</div>
@@ -249,6 +250,15 @@ function ConnectScreen({ icon, title, sub, btnLabel, btnBg, btnColor, onClick, e
         style={{ background: btnBg, color: btnColor, border: "none", borderRadius: 10, padding: "13px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer", marginTop: 8 }}>
         {btnLabel}
       </button>
+      {note && (
+        <div style={{
+          color: C.muted, fontSize: 12, maxWidth: 300, lineHeight: 1.6,
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 10,
+          padding: "11px 14px", marginTop: 6,
+        }}>
+          <span style={{ color: C.gold }}>ⓘ</span> {note}
+        </div>
+      )}
     </div>
   );
 }
