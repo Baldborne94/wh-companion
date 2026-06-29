@@ -405,8 +405,13 @@ export const KW_REGEX = new RegExp(
 );
 
 export function highlightKeywords(html) {
-  return html.split(/(<[^>]+>)/).map((part, i) => {
-    if (i % 2 === 1 || part.includes("lore-kw")) return part;
+  const parts = html.split(/(<[^>]+>)/);
+  return parts.map((part, i) => {
+    // Odd indices are tags. Skip a text node that already sits inside a lore-kw
+    // span — detected via the PRECEDING tag (the class lives there, not in the
+    // split-out text), which keeps the function idempotent on its own output.
+    if (i % 2 === 1) return part;
+    if (i > 0 && parts[i - 1].includes("lore-kw")) return part;
     return part.replace(KW_REGEX, m => {
       const k = m.toLowerCase();
       if (!LORE_DB[k]) return m;
