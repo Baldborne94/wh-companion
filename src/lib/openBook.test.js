@@ -1,5 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { resolveBookUrl } from './openBook.js';
+import { cacheGet, cachePut } from './ebookCache';
+
+// Mock the IndexedDB cache so we can drive the offline / fallback paths.
+vi.mock('./ebookCache', () => ({ cacheGet: vi.fn(), cachePut: vi.fn() }));
+
+// navigator.onLine is read-only in jsdom — redefine it per test.
+function setOnline(value) {
+  Object.defineProperty(navigator, 'onLine', { value, configurable: true });
+}
 
 const FAKE_TOKEN  = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.mock';
 const FAKE_PATH   = 'user-123/42/my-book.epub';
@@ -35,7 +44,8 @@ function makeSb({ rows = [FAKE_META], dlOk = true } = {}) {
 }
 
 describe('resolveBookUrl', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); setOnline(true); });
+  afterEach(() => setOnline(true));
 
   it('returns arrayBuffer when download succeeds', async () => {
     const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb: makeSb() });
@@ -101,5 +111,78 @@ describe('resolveBookUrl', () => {
     const sb = makeSb();
     await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
     expect(sb.storage.download).toHaveBeenCalledWith(FAKE_PATH, FAKE_TOKEN);
+  });
+
+  it('caches the bytes and stores meta on a successful download', async () => {
+    const sb = makeSb();
+    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+    expect(cachePut).toHaveBeenCalledWith(UID, FAKE_BOOK.id, expect.any(ArrayBuffer));
+    expect(JSON.parse(localStorage.getItem(`wh40k_ebook_${UID}_${FAKE_BOOK.id}`))).toEqual(FAKE_META);
+    expect(result.fromCache).toBeUndefined();
+  });
+
+  it('finds metadata via the all-rows fallback when both id queries miss', async () => {
+    const sb = makeSb();
+    let n = 0;
+    sb.get = vi.fn().mockImplementation(async () => {
+      n++;
+      if (n <= 2) return [];                 // numeric + string id queries miss
+      return [{ ...FAKE_META, book_id: '42' }]; // all-rows query, filtered by String(id)
+    });
+    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+    expect(result.arrayBuffer).toBeInstanceOf(ArrayBuffer);
+    expect(n).toBe(3);
+  });
+
+  // ── download-failed fallback to cache (navigator.onLine true but no real net) ──
+  it('falls back to the IndexedDB cache when the download fails but bytes are cached', async () => {
+    cacheGet.mockResolvedValue(EPUB_BYTES);
+    const sb = makeSb({ dlOk: false });
+    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+    expect(result.arrayBuffer).toBe(EPUB_BYTES);
+    expect(result.fromCache).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  it('returns no_dl error when download fails AND nothing is cached', async () => {
+    cacheGet.mockResolvedValue(undefined);
+    const sb = makeSb({ dlOk: false });
+    const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+    expect(result.error).toBe('no_dl_400');
+  });
+
+  // ── offline path ──────────────────────────────────────────────────────────────
+  describe('offline', () => {
+    beforeEach(() => setOnline(false));
+
+    it('returns cached bytes (fromCache) without any network call', async () => {
+      cacheGet.mockResolvedValue(EPUB_BYTES);
+      const sb = makeSb();
+      const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb });
+      expect(result.arrayBuffer).toBe(EPUB_BYTES);
+      expect(result.fromCache).toBe(true);
+      expect(sb.get).not.toHaveBeenCalled();
+      expect(sb.storage.download).not.toHaveBeenCalled();
+    });
+
+    it('preserves a cached PDF file_type from localStorage meta', async () => {
+      cacheGet.mockResolvedValue(EPUB_BYTES);
+      localStorage.setItem(`wh40k_ebook_${UID}_${FAKE_BOOK.id}`, JSON.stringify({ file_type: 'pdf' }));
+      const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb: makeSb() });
+      expect(result.meta.file_type).toBe('pdf');
+    });
+
+    it('defaults file_type to epub when no localStorage meta exists', async () => {
+      cacheGet.mockResolvedValue(EPUB_BYTES);
+      localStorage.removeItem(`wh40k_ebook_${UID}_${FAKE_BOOK.id}`);
+      const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb: makeSb() });
+      expect(result.meta.file_type).toBe('epub');
+    });
+
+    it('returns offline_no_cache when offline and nothing is cached', async () => {
+      cacheGet.mockResolvedValue(undefined);
+      const result = await resolveBookUrl({ uid: UID, book: FAKE_BOOK, supabase: makeSupabase(), sb: makeSb() });
+      expect(result.error).toBe('offline_no_cache');
+    });
   });
 });
