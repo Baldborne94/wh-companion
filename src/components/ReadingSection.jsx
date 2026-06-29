@@ -321,6 +321,9 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
   };
 
   const suggestion = useMemo(() => getNextSuggestion(statuses, hhMode, readShorts), [statuses, hhMode, readShorts]);
+  // Only surface "Next Up" once the reader has actually started — i.e. has at
+  // least one book tracked. Newcomers use the Start Here tab instead.
+  const hasStarted = readCount > 0 || readingCount > 0 || wantCount > 0;
   const [opening, setOpening] = useState(false);
 
   const handleReadNext = async (book) => {
@@ -360,7 +363,7 @@ export default function ReadingSection({ user, statuses = {}, onOpenBook, setSec
           <div style={{ fontFamily: "'Cinzel',serif", fontSize: 9, color: C.muted, letterSpacing: 2, marginTop: 6, textAlign: "right" }}>{BOOKS.length > 0 ? Math.round((readCount / BOOKS.length) * 100) : 0}{t("reading.percentComplete")}</div>
         </div>
 
-        {suggestion && (
+        {suggestion && hasStarted && (
           <div style={{ margin: "14px 16px 0", background: `linear-gradient(135deg,${C.gold}12,${C.card})`, border: `1px solid ${C.gold}44`, borderRadius: 12, overflow: "hidden" }}>
             <div style={{ padding: "10px 14px 0", display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase" }}>{t("reading.nextUp")}</span>
