@@ -122,7 +122,7 @@ function NextUpCard({ statuses, activeBooks, onOpenBook, setSection, userId }) {
   );
 }
 
-export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp }) {
+export default function HomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp, onStartGuide }) {
   const { t } = useLang();
   const uid = user?.id || 'anon';
 
@@ -164,6 +164,9 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
   }, [shelfBooks]);
 
   const activeBooks = BOOKS.filter(b => statuses[b.id]?.status === 'reading');
+  // A brand-new user has nothing tracked yet — don't push a "Next Up" book on
+  // them; instead invite them into the curated starter guide.
+  const isNewcomer = readCount === 0 && readingCount === 0 && activeBooks.length === 0 && shelfBooks.length === 0;
   const [openingBookId, setOpeningBookId] = useState(null);
   const [openErrorId, setOpenErrorId] = useState(null);
   const spineColor  = b => FC[b.faction] || C.dim;
@@ -287,7 +290,18 @@ export default function HomePage({ user, setSection, statuses = {}, onOpenBook, 
         </div>
       )}
 
-      <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection} userId={user?.id} />
+      {isNewcomer ? (
+        <div style={{ padding: "14px 16px 0" }}>
+          <button type="button" onClick={() => (onStartGuide ? onStartGuide() : setSection('reading'))}
+            style={{ width: "100%", textAlign: "left", cursor: "pointer", background: `linear-gradient(135deg,${C.gold}18,${C.card})`, border: `1px solid ${C.gold}55`, borderLeft: `3px solid ${C.gold}`, borderRadius: 12, padding: "16px 16px" }}>
+            <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.gold, letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>✦ {t("home.newHere")}</div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>{t("home.newHereSub")}</div>
+            <span style={{ display: "inline-block", background: `${C.gold}22`, border: `1px solid ${C.gold}`, borderRadius: 8, color: C.gold, padding: "9px 16px", fontFamily: "'Cinzel',serif", fontSize: 10, letterSpacing: 1 }}>{t("home.startHere")}</span>
+          </button>
+        </div>
+      ) : (
+        <NextUpCard statuses={statuses} activeBooks={activeBooks} onOpenBook={onOpenBook} setSection={setSection} userId={user?.id} />
+      )}
 
       <div style={{ padding: "16px 0 0" }}>
         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: C.goldDim, letterSpacing: 3, textTransform: "uppercase", padding: "0 16px", marginBottom: 10 }}>{t("home.yourShelf")}</div>

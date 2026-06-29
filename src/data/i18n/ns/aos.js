@@ -73,6 +73,9 @@ export const aos = {
         shelfEmpty:       "Your shelf is empty",
         shelfEmptyHint:   "Go to the Library, upload ebooks or mark books as read to build your shelf.",
         goToLibrary:      "Go to Library →",
+        newHere:          "New to Age of Sigmar?",
+        newHereSub:       "Not sure where to begin? Follow a curated path into the Mortal Realms — we'll suggest exactly which books to start with.",
+        startHere:        "Show me where to start →",
       },
 
       // ─── LIBRARY SECTION ───
@@ -307,6 +310,9 @@ export const aos = {
         shelfEmpty:       "Il tuo scaffale è vuoto",
         shelfEmptyHint:   "Vai nella Libreria, carica ebook o segna i libri come letti per riempire il tuo scaffale.",
         goToLibrary:      "Vai alla Libreria →",
+        newHere:          "Nuovo a Age of Sigmar?",
+        newHereSub:       "Non sai da dove cominciare? Segui un percorso guidato nei Regni Mortali — ti suggeriamo esattamente da quali libri partire.",
+        startHere:        "Mostrami da dove iniziare →",
       },
 
       // ─── LIBRARY SECTION ───
