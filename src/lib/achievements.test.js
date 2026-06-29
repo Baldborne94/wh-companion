@@ -198,6 +198,14 @@ describe("computeReadingAchievements", () => {
     expect(got.some((id) => id.startsWith("series:"))).toBe(false);
   });
 
+  it("still counts Standalone/Codex books toward milestone + monthly (spec §1.4)", () => {
+    // ids 3 & 4 are Standalone — excluded ONLY from saga completion, never from
+    // the read count.
+    const got = computeReadingAchievements(statusesFromIds([3, 4]), books);
+    expect(got).toContain("read_1"); // they count as read books
+    expect(got.some((id) => id.startsWith("series:"))).toBe(false);
+  });
+
   it("unlocks explorer_3 for three distinct factions", () => {
     const got = computeReadingAchievements(statusesFromIds([1, 4, 5]), books);
     expect(got).toContain("explorer_3");
@@ -302,5 +310,17 @@ describe("computeAoSReadingAchievements", () => {
     const got = computeAoSReadingAchievements(statusesFromIds([10, 13]), aosBooks);
     // only 2 distinct sagas here → not yet explorer_3
     expect(got).not.toContain("aos_explorer_3");
+  });
+
+  it("does NOT complete a saga named Standalone or Codex (spec §1.5, parity with 40k)", () => {
+    const catalogue = [
+      { id: 90, series: "Standalone" },
+      { id: 91, series: "Standalone" },
+      { id: 92, series: "Codex" },
+      { id: 93, series: "Codex" },
+    ];
+    const got = computeAoSReadingAchievements(statusesFromIds([90, 91, 92, 93]), catalogue);
+    expect(got).not.toContain("aos_series:Standalone");
+    expect(got).not.toContain("aos_series:Codex");
   });
 });

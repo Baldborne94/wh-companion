@@ -44,8 +44,11 @@ Unlock when the number of books with status `read` reaches the threshold.
 
 > Thresholds are **inclusive** (`>=`). At exactly 5 books, both `read_1` and
 > `read_5` are unlocked.
-> **⚠️ DA CONFERMARE:** the milestone count mixes WH40K and AoS books into a single
-> total. Intended? (AoS also has its *own* parallel milestone set, see §1.5.)
+> ✅ **CONFIRMED:** WH40K and AoS reading trophies are **separate** — each universe
+> has its own milestones, monthly medals, streaks and sagas. The code already
+> enforces this: `loadAllStatuses` keeps only numeric (40k) ids and
+> `loadAoSStatuses` only `aos`-prefixed ids, so the two counts never mix.
+> (Painting trophies, by contrast, are **shared** across universes — see §1.6.)
 
 ### 1.2 Monthly medals (reading)
 
@@ -54,13 +57,15 @@ Based on books whose `completedAt` falls in the **current calendar month**.
 | Medal | Books completed this month |
 |-------|----------------------------|
 | Bronze Aquila (`monthly_bronze`) | 1 |
-| Silver Aquila (`monthly_silver`) | 2–3 → unlocks at **2** |
-| Gold Aquila (`monthly_gold`) | 4+ |
+| Silver Aquila (`monthly_silver`) | 2 |
+| Gold Aquila (`monthly_gold`) | 3 |
+| Platinum Aquila (`monthly_platinum`) | 4+ |
 
 > "Current month" = `YYYY-MM` of *now*. A book finished last month does not count.
-> **⚠️ DA CONFERMARE:** Silver label says "2–3", Gold says "4+", so 2 unlocks
-> Silver and 4 unlocks Gold. At 3 books: Silver only (correct). Confirm the
-> intended bands are 1 / 2–3 / 4+.
+> ✅ **CONFIRMED bands:** 1 = Bronze, 2 = Silver, 3 = Gold, 4+ = Platinum (new tier).
+> 🛠 **TO IMPLEMENT:** Gold moves from `>=4` to `>=3`, and a new `monthly_platinum`
+> (+ `aos_monthly_platinum`) tier unlocks at 4. Needs new achievement defs + i18n.
+> Standalone/Codex books **do** count toward these monthly medals (see §1.4).
 
 ### 1.3 Reading streak (consecutive months)
 
@@ -90,8 +95,10 @@ All based on the user's `read` WH40K books matched against the catalogue.
 
 > **Saga completion exclusions:** a `series:` trophy is **never** created for
 > series named `Standalone` or `Codex`, nor for series with fewer than 2 books.
-> **⚠️ DA CONFERMARE:** is excluding `Standalone` and `Codex` by name the intended
-> rule? (A future series accidentally named "Codex …" would be silently skipped.)
+> ✅ **CONFIRMED:** this exclusion applies to **both** WH40K and AoS (see §1.5).
+> Crucially, the exclusion is **only** for the saga-completion trophy — Standalone
+> and Codex books still count as read books toward milestones, monthly medals and
+> streaks.
 
 ### 1.5 AoS reading (parallel set)
 
@@ -106,8 +113,8 @@ Mirrors §1.1–1.4 but over AoS books only, with `aos_`-prefixed ids. Differenc
 | Explorer `aos_explorer_3/5/8` | 3 / 5 / 8 **distinct** series read |
 | Saga complete `aos_series:<Name>` | every book of a 2+ book series read |
 
-> **⚠️ DA CONFERMARE:** AoS saga completion has **no** `Standalone`/`Codex`
-> exclusion (unlike WH40K §1.4). Intended difference, or an inconsistency?
+> ✅ **CONFIRMED:** AoS saga completion now applies the **same** `Standalone`/
+> `Codex` exclusion as WH40K (§1.4). (Was missing before — fixed.)
 
 ### 1.6 Painting milestones, monthly & streak
 
@@ -134,15 +141,16 @@ Based on the user's completed miniatures (`completedAt` timestamps).
 
 ---
 
-## 2. Open questions for the product owner
+## 2. Resolved questions (product owner confirmed)
 
-Resolve these, then fold the answers back into §1 and add/adjust tests:
-
-1. **Mixed milestone count (§1.1)** — should the main `read_*` milestones count
-   WH40K + AoS together, or should AoS only feed the `aos_read_*` set?
-2. **Saga exclusions (§1.4 vs §1.5)** — WH40K skips `Standalone`/`Codex` series;
-   AoS skips nothing. Is that intended?
-3. **Monthly bands (§1.2)** — confirm 1 / 2–3 / 4+ is the desired split.
+1. **Milestone count (§1.1)** — ✅ separate per universe; the code already does
+   this. The "WH40K + AoS combined" comment was stale (now corrected). No
+   behaviour bug — a false alarm caught by *reading the code path*, not the comment.
+2. **Saga exclusions (§1.4 / §1.5)** — ✅ `Standalone`/`Codex` excluded from saga
+   completion in **both** universes (AoS was missing it — fixed). They still count
+   toward read milestones / monthly / streak.
+3. **Monthly bands (§1.2)** — ✅ 1 / 2 / 3 / 4+ → Bronze / Silver / Gold / Platinum.
+   Platinum is a **new tier** still to implement.
 
 > Each confirmed rule becomes a test. Each *contradiction we find* becomes a bug
 > report (`.github/ISSUE_TEMPLATE/bug_report.md`). That is the whole game.

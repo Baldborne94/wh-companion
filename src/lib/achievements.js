@@ -170,7 +170,10 @@ export function getConsecutiveMonthStreak(isoTimestamps) {
 
 // ─── READING COMPUTATION ─────────────────────────────────────────────────────
 
-// statuses: { [bookId]: { status, completedAt, ... } } — WH40K + AoS combined
+// statuses: { [bookId]: { status, completedAt, ... } } — WH40K only.
+// AoS reading is tracked separately (see computeAoSReadingAchievements); the
+// caller passes a 40K-only map (loadAllStatuses drops non-numeric/aos ids), so
+// the two universes never share reading milestones, streaks or monthly medals.
 // books: BOOKS array (WH40K only — used for faction/series checks)
 export function computeReadingAchievements(statuses, books) {
   const readEntries = Object.entries(statuses).filter(([, v]) => v?.status === 'read');
@@ -335,7 +338,7 @@ export function computeAoSReadingAchievements(aosStatuses, aosBooks) {
     seriesMap[b.series].push(b);
   });
   Object.entries(seriesMap).forEach(([sName, sBooks]) => {
-    if (sBooks.length < 2) return;
+    if (sName === 'Standalone' || sName === 'Codex' || sBooks.length < 2) return;
     if (sBooks.every(b => readIds.has(String(b.id)))) {
       unlocked.push(`aos_series:${sName}`);
     }
