@@ -109,10 +109,10 @@ Coverage is a *floor, not a target* (100% coverage ≠ bug-free).
 
 | Phase | Status |
 |-------|--------|
-| 0 — Strategy & templates | 🚧 in progress |
-| 1 — Unit tests (lib/data) | ⬜ todo |
-| 2 — Component tests (RTL) | ⬜ todo |
-| 3 — E2E (Playwright) | ⬜ todo |
+| 0 — Strategy & templates | ✅ done |
+| 1 — Unit tests (lib/data) | ✅ done (+ mutation testing via Stryker) |
+| 2 — Component tests (RTL) | 🚧 in progress (AchievementPopup, Home/AoS gating, StatsModal, MiniPlayer, UniverseSelector) |
+| 3 — E2E (Playwright) | ⬜ todo (reader is auth-gated — needs a fixture/auth strategy) |
 | 4 — Manual / exploratory / a11y | ⬜ todo |
-| 5 — CI pipeline | ⬜ todo |
+| 5 — CI pipeline | 🚧 in progress (GitHub Actions: test + build on every PR) |
 | 6 — Performance / security / visual | ⬜ todo |
