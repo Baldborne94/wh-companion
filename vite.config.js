@@ -68,6 +68,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Never pick up Stryker's sandbox copies as real test files.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.stryker-tmp/**'],
   },
   optimizeDeps: {
     include: ['epubjs'],

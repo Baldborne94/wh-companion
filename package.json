@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:mutation": "stryker run",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -24,6 +25,8 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@resvg/resvg-js": "^2.6.2",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
