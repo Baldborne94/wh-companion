@@ -110,6 +110,47 @@ function dupeNumsBySeries(catalogue) {
   return offenders;
 }
 
+// Short stories / audios are placed in the HH reading order with a `src` of the
+// form "Anthology Title (N)", where N is the anthology's catalogue num — a
+// pointer telling the reader where to find the piece. A wrong N sends the reader
+// to the wrong collection, with no build error.
+function shortSrcRefs() {
+  const SRC_RE = /^(.+?)\s*\((\d+)\)\s*$/;
+  const refs = [];
+  for (const guide of [HH_FULL, HH_OPTIONAL]) {
+    for (const e of hhEntries(guide)) {
+      if (!e.src || (e.type !== "short" && e.type !== "audio")) continue;
+      const m = SRC_RE.exec(e.src);
+      if (!m) continue; // "Unprinted", "Scions of the Emperor" — no number to check
+      refs.push({ story: e.t, anthology: m[1].trim(), srcNum: Number(m[2]) });
+    }
+  }
+  return refs;
+}
+
+const findAnthology = (title) => {
+  const tl = title.toLowerCase();
+  const hh = BOOKS.filter((b) => b.series === "Horus Heresy");
+  return hh.find((b) => b.title.toLowerCase() === tl) ||
+         hh.find((b) => b.title.toLowerCase().includes(tl)) ||
+         // reverse direction: guide uses a descriptive label ("Tallarn Anthology")
+         // for a catalogue title ("Tallarn"). Length guard avoids spurious hits.
+         hh.find((b) => b.title.length >= 5 && tl.includes(b.title.toLowerCase())) || null;
+};
+
+describe("Horus Heresy short stories (R7)", () => {
+  it("references at least one numbered anthology", () => {
+    expect(shortSrcRefs().length).toBeGreaterThan(0);
+  });
+
+  it("every short's anthology resolves and its number matches the catalogue", () => {
+    const problems = shortSrcRefs()
+      .map((r) => ({ ...r, bookNum: findAnthology(r.anthology)?.num ?? null }))
+      .filter((r) => r.bookNum !== r.srcNum);
+    expect(problems).toEqual([]);
+  });
+});
+
 describe("catalogue saga numbering (R7)", () => {
   it("WH40K: no series has two books sharing the same num", () => {
     expect(dupeNumsBySeries(BOOKS)).toEqual([]);
