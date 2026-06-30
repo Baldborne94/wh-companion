@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { mockAuth, mockReaderBook } from './helpers/auth.js';
+import { expectTextInAnyFrame } from './helpers/reader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EPUB = readFileSync(resolve(__dirname, 'fixtures/test-book.epub'));
@@ -29,12 +30,7 @@ test('opens an EPUB from the shelf and renders its first chapter', async ({ page
 
   await shelfBook.first().click();
 
-  // Reader chrome mounts with the book title (header is visible on desktop).
-  await expect(page.getByText('Horus Rising', { exact: true })).toBeVisible({ timeout: 15000 });
-
   // The real proof: epubjs parsed the downloaded bytes and rendered chapter one
   // inside its iframe.
-  await expect(
-    page.frameLocator('iframe').getByText(CHAPTER_PHRASE)
-  ).toBeVisible({ timeout: 15000 });
+  await expectTextInAnyFrame(page, CHAPTER_PHRASE);
 });

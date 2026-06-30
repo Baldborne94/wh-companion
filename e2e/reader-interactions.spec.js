@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { mockAuth, mockReaderBook } from './helpers/auth.js';
+import { expectTextInAnyFrame } from './helpers/reader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EPUB = readFileSync(resolve(__dirname, 'fixtures/test-book.epub'));
@@ -11,27 +12,6 @@ const EPUB = readFileSync(resolve(__dirname, 'fixtures/test-book.epub'));
 const CH1 = 'In the grim darkness of the far future there is only war.';
 const CH2 = 'Only in death does duty end, brother.';
 const BOOK_ID = 1; // "Horus Rising"
-
-// Assert a chapter's text rendered. epubjs paginates into CSS columns, so the
-// target can sit in an off-screen column (not "visible" to a visibility-based
-// locator) and may live in any of several rendered iframes — so we read each
-// frame's body text directly and check for a substring match.
-async function expectTextInAnyFrame(page, text, timeout = 15000) {
-  await expect
-    .poll(
-      async () => {
-        for (const f of page.frames()) {
-          try {
-            const body = await f.locator('body').innerText({ timeout: 1000 });
-            if (body.includes(text)) return true;
-          } catch {}
-        }
-        return false;
-      },
-      { timeout }
-    )
-    .toBe(true);
-}
 
 // Open the EPUB reader from the Home shelf and wait until chapter one has rendered.
 async function openReader(page) {

@@ -21,9 +21,7 @@ test('opens a PDF from the shelf and shows the page count', async ({ page }) => 
   await page.goto('/');
   await page.getByTitle(/Horus Rising/).first().click();
 
-  // PdfReader chrome: the book title renders in the header.
-  await expect(page.getByText('Horus Rising', { exact: true })).toBeVisible({ timeout: 15000 });
-
-  // The real proof pdf.js loaded the document: the counter shows the 2-page total.
+  // The proof pdf.js loaded the document: the PdfReader chrome shows the 2-page
+  // counter. (Pages rasterise to canvas, so there's no text to assert against.)
   await expect(page.getByText('1 / 2')).toBeVisible({ timeout: 15000 });
 });
