@@ -3,9 +3,15 @@ import { defineConfig, devices } from '@playwright/test';
 // E2E config. The app boots only when Supabase env vars are present (supabase-js
 // throws on an empty URL), so the build/preview server is fed dummy credentials —
 // enough to render the pre-auth LoginPage. We never exercise real Google OAuth.
+//
+// VITE_SUPABASE_URL points at the preview server's OWN origin: every Supabase
+// call then becomes same-origin, so route interception catches it with no CORS
+// preflight (the app's sb.js sends Content-Type: application/json on GETs, which
+// would otherwise force a cross-origin preflight that doesn't survive mocking).
 const PORT = 4173;
+const ORIGIN = `http://localhost:${PORT}`;
 const DUMMY_ENV =
-  'VITE_SUPABASE_URL=https://e2e.placeholder.supabase.co ' +
+  `VITE_SUPABASE_URL=${ORIGIN} ` +
   'VITE_SUPABASE_ANON_KEY=e2e-anon-key';
 
 // Use the browser pre-installed in the web environment when present; otherwise let
@@ -29,7 +35,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], launchOptions: { executablePath } },
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { executablePath },
+      },
     },
   ],
   webServer: {
