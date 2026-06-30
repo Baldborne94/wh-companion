@@ -58,6 +58,8 @@ cd wh-companion
 npm run dev       # local dev server
 npm run build     # production build — ALWAYS run before committing to verify no errors
 npm run preview   # preview production build
+npm test          # Vitest unit + component tests (jsdom)
+npm run test:e2e  # Playwright end-to-end tests (real Chromium) — see "End-to-End Testing"
 ```
 
 ## Environment Variables
@@ -294,6 +296,8 @@ git push -u origin claude/wizardly-fermat-q790e
 | #261 | Localize achievements (names/descriptions via `localizeAchievement`), AoS era headers, and date formatting (lang-aware `locale`) |
 | #262 | EN/IT toggle on the login page (pre-auth) |
 | #270 | Localize reading-guide prose (Horus Heresy + AoS notes, part labels, AoS main-story-arc); part titles kept as IP proper nouns |
+| #347–#365 | QA Phase 1–2: risk-based Test Plan + behaviour specs; Vitest unit tests for the achievements engine (+ mutation testing); component tests for the "easy" components (AchievementPopup, HomePage, AoSHomePage, StatsModal, MiniPlayer, UniverseSelector, BackupModal, OnboardingModal) |
+| #366–#373 | QA Phase 3: Playwright E2E suite — harness + CI gating job; pre-auth login; authenticated shell + universe nav; EPUB reader (open + render); bookmarks + TOC; PDF reader; Age of Sigmar universe; Library catalogue → detail → open reader. See "End-to-End Testing (Playwright)" |
 
 ### Offline Reading (key files)
 
@@ -342,3 +346,36 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 - **Toggle UI**: EN/IT button in the post-auth header (`App.jsx`) **and** on the login page (`LoginPage.jsx`) so first-run users can switch before signing in.
 - **Dynamic content**: achievement names/descriptions live in `lib/achievements.js` (English) with `localizeAchievement(ach, t)` resolving translations from the `stats.ach.*` keys; the popup flavor/opener pools live in the `stats` namespace.
 - **Gotcha**: a sub-component that calls `t()` needs its own `useLang()` (or must close over a parent's) — esbuild does **not** catch a `t` that is undefined at runtime. After i18n edits, grep that every component using `t()` has `useLang()` in scope.
+
+## Testing
+
+Three layers (`npm test` for the first two, `npm run test:e2e` for E2E):
+
+- **Unit** — `src/lib/*.test.js` (Vitest, jsdom). Pure logic: achievements engine, book status, bookmarks, reader nav, openBook.
+- **Component** — `src/components/*.test.jsx` (Vitest + Testing Library). The "easy" components render-and-interact in jsdom.
+- **End-to-End** — `e2e/*.spec.js` (Playwright, real Chromium). The real built app, driven in a browser.
+
+`vite.config.js` `test.exclude` lists `**/e2e/**` so Vitest never picks up Playwright specs (different runner).
+
+CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + build`** (`npm test` + `npm run build`) and **`e2e (playwright)`** (`npx playwright install --with-deps chromium` + `npm run test:e2e`, uploads the HTML report artifact).
+
+### End-to-End Testing (Playwright)
+
+`playwright.config.js` builds the app and serves it with `vite preview`, then drives it in headless Chromium.
+
+- **Pinned runtime**: `@playwright/test@1.56.0` matches the web environment's pre-installed `chromium-1194`; the config points `launchOptions.executablePath` at `/opt/pw-browsers/chromium-1194/...` when present, else lets Playwright resolve its own download (so CI works after `playwright install`).
+- **Serial** (`workers: 1`): each reader spec spins up an epubjs/pdf.js render; several at once against the single preview server starved each other past the assertion timeout. The suite is small, so determinism wins.
+- **Same-origin trick**: the E2E build sets `VITE_SUPABASE_URL` to the preview server's own origin (`http://localhost:4173`). Every Supabase call is then same-origin, so route interception catches it with **no CORS preflight** — the app's `sb.js` sends `Content-Type: application/json` on GETs, which would otherwise force a cross-origin preflight that doesn't survive mocking. The auth storage key follows the host → `sb-localhost-auth-token`.
+
+**Helpers (`e2e/helpers/`)**
+- `auth.js` — `mockAuth(page, {seedLocalStorage})` seeds a fake far-future Supabase session in localStorage (supabase-js reads the session from there) and intercepts all `/auth/v1/**` + `/rest/v1/**` calls (empty result sets); also skips first-run overlays and disables CSS transitions. `mockReaderBook(page, {bookId, epubBuffer|bytes, fileType})` serves one `ebook_files` row + the file bytes so a catalogue book is openable. `mockPdfRuntime(page)` serves `pdf.js` from the bundled `pdfjs-dist` build instead of the CDN the reader loads it from (hermetic). No real Google OAuth or backend is ever touched; UI runs off static bundled data.
+- `reader.js` — `expectTextInAnyFrame(page, text)` asserts a chapter rendered. Uses **`textContent`, not `innerText`** (innerText drops text in off-screen paginated columns) and polls **every** frame (epubjs keeps several rendered iframes).
+
+**Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
+
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader).
+
+**Gotchas**
+- Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.
+- `retries: 1` (CI only) absorbs an occasional headless epubjs render miss under full-suite load; the suite is green in CI with it. In isolation each reader spec is stable.
+- When adding a reader/data flow, call `mockReaderBook` **after** `mockAuth` — Playwright matches the last-registered route first, so the specific `ebook_files`/storage routes must win over the generic `/rest/v1/**` handler.
