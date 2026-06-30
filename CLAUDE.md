@@ -201,6 +201,10 @@ Bookmarks are stored locally + synced to `bookmarks` Supabase table. Array sorte
 
 Navigate to CFI: `rendRef.current?.display(bm.cfi)`
 
+### EpubReader Selection Toolbar
+
+Selecting text in a chapter surfaces the `selBar` action pill (📖 Definition for a single word, 🖍 highlight swatches for a phrase). `captureSelection` records the selection's **viewport rect** (the in-iframe range rect plus the iframe element's own offset). A `useLayoutEffect` then anchors the pill **next to the word** — above it when there's room, otherwise below — horizontally centred and clamped on-screen (`selBarPos`). The reader root is `position:fixed; inset:0`, so viewport coords double as the pill's absolute coords. While the rect is mid-measure the pill renders `visibility:hidden` (no top-of-page flash); if no rect is available (e.g. Android wiped the iframe selection) it falls back to the centred top bar.
+
 ### Tablet Zoom (index.html)
 
 Applied via inline `<script>` in `index.html`, targeting `body` (not `html`) so `position:fixed` elements stay unaffected:
@@ -373,7 +377,7 @@ CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + bu
 
 **Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
 
-**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
 
 **Gotchas**
 - Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.

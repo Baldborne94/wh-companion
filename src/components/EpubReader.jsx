@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
@@ -536,7 +536,9 @@ export default function EpubReader({
     catch { return []; }
   });
   const [showHlPanel, setShowHlPanel] = useState(false);
-  const [selBar,      setSelBar]      = useState(null);   // { cfi, text } pending selection
+  const [selBar,      setSelBar]      = useState(null);   // { cfi, text, word, rect } pending selection
+  const [selBarPos,   setSelBarPos]   = useState(null);   // { top, left } anchored next to the word
+  const selBarRef = useRef(null);
   const hlRef = useRef(highlights);
   hlRef.current = highlights;
   // Captures the live selection (cfi+text) from inside the chapter iframe so the
@@ -1077,12 +1079,24 @@ export default function EpubReader({
             const text = sel.toString().trim();
             if (!text) return;
             let cfi = null;
-            try { cfi = contents.cfiFromRange(sel.getRangeAt(0)); } catch {}
+            const range = sel.getRangeAt(0);
+            try { cfi = contents.cfiFromRange(range); } catch {}
             const word = text.replace(/[^a-zA-Z'-]/g, "");
             const single = !/\s/.test(text) && word.length >= 2 && word.length < 40 ? word : "";
             if (!single && !cfi) return;   // nothing actionable
+            // Selection rectangle in viewport coords (range rect is iframe-relative,
+            // so add the iframe's own offset). The reader root is position:fixed
+            // inset:0, so these double as absolute coords for the floating toolbar.
+            let rect = null;
+            try {
+              const rr = range.getBoundingClientRect();
+              const ir = contents.window?.frameElement?.getBoundingClientRect();
+              if (ir && rr && (rr.width || rr.height)) {
+                rect = { top: ir.top + rr.top, left: ir.left + rr.left, width: rr.width, height: rr.height };
+              }
+            } catch {}
             pendingSelRef.current = cfi ? { cfi, text } : null;
-            setSelBar({ cfi, text, word: single });
+            setSelBar({ cfi, text, word: single, rect });
           };
 
           // Re-evaluate once the selection settles. Debounced so dragging the
@@ -1342,6 +1356,22 @@ export default function EpubReader({
     return () => window.removeEventListener("keydown", h);
   }, [next, prev, dictWord, showSettings, showToc, showBmPanel, onClose]);
 
+  // Anchor the selection toolbar next to the word: above it when there's room,
+  // otherwise below. Measured after layout (the bar's width depends on whether it
+  // shows the dictionary action or the highlight swatches) and clamped on-screen.
+  useLayoutEffect(() => {
+    const r = selBar?.rect;
+    const el = selBarRef.current;
+    if (!r || !el) { setSelBarPos(null); return; }
+    const M = 8, GAP = 10;
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const left = Math.max(M, Math.min(r.left + r.width / 2 - w / 2, vw - M - w));
+    const above = r.top - h - GAP >= M;
+    const top = Math.max(M, Math.min(above ? r.top - h - GAP : r.top + r.height + GAP, vh - M - h));
+    setSelBarPos({ top, left });
+  }, [selBar]);
+
   const isBookmarked = bookmarks.some(b => b.cfi === curCfi);
 
   const toggleBookmark = useCallback(() => {
@@ -1550,7 +1580,16 @@ export default function EpubReader({
           at a fixed spot (not the selection rect) because the body{zoom} factor
           makes in-iframe coordinates unreliable. Pick a colour to highlight. */}
       {selBar && (
-        <div style={{ position:"absolute", top:64, left:"50%", transform:"translateX(-50%)",
+        <div ref={selBarRef} style={{ position:"absolute",
+                      // Anchored beside the word once measured; while a rect is
+                      // pending measurement keep it off-paint (no top-of-page flash);
+                      // with no rect at all (e.g. Android cleared the selection) fall
+                      // back to the centred top bar.
+                      ...(selBarPos
+                          ? { top:selBarPos.top, left:selBarPos.left }
+                          : selBar.rect
+                            ? { top:0, left:0, visibility:"hidden" }
+                            : { top:64, left:"50%", transform:"translateX(-50%)" }),
                       zIndex:210, display:"flex", alignItems:"center", gap:10,
                       background:C.card, border:`1px solid ${C.border}`, borderRadius:24,
                       padding:"8px 14px", boxShadow:"0 6px 22px rgba(0,0,0,0.55)",
