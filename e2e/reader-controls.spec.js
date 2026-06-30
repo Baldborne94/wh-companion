@@ -22,6 +22,27 @@ async function openReader(page) {
 }
 
 test.describe('Reader controls', () => {
+  test('clicking the page toggles the header/footer chrome on desktop', async ({ page }) => {
+    await openReader(page);
+
+    const header = page.locator('[data-reader-chrome="header"]');
+    const opacity = () => header.evaluate((el) => getComputedStyle(el).opacity);
+
+    // Desktop (a fine pointer) starts with the chrome visible.
+    await expect(header).toHaveCount(1);
+    expect(await opacity()).toBe('1');
+
+    // A plain click on the text column (centre — clear of the margin page-turn
+    // strips) hides the chrome, the same way a tablet centre-tap does.
+    const vp = page.viewportSize();
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await expect.poll(opacity).toBe('0');
+
+    // Clicking again brings it back.
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await expect.poll(opacity).toBe('1');
+  });
+
   test('settings panel changes the font size and closes', async ({ page }) => {
     await openReader(page);
 

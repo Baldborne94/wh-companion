@@ -507,7 +507,9 @@ export default function EpubReader({
   const [chMinLeft, setChMinLeft] = useState(null);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [showUI,        setShowUI]        = useState(false);
+  // Touch: chrome starts hidden (immersive), revealed by tap/swipe. Desktop:
+  // chrome starts visible, and a click on the page toggles it like the tablet tap.
+  const [showUI,        setShowUI]        = useState(() => !window.matchMedia("(pointer:coarse)").matches);
   const [showSettings,  setShowSettings]  = useState(false);
   const [showToc,       setShowToc]       = useState(false);
   const [dictWord,      setDictWord]      = useState(null);
@@ -860,8 +862,10 @@ export default function EpubReader({
     }
   }, []);
 
-  // In scrolled mode, always show UI (no swipe overlay to trigger revealUI)
-  const uiVisible = !isTouch.current || !settings.paginate || showUI;
+  // Scrolled mode always shows the UI (no swipe overlay to trigger revealUI).
+  // Paginated mode lets showUI drive it on both touch and desktop, so a desktop
+  // user can hide the header/footer too.
+  const uiVisible = !settings.paginate || showUI;
 
   const revealUI = useCallback(() => {
     if (!isTouch.current) return;
@@ -870,15 +874,16 @@ export default function EpubReader({
     hideTimer.current = setTimeout(() => setShowUI(false), 4000);
   }, []);
 
-  // Center tap toggles the header (immersive control). When showing, arm the
-  // same 4s auto-hide; when hiding, dismiss instantly. Side strips + swipe still
-  // turn pages — only a plain tap on the text column reaches here.
+  // A plain click/tap on the text column toggles the chrome (immersive control) —
+  // side strips + swipe still turn pages, so only a dead-centre click reaches here.
+  // Touch arms a 4s auto-hide when revealing; desktop toggles persistently (a mouse
+  // user expects it to stay hidden until they click again).
   const toggleUI = useCallback(() => {
-    if (!isTouch.current) return;
     setShowUI(prev => {
       clearTimeout(hideTimer.current);
-      if (!prev) hideTimer.current = setTimeout(() => setShowUI(false), 4000);
-      return !prev;
+      const nextVal = !prev;
+      if (nextVal && isTouch.current) hideTimer.current = setTimeout(() => setShowUI(false), 4000);
+      return nextVal;
     });
   }, []);
 
@@ -1618,7 +1623,7 @@ export default function EpubReader({
       )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div style={{
+      <div data-reader-chrome="header" style={{
         position:"absolute", top:0, left:0, right:0, height:54,
         background:`${T.bg}ee`, backdropFilter:"blur(10px)",
         borderBottom:`1px solid ${T.border}`,
