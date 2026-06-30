@@ -22,7 +22,12 @@ const executablePath = existsSync(PINNED_CHROMIUM) ? PINNED_CHROMIUM : undefined
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // Run serially. The reader specs each spin up an epubjs render, and several
+  // running at once against the single preview server starve each other past the
+  // assertion timeout (verified: parallel ~4/8, serial 8/8). The suite is small,
+  // so determinism beats the few seconds parallelism would save.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI
