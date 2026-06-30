@@ -205,6 +205,10 @@ Navigate to CFI: `rendRef.current?.display(bm.cfi)`
 
 Selecting text in a chapter surfaces the `selBar` action pill (📖 Definition for a single word, 🖍 highlight swatches for a phrase). `captureSelection` records the selection's **viewport rect** (the in-iframe range rect plus the iframe element's own offset). A `useLayoutEffect` then anchors the pill **next to the word** — above it when there's room, otherwise below — horizontally centred and clamped on-screen (`selBarPos`). The reader root is `position:fixed; inset:0`, so viewport coords double as the pill's absolute coords. While the rect is mid-measure the pill renders `visibility:hidden` (no top-of-page flash); if no rect is available (e.g. Android wiped the iframe selection) it falls back to the centred top bar.
 
+### EpubReader Immersive Chrome (header/footer toggle)
+
+A plain click/tap on the **text column** (the side margins are page-turn strips, so only a dead-centre click reaches the iframe) toggles the header + footer via `rend.on("click", toggleUI)`. Visibility is driven by `uiVisible = !settings.paginate || showUI` — scroll mode always shows it; paginated mode lets `showUI` drive it on **both touch and desktop**. `showUI` initialises to `!matchMedia("(pointer:coarse)")` so touch starts immersive (hidden, revealed by tap/swipe) and **desktop starts visible but can be toggled with a click** (no 4s auto-hide on desktop — only touch arms the timer). The header carries `data-reader-chrome="header"` purely as an E2E hook (its `opacity` flips 1↔0; `toBeVisible` can't see opacity).
+
 ### Tablet Zoom (index.html)
 
 Applied via inline `<script>` in `index.html`, targeting `body` (not `html`) so `position:fixed` elements stay unaffected:
