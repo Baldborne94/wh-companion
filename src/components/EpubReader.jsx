@@ -123,9 +123,9 @@ const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:t
 // that on narrow phones the text never hugs the decorative page-edge / margin
 // line — there is always a clear blank gutter before the first/last glyph.
 const MARGINS = [
-  "clamp(12px, 3vw, 36px)",
-  "clamp(18px, 4.5vw, 72px)",
-  "clamp(28px, 8vw, 130px)",
+  "clamp(12px, 2.5vw, 24px)",
+  "clamp(16px, 3vw, 48px)",
+  "clamp(24px, 6vw, 100px)",
 ];
 
 // Highlight swatch colours (id → hex). Stored by id so a theme/restyle can
