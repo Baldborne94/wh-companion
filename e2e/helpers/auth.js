@@ -10,8 +10,14 @@
 // URL host. The E2E build points VITE_SUPABASE_URL at http://localhost:4173
 // (same-origin, to avoid CORS) → host `localhost` → `sb-localhost-auth-token`.
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
 const UID = '00000000-0000-0000-0000-000000000001';
 const FAR_FUTURE = 4102444800; // 2100-01-01, in seconds
+
+const PDFJS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../node_modules/pdfjs-dist/build');
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
 
@@ -127,26 +133,46 @@ export async function mockAuth(page, { seedLocalStorage = {} } = {}) {
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} opts
- * @param {number|string} opts.bookId  catalogue id to make openable
- * @param {Buffer} opts.epubBuffer     raw EPUB bytes to serve as the download
+ * @param {number|string} opts.bookId       catalogue id to make openable
+ * @param {Buffer} [opts.epubBuffer]         EPUB bytes (shorthand for bytes + fileType 'epub')
+ * @param {Buffer} [opts.bytes]              raw file bytes to serve as the download
+ * @param {'epub'|'pdf'} [opts.fileType]     how the app should open the file
  */
-export async function mockReaderBook(page, { bookId, epubBuffer }) {
-  const filePath = `${UID}/${bookId}/test-book.epub`;
+export async function mockReaderBook(page, { bookId, epubBuffer, bytes, fileType = 'epub' }) {
+  const data = bytes ?? epubBuffer;
+  const fileName = `test-book.${fileType}`;
+  const contentType = fileType === 'pdf' ? 'application/pdf' : 'application/epub+zip';
   const row = {
     user_id: UID,
     book_id: bookId,
-    file_path: filePath,
-    file_type: 'epub',
-    file_name: 'test-book.epub',
+    file_path: `${UID}/${bookId}/${fileName}`,
+    file_type: fileType,
+    file_name: fileName,
   };
 
   // The app reads ebook_files via both the JS client (select=book_id) and a raw
   // REST fetch (resolveBookUrl); one row covers both.
   await page.route('**/rest/v1/ebook_files**', (route) => fulfillJson(route, [row]));
 
-  // The actual file download — hand back the EPUB bytes.
+  // The actual file download — hand back the file bytes.
   await page.route('**/storage/v1/object/ebooks/**', (route) =>
-    fulfillBytes(route, epubBuffer, 'application/epub+zip')
+    fulfillBytes(route, data, contentType)
+  );
+}
+
+/**
+ * Serve pdf.js from the bundled `pdfjs-dist` build instead of the CDN the reader
+ * loads it from, so the PDF test is hermetic (no external network). The version
+ * matches the URL the app requests (3.11.174).
+ */
+export async function mockPdfRuntime(page) {
+  const lib = readFileSync(resolve(PDFJS_DIR, 'pdf.min.js'));
+  const worker = readFileSync(resolve(PDFJS_DIR, 'pdf.worker.min.js'));
+  await page.route('**/cdnjs.cloudflare.com/**/pdf.min.js', (route) =>
+    fulfillBytes(route, lib, 'application/javascript')
+  );
+  await page.route('**/cdnjs.cloudflare.com/**/pdf.worker.min.js', (route) =>
+    fulfillBytes(route, worker, 'application/javascript')
   );
 }
 
