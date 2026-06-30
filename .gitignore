@@ -8,3 +8,6 @@ dist/
 reports/
 .stryker-tmp/
 scratch-*
+test-results/
+playwright-report/
+blob-report/

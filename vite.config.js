@@ -69,8 +69,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.js'],
+    // Vitest owns unit/component tests; Playwright specs under e2e/ run separately.
     // Never pick up Stryker's sandbox copies as real test files.
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.stryker-tmp/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.stryker-tmp/**', '**/e2e/**'],
   },
   optimizeDeps: {
     include: ['epubjs'],
