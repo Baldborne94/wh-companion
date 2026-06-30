@@ -176,4 +176,78 @@ export async function mockPdfRuntime(page) {
   );
 }
 
+/**
+ * A far-future, already-saved YouTube token for the Music section. Seeded into
+ * localStorage so `YouTubeSection` skips its OAuth connect screen and lands on the
+ * search/playlist UI. Pass through `mockAuth({ seedLocalStorage: { ...ytTokenSeed() } })`.
+ */
+export function ytTokenSeed() {
+  return { yt_token: JSON.stringify({ token: 'e2e-yt-token', expiresAt: 4102444800000 }) };
+}
+
+/**
+ * Intercept every external endpoint the Music section touches so it runs hermetically:
+ * the Google APIs it calls on mount (playlists) / on search, and the YouTube embed
+ * iframe it renders once a video is playing. No real network is hit.
+ */
+export async function mockYouTube(page) {
+  // playlists / playlistItems / search → empty item sets (UI renders, no real data).
+  await page.route('**/www.googleapis.com/youtube/v3/**', (route) =>
+    fulfillJson(route, { items: [] })
+  );
+  // The embed player — serve a blank document instead of loading youtube.com.
+  await page.route('**/www.youtube.com/embed/**', (route) =>
+    fulfillBytes(route, Buffer.from('<!doctype html><title>e2e</title>'), 'text/html')
+  );
+}
+
+/**
+ * Mock the serverless AI Color Advisor proxy (`/api/paint-advisor`) with a
+ * Claude-shaped response: one `content` block whose text is the JSON the panel
+ * parses. Lets the Painting AI flow render schemes without an Anthropic key.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {object} [payload] the advisor JSON (miniature + schemes). A small valid
+ *        default is provided.
+ */
+export async function mockPaintAdvisor(page, payload) {
+  const body = payload ?? {
+    miniature: 'A single power-armoured Space Marine',
+    schemes: [
+      {
+        name: 'Ultramarines',
+        difficulty: 'Beginner',
+        style: 'Classic cobalt-blue parade scheme.',
+        techniques: ['Base', 'Shade', 'Edge highlight'],
+        tip: 'Thin your Macragge Blue for smoother coats.',
+        parts: [
+          {
+            part: 'Armour',
+            steps: [
+              { type: 'base', paint: 'Macragge Blue', hex: '#1a3d6b', note: 'Two thin coats.' },
+              { type: 'shade', paint: 'Nuln Oil', hex: '#0a0a14', note: 'Into the recesses.' },
+            ],
+          },
+        ],
+      },
+      {
+        name: 'Crimson Fists',
+        difficulty: 'Intermediate',
+        style: 'Dark navy armour with red gauntlets.',
+        techniques: ['Base', 'Layer'],
+        tip: 'Keep the fists clean and bright.',
+        parts: [
+          {
+            part: 'Fists',
+            steps: [{ type: 'base', paint: 'Mephiston Red', hex: '#9c1515', note: '' }],
+          },
+        ],
+      },
+    ],
+  };
+  await page.route('**/api/paint-advisor', (route) =>
+    fulfillJson(route, { content: [{ type: 'text', text: JSON.stringify(body) }] })
+  );
+}
+
 export { UID };

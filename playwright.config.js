@@ -10,9 +10,14 @@ import { defineConfig, devices } from '@playwright/test';
 // would otherwise force a cross-origin preflight that doesn't survive mocking).
 const PORT = 4173;
 const ORIGIN = `http://localhost:${PORT}`;
+// VITE_GOOGLE_CLIENT_ID is set so the Music section renders its real YouTube
+// flow (a missing id short-circuits to a "not configured" placeholder). No real
+// OAuth runs — the music spec seeds a fake yt_token and mocks the googleapis +
+// embed endpoints.
 const DUMMY_ENV =
   `VITE_SUPABASE_URL=${ORIGIN} ` +
-  'VITE_SUPABASE_ANON_KEY=e2e-anon-key';
+  'VITE_SUPABASE_ANON_KEY=e2e-anon-key ' +
+  'VITE_GOOGLE_CLIENT_ID=e2e-google-client-id';
 
 // Use the browser pre-installed in the web environment when present; otherwise let
 // Playwright resolve its own download (e.g. CI after `playwright install chromium`).
