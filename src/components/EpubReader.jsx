@@ -4,7 +4,19 @@ import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
+import { reconcileSynced, withPending, withoutPending } from "../lib/bookmarkHelpers";
 import { useLang } from "../lib/i18n.jsx";
+
+// Offline pending-op queue (per synced list, per book) kept in localStorage as
+// { adds:[cfi], dels:[cfi] }. An op stays queued until its DB write is confirmed,
+// so a bookmark/highlight added or removed while offline is retried on next open.
+function readPend(key) {
+  try { const p = JSON.parse(localStorage.getItem(key) || "{}"); return { adds:p.adds||[], dels:p.dels||[] }; }
+  catch { return { adds:[], dels:[] }; }
+}
+function savePend(key, p) {
+  try { localStorage.setItem(key, JSON.stringify({ adds:p.adds||[], dels:p.dels||[] })); } catch {}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase helpers (use JS client — handles auth token automatically)
@@ -51,27 +63,28 @@ async function loadBmsFromDB(userId, bookId) {
 // Per-bookmark DB ops — never a delete-all, so saving on one device does NOT wipe
 // the bookmarks another device added. Add = delete-this-cfi-then-insert (idempotent
 // even without a unique constraint); remove = delete-this-cfi only.
+// Per-bookmark DB writes return true only when the round-trip actually lands, so
+// the caller can drop the op from its offline pending-queue. A failed write (e.g.
+// offline) returns false and stays queued to be retried on the next open.
 async function putBmToDB(userId, bookId, bm) {
-  if (!userId || !bookId || !bm?.cfi) return;
+  if (!userId || !bookId || !bm?.cfi) return false;
   try {
     await supabase.from("bookmarks").delete()
       .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", bm.cfi);
     await supabase.from("bookmarks").insert({
       user_id:userId, book_id:bookId, epub_cfi:bm.cfi, label:bm.label, progress:bm.pct|0,
     });
-  } catch {}
+    return true;
+  } catch { return false; }
 }
 
 async function deleteBmFromDB(userId, bookId, cfi) {
-  if (!userId || !bookId || !cfi) return;
+  if (!userId || !bookId || !cfi) return false;
   try {
     await supabase.from("bookmarks").delete()
       .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", cfi);
-  } catch {}
-}
-
-async function putBmsToDB(userId, bookId, bms) {
-  for (const b of bms) await putBmToDB(userId, bookId, b);
+    return true;
+  } catch { return false; }
 }
 
 // Highlights sync — same per-row, delete-then-insert pattern as bookmarks so one
@@ -90,26 +103,24 @@ async function loadHlsFromDB(userId, bookId) {
 }
 
 async function putHlToDB(userId, bookId, h) {
-  if (!userId || !bookId || !h?.cfi) return;
+  if (!userId || !bookId || !h?.cfi) return false;
   try {
     await supabase.from("highlights").delete()
       .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", h.cfi);
     await supabase.from("highlights").insert({
       user_id:userId, book_id:bookId, epub_cfi:h.cfi, text:(h.text || "").slice(0, 240), color:h.color || "gold",
     });
-  } catch {}
+    return true;
+  } catch { return false; }
 }
 
 async function deleteHlFromDB(userId, bookId, cfi) {
-  if (!userId || !bookId || !cfi) return;
+  if (!userId || !bookId || !cfi) return false;
   try {
     await supabase.from("highlights").delete()
       .eq("user_id", userId).eq("book_id", bookId).eq("epub_cfi", cfi);
-  } catch {}
-}
-
-async function putHlsToDB(userId, bookId, hls) {
-  for (const h of hls) await putHlToDB(userId, bookId, h);
+    return true;
+  } catch { return false; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -523,7 +534,8 @@ export default function EpubReader({
   const searchToken = useRef(0);
 
   // ── Bookmarks ─────────────────────────────────────────────────────────────
-  const bmKey = `wh40k_bm_${userId}_${bookId}`;
+  const bmKey     = `wh40k_bm_${userId}_${bookId}`;
+  const bmPendKey = `wh40k_bmpend_${userId}_${bookId}`;
   const [bookmarks, setBookmarks] = useState(() => {
     try { return JSON.parse(localStorage.getItem(bmKey) || "[]"); }
     catch { return []; }
@@ -532,7 +544,8 @@ export default function EpubReader({
   const [bmFlash,     setBmFlash]     = useState(false);
 
   // ── Highlights ────────────────────────────────────────────────────────────
-  const hlKey = `wh40k_hl_${userId}_${bookId}`;
+  const hlKey     = `wh40k_hl_${userId}_${bookId}`;
+  const hlPendKey = `wh40k_hlpend_${userId}_${bookId}`;
   const [highlights, setHighlights] = useState(() => {
     try { return JSON.parse(localStorage.getItem(hlKey) || "[]"); }
     catch { return []; }
@@ -608,53 +621,71 @@ export default function EpubReader({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
 
-  // Reconcile bookmarks with the DB on every open (not just on a fresh device) so
-  // bookmarks added on another device show up here. Merge = union by cfi of local +
-  // DB; then push any local-only bookmarks up so the DB holds the union too.
+  // Reconcile bookmarks with the DB on every open. The DB is the source of truth
+  // (see reconcileSynced): a bookmark deleted on another device disappears here
+  // instead of being resurrected, and one added elsewhere shows up. Only offline
+  // adds/deletes queued locally (pending) survive as local-only / stay retried.
   useEffect(() => {
     if (!userId || !bookId) return;
     loadBmsFromDB(userId, bookId).then(dbBms => {
+      const pend = readPend(bmPendKey);
       setBookmarks(prev => {
-        const byCfi = new Map();
-        for (const b of [...prev, ...dbBms]) {
-          if (b?.cfi && !byCfi.has(b.cfi)) byCfi.set(b.cfi, b);
-        }
-        const merged = [...byCfi.values()]
+        const merged = reconcileSynced(prev, dbBms, { pendingAdds: pend.adds, pendingDels: pend.dels })
           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
           .slice(0, 20);
         localStorage.setItem(bmKey, JSON.stringify(merged));
-        const dbCfis = new Set(dbBms.map(b => b.cfi));
-        const localOnly = merged.filter(b => !dbCfis.has(b.cfi));
-        if (localOnly.length) putBmsToDB(userId, bookId, localOnly);
         return merged;
       });
+      // Retry queued offline ops against the DB so other devices converge too;
+      // clear each one only once its write is confirmed.
+      (async () => {
+        let localNow = [];
+        try { localNow = JSON.parse(localStorage.getItem(bmKey) || "[]"); } catch {}
+        for (const cfi of [...pend.adds]) {
+          const b = localNow.find(x => x.cfi === cfi);
+          const ok = b ? await putBmToDB(userId, bookId, b) : true;
+          if (ok) savePend(bmPendKey, withoutPending(readPend(bmPendKey), "adds", cfi));
+        }
+        for (const cfi of [...pend.dels]) {
+          if (await deleteBmFromDB(userId, bookId, cfi))
+            savePend(bmPendKey, withoutPending(readPend(bmPendKey), "dels", cfi));
+        }
+      })();
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
 
-  // Reconcile highlights with the DB on open (same union-by-cfi merge as bookmarks)
-  // so highlights made on another device show up here. Paints the DB-only ones onto
-  // the rendition if it's already up, and pushes local-only ones to the DB.
+  // Reconcile highlights with the DB on open — same DB-authoritative reconcile as
+  // bookmarks (reconcileSynced), so a highlight removed on another device stays
+  // removed here. Paints the ones newly arrived from the DB and retries queued
+  // offline ops.
   useEffect(() => {
     if (!userId || !bookId) return;
     loadHlsFromDB(userId, bookId).then(dbHls => {
-      if (!dbHls.length && !hlRef.current.length) return;
+      const pend = readPend(hlPendKey);
+      if (!dbHls.length && !hlRef.current.length && !pend.adds.length && !pend.dels.length) return;
       setHighlights(prev => {
         const localCfis = new Set(prev.map(h => h.cfi));
-        const byCfi = new Map();
-        for (const h of [...prev, ...dbHls]) {
-          if (h?.cfi && !byCfi.has(h.cfi)) byCfi.set(h.cfi, h);
-        }
-        const merged = [...byCfi.values()]
+        const merged = reconcileSynced(prev, dbHls, { pendingAdds: pend.adds, pendingDels: pend.dels, max: 500 })
           .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         localStorage.setItem(hlKey, JSON.stringify(merged));
-        const dbCfis = new Set(dbHls.map(h => h.cfi));
-        const localOnly = merged.filter(h => !dbCfis.has(h.cfi));
-        if (localOnly.length) putHlsToDB(userId, bookId, localOnly);
         // Paint the ones that arrived from the DB (not already shown locally).
-        dbHls.filter(h => !localCfis.has(h.cfi)).forEach(h => paintHl(h));
+        merged.filter(h => !localCfis.has(h.cfi)).forEach(h => paintHl(h));
         return merged;
       });
+      (async () => {
+        let localNow = [];
+        try { localNow = JSON.parse(localStorage.getItem(hlKey) || "[]"); } catch {}
+        for (const cfi of [...pend.adds]) {
+          const h = localNow.find(x => x.cfi === cfi);
+          const ok = h ? await putHlToDB(userId, bookId, h) : true;
+          if (ok) savePend(hlPendKey, withoutPending(readPend(hlPendKey), "adds", cfi));
+        }
+        for (const cfi of [...pend.dels]) {
+          if (await deleteHlFromDB(userId, bookId, cfi))
+            savePend(hlPendKey, withoutPending(readPend(hlPendKey), "dels", cfi));
+        }
+      })();
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, bookId]);
@@ -805,12 +836,15 @@ export default function EpubReader({
       localStorage.setItem(hlKey, JSON.stringify(next));
       return next;
     });
-    putHlToDB(userId, bookId, h);
+    savePend(hlPendKey, withPending(readPend(hlPendKey), "adds", h.cfi));
+    putHlToDB(userId, bookId, h).then(ok => {
+      if (ok) savePend(hlPendKey, withoutPending(readPend(hlPendKey), "adds", h.cfi));
+    });
     paintHl(h);
     try { rendRef.current?.getContents?.().forEach(c => c.window?.getSelection?.()?.removeAllRanges?.()); } catch {}
     pendingSelRef.current = null;
     setSelBar(null);
-  }, [hlKey, paintHl, userId, bookId]);
+  }, [hlKey, hlPendKey, paintHl, userId, bookId]);
 
   const removeHighlight = useCallback((cfi) => {
     try { rendRef.current?.annotations?.remove(cfi, "highlight"); } catch {}
@@ -819,8 +853,11 @@ export default function EpubReader({
       localStorage.setItem(hlKey, JSON.stringify(next));
       return next;
     });
-    deleteHlFromDB(userId, bookId, cfi);
-  }, [hlKey, userId, bookId]);
+    savePend(hlPendKey, withPending(readPend(hlPendKey), "dels", cfi));
+    deleteHlFromDB(userId, bookId, cfi).then(ok => {
+      if (ok) savePend(hlPendKey, withoutPending(readPend(hlPendKey), "dels", cfi));
+    });
+  }, [hlKey, hlPendKey, userId, bookId]);
 
   // Full-text search across the book. epub.js has no Book-level search, so we
   // walk the spine, load each section, run Section.find(), then unload to free
@@ -1387,18 +1424,24 @@ export default function EpubReader({
       let next;
       if (exists) {
         next = prev.filter(b => b.cfi !== cfi);
-        deleteBmFromDB(userId, bookId, cfi);
+        savePend(bmPendKey, withPending(readPend(bmPendKey), "dels", cfi));
+        deleteBmFromDB(userId, bookId, cfi).then(ok => {
+          if (ok) savePend(bmPendKey, withoutPending(readPend(bmPendKey), "dels", cfi));
+        });
       } else {
         const bm = { cfi, label: chLabel || "—", pct: progress, createdAt: new Date().toISOString() };
         next = [bm, ...prev].slice(0, 20);
-        putBmToDB(userId, bookId, bm);
+        savePend(bmPendKey, withPending(readPend(bmPendKey), "adds", cfi));
+        putBmToDB(userId, bookId, bm).then(ok => {
+          if (ok) savePend(bmPendKey, withoutPending(readPend(bmPendKey), "adds", cfi));
+        });
         setBmFlash(true);
         setTimeout(() => setBmFlash(false), 1000);
       }
       localStorage.setItem(bmKey, JSON.stringify(next));
       return next;
     });
-  }, [chLabel, progress, bmKey, userId, bookId]);
+  }, [chLabel, progress, bmKey, bmPendKey, userId, bookId]);
 
   const goToBookmark = useCallback((bm) => {
     if (!bm?.cfi) return;
@@ -1410,10 +1453,13 @@ export default function EpubReader({
     setBookmarks(prev => {
       const next = prev.filter(b => b.cfi !== cfi);
       localStorage.setItem(bmKey, JSON.stringify(next));
-      deleteBmFromDB(userId, bookId, cfi);
+      savePend(bmPendKey, withPending(readPend(bmPendKey), "dels", cfi));
+      deleteBmFromDB(userId, bookId, cfi).then(ok => {
+        if (ok) savePend(bmPendKey, withoutPending(readPend(bmPendKey), "dels", cfi));
+      });
       return next;
     });
-  }, [bmKey, userId, bookId]);
+  }, [bmKey, bmPendKey, userId, bookId]);
 
   // ── Search ────────────────────────────────────────────────────────────────
   // ── Error screen ──────────────────────────────────────────────────────────
@@ -1460,7 +1506,7 @@ export default function EpubReader({
           top padding on the host (not the body) gives breathing room without
           breaking epub's column pagination. */}
       <div ref={containerRef} style={{ position:"absolute", top:0, bottom:0, left:0, right:0, background:T.bg,
-                                        padding: settings.paginate ? `12px ${sideClamp} 0` : 0 }} />
+                                        padding: settings.paginate ? `12px ${sideClamp} clamp(30px, 6vh, 56px)` : 0 }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look.
