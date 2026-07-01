@@ -306,6 +306,9 @@ git push -u origin claude/wizardly-fermat-q790e
 | #270 | Localize reading-guide prose (Horus Heresy + AoS notes, part labels, AoS main-story-arc); part titles kept as IP proper nouns |
 | #347–#365 | QA Phase 1–2: risk-based Test Plan + behaviour specs; Vitest unit tests for the achievements engine (+ mutation testing); component tests for the "easy" components (AchievementPopup, HomePage, AoSHomePage, StatsModal, MiniPlayer, UniverseSelector, BackupModal, OnboardingModal) |
 | #366–#373 | QA Phase 3: Playwright E2E suite — harness + CI gating job; pre-auth login; authenticated shell + universe nav; EPUB reader (open + render); bookmarks + TOC; PDF reader; Age of Sigmar universe; Library catalogue → detail → open reader. See "End-to-End Testing (Playwright)" |
+| #380 | QA: 35 unit tests for `api/paint-advisor.js` (method guard, env vars, auth, rate limit, SSRF guard, MIME guard, 4-image cap, Anthropic errors, happy paths, usage increment) |
+| #381 | fix(reader): uniform margins — `body{padding:0!important}` resets per-chapter EPUB CSS; symmetric top/bottom container padding (`clamp(30px,6vh,56px)` both sides) |
+| #382 | fix(reader): resume at last-read position — flush CFI to localStorage on close (was lost if reader closed within 1500 ms debounce); retry `displayCfi` after `book.ready` in paginated mode; E2E test for close-then-reopen resume flow; `aria-label` on back button |
 
 ### Offline Reading (key files)
 
@@ -335,6 +338,7 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 - **Spotify pause**: Uses `postMessage({ command: "pause" }, "https://open.spotify.com")`. Works for the embedded player if Spotify supports it in the embed context. YouTube pause is reliable with `enablejsapi=1`.
 - **Signed URLs**: Ebook files are in a private Supabase bucket. Always use signed URLs (2h TTL) — never expose the file path directly.
 - **Reading progress localStorage**: Primary fast storage. Supabase is a backup for new devices.
+- **EPUB resume position**: Saved as a CFI string at `wh40k_cfi_${userId}_${bookId}`. The `relocated` event debounces the write by 1500 ms; the effect cleanup flushes synchronously so closing quickly doesn't lose the position. On reopen, `rend.display(savedCfi)` is called immediately and retried after `book.ready` (both paginated and continuous managers). DB fallback (`reading_progress.epub_cfi`) kicks in when the localStorage key is absent (e.g. new device).
 
 ## UI Conventions
 
