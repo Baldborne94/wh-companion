@@ -1254,10 +1254,11 @@ export default function EpubReader({
             clearTimeout(readyTimeout);
             if (cancelled) return;
             setLoading(false);
-            // Continuous (scroll) manager doesn't scroll to the saved CFI on the
-            // initial pre-ready display — re-issue it now that the section can be
-            // measured so the book resumes at the exact saved position.
-            if (manager === "continuous" && savedCfi) {
+            // Re-issue the saved CFI after the book is ready for both managers:
+            // continuous mode never scrolls on the pre-ready display; paginated
+            // mode queues it internally but may silently land on chapter 1 if the
+            // spine isn't loaded yet. A single idempotent retry fixes both.
+            if (savedCfi) {
               setTimeout(() => { if (!cancelled) displayCfi(savedCfi); }, 250);
             }
           })
@@ -1313,6 +1314,13 @@ export default function EpubReader({
       clearTimeout(hideTimer.current);
       clearTimeout(navLockTimer.current);
       navLockRef.current = false;
+      // Flush the current reading position synchronously before the pending
+      // save timer is cleared. Without this, closing the reader within 1.5 s
+      // of the last page-turn would lose the position entirely.
+      const flushCfi = cfiRef.current;
+      if (flushCfi && userId && bookId) {
+        try { localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, flushCfi); } catch {}
+      }
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;
     };
@@ -1678,7 +1686,7 @@ export default function EpubReader({
         opacity:uiVisible?1:0, pointerEvents:uiVisible?"auto":"none",
         transition:"opacity .25s ease", zIndex:20,
       }}>
-        <button onClick={onClose}
+        <button onClick={onClose} aria-label={t("reader.close")}
           style={{ background:"transparent", border:"none", color:T.muted,
                    cursor:"pointer", padding:"10px 12px", fontSize:20, lineHeight:1 }}>
           ‹

@@ -22,6 +22,15 @@ async function openReader(page) {
   await expectTextInAnyFrame(page, CH1);
 }
 
+// Re-open the reader with the same mocks already registered.
+// Waits only for the reader header back button to become visible — the chapter
+// depends on the saved position so we don't assert a specific chapter here.
+async function reopenReader(page) {
+  await page.getByTitle(/Horus Rising/).first().click();
+  // The back/close button is the aria-labelled "Close" button in the header.
+  await expect(page.getByRole('button', { name: 'Close', exact: true }).first()).toBeVisible();
+}
+
 test.describe('Reader interactions', () => {
   test('adds a bookmark and lists it in the bookmarks panel', async ({ page }) => {
     await openReader(page);
@@ -49,6 +58,32 @@ test.describe('Reader interactions', () => {
 
     // Jump to chapter two → the reader renders its text.
     await page.getByRole('button', { name: 'Chapter Two' }).click();
+    await expectTextInAnyFrame(page, CH2);
+  });
+
+  test('resumes at last-read position after closing and reopening', async ({ page }) => {
+    await openReader(page);
+
+    // Navigate to chapter two via TOC.
+    await page.getByRole('button', { name: 'Contents' }).click();
+    await page.getByRole('button', { name: 'Chapter Two' }).click();
+    await expectTextInAnyFrame(page, CH2);
+
+    // Close the reader immediately (without waiting 1500 ms for the debounce).
+    // The fix flushes cfiRef.current to localStorage synchronously in the
+    // effect cleanup, so the position survives even a quick close.
+    await page.getByRole('button', { name: 'Close', exact: true }).first().click();
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
+
+    // The CFI must now be in localStorage (written by the cleanup flush).
+    const cfi = await page.evaluate(
+      ([uid, bookId]) => localStorage.getItem(`wh40k_cfi_${uid}_${bookId}`),
+      ['00000000-0000-0000-0000-000000000001', String(BOOK_ID)]
+    );
+    expect(cfi).toBeTruthy();
+
+    // Reopen the same book — it must land on chapter two, not chapter one.
+    await reopenReader(page);
     await expectTextInAnyFrame(page, CH2);
   });
 });
