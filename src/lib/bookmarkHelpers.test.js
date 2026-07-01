@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addBookmark, removeBookmark, mergeBookmarks, bookmarkPageLabel, MAX_BOOKMARKS } from './bookmarkHelpers.js';
+import { addBookmark, removeBookmark, mergeBookmarks, reconcileSynced, withPending, withoutPending, bookmarkPageLabel, MAX_BOOKMARKS } from './bookmarkHelpers.js';
 
 const bm = (cfi, label = 'B', pct = 10) => ({ cfi, label, pct, createdAt: new Date().toISOString() });
 
@@ -137,6 +137,75 @@ describe('mergeBookmarks', () => {
     expect(result).toHaveLength(1);
     expect(result[0].cfi).toBe('cfi-saved');
     expect(result[0].pct).toBe(55);
+  });
+});
+
+// ─── reconcileSynced (DB is the source of truth) ──────────────────────────────
+
+describe('reconcileSynced', () => {
+  it('returns the DB rows when there are no pending ops', () => {
+    const result = reconcileSynced([], [bm('a'), bm('b')]);
+    expect(result.map(b => b.cfi)).toEqual(['a', 'b']);
+  });
+
+  it('drops a local-only row deleted on another device (no resurrection)', () => {
+    // Device deleted "gone" elsewhere → DB no longer has it, but it lingers in
+    // this device local cache. It is NOT a pending add, so it must disappear.
+    const local  = [bm('keep'), bm('gone')];
+    const dbBms  = [bm('keep')];
+    const result = reconcileSynced(local, dbBms);
+    expect(result.map(b => b.cfi)).toEqual(['keep']);
+  });
+
+  it('keeps a local-only row that is a pending add (offline insert)', () => {
+    const local  = [bm('offlineAdd')];
+    const result = reconcileSynced(local, [], { pendingAdds: ['offlineAdd'] });
+    expect(result.map(b => b.cfi)).toEqual(['offlineAdd']);
+  });
+
+  it('excludes pending-deleted rows even if still in the DB (offline delete)', () => {
+    const result = reconcileSynced([], [bm('x'), bm('y')], { pendingDels: ['x'] });
+    expect(result.map(b => b.cfi)).toEqual(['y']);
+  });
+
+  it('does not duplicate a row present in both local and DB', () => {
+    const result = reconcileSynced([bm('shared')], [bm('shared')]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('respects a custom max', () => {
+    const dbBms = Array.from({ length: 5 }, (_, i) => bm(`db${i}`));
+    expect(reconcileSynced([], dbBms, { max: 3 })).toHaveLength(3);
+  });
+});
+
+// ─── withPending / withoutPending ─────────────────────────────────────────────
+
+describe('withPending / withoutPending', () => {
+  const empty = { adds: [], dels: [] };
+
+  it('queues an add', () => {
+    expect(withPending(empty, 'adds', 'c1')).toEqual({ adds: ['c1'], dels: [] });
+  });
+
+  it('queuing a delete removes the cfi from the add queue (and vice versa)', () => {
+    const added = withPending(empty, 'adds', 'c1');
+    expect(withPending(added, 'dels', 'c1')).toEqual({ adds: [], dels: ['c1'] });
+  });
+
+  it('does not double-queue the same cfi', () => {
+    const once = withPending(empty, 'adds', 'c1');
+    expect(withPending(once, 'adds', 'c1')).toEqual({ adds: ['c1'], dels: [] });
+  });
+
+  it('withoutPending clears a confirmed op from its queue', () => {
+    const pend = { adds: ['c1', 'c2'], dels: ['d1'] };
+    expect(withoutPending(pend, 'adds', 'c1')).toEqual({ adds: ['c2'], dels: ['d1'] });
+  });
+
+  it('withoutPending leaves the other queue untouched', () => {
+    const pend = { adds: ['c1'], dels: ['d1'] };
+    expect(withoutPending(pend, 'dels', 'd1')).toEqual({ adds: ['c1'], dels: [] });
   });
 });
 
