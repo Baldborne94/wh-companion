@@ -205,6 +205,7 @@ function buildReaderCss(settings, T, fnt) {
       font-size: ${settings.fontSize}px !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
+      padding: 0 !important;
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
@@ -1506,7 +1507,7 @@ export default function EpubReader({
           top padding on the host (not the body) gives breathing room without
           breaking epub's column pagination. */}
       <div ref={containerRef} style={{ position:"absolute", top:0, bottom:0, left:0, right:0, background:T.bg,
-                                        padding: settings.paginate ? `12px ${sideClamp} clamp(30px, 6vh, 56px)` : 0 }} />
+                                        padding: settings.paginate ? `clamp(30px, 6vh, 56px) ${sideClamp}` : 0 }} />
 
       {/* Open-book centre spine — a soft shadow down the gutter when two pages sit
           side by side (landscape, paginated, two-page). Sells the "real book" look.
