@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
@@ -206,6 +207,7 @@ function buildReaderCss(settings, T, fnt) {
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
       padding: 0 !important;
+      column-fill: auto !important;
     }
     html body a { color: #4a8adc !important; text-decoration: none !important; }
     p {
@@ -1376,7 +1378,10 @@ export default function EpubReader({
     const sc = containerRef.current?.querySelector('.epub-container');
     if (sc) sc.style.scrollBehavior = 'auto';
     setNavDir(dir);
-    setNavFade(true);
+    // Paint the overlay synchronously before epub.js starts loading the next
+    // chapter iframe — otherwise React batches the state update and the white
+    // iframe flash appears before the overlay covers it.
+    flushSync(() => { setNavFade(true); });
     if (dir > 0) rendRef.current?.next(); else rendRef.current?.prev();
   }, []);
   const next = useCallback(() => nav(1),  [nav]);
@@ -1608,7 +1613,7 @@ export default function EpubReader({
       <div style={{
         position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
-        opacity: navFade ? 0.82 : 0,
+        opacity: navFade ? 1 : 0,
         transition: navFade ? "none" : "opacity 0.8s ease-in-out",
       }} />
 
