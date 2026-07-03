@@ -912,13 +912,16 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                     {t("painting.ai.techniques")}
                   </div>
                   <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                    {scheme.techniques.map((t, i) => (
-                      <span key={i}
-                        style={{ background:C.card, border:`1px solid ${C.border}`,
+                    {scheme.techniques.map((tech, i) => (
+                      <a key={i}
+                        href={`https://www.youtube.com/results?search_query=${encodeURIComponent(tech + ' warhammer miniature tutorial')}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ background:C.card, border:`1px solid ${C.goldDim}`,
                                  borderRadius:20, padding:"3px 9px",
-                                 fontSize:10, color:C.text }}>
-                        {t}
-                      </span>
+                                 fontSize:10, color:C.gold, textDecoration:"none",
+                                 cursor:"pointer", display:"inline-flex", alignItems:"center", gap:4 }}>
+                        ▶ {tech}
+                      </a>
                     ))}
                   </div>
                 </div>
