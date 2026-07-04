@@ -280,7 +280,7 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName, preferredColors) {
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
@@ -319,6 +319,12 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
     userText = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
+  }
+
+  // Optional: the painter wants to build the scheme around specific colours.
+  const colors = (preferredColors || "").trim();
+  if (colors) {
+    userText += ` IMPORTANT: the painter wants to use primarily these colours: ${colors}. Build every scheme around this palette — make these the dominant colours and pick only harmonising or accent shades alongside them. Choose real paints from the allowed brands that match these colours as closely as possible.`;
   }
 
   // Authenticate with the serverless proxy using the Supabase access token.
@@ -756,6 +762,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
   const [error,         setError]         = useState(null);
   const [activeScheme,  setActiveScheme]  = useState(0);
   const [selBrands,     setSelBrands]     = useState(["Citadel", "AK Interactive", "Army Painter"]);
+  const [prefColors,    setPrefColors]    = useState("");
 
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
 
@@ -767,7 +774,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
     if (!selBrands.length) { setError(t("painting.ai.selectBrand")); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName, prefColors);
       setData(result);
       onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
@@ -841,6 +848,24 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
             </button>
           );
         })}
+      </div>
+
+      {/* ── Preferred colours ── */}
+      <div style={{ padding:"8px 16px", borderBottom:`1px solid ${C.border}`,
+                    display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+        <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
+                       letterSpacing:2, textTransform:"uppercase", flexShrink:0 }}>
+          {t("painting.ai.preferredColors")}
+        </span>
+        <input
+          type="text"
+          value={prefColors}
+          onChange={(e) => setPrefColors(e.target.value)}
+          placeholder={t("painting.ai.preferredColorsPlaceholder")}
+          style={{ flex:"1 1 160px", minWidth:0, background:C.card,
+                   border:`1px solid ${C.border}`, borderRadius:8,
+                   color:C.text, padding:"6px 10px", fontSize:11, outline:"none" }}
+        />
       </div>
 
       {/* ── Loading ── */}
