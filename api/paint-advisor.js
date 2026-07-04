@@ -15,6 +15,10 @@
 // Requires the `ai_usage` table (see supabase/ai_usage.sql).
 
 const DAILY_LIMIT = 3;
+// Max photos actually sent to the vision model per request. Users may store more
+// per miniature (gallery); only the first AI_PHOTO_LIMIT are analysed to keep the
+// request fast and the token cost bounded.
+const AI_PHOTO_LIMIT = 6;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -84,7 +88,7 @@ export default async function handler(req, res) {
       } catch { return false; }
     };
     const blocks = [];
-    for (const url of photoUrls.slice(0, 4)) {
+    for (const url of photoUrls.slice(0, AI_PHOTO_LIMIT)) {
       if (!isAllowed(url)) continue;
       try {
         const ir = await fetch(url);

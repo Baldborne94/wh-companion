@@ -357,9 +357,9 @@ describe("MIME type guard", () => {
 });
 
 describe("image count cap", () => {
-  it("processes at most 4 images when 6 valid URLs are supplied", async () => {
+  it("processes at most 6 images when 8 valid URLs are supplied", async () => {
     const makeUrl = (i) => `https://abc.supabase.co/storage/v1/img${i}.jpg`;
-    const photoUrls = [1, 2, 3, 4, 5, 6].map(makeUrl);
+    const photoUrls = [1, 2, 3, 4, 5, 6, 7, 8].map(makeUrl);
     const images = Object.fromEntries(
       photoUrls.map((u) => [u, { ok: true, contentType: "image/jpeg" }])
     );
@@ -372,7 +372,7 @@ describe("image count cap", () => {
     );
     const body = JSON.parse(anthropicCall[1].body);
     const imgBlocks = body.messages[0].content.filter((b) => b.type === "image");
-    expect(imgBlocks).toHaveLength(4);
+    expect(imgBlocks).toHaveLength(6);
   });
 });
 
