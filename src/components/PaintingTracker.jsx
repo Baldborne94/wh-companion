@@ -784,6 +784,13 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
       setData(result);
       onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
+      // Auto-persist to the cloud so a regenerated scheme survives across devices
+      // without a manual miniature save. New (unsaved) minis have no id yet — their
+      // suggestions are written on first save via aiDataRef instead.
+      if (miniId) {
+        try { await db.update("miniatures", miniId, { ai_suggestions: result }); }
+        catch (e) { console.error("AI suggestions cloud save failed", e); }
+      }
     } catch (e) {
       if (e.message === "DAILY_LIMIT") {
         setError(t("painting.ai.dailyLimit"));
