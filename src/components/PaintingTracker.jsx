@@ -216,6 +216,10 @@ const ALL_PAINTS = [
 ];
 const BRANDS = ["Citadel", "AK Interactive", "Army Painter"];
 
+// Max photos stored per miniature. The AI advisor analyses up to AI_PHOTO_LIMIT
+// of them (see api/paint-advisor.js) — extra shots are kept for the gallery.
+const MAX_PHOTOS = 12;
+
 // ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
 const FACTIONS_40K = {
@@ -1103,8 +1107,8 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const handlePhoto = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const slots = 4 - photoUrls.length;
-    if (slots <= 0) { alert(t("painting.modal.maxPhotos")); return; }
+    const slots = MAX_PHOTOS - photoUrls.length;
+    if (slots <= 0) { alert(t("painting.modal.maxPhotos").replace("{max}", MAX_PHOTOS)); return; }
     setPhotoLoading(true);
     try {
       const newUrls = [];
@@ -1317,7 +1321,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             onChange={(v) => setForm((f) => ({ ...f, status:v }))}/>
 
           {/* Photos (up to 4) */}
-          <FormLabel>{t("painting.modal.photosLabel").replace("{n}", photoUrls.length)}</FormLabel>
+          <FormLabel>{t("painting.modal.photosLabel").replace("{n}", photoUrls.length).replace("{max}", MAX_PHOTOS)}</FormLabel>
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-start" }}>
             {photoUrls.map((url, i) => (
               <div key={i} style={{ position:"relative", flexShrink:0 }}>
@@ -1343,7 +1347,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                 </button>
               </div>
             ))}
-            {photoUrls.length < 4 && (
+            {photoUrls.length < MAX_PHOTOS && (
               <button onClick={() => photoInput.current.click()} disabled={photoLoading}
                 style={{ width:80, height:80, borderRadius:8, flexShrink:0,
                          background:"transparent", border:`2px dashed ${C.goldDim}`,
