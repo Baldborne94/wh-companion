@@ -315,7 +315,9 @@ Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use pain
   // server-side by the proxy, so the request body stays small.
   let userText;
   if (hasPhotos) {
-    userText = `Identify the ${game} miniature shown in these photos. Look carefully and list every distinct physical component you can actually see — describe each part as what it really is: distinguish organic/natural forms (fungi, mushrooms, fur, hide, bone, claws, teeth, tentacles, plants) from mechanical weapons, armour and gear, and do NOT force an ambiguous shape into a generic weapon.${faction ? ` This model belongs to the ${faction} faction — use its characteristic anatomy, wargear and iconography to name the parts correctly (e.g. faction-typical creatures and motifs), and to inform lore-accurate colours, but never add parts that aren't visible.` : ""} Then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.`;
+    userText = `Identify the ${game} miniature shown in these photos. The model is most likely unpainted or primed a single flat colour (often grey, black or white), so there is little colour contrast — rely on shape, silhouette and shadow, not colour, to read it, and combine all provided photos as different angles of the SAME model.
+
+Before suggesting anything, look carefully and note the model's actual observed state: its pose, whether any mouth/jaw is open or closed, and roughly how many distinct components you can see. List every distinct physical component you can actually see — describe each part as what it really is: distinguish organic/natural forms (fungi, mushrooms, fur, hide, bone, claws, teeth, tentacles, plants) from mechanical weapons, armour and gear, and do NOT force an ambiguous shape into a generic weapon. If a detail is genuinely unclear from the photos, prefer a cautious, generic part name over a confident wrong guess — never invent parts that aren't visible.${faction ? ` This model belongs to the ${faction} faction — use its characteristic anatomy, wargear and iconography to name the parts correctly (e.g. faction-typical creatures and motifs), and to inform lore-accurate colours, but never add parts that aren't visible.` : ""} Then suggest 2-3 colour schemes — one part per visible component, using only the allowed paint brands.`;
   } else {
     const unitDesc = [unit, faction && `(${faction})`].filter(Boolean).join(" ");
     userText = `Suggest 2-3 colour schemes for a ${game} ${unitDesc} miniature. Cover all typical components for this unit.`;
@@ -1355,6 +1357,9 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             )}
             <input ref={photoInput} type="file" accept="image/*" multiple
               style={{ display:"none" }} onChange={handlePhoto}/>
+          </div>
+          <div style={{ fontSize:10, color:C.muted, lineHeight:1.5, marginTop:6 }}>
+            {t("painting.modal.photoTip")}
           </div>
 
           {/* Notes */}
