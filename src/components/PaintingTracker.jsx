@@ -1159,6 +1159,7 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
   const [loading,       setLoading]       = useState(false);
   const [photoLoading,  setPhotoLoading]  = useState(false);
   const [showPicker,    setShowPicker]    = useState(false);
+  const [zoomUrl,       setZoomUrl]       = useState(null);
   const [pendingPaint,  setPendingPaint]  = useState(null);
   const [partInput,     setPartInput]     = useState("");
   const [usageInput,    setUsageInput]    = useState("base");
@@ -1404,9 +1405,11 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
             {photoUrls.map((url, i) => (
               <div key={i} style={{ position:"relative", flexShrink:0 }}>
                 <img src={url} alt={`photo ${i+1}`}
+                  onClick={() => setZoomUrl(url)}
+                  title={t("painting.modal.zoomPhoto")}
                   style={{ width:80, height:80, objectFit:"cover",
                            borderRadius:8, border:`1px solid ${i===0 ? C.gold : C.border}`,
-                           display:"block" }}/>
+                           display:"block", cursor:"zoom-in" }}/>
                 {i === 0 ? (
                   <div style={{ position:"absolute", bottom:3, left:3,
                                 background:"rgba(0,0,0,0.7)", borderRadius:3,
@@ -1639,6 +1642,24 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           onSelect={handleSelectPaint}
           onClose={() => setShowPicker(false)}
         />
+      )}
+
+      {/* Photo zoom / lightbox */}
+      {zoomUrl && (
+        <div onClick={() => setZoomUrl(null)}
+          style={{ position:"fixed", inset:0, zIndex:1100,
+                   background:"rgba(0,0,0,0.92)", display:"flex",
+                   alignItems:"center", justifyContent:"center", padding:24, cursor:"zoom-out" }}>
+          <button onClick={() => setZoomUrl(null)} aria-label={t("painting.modal.close")}
+            style={{ position:"absolute", top:16, right:16, background:"transparent",
+                     border:`1px solid ${C.border}`, color:C.muted, borderRadius:8,
+                     padding:"6px 14px", fontFamily:"'Cinzel',serif", fontSize:14, cursor:"pointer" }}>
+            ✕
+          </button>
+          <img src={zoomUrl} alt="" onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth:"92vw", maxHeight:"88vh", objectFit:"contain",
+                     borderRadius:10, boxShadow:"0 8px 48px rgba(0,0,0,0.8)" }}/>
+        </div>
       )}
     </div>,
     document.body
