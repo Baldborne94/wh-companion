@@ -33,6 +33,22 @@ const AoSCrusadeSection = lazy(() => import("./components/AoSApp").then(m => ({ 
 
 const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"},{id:"music",icon:"🎵",label:"Music"}];
 
+// Neutral loading splash for returning users while the auth session resolves —
+// matches the target universe's background so we don't flash the login/landing
+// page ("as if accessing for the first time") on every cold start.
+function AppSplash({ universe }){
+  const bg=universe==='aos'?AOS.bg:C.bg;
+  const accent=universe==='aos'?AOS.gold:C.gold;
+  return(
+    <>
+      <style>{`@keyframes appSplashSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+      <div style={{position:"fixed",inset:0,background:bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{width:40,height:40,borderRadius:"50%",border:`2px solid ${accent}22`,borderTopColor:accent,animation:"appSplashSpin 1s linear infinite"}}/>
+      </div>
+    </>
+  );
+}
+
 export default function App(){
   const { lang, toggle:toggleLang, t }=useLang();
   const [user,setUser]=useState(null);
@@ -157,7 +173,9 @@ export default function App(){
   }, []);
 
   if(!appStarted) return <LoginPage onEnter={startApp} user={user} authLoading={authLoading}/>;
-  if(authLoading) return <LoginPage authLoading/>;
+  // Returning user (app already started): show a neutral splash — not the login
+  // page — while the session resolves, so it doesn't look like a first access.
+  if(authLoading) return <AppSplash universe={universe}/>;
   if(!user) return <LoginPage/>;
   if(!universe) return <UniverseSelector onSelect={selectUniverse}/>;
   return(
