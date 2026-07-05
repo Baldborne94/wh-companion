@@ -285,7 +285,7 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName, preferredColors) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName, preferredColors, preferredTheme) {
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
   const brands = availableBrands?.length ? availableBrands : ["Citadel"];
@@ -332,6 +332,13 @@ Before suggesting anything, look carefully and note the model's actual observed 
   const colors = (preferredColors || "").trim();
   if (colors) {
     userText += ` IMPORTANT: the painter wants to use primarily these colours: ${colors}. Build every scheme around this palette — make these the dominant colours and pick only harmonising or accent shades alongside them. Choose real paints from the allowed brands that match these colours as closely as possible.`;
+  }
+
+  // Optional: the painter wants a thematic/atmospheric direction (e.g. "winter",
+  // "corrupted Nurgle", "undead", "autumn", "desert", "volcanic").
+  const theme = (preferredTheme || "").trim();
+  if (theme) {
+    userText += ` IMPORTANT: build every scheme around this theme / atmosphere: ${theme}. Let it drive the whole palette, weathering and basing so the model reads as "${theme}", while still using only real paints from the allowed brands.`;
   }
 
   // Authenticate with the serverless proxy using the Supabase access token.
@@ -770,6 +777,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
   const [activeScheme,  setActiveScheme]  = useState(0);
   const [selBrands,     setSelBrands]     = useState(["Citadel", "AK Interactive", "Army Painter"]);
   const [prefColors,    setPrefColors]    = useState("");
+  const [prefTheme,     setPrefTheme]     = useState("");
 
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
 
@@ -781,7 +789,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
     if (!selBrands.length) { setError(t("painting.ai.selectBrand")); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName, prefColors);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName, prefColors, prefTheme);
       setData(result);
       onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
@@ -876,6 +884,24 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
           value={prefColors}
           onChange={(e) => setPrefColors(e.target.value)}
           placeholder={t("painting.ai.preferredColorsPlaceholder")}
+          style={{ flex:"1 1 160px", minWidth:0, background:C.card,
+                   border:`1px solid ${C.border}`, borderRadius:8,
+                   color:C.text, padding:"6px 10px", fontSize:11, outline:"none" }}
+        />
+      </div>
+
+      {/* ── Theme / atmosphere ── */}
+      <div style={{ padding:"8px 16px", borderBottom:`1px solid ${C.border}`,
+                    display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+        <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
+                       letterSpacing:2, textTransform:"uppercase", flexShrink:0 }}>
+          {t("painting.ai.preferredTheme")}
+        </span>
+        <input
+          type="text"
+          value={prefTheme}
+          onChange={(e) => setPrefTheme(e.target.value)}
+          placeholder={t("painting.ai.preferredThemePlaceholder")}
           style={{ flex:"1 1 160px", minWidth:0, background:C.card,
                    border:`1px solid ${C.border}`, borderRadius:8,
                    color:C.text, padding:"6px 10px", fontSize:11, outline:"none" }}
