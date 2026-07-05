@@ -1366,13 +1366,23 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
                   style={{ width:80, height:80, objectFit:"cover",
                            borderRadius:8, border:`1px solid ${i===0 ? C.gold : C.border}`,
                            display:"block" }}/>
-                {i === 0 && (
+                {i === 0 ? (
                   <div style={{ position:"absolute", bottom:3, left:3,
                                 background:"rgba(0,0,0,0.7)", borderRadius:3,
                                 padding:"1px 4px", fontSize:8,
                                 fontFamily:"'Cinzel',serif", color:C.gold }}>
-                    {t("painting.modal.cover")}
+                    ★ {t("painting.modal.cover")}
                   </div>
+                ) : (
+                  <button
+                    onClick={() => setPhotoUrls(prev => [prev[i], ...prev.filter((_, j) => j !== i)])}
+                    title={t("painting.modal.setCover")}
+                    style={{ position:"absolute", bottom:3, left:3,
+                             background:"rgba(0,0,0,0.7)", border:"none", borderRadius:3,
+                             padding:"1px 5px", fontSize:8, cursor:"pointer",
+                             fontFamily:"'Cinzel',serif", color:C.muted, letterSpacing:0.5 }}>
+                    ☆ {t("painting.modal.setCover")}
+                  </button>
                 )}
                 <button onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
                   style={{ position:"absolute", top:-6, right:-6, width:18, height:18,
