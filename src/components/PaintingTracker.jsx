@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback, useMemo, createContext, useContext } from "react";
+import { createPortal } from "react-dom";
 import { db, storage, supabase } from "../lib/supabase";
 import { sb } from "../lib/sb";
 import { achievementFromId, computePaintingAchievements, diffAchievements } from "../lib/achievements";
@@ -1233,8 +1234,11 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     }
   };
 
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:800,
+  // Rendered in a portal on <body> so it escapes the section's animated
+  // (transform-bearing) ancestor — otherwise position:fixed is contained by
+  // that ancestor and the modal stops at the bottom nav instead of covering it.
+  return createPortal(
+    <div style={{ position:"fixed", inset:0, zIndex:1000,
                   background:"rgba(0,0,0,0.8)", overflowY:"auto",
                   display:"flex", justifyContent:"center", alignItems:"flex-start" }}>
       <div style={{ background:C.surface, border:`1px solid ${C.border}`,
@@ -1559,7 +1563,8 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
           onClose={() => setShowPicker(false)}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
