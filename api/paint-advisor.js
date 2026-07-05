@@ -131,7 +131,14 @@ export default async function handler(req, res) {
     });
     if (!ar.ok) {
       const e = await ar.json().catch(() => ({}));
-      res.status(502).json({ error: e?.error?.message || `Anthropic HTTP ${ar.status}` });
+      const msg = e?.error?.message || `Anthropic HTTP ${ar.status}`;
+      // Surface an oversized-photo failure as a clean, actionable 413 so the
+      // client can show a specific message instead of a raw "AI error".
+      if (ar.status === 413 || /maximum size|too large|request too large/i.test(msg)) {
+        res.status(413).json({ error: "IMAGE_TOO_LARGE" });
+        return;
+      }
+      res.status(502).json({ error: msg });
       return;
     }
     aiData = await ar.json();

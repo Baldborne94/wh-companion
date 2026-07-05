@@ -46,6 +46,7 @@ function buildFetch({
   used     = 0,
   anthOk   = true,
   anthBody = { content: [{ type: "text", text: "Use Macragge Blue." }] },
+  anthErrMsg = "overloaded",
   images   = {},           // url → { ok, headers, arrayBuffer }
   authThrows = false,
 } = {}) {
@@ -82,7 +83,7 @@ function buildFetch({
 
     // Anthropic
     if (u.includes("api.anthropic.com")) {
-      if (!anthOk) return fakeResponse(false, { error: { message: "overloaded" } });
+      if (!anthOk) return fakeResponse(false, { error: { message: anthErrMsg } });
       return fakeResponse(true, anthBody);
     }
 
@@ -401,6 +402,14 @@ describe("Anthropic errors", () => {
     await handler(mockReq(), res);
     expect(res._status).toBe(502);
     expect(res._body.error).toBe("overloaded");
+  });
+
+  it("maps an Anthropic size error to a clean 413 IMAGE_TOO_LARGE", async () => {
+    vi.stubGlobal("fetch", buildFetch({ anthOk: false, anthErrMsg: "Request exceeds the maximum size" }));
+    const res = mockRes();
+    await handler(mockReq(), res);
+    expect(res._status).toBe(413);
+    expect(res._body.error).toBe("IMAGE_TOO_LARGE");
   });
 
   it("returns 502 when Anthropic call throws", async () => {

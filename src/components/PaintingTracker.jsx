@@ -390,9 +390,12 @@ Before suggesting anything, look carefully and note the model's actual observed 
     }),
   });
   if (resp.status === 429) throw new Error("DAILY_LIMIT");
+  if (resp.status === 413) throw new Error("IMAGE_TOO_LARGE");
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error || `HTTP ${resp.status}`);
+    const msg = err?.error || `HTTP ${resp.status}`;
+    if (/maximum size|too large|request too large/i.test(msg)) throw new Error("IMAGE_TOO_LARGE");
+    throw new Error(msg);
   }
   const data = await resp.json();
   const text = data.content?.map((i) => i.text || "").join("") ?? "";
@@ -837,6 +840,8 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
         setError(t("painting.ai.dailyLimit"));
       } else if (e.message === "NO_SESSION") {
         setError(t("painting.ai.noSession"));
+      } else if (e.message === "IMAGE_TOO_LARGE") {
+        setError(t("painting.ai.imageTooLarge"));
       } else {
         setError(t("painting.ai.error").replace("{msg}", e.message || t("painting.ai.errorFallback")));
       }
