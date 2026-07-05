@@ -374,6 +374,24 @@ describe("image count cap", () => {
     const imgBlocks = body.messages[0].content.filter((b) => b.type === "image");
     expect(imgBlocks).toHaveLength(6);
   });
+
+  it("skips an oversized image (> ~5MB) instead of failing the request", async () => {
+    const makeUrl = (i) => `https://abc.supabase.co/storage/v1/img${i}.jpg`;
+    const small = makeUrl(1), big = makeUrl(2);
+    const images = {
+      [small]: { ok: true, contentType: "image/jpeg", bytes: new Uint8Array([0xff, 0xd8, 0xff]).buffer },
+      [big]:   { ok: true, contentType: "image/jpeg", bytes: new Uint8Array(4 * 1024 * 1024).buffer }, // 4 MB raw → too big
+    };
+    const fetchMock = buildFetch({ images });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = mockRes();
+    await handler(mockReq({ body: { system: "sys", userText: "text", photoUrls: [small, big] } }), res);
+    const anthropicCall = fetchMock.mock.calls.find(([u]) => u.includes("api.anthropic.com"));
+    const body = JSON.parse(anthropicCall[1].body);
+    const imgBlocks = body.messages[0].content.filter((b) => b.type === "image");
+    expect(imgBlocks).toHaveLength(1); // the big one was skipped, the request still went through
+    expect(res._status).toBe(200);
+  });
 });
 
 describe("Anthropic errors", () => {
