@@ -19,6 +19,9 @@ const DAILY_LIMIT = 3;
 // per miniature (gallery); only the first AI_PHOTO_LIMIT are analysed to keep the
 // request fast and the token cost bounded.
 const AI_PHOTO_LIMIT = 6;
+// Skip any single image whose raw bytes would exceed Anthropic's ~5 MB per-image
+// limit once base64-encoded (base64 ≈ 4/3 of raw → 3.5 MB raw ≈ 4.7 MB encoded).
+const MAX_IMAGE_BYTES = 3.5 * 1024 * 1024;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -96,6 +99,10 @@ export default async function handler(req, res) {
         const mime = ir.headers.get("content-type") || "image/jpeg";
         if (!mime.startsWith("image/")) continue;
         const buf = Buffer.from(await ir.arrayBuffer());
+        // Anthropic rejects images larger than ~5 MB (base64 is ~4/3 of the raw
+        // bytes). Skip an oversized photo rather than failing the whole request
+        // with "Request exceeds the maximum size".
+        if (buf.length > MAX_IMAGE_BYTES) continue;
         blocks.push({ type: "image", source: { type: "base64", media_type: mime, data: buf.toString("base64") } });
       } catch { /* skip unreadable image */ }
     }
@@ -124,7 +131,14 @@ export default async function handler(req, res) {
     });
     if (!ar.ok) {
       const e = await ar.json().catch(() => ({}));
-      res.status(502).json({ error: e?.error?.message || `Anthropic HTTP ${ar.status}` });
+      const msg = e?.error?.message || `Anthropic HTTP ${ar.status}`;
+      // Surface an oversized-photo failure as a clean, actionable 413 so the
+      // client can show a specific message instead of a raw "AI error".
+      if (ar.status === 413 || /maximum size|too large|request too large/i.test(msg)) {
+        res.status(413).json({ error: "IMAGE_TOO_LARGE" });
+        return;
+      }
+      res.status(502).json({ error: msg });
       return;
     }
     aiData = await ar.json();

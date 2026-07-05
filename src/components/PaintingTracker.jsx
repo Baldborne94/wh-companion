@@ -221,6 +221,38 @@ const BRANDS = ["Citadel", "AK Interactive", "Army Painter"];
 // of them (see api/paint-advisor.js) — extra shots are kept for the gallery.
 const MAX_PHOTOS = 12;
 
+// Downscale + re-encode a photo before upload. Phone photos are often 4–8 MB,
+// which blows Anthropic's per-image limit (~5 MB) when the advisor sends them,
+// giving "Request exceeds the maximum size". Capping the long edge at 1568 px
+// (what Claude downscales to anyway) as JPEG keeps each photo well under a MB.
+async function downscaleImage(file, maxEdge = 1568, quality = 0.82) {
+  if (!file || !file.type?.startsWith("image/")) return file;
+  try {
+    const dataUrl = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im); im.onerror = rej;
+      im.src = dataUrl;
+    });
+    const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+    // Already small enough — keep the original bytes.
+    if (scale === 1 && file.size < 1_400_000) return file;
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    const blob = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+    return blob && blob.size < file.size ? blob : file;
+  } catch {
+    return file; // on any failure, fall back to the original file
+  }
+}
+
 // ─── FACTIONS & UNITS ─────────────────────────────────────────────────────
 
 const FACTIONS_40K = {
@@ -358,9 +390,12 @@ Before suggesting anything, look carefully and note the model's actual observed 
     }),
   });
   if (resp.status === 429) throw new Error("DAILY_LIMIT");
+  if (resp.status === 413) throw new Error("IMAGE_TOO_LARGE");
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({}));
-    throw new Error(err?.error || `HTTP ${resp.status}`);
+    const msg = err?.error || `HTTP ${resp.status}`;
+    if (/maximum size|too large|request too large/i.test(msg)) throw new Error("IMAGE_TOO_LARGE");
+    throw new Error(msg);
   }
   const data = await resp.json();
   const text = data.content?.map((i) => i.text || "").join("") ?? "";
@@ -805,6 +840,8 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
         setError(t("painting.ai.dailyLimit"));
       } else if (e.message === "NO_SESSION") {
         setError(t("painting.ai.noSession"));
+      } else if (e.message === "IMAGE_TOO_LARGE") {
+        setError(t("painting.ai.imageTooLarge"));
       } else {
         setError(t("painting.ai.error").replace("{msg}", e.message || t("painting.ai.errorFallback")));
       }
@@ -1147,8 +1184,12 @@ function MiniModal({ mini, userId, onSave, onClose, universe }) {
     try {
       const newUrls = [];
       for (const file of files.slice(0, slots)) {
-        const path = `${userId}/${Date.now()}_${file.name}`;
-        await storage.upload("miniatures", path, file);
+        const blob = await downscaleImage(file);
+        // If we re-encoded to JPEG, store it under a .jpg name so the served
+        // content-type matches (the AI proxy only accepts image/* content).
+        const name = blob !== file ? `${file.name.replace(/\.[^.]+$/, "")}.jpg` : file.name;
+        const path = `${userId}/${Date.now()}_${name}`;
+        await storage.upload("miniatures", path, blob);
         newUrls.push(storage.url("miniatures", path));
       }
       setPhotoUrls(prev => [...prev, ...newUrls]);
