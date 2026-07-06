@@ -339,11 +339,8 @@ const MusicPlayer = forwardRef(function MusicPlayer({ onNowPlaying = () => {} },
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <div style={{ padding: "18px 16px 14px", borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, letterSpacing: 4, color: C.goldDim, textTransform: "uppercase", marginBottom: 4 }}>
-          Warhammer 40,000
-        </div>
-        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text }}>{t("music.heading")}</h2>
+      <div style={{ padding: "14px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
+        <h2 style={{ fontFamily: "'Cinzel Decorative',serif", fontSize: 22, color: C.text, margin: 0 }}>{t("music.heading")}</h2>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
         <YouTubeSection ref={ytRef} onNowPlaying={onNowPlaying} />
