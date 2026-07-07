@@ -29,6 +29,12 @@ const UNIVERSES = [
 export default function UniverseSelector({ onSelect }) {
   const { t } = useLang();
   const [hovered, setHovered] = useState(null);
+  // Touch devices (tablets/phones) can't hover, so the hover-only "revealed" state
+  // (flavor text, lit logo, bright ENTER) would never show — the panels looked
+  // half-rendered with a big empty gap. On touch, reveal both panels by default;
+  // hover-driven flex expansion stays desktop-only.
+  const isTouch = typeof window !== "undefined" && window.matchMedia
+    && window.matchMedia("(hover: none)").matches;
 
   return (
     <div style={{
@@ -79,6 +85,9 @@ export default function UniverseSelector({ onSelect }) {
         {UNIVERSES.map((u) => {
           const isHov = hovered === u.id;
           const othHov = hovered !== null && hovered !== u.id;
+          // On touch, treat every panel as "revealed" so its content is fully
+          // visible; on desktop this tracks the actual hover.
+          const revealed = isHov || isTouch;
           return (
             <div key={u.id}
               className={`us-panel us-panel-${u.id}`}
@@ -91,14 +100,14 @@ export default function UniverseSelector({ onSelect }) {
               <div style={{
                 position:"absolute", top:0, left:0, right:0, height:3,
                 background:`linear-gradient(to right,transparent,${u.accent},transparent)`,
-                opacity: isHov ? 1 : 0.3, transition:"opacity 0.4s",
+                opacity: revealed ? 1 : 0.3, transition:"opacity 0.4s",
               }}/>
 
               {/* Radial background glow */}
               <div style={{
                 position:"absolute", inset:0, pointerEvents:"none",
                 background:`radial-gradient(ellipse at 50% 45%,${u.accent}22 0%,transparent 65%)`,
-                opacity: isHov ? 1 : 0.2, transition:"opacity 0.5s",
+                opacity: revealed ? 1 : 0.2, transition:"opacity 0.5s",
               }}/>
 
               {/* Logo image */}
@@ -118,7 +127,7 @@ export default function UniverseSelector({ onSelect }) {
                     maxWidth: 260,
                     objectFit: "contain",
                     mixBlendMode: "screen",
-                    filter: isHov
+                    filter: revealed
                       ? `drop-shadow(0 0 18px ${u.accent}99) brightness(1.1)`
                       : `drop-shadow(0 0 6px ${u.accent}44) brightness(0.85)`,
                     transition: "height 0.4s, filter 0.4s",
@@ -127,8 +136,8 @@ export default function UniverseSelector({ onSelect }) {
                     height: isHov ? 140 : 112,
                     objectFit: "cover",
                     borderRadius: "50%",
-                    border: `2px solid ${isHov ? u.accent : u.accent + "55"}`,
-                    boxShadow: isHov ? `0 0 24px ${u.accent}66, 0 0 48px ${u.accent}33` : "none",
+                    border: `2px solid ${revealed ? u.accent : u.accent + "55"}`,
+                    boxShadow: revealed ? `0 0 24px ${u.accent}66, 0 0 48px ${u.accent}33` : "none",
                     transition: "all 0.4s",
                   }}
                 />
@@ -139,12 +148,12 @@ export default function UniverseSelector({ onSelect }) {
                 fontFamily:"'Cinzel Decorative',serif",
                 fontSize:"clamp(16px,3.5vw,24px)",
                 fontWeight:700,
-                color: isHov ? "#ffffff" : "#d4cbb8bb",
+                color: revealed ? "#ffffff" : "#d4cbb8bb",
                 letterSpacing:"0.1em",
                 marginBottom:4,
                 textAlign:"center",
                 transition:"color 0.4s",
-                textShadow: isHov ? `0 0 24px ${u.accent}66` : "none",
+                textShadow: revealed ? `0 0 24px ${u.accent}66` : "none",
               }}>{u.name}</div>
 
               {/* Subtitle */}
@@ -152,18 +161,18 @@ export default function UniverseSelector({ onSelect }) {
                 fontFamily:"'Cinzel Decorative',serif",
                 fontSize: u.id === "aos" ? "clamp(11px,2.2vw,16px)" : "clamp(16px,3vw,22px)",
                 fontWeight:900,
-                color: isHov ? u.accent : `${u.accent}99`,
+                color: revealed ? u.accent : `${u.accent}99`,
                 letterSpacing:"0.08em",
                 marginBottom:22,
                 textAlign:"center",
                 transition:"color 0.4s",
-                textShadow: isHov ? `0 0 16px ${u.accent}55` : "none",
+                textShadow: revealed ? `0 0 16px ${u.accent}55` : "none",
               }}>{u.subtitle}</div>
 
               {/* Expanding divider */}
               <div style={{
                 height:1, marginBottom:18,
-                width: isHov ? 80 : 28,
+                width: revealed ? 80 : 28,
                 background:`linear-gradient(to right,transparent,${u.accent},transparent)`,
                 transition:"width 0.45s cubic-bezier(0.4,0,0.2,1)",
               }}/>
@@ -175,20 +184,20 @@ export default function UniverseSelector({ onSelect }) {
                 textAlign:"center", maxWidth:200, lineHeight:1.65,
                 marginBottom:26, minHeight:36,
                 fontFamily:"'Cinzel',serif", letterSpacing:"0.02em",
-                opacity: isHov ? 1 : 0,
+                opacity: revealed ? 1 : 0,
                 transition:"opacity 0.35s",
               }}>{t(u.flavorKey)}</div>
 
               {/* ENTER button */}
               <button
                 style={{
-                  border:`1px solid ${isHov ? u.accent : u.accent + "66"}`,
+                  border:`1px solid ${revealed ? u.accent : u.accent + "66"}`,
                   borderRadius:3, padding:"10px 32px",
                   fontFamily:"'Cinzel',serif", fontSize:10,
                   letterSpacing:"0.3em", cursor:"pointer",
-                  background: isHov ? `${u.accent}15` : "transparent",
-                  color: isHov ? u.accent : `${u.accent}77`,
-                  boxShadow: isHov ? `0 0 20px ${u.accent}44` : "none",
+                  background: revealed ? `${u.accent}15` : "transparent",
+                  color: revealed ? u.accent : `${u.accent}77`,
+                  boxShadow: revealed ? `0 0 20px ${u.accent}44` : "none",
                   transition:"all 0.3s",
                 }}
                 onClick={(e) => { e.stopPropagation(); onSelect(u.id); }}
