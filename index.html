@@ -32,6 +32,17 @@
         var html = document.documentElement;
         var isTouch = (navigator.maxTouchPoints || 0) >= 1 || 'ontouchstart' in window;
         function apply() {
+          // Pre-app full-screen gates (login / splash / universe selector) opt out
+          // of the tablet zoom via data-native-scale — they're already responsive
+          // and are designed to fill the viewport at native scale.
+          if (html.dataset.nativeScale === '1') {
+            if (document.body) {
+              document.body.style.removeProperty('zoom');
+              document.body.style.removeProperty('height');
+            }
+            html.style.setProperty('--nav-h', '56px');
+            return;
+          }
           if (html.dataset.readerOpen === '1') return;
           var w = window.innerWidth, h = window.innerHeight;
           var landscape = w > h;
