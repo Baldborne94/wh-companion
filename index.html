@@ -12,22 +12,39 @@
          height by 1/scale so the zoom never overflows vertically (the old bug). A
          reader (EPUB/PDF) sets data-reader-open so its own native rendering isn't
          re-zoomed on rotation. --nav-h tracks the scaled bottom-nav height for the
-         mini player. */
+         mini player.
+
+         Cross-browser consistency: on touch devices the window always fills the
+         screen, yet Chrome and Firefox report window.innerWidth differently (each
+         has its own toolbar/zoom baseline), which made the UI a different physical
+         size per browser on the *same* tablet. screen.width/height are anchored to
+         the physical panel and agree across browsers, so we drive the scale from
+         those on touch devices. Desktop windows are resizable, so there innerWidth
+         (the actual window width) stays the right signal. */
       (function () {
         var html = document.documentElement;
+        var isTouch = (navigator.maxTouchPoints || 0) >= 1 || 'ontouchstart' in window;
         function apply() {
           if (html.dataset.readerOpen === '1') return;
           var w = window.innerWidth, h = window.innerHeight;
+          var landscape = w > h;
+          // Device-anchored width on touch (browser-consistent); window width on
+          // desktop (where the window is resizable and innerWidth is what we scale to).
+          var baseW = w;
+          if (isTouch && window.screen && window.screen.width) {
+            var longEdge  = Math.max(window.screen.width, window.screen.height);
+            var shortEdge = Math.min(window.screen.width, window.screen.height);
+            baseW = landscape ? longEdge : shortEdge;
+          }
           // Scale up anything wider than a phone — tablets AND desktops — so the
           // phone-tuned UI reads comfortably on big screens. Phones (≤600px) render
           // native. The reader suspends this zoom (data-reader-open) and its resize
           // handler is guarded, so scaling no longer destabilises epub.js.
-          if (document.body && w > 600) {
-            var landscape = w > h;
+          if (document.body && baseW > 600) {
             // Tablets scale up more; large desktop screens (>1500px) take a more
             // modest scale so the UI isn't oversized on a big monitor.
-            var cap = w > 1500 ? 1.35 : (landscape ? 1.65 : 1.95);
-            var sc = Math.max(1, Math.min(cap, w / 430));
+            var cap = baseW > 1500 ? 1.35 : (landscape ? 1.65 : 1.95);
+            var sc = Math.max(1, Math.min(cap, baseW / 430));
             document.body.style.zoom = sc.toFixed(4);
             document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
             html.style.setProperty('--nav-h', (56 * sc).toFixed(1) + 'px');
