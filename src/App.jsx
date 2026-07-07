@@ -115,9 +115,14 @@ export default function App(){
   },[universe]);
 
   const selectUniverse=(u)=>{
-    localStorage.setItem('wh_universe',u);
+    // u===null clears the choice (the header ‹ button reopens the selector). Remove
+    // the key rather than writing the string "null", which localStorage.setItem would
+    // coerce it to — a truthy value that skips the selector on the next load. Only
+    // persist a real universe to the DB (never a null wipe).
+    if(u) localStorage.setItem('wh_universe',u);
+    else  localStorage.removeItem('wh_universe');
     setUniverse(u);
-    if(user?.id) sb.upsert("user_settings",{user_id:user.id,universe:u,updated_at:new Date().toISOString()},"user_id");
+    if(u&&user?.id) sb.upsert("user_settings",{user_id:user.id,universe:u,updated_at:new Date().toISOString()},"user_id");
   };
   const handleLogout=()=>{ localStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
