@@ -110,9 +110,11 @@ export default function UniverseSelector({ onSelect }) {
                 opacity: revealed ? 1 : 0.2, transition:"opacity 0.5s",
               }}/>
 
-              {/* Logo image */}
+              {/* Logo image — fixed-height box so the rectangular 40k aquila and the
+                  circular AoS medallion reserve the same vertical space and the rows
+                  below line up across both panels. */}
               <div style={{
-                marginBottom: 24,
+                marginBottom: 24, height: 144,
                 transform: isHov ? "scale(1.06)" : "scale(1)",
                 transition: "transform 0.4s",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -156,15 +158,16 @@ export default function UniverseSelector({ onSelect }) {
                 textShadow: revealed ? `0 0 24px ${u.accent}66` : "none",
               }}>{u.name}</div>
 
-              {/* Subtitle */}
+              {/* Subtitle — fixed-height row so the differing font sizes
+                  ("40,000" vs "AGE OF SIGMAR") don't offset the rows below. */}
               <div style={{
                 fontFamily:"'Cinzel Decorative',serif",
                 fontSize: u.id === "aos" ? "clamp(11px,2.2vw,16px)" : "clamp(16px,3vw,22px)",
                 fontWeight:900,
                 color: revealed ? u.accent : `${u.accent}99`,
                 letterSpacing:"0.08em",
-                marginBottom:22,
-                textAlign:"center",
+                height:30, marginBottom:22,
+                display:"flex", alignItems:"center", justifyContent:"center",
                 transition:"color 0.4s",
                 textShadow: revealed ? `0 0 16px ${u.accent}55` : "none",
               }}>{u.subtitle}</div>
@@ -177,12 +180,13 @@ export default function UniverseSelector({ onSelect }) {
                 transition:"width 0.45s cubic-bezier(0.4,0,0.2,1)",
               }}/>
 
-              {/* Flavor text */}
+              {/* Flavor text — fixed-height box so different flavor lengths (both
+                  shown at once on touch) reserve equal space and ENTER stays level. */}
               <div style={{
                 fontSize:11, fontStyle:"italic",
                 color:"rgba(212,203,184,0.55)",
                 textAlign:"center", maxWidth:200, lineHeight:1.65,
-                marginBottom:26, minHeight:36,
+                marginBottom:26, height:54, overflow:"hidden",
                 fontFamily:"'Cinzel',serif", letterSpacing:"0.02em",
                 opacity: revealed ? 1 : 0,
                 transition:"opacity 0.35s",
