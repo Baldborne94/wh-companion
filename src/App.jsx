@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { supabase, signOut } from "./lib/supabase";
 import { sb } from "./lib/sb";
 import { resolveBookUrl } from "./lib/openBook";
@@ -93,6 +93,17 @@ export default function App(){
   },[]);
 
   const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
+
+  // Pre-app full-screen gates (login, splash, universe selector) are already
+  // responsive (clamp fonts + flex) and fill the viewport at native scale. Exclude
+  // them from the tablet body-zoom (tuned for the phone-styled main app) so they
+  // don't render oversized/spread on tablets. index.html reads data-native-scale.
+  useLayoutEffect(()=>{
+    const el=document.documentElement;
+    const gate = !appStarted || authLoading || !user || !universe;
+    if(gate) el.dataset.nativeScale='1'; else delete el.dataset.nativeScale;
+    window.__applyTabletZoom?.();
+  },[appStarted,authLoading,user,universe]);
 
   // On a new device where localStorage has no universe, restore the saved preference from DB.
   // Skip when wh_fresh_login is set (user just clicked Start → they should see the selector).
