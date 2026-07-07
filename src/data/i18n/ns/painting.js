@@ -38,7 +38,6 @@ export const painting = {
       },
       ai: {
         selectFactionFirst: "Select a faction first",
-        selectBrand: "Select at least one paint brand",
         dailyLimit: "You've used today's 3 AI generations. Try again tomorrow.",
         noSession: "You must be signed in to use the AI.",
         imageTooLarge: "One or more photos are too large for the AI. Remove them and add them again (they'll be compressed automatically), then try once more.",
@@ -51,7 +50,6 @@ export const painting = {
         analysing: "⚙ Analysing…",
         newIdeas: "⟳ New Ideas",
         inspireMe: "✦ Inspire Me",
-        myBrands: "My brands:",
         preferredColors: "Preferred colours:",
         preferredColorsPlaceholder: "e.g. blue and purple, gold on details (optional)",
         preferredTheme: "Theme / mood:",
@@ -60,6 +58,7 @@ export const painting = {
         generating: "🎨 Generating schemes…",
         identified: "Identified:",
         techniques: "Techniques",
+        findColor: "🔍 Find reference images of this colour",
         addToScheme: "Add to my scheme",
       },
       modal: {
@@ -181,7 +180,6 @@ export const painting = {
       },
       ai: {
         selectFactionFirst: "Seleziona prima una fazione",
-        selectBrand: "Seleziona almeno una marca di colori",
         dailyLimit: "Hai esaurito le 3 generazioni AI di oggi. Riprova domani.",
         noSession: "Devi aver effettuato l'accesso per usare l'AI.",
         imageTooLarge: "Una o più foto sono troppo grandi per l'AI. Rimuovile e ricaricale (verranno compresse automaticamente), poi riprova.",
@@ -194,7 +192,6 @@ export const painting = {
         analysing: "⚙ Analisi…",
         newIdeas: "⟳ Nuove Idee",
         inspireMe: "✦ Ispirami",
-        myBrands: "Le mie marche:",
         preferredColors: "Colori preferiti:",
         preferredColorsPlaceholder: "es. blu e viola, oro sui dettagli (opzionale)",
         preferredTheme: "Tema / atmosfera:",
@@ -203,6 +200,7 @@ export const painting = {
         generating: "🎨 Generazione schemi…",
         identified: "Identificata:",
         techniques: "Tecniche",
+        findColor: "🔍 Trova immagini di riferimento di questo colore",
         addToScheme: "Aggiungi al mio schema",
       },
       modal: {

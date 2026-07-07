@@ -317,13 +317,15 @@ const FACTIONS_AOS = {
 
 // ─── AI RECOMMENDATIONS ───────────────────────────────────────────────────
 
-async function getAiRecommendations(faction, unit, universe, photoUrls, availableBrands, _miniName, preferredColors, preferredTheme) {
+async function getAiRecommendations(faction, unit, universe, photoUrls, _miniName, preferredColors, preferredTheme) {
   const game = universe === 'aos' ? 'Warhammer Age of Sigmar' : 'Warhammer 40,000';
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
-  const brands = availableBrands?.length ? availableBrands : ["Citadel"];
-  const brandsStr = brands.join(", ");
 
-  // System prompt: role + output schema — kept separate so visual attention isn't split
+  // System prompt: role + output schema — kept separate so visual attention isn't split.
+  // Colours are described conceptually (name + hex), not tied to a specific brand/product —
+  // brand paint names are too easy for the model to invent convincingly. The painter matches
+  // the described colour to whatever real paint they own (the app's own reference search
+  // link helps them see what that colour looks like on a model).
   const systemPrompt = `You are an expert ${game} miniature painter and hobby coach.
 Always reply ONLY with valid JSON — no markdown, no extra text:
 {
@@ -339,14 +341,14 @@ Always reply ONLY with valid JSON — no markdown, no extra text:
         {
           "part": "component name",
           "steps": [
-            {"type":"base|shade|layer|highlight|drybrush|contrast","paint":"exact paint name","hex":"#hexcode","note":"short tip"}
+            {"type":"base|shade|layer|highlight|drybrush|contrast","color":"descriptive colour name, e.g. 'deep royal blue'","hex":"#hexcode accurately matching the described colour","note":"short tip"}
           ]
         }
       ]
     }
   ]
 }
-Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · only use paints from: ${brandsStr} · paint names must be real existing products.`;
+Constraints: 2-3 schemes · max 6 parts · max 4 steps per part · describe colours generically (never name a specific paint brand or product) · the hex must be a faithful approximation of the described colour.`;
 
   // The user-facing question. Photos are passed as URLs and fetched/encoded
   // server-side by the proxy, so the request body stays small.
@@ -810,21 +812,16 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState(null);
   const [activeScheme,  setActiveScheme]  = useState(0);
-  const [selBrands,     setSelBrands]     = useState(["Citadel", "AK Interactive", "Army Painter"]);
   const [prefColors,    setPrefColors]    = useState("");
   const [prefTheme,     setPrefTheme]     = useState("");
 
   const hasPhotos = Array.isArray(photoUrls) && photoUrls.length > 0;
 
-  const toggleBrand = (b) =>
-    setSelBrands(prev => prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]);
-
   const load = async () => {
     if (!faction && !hasPhotos) { setError(t("painting.ai.selectFactionFirst")); return; }
-    if (!selBrands.length) { setError(t("painting.ai.selectBrand")); return; }
     setLoading(true); setError(null); setData(null); setActiveScheme(0);
     try {
-      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, selBrands, miniName, prefColors, prefTheme);
+      const result = await getAiRecommendations(faction, unit || faction, universe, photoUrls, miniName, prefColors, prefTheme);
       setData(result);
       onDataChange?.(result);
       if (lsKey) localStorage.setItem(lsKey, JSON.stringify(result));
@@ -884,29 +881,6 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                    opacity:loading ? 0.6 : 1 }}>
           {loading ? t("painting.ai.analysing") : data ? t("painting.ai.newIdeas") : t("painting.ai.inspireMe")}
         </button>
-      </div>
-
-      {/* ── Brand filter ── */}
-      <div style={{ padding:"8px 16px", borderBottom:`1px solid ${C.border}`,
-                    display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-        <span style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:C.goldDim,
-                       letterSpacing:2, textTransform:"uppercase", flexShrink:0 }}>
-          {t("painting.ai.myBrands")}
-        </span>
-        {BRANDS.map(b => {
-          const on = selBrands.includes(b);
-          return (
-            <button key={b} onClick={() => toggleBrand(b)}
-              style={{ padding:"3px 10px", borderRadius:20, cursor:"pointer",
-                       border:`1px solid ${on ? C.gold : C.border}`,
-                       background: on ? `${C.gold}22` : "transparent",
-                       color: on ? C.gold : C.muted,
-                       fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1,
-                       transition:"all 0.15s" }}>
-              {b}
-            </button>
-          );
-        })}
       </div>
 
       {/* ── Preferred colours ── */}
@@ -1048,10 +1022,9 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                     {part.steps?.map((step, si) => {
-                      const citadel = CITADEL_PAINTS.find(
-                        p => p.name.toLowerCase() === step.paint?.toLowerCase()
-                      );
-                      const hex = citadel?.hex || step.hex || "#555";
+                      const hex = step.hex || "#555";
+                      const colorLabel = step.color || step.paint || "";
+                      const refUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(colorLabel + " paint colour miniature reference")}`;
                       return (
                         <div key={si}
                           style={{ display:"flex", alignItems:"center", gap:8,
@@ -1060,7 +1033,7 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                                         border:"1px solid rgba(255,255,255,0.12)", flexShrink:0 }}/>
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                              <span style={{ color:C.text, fontSize:12 }}>{step.paint}</span>
+                              <span style={{ color:C.text, fontSize:12 }}>{colorLabel}</span>
                               <span style={{ background:`${STEP_COLOR[step.type] || "#333"}`,
                                              borderRadius:4, padding:"1px 6px", fontSize:8,
                                              color:"#ccc", fontFamily:"'Cinzel',serif",
@@ -1075,14 +1048,21 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                               </div>
                             )}
                           </div>
+                          <a href={refUrl} target="_blank" rel="noopener noreferrer"
+                            title={t("painting.ai.findColor")}
+                            style={{ background:"transparent", border:`1px solid ${C.goldDim}`,
+                                     borderRadius:4, color:C.gold, cursor:"pointer", textDecoration:"none",
+                                     fontSize:11, padding:"2px 8px", flexShrink:0, lineHeight:"16px" }}>
+                            🔍
+                          </a>
                           <button title={t("painting.ai.addToScheme")}
                             onClick={() => onApply({
-                              paint_name:  step.paint,
+                              paint_name:  colorLabel,
                               paint_hex:   hex,
-                              paint_range: citadel?.range || "",
+                              paint_range: "",
                               part_name:   part.part,
                               usage_type:  step.type,
-                              paint_brand: "Citadel",
+                              paint_brand: "",
                             })}
                             style={{ background:"transparent", border:`1px solid ${C.gold}55`,
                                      borderRadius:4, color:C.gold, cursor:"pointer",

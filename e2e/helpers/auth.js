@@ -224,8 +224,8 @@ export async function mockPaintAdvisor(page, payload) {
           {
             part: 'Armour',
             steps: [
-              { type: 'base', paint: 'Macragge Blue', hex: '#1a3d6b', note: 'Two thin coats.' },
-              { type: 'shade', paint: 'Nuln Oil', hex: '#0a0a14', note: 'Into the recesses.' },
+              { type: 'base', color: 'Macragge Blue', hex: '#1a3d6b', note: 'Two thin coats.' },
+              { type: 'shade', color: 'Nuln Oil', hex: '#0a0a14', note: 'Into the recesses.' },
             ],
           },
         ],
@@ -239,7 +239,7 @@ export async function mockPaintAdvisor(page, payload) {
         parts: [
           {
             part: 'Fists',
-            steps: [{ type: 'base', paint: 'Mephiston Red', hex: '#9c1515', note: '' }],
+            steps: [{ type: 'base', color: 'Mephiston Red', hex: '#9c1515', note: '' }],
           },
         ],
       },
