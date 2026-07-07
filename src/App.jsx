@@ -217,7 +217,7 @@ export default function App(){
               <div style={{flex:1,textAlign:"center"}}>
                 {section!=="home"&&<span style={{fontFamily:"'Cinzel',serif",fontSize:10,color:hGoldDim,letterSpacing:3,textTransform:"uppercase"}}>{curNavLabel}</span>}
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
                 {nowPlaying&&section!=="music"&&!appReader&&(
                   <MiniPlayer nowPlaying={nowPlaying} musicPaused={musicPaused} mutedColor={hMuted}
                     onOpen={()=>setSection("music")} onTogglePause={toggleMusicPause}
@@ -229,8 +229,7 @@ export default function App(){
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>💾</button>
                 <button onClick={toggleLang} title={t("language.toggle")}
                   style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hGold,padding:"4px 7px",fontFamily:"'Cinzel',serif",fontSize:9,fontWeight:700,letterSpacing:1,lineHeight:1,cursor:"pointer"}}>{lang.toUpperCase()}</button>
-                {user.user_metadata?.avatar_url&&<img src={user.user_metadata.avatar_url} alt="" style={{width:26,height:26,borderRadius:"50%",border:`1px solid ${hGold}55`}}/>}
-                <button onClick={handleLogout} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 10px",fontFamily:"'Cinzel',serif",fontSize:8,letterSpacing:1,cursor:"pointer"}}>{t("header.logout")}</button>
+                <button onClick={handleLogout} title={t("header.logout")} aria-label={t("header.logout")} style={{background:"transparent",border:`1px solid ${hDim}`,borderRadius:6,color:hMuted,padding:"4px 8px",fontSize:14,lineHeight:1,cursor:"pointer"}}>⏻</button>
               </div>
             </div>
           );
