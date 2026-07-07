@@ -20,7 +20,14 @@
          size per browser on the *same* tablet. screen.width/height are anchored to
          the physical panel and agree across browsers, so we drive the scale from
          those on touch devices. Desktop windows are resizable, so there innerWidth
-         (the actual window width) stays the right signal. */
+         (the actual window width) stays the right signal — but the desktop cap used
+         to switch abruptly at a single 1500px threshold, so two browsers reporting
+         innerWidth a few pixels apart (scrollbar width, OS scaling rounding,
+         devicePixelRatio handling all differ slightly) could land on opposite sides
+         and end up with visibly different cap values (1.65 vs 1.35). The cap is now
+         interpolated smoothly across a width range instead of jumping at one point,
+         so a small cross-browser reporting difference only ever produces a small
+         visual difference. */
       (function () {
         var html = document.documentElement;
         var isTouch = (navigator.maxTouchPoints || 0) >= 1 || 'ontouchstart' in window;
@@ -41,9 +48,15 @@
           // native. The reader suspends this zoom (data-reader-open) and its resize
           // handler is guarded, so scaling no longer destabilises epub.js.
           if (document.body && baseW > 600) {
-            // Tablets scale up more; large desktop screens (>1500px) take a more
-            // modest scale so the UI isn't oversized on a big monitor.
-            var cap = baseW > 1500 ? 1.35 : (landscape ? 1.65 : 1.95);
+            // Tablets scale up more; large desktop screens take a more modest scale
+            // so the UI isn't oversized on a big monitor. Interpolated smoothly
+            // between 1200px and 1800px (instead of a hard 1500px cliff) so small
+            // cross-browser width differences near that range don't cause a visible
+            // size jump.
+            var capLow  = landscape ? 1.65 : 1.95;
+            var capHigh = 1.35;
+            var t = Math.max(0, Math.min(1, (baseW - 1200) / 600));
+            var cap = capLow + (capHigh - capLow) * t;
             var sc = Math.max(1, Math.min(cap, baseW / 430));
             document.body.style.zoom = sc.toFixed(4);
             document.body.style.height = (100 / sc).toFixed(4) + 'dvh';
