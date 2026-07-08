@@ -113,6 +113,10 @@ export async function mockAuth(page, { seedLocalStorage = {} } = {}) {
       localStorage.setItem('wh40k_onboarding_done', '1');
       localStorage.setItem('wh40k_releases_reminder', String(Date.now()));
       for (const [k, v] of Object.entries(seed)) localStorage.setItem(k, v);
+      // The app gates the universe selector on sessionStorage.wh_universe (so a fresh
+      // launch shows the selector). Mirror a seeded universe there so specs that seed
+      // it via seedLocalStorage still land straight in the shell.
+      if (seed.wh_universe) sessionStorage.setItem('wh_universe', seed.wh_universe);
 
       // Kill CSS transitions/animations so hover-driven layout shifts (e.g. the
       // universe-selector panels expanding on hover) can't move a target mid-click.
