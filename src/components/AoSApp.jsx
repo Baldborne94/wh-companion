@@ -424,44 +424,36 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
     else setSection('library');
   };
 
+  // Mirrors 40K's HomePage ShelfRow — real cover art (CoverImage) on a wooden
+  // shelf ledge, instead of a plain colour "spine" bar with rotated title text.
   const ShelfRow = ({ books, label }) => {
     if (!books.length) return null;
     return (
       <div style={{ marginBottom:8 }}>
         {label && <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", padding:"0 16px", marginBottom:4 }}>{label}</div>}
         <div style={{ position:"relative", overflowX:"auto", overflowY:"visible", paddingBottom:10 }}>
-          <div style={{ display:"flex", gap:3, padding:"0 16px", minWidth:"max-content", alignItems:"flex-end" }}>
+          <div style={{ display:"flex", gap:5, padding:"0 16px", minWidth:"max-content", alignItems:"flex-end" }}>
             {books.map(b => {
               const sc = spineColor(b);
               const isUploaded = uploadedIds.has(b.id);
               const bst = statuses[b.id]?.status || 'none';
               return (
-                <div key={b.id}
-                  onClick={() => openBookHandle(b)}
-                  title={`${b.title} — ${b.author}`}
-                  style={{
-                    flexShrink:0, width:isUploaded?30:20, height:isUploaded?120:110,
-                    background:`linear-gradient(to right,${sc}dd,${sc}88,${sc}cc)`,
-                    borderRadius:"2px 2px 0 0", cursor:"pointer", position:"relative",
-                    boxShadow:`inset -2px 0 4px rgba(0,0,0,0.4),2px 0 3px rgba(0,0,0,0.3)`,
-                    border:`1px solid ${sc}`, borderBottom:"none",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    overflow:"hidden", transition:"transform 0.15s, box-shadow 0.15s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform="translateY(-4px)"; e.currentTarget.style.boxShadow=`inset -2px 0 4px rgba(0,0,0,0.4),4px 4px 8px rgba(0,0,0,0.5)`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`inset -2px 0 4px rgba(0,0,0,0.4),2px 0 3px rgba(0,0,0,0.3)`; }}
+                <div key={b.id} onClick={() => openBookHandle(b)} title={`${b.title} — ${b.author}`}
+                  style={{ flexShrink:0, position:"relative", cursor:"pointer", borderRadius:"3px 3px 0 0", overflow:"hidden", boxShadow:"2px 3px 8px rgba(0,0,0,0.6)", transition:"transform 0.15s ease, box-shadow 0.15s ease", border:isUploaded ? `1px solid ${AOS.gold}99` : "none" }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "4px 8px 16px rgba(0,0,0,0.8)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
+                  onTouchStart={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "4px 8px 16px rgba(0,0,0,0.8)"; }}
+                  onTouchEnd={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
+                  onTouchCancel={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "2px 3px 8px rgba(0,0,0,0.6)"; }}
                 >
-                  <div style={{ writingMode:"vertical-rl", transform:"rotate(180deg)", fontFamily:"'Cinzel',serif", fontSize:isUploaded?6:5, color:"rgba(255,255,255,0.85)", letterSpacing:0.8, overflow:"hidden", maxHeight:"90%", padding:"4px 2px", textShadow:"0 1px 2px rgba(0,0,0,0.9)", lineHeight:1.1 }}>
-                    {b.title}
-                  </div>
-                  {bst === 'reading' && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:AOS.blue }}/>}
-                  {bst === 'read'    && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:AOS.green }}/>}
-                  {isUploaded        && <div style={{ position:"absolute", inset:0, border:`1px solid ${AOS.gold}88`, borderRadius:"2px 2px 0 0", pointerEvents:"none" }}/>}
+                  <CoverImage book={b} width={52} height={80} radius={0} accentColor={sc}/>
+                  {bst === 'reading' && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:AOS.blue, pointerEvents:"none" }}/>}
+                  {bst === 'read'    && <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:AOS.green, pointerEvents:"none" }}/>}
                 </div>
               );
             })}
           </div>
-          <div style={{ height:8, background:"linear-gradient(to bottom,#4a3510,#2a1f08)", margin:"0 16px", borderRadius:"0 0 4px 4px", boxShadow:"0 3px 6px rgba(0,0,0,0.5)" }}/>
+          <div style={{ height:10, background:"linear-gradient(to bottom,#4a3510,#2a1f08)", marginLeft:16, marginRight:16, borderRadius:"0 0 4px 4px", boxShadow:"0 3px 6px rgba(0,0,0,0.5)" }}/>
         </div>
       </div>
     );
