@@ -58,7 +58,7 @@ export const painting = {
         generating: "🎨 Generating schemes…",
         identified: "Identified:",
         techniques: "Techniques",
-        findColor: "🔍 Find reference images of this colour",
+        findColor: "🔍 Find painted miniatures in this colour on Pinterest",
         addToScheme: "Add to my scheme",
       },
       modal: {
@@ -200,7 +200,7 @@ export const painting = {
         generating: "🎨 Generazione schemi…",
         identified: "Identificata:",
         techniques: "Tecniche",
-        findColor: "🔍 Trova immagini di riferimento di questo colore",
+        findColor: "🔍 Trova miniature dipinte con questo colore su Pinterest",
         addToScheme: "Aggiungi al mio schema",
       },
       modal: {
