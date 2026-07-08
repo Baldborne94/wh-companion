@@ -1024,7 +1024,11 @@ function AiRecommendations({ faction, unit, miniName, onApply, universe, photoUr
                     {part.steps?.map((step, si) => {
                       const hex = step.hex || "#555";
                       const colorLabel = step.color || step.paint || "";
-                      const refUrl = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(colorLabel + " paint colour miniature reference")}`;
+                      // Pinterest (not a generic Google Images search) surfaces actual
+                      // painted-miniature photos rather than product/bottle shots — a
+                      // brand-flavoured colour name (e.g. an old cached suggestion) would
+                      // otherwise dominate the results with store listings for that product.
+                      const refUrl = `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(colorLabel + " miniature painting")}`;
                       return (
                         <div key={si}
                           style={{ display:"flex", alignItems:"center", gap:8,
