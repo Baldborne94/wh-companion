@@ -86,13 +86,16 @@ export default function App(){
   const startApp=useCallback(()=>{
     sessionStorage.setItem('wh_started','1');
     localStorage.setItem('wh_app_started','1');
-    sessionStorage.setItem('wh_fresh_login','1'); // tells the DB-restore effect to skip
-    localStorage.removeItem('wh_universe');
+    sessionStorage.removeItem('wh_universe'); // always land on the universe selector
     setUniverse(null);
     setAppStarted(true);
   },[]);
 
-  const [universe,setUniverse]=useState(()=>localStorage.getItem('wh_universe')||null);
+  // Active universe lives in sessionStorage, not localStorage: opening/relaunching
+  // the app starts a fresh session → the universe selector is shown so the user
+  // picks their realm each time. A plain reload mid-session keeps sessionStorage,
+  // so it doesn't kick them back to the selector while they're using the app.
+  const [universe,setUniverse]=useState(()=>sessionStorage.getItem('wh_universe')||null);
 
   // Pre-app full-screen gates (login, splash, universe selector) are already
   // responsive (clamp fonts + flex) and fill the viewport at native scale. Exclude
@@ -105,37 +108,23 @@ export default function App(){
     window.__applyTabletZoom?.();
   },[appStarted,authLoading,user,universe]);
 
-  // On a new device where localStorage has no universe, restore the saved preference from DB.
-  // Skip when wh_fresh_login is set (user just clicked Start → they should see the selector).
-  useEffect(()=>{
-    if(!user?.id||localStorage.getItem('wh_universe')) return;
-    if(sessionStorage.getItem('wh_fresh_login')==='1'){
-      sessionStorage.removeItem('wh_fresh_login');
-      return;
-    }
-    sb.get("user_settings",`user_id=eq.${user.id}&select=universe`).then(rows=>{
-      if(!rows?.length||rows._error) return;
-      const u=rows[0]?.universe;
-      if(u){ localStorage.setItem('wh_universe',u); setUniverse(u); }
-    });
-  },[user?.id]);
-
   // Show onboarding the first time the app fully loads (after universe selection)
   useEffect(()=>{
     if(universe&&!localStorage.getItem('wh40k_onboarding_done')) setShowOnboarding(true);
   },[universe]);
 
   const selectUniverse=(u)=>{
-    // u===null clears the choice (the header ‹ button reopens the selector). Remove
-    // the key rather than writing the string "null", which localStorage.setItem would
-    // coerce it to — a truthy value that skips the selector on the next load. Only
-    // persist a real universe to the DB (never a null wipe).
-    if(u) localStorage.setItem('wh_universe',u);
-    else  localStorage.removeItem('wh_universe');
+    // Persist the pick in sessionStorage only, so it survives an in-session reload
+    // but not a fresh launch (which re-shows the selector). u===null clears it (the
+    // header ‹ button reopens the selector) — remove the key rather than writing the
+    // string "null", which setItem would coerce it to (a truthy value). Still record
+    // a real pick in the DB as the user's last-used universe.
+    if(u) sessionStorage.setItem('wh_universe',u);
+    else  sessionStorage.removeItem('wh_universe');
     setUniverse(u);
     if(u&&user?.id) sb.upsert("user_settings",{user_id:user.id,universe:u,updated_at:new Date().toISOString()},"user_id");
   };
-  const handleLogout=()=>{ localStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
+  const handleLogout=()=>{ sessionStorage.removeItem('wh_universe'); localStorage.removeItem('wh_app_started'); sessionStorage.removeItem('wh_started'); setUniverse(null); setAppStarted(false); signOut(); };
 
   const [section,setSection]=useState("home");
   // Newcomer "where to start" CTA on Home routes into the reading section's
