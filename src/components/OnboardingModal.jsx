@@ -76,7 +76,7 @@ export default function OnboardingModal({ onClose }) {
                       </div>
                       <div style={{ width: 1, height: 50, background: `linear-gradient(to bottom,transparent,${gold}44,transparent)` }} />
                       <div style={{ textAlign: "center" }}>
-                        <img src="/sigmar.png" alt="AoS" style={{ width: 56, height: 56, filter: `drop-shadow(0 0 12px ${aosGold}88)`, opacity: 0.95 }} />
+                        <img src="/sigmar.svg" alt="AoS" style={{ width: 56, height: 56, filter: `drop-shadow(0 0 12px ${aosGold}88)`, opacity: 0.95 }} />
                         <div style={{ fontFamily: "'Cinzel',serif", fontSize: 8, color: aosGold, letterSpacing: 2, marginTop: 6, opacity: 0.7 }}>AGE OF SIGMAR</div>
                       </div>
                     </div>
