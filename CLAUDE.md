@@ -15,7 +15,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
 │   ├── manifest.json      ← PWA manifest (orientation: "any")
 │   ├── icon.svg / icon-192.png / icon-512.png
 │   ├── aquila.png         ← WH40K logo asset
-│   └── sigmar.svg         ← AoS logo asset (twin-tailed comet)
+│   └── AOS.jpg            ← AoS logo asset (radiant starburst comet)
 └── src/
     ├── App.jsx            ← nav, top-level state, reader orchestration
     ├── main.jsx

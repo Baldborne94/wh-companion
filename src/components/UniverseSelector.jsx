@@ -21,7 +21,7 @@ const UNIVERSES = [
     accentSoft: "#7a6015",
     bg: "linear-gradient(160deg, #060c1a 0%, #090c0f 100%)",
     flavorKey: "login.selector.flavorAoS",
-    logo: "/sigmar.svg",
+    logo: "/AOS.jpg",
     logoAlt: "Sigmar",
   },
 ];
