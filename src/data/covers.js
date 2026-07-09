@@ -96,7 +96,7 @@ export const COVERS = {
   "99": "/covers/99.jpg",
   "100": "/covers/100.jpg",
   "101": "/covers/101.jpg",
-  "102": "/covers/102.webp",
+  "102": "/covers/ravenor.jpg",
   "103": "/covers/103.jpg",
   "104": "/covers/ravenor_rogue.jpg",
   "105": "/covers/105.webp",
