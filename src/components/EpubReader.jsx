@@ -1614,7 +1614,7 @@ export default function EpubReader({
         position:"absolute", top:0, bottom:0, left:0, right:0,
         background:T.bg, zIndex:11, pointerEvents:"none",
         opacity: navFade ? 1 : 0,
-        transition: navFade ? "none" : "opacity 0.8s ease-in-out",
+        transition: navFade ? "none" : "opacity 0.35s ease-in-out",
       }} />
 
 
