@@ -75,6 +75,9 @@ export const reader = {
       marginWide: "Wide",
       theme: "Theme",
       brightness: "Brightness — {n}%",
+      loreLinks: "Lore links",
+      on: "On",
+      off: "Off",
 
       // PDF toolbar
       singlePage: "Single page",
@@ -177,6 +180,9 @@ export const reader = {
       marginWide: "Ampi",
       theme: "Tema",
       brightness: "Luminosità — {n}%",
+      loreLinks: "Link lore",
+      on: "Attivi",
+      off: "Disattivi",
 
       // PDF toolbar
       singlePage: "Pagina singola",

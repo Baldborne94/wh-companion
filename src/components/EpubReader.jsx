@@ -127,7 +127,7 @@ async function deleteHlFromDB(userId, bookId, cfi) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100 };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100, showLore:true };
 
 // Side-margin presets (index → CSS for the text column's left/right padding).
 // Both the page container and the tap-to-turn strips use the same value so the
@@ -240,11 +240,13 @@ function buildReaderCss(settings, T, fnt) {
     td, th { padding: 0.3em 0.6em !important; }
     .lore-kw {
       display: inline !important; position: static !important; float: none !important;
-      vertical-align: baseline !important; color: #4a8adc !important; cursor: pointer !important;
-      border-bottom: 1px solid #4a8adc55 !important;
+      vertical-align: baseline !important;
       font-style: normal !important; font-weight: inherit !important;
+      ${settings.showLore === false
+        ? `color: inherit !important; cursor: text !important; border-bottom: none !important;`
+        : `color: #4a8adc !important; cursor: pointer !important; border-bottom: 1px solid #4a8adc55 !important;`}
     }
-    .lore-kw:hover { border-bottom-color: #4a8adc !important; }
+    ${settings.showLore === false ? "" : ".lore-kw:hover { border-bottom-color: #4a8adc !important; }"}
   `;
 }
 
@@ -254,6 +256,45 @@ function buildReaderCss(settings, T, fnt) {
 function applyTheme(rend, settings, T, fnt) {
   const css = buildReaderCss(settings, T, fnt);
   rend.getContents().forEach(c => c.addStylesheetCss(css, 'wh40k-reader'));
+}
+
+// Wrap WH40K/AoS lore terms in a chapter's text nodes with clickable spans.
+// Shared by the per-chapter render hook and the live "show lore links" toggle
+// (which re-runs it against the already-open chapter, not just newly-loaded ones).
+function injectLoreHighlights(doc, tFn) {
+  if (!doc?.body) return;
+  const walker = doc.createTreeWalker(doc.body, 4, null);
+  const textNodes = [];
+  let tw;
+  while ((tw = walker.nextNode())) {
+    const p = tw.parentNode;
+    if (!p) continue;
+    const tag = p.tagName?.toUpperCase();
+    if (["SCRIPT","STYLE","A","CODE","PRE"].includes(tag)) continue;
+    if (p.classList?.contains("lore-kw")) continue;
+    KW_REGEX.lastIndex = 0;
+    if (KW_REGEX.test(tw.textContent)) textNodes.push(tw);
+  }
+  textNodes.forEach(node => {
+    KW_REGEX.lastIndex = 0;
+    const text = node.textContent;
+    const frag = doc.createDocumentFragment();
+    let last = 0, m;
+    while ((m = KW_REGEX.exec(text)) !== null) {
+      const k = m[0].toLowerCase();
+      if (!LORE_DB[k]) continue;
+      if (m.index > last) frag.appendChild(doc.createTextNode(text.slice(last, m.index)));
+      const span = doc.createElement("span");
+      span.className = "lore-kw";
+      span.setAttribute("data-kw", k);
+      span.title = tFn("reader.searchWiki");
+      span.textContent = m[0];
+      frag.appendChild(span);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(doc.createTextNode(text.slice(last)));
+    node.parentNode?.replaceChild(frag, node);
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -457,6 +498,11 @@ function SettingsPanel({ settings, onChange, onClose }) {
           {Object.values(THEMES).map(th => (
             <Chip key={th.id} label={th.label} active={settings.themeId===th.id} onClick={() => onChange("themeId", th.id)} />
           ))}
+        </Row>
+
+        <Row label={t("reader.loreLinks")}>
+          <Chip label={t("reader.on")}  active={settings.showLore !== false} onClick={() => onChange("showLore", true)} />
+          <Chip label={t("reader.off")} active={settings.showLore === false} onClick={() => onChange("showLore", false)} />
         </Row>
 
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0 4px" }}>
@@ -1027,38 +1073,7 @@ export default function EpubReader({
           if (doc.documentElement) doc.documentElement.style.background = bg;
           doc.body.style.background = bg;
           contents.addStylesheetCss(buildReaderCss(s, themeRef.current, FONTS[s.fontIndex]), 'wh40k-reader');
-          const walker = doc.createTreeWalker(doc.body, 4, null);
-          const textNodes = [];
-          let tw;
-          while ((tw = walker.nextNode())) {
-            const p = tw.parentNode;
-            if (!p) continue;
-            const tag = p.tagName?.toUpperCase();
-            if (["SCRIPT","STYLE","A","CODE","PRE"].includes(tag)) continue;
-            if (p.classList?.contains("lore-kw")) continue;
-            KW_REGEX.lastIndex = 0;
-            if (KW_REGEX.test(tw.textContent)) textNodes.push(tw);
-          }
-          textNodes.forEach(node => {
-            KW_REGEX.lastIndex = 0;
-            const text = node.textContent;
-            const frag = doc.createDocumentFragment();
-            let last = 0, m;
-            while ((m = KW_REGEX.exec(text)) !== null) {
-              const k = m[0].toLowerCase();
-              if (!LORE_DB[k]) continue;
-              if (m.index > last) frag.appendChild(doc.createTextNode(text.slice(last, m.index)));
-              const span = doc.createElement("span");
-              span.className = "lore-kw";
-              span.setAttribute("data-kw", k);
-              span.title = t("reader.searchWiki");
-              span.textContent = m[0];
-              frag.appendChild(span);
-              last = m.index + m[0].length;
-            }
-            if (last < text.length) frag.appendChild(doc.createTextNode(text.slice(last)));
-            node.parentNode?.replaceChild(frag, node);
-          });
+          if (s.showLore !== false) injectLoreHighlights(doc, t);
 
             // Detect scene-break paragraphs (empty or decorative-only).
           doc.body.querySelectorAll('p').forEach(p => {
@@ -1084,6 +1099,7 @@ export default function EpubReader({
           });
 
           doc.addEventListener("click", (e) => {
+            if (settingsRef.current.showLore === false) return;
             const kw = e.target?.closest?.("[data-kw]")?.getAttribute?.("data-kw");
             if (kw && LORE_DB[kw]) {
               e.preventDefault();
@@ -1336,6 +1352,20 @@ export default function EpubReader({
     applyTheme(rendRef.current, settings, T, fnt);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.fontSize, settings.fontIndex, settings.lineHeight, settings.themeId]);
+
+  // Toggling "show lore links" re-styles instantly via applyTheme's CSS (hides/
+  // shows already-wrapped spans + disables the click), but a chapter that was
+  // rendered while the toggle was OFF never got its words wrapped in the first
+  // place — so turning it back ON also needs to retroactively wrap the CURRENTLY
+  // open chapter(s), not just future ones.
+  useEffect(() => {
+    if (!rendRef.current) return;
+    applyTheme(rendRef.current, settings, T, fnt);
+    if (settings.showLore !== false) {
+      rendRef.current.getContents().forEach(c => injectLoreHighlights(c.document, t));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.showLore]);
 
   // ── Resize observer ───────────────────────────────────────────────────────
   // Debounced + guarded: only resize once the rendition is ready and the container
