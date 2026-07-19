@@ -108,7 +108,7 @@ async function renderPage(doc, num, canvas, availW, availH, zoom, taskRef, fit =
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
+export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onClose, onFinish, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic }) {
   const { t, locale } = useLang();
 
   // Match the surround to the active reader theme (the PDF page itself is left
@@ -194,6 +194,15 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [doc,       setDoc]      = useState(null);
   const [total,     setTotal]    = useState(0);
   const [page,      setPage]     = useState(initPage);
+  const finishedRef              = useRef(false);  // one-shot: mark "read" on reaching the last page
+
+  // Reaching the last page auto-marks the book finished (parent sets status "read").
+  useEffect(() => {
+    if (total > 0 && page >= total && !finishedRef.current) {
+      finishedRef.current = true;
+      onFinish?.();
+    }
+  }, [page, total, onFinish]);
   const [zoom,      setZoom]     = useState(1.0);
   const [viewMode,  setViewMode] = useState("single");
   // Fit-to-width by default on touch devices (readable text on phones); whole-page

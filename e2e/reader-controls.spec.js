@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { mockAuth, mockReaderBook } from './helpers/auth.js';
+import { mockAuth, mockReaderBook, UID } from './helpers/auth.js';
 import { expectTextInAnyFrame } from './helpers/reader.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -108,6 +108,25 @@ test.describe('Reader controls', () => {
     const barCenterY = box.y + box.height / 2;
     expect(barCenterY).toBeGreaterThan(word.top - 80);
     expect(barCenterY).toBeLessThan(word.bottom + 80);
+  });
+
+  test('reaching the last page auto-marks the book read', async ({ page }) => {
+    await openReader(page);
+
+    const statusKey = `wh40k_status_${UID}_${BOOK_ID}`;
+    // Nothing recorded yet.
+    expect(await page.evaluate((k) => localStorage.getItem(k), statusKey)).toBeNull();
+
+    // Page forward until the reader hits the end (atEnd → parent auto-marks read).
+    let value = null;
+    for (let i = 0; i < 30 && !value?.includes('"status":"read"'); i++) {
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(150);
+      value = await page.evaluate((k) => localStorage.getItem(k), statusKey);
+    }
+
+    expect(value).toContain('"status":"read"');
+    expect(value).toContain('completedAt');
   });
 
   test('in-book search finds a phrase and jumps to its chapter', async ({ page }) => {
