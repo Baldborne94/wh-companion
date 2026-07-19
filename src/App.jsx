@@ -157,6 +157,16 @@ export default function App(){
     return true;
   },[user?.id]);
 
+  // Reaching the last page of a book auto-marks it "read" (shelf, stats and
+  // achievements all key off status). Idempotent — skips if already read.
+  const markBookFinished=useCallback((book)=>{
+    if(!book) return;
+    const isAos=universe==='aos';
+    const cur=(isAos?aosStatuses:statuses)[book.id]?.status;
+    if(cur==='read') return;
+    (isAos?updateAoSStatus:updateStatus)(book.id,'read');
+  },[universe,statuses,aosStatuses,updateStatus,updateAoSStatus]);
+
   // ── Release reminder ─────────────────────────────────────────────────────
   const [showReleaseReminder, setShowReleaseReminder] = useState(() => shouldShowReleaseReminder());
 
@@ -268,8 +278,8 @@ export default function App(){
               <ErrorBoundary title="Could not open this book">
                 <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
                   {appReader.fileType==="pdf"
-                    ?<PdfReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
-                    :<EpubReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
+                    ?<PdfReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} onFinish={()=>markBookFinished(appReader.book)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
+                    :<EpubReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onFinish={()=>markBookFinished(appReader.book)} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
                   }
                 </Suspense>
               </ErrorBoundary>

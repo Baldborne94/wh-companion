@@ -529,7 +529,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 export default function EpubReader({
   arrayBuffer, url, title, bookId, userId,
   initProgress,
-  onProgress, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
+  onProgress, onFinish, onClose, nowPlaying, musicPaused, onMusicClick, onStopMusic, onTogglePauseMusic,
 }) {
   const { t } = useLang();
   useReaderViewport();
@@ -796,6 +796,7 @@ export default function EpubReader({
   const navHoldRef   = useRef(false);
   // Track start-of-book so prev() doesn't fire when there is no prev chapter.
   const atStartRef   = useRef(false);
+  const finishedRef  = useRef(false);  // guards the one-shot onFinish when the end is reached
 
   // Resolve a chapter href to the CFI at the start of its spine section.
   // epub.js href navigation lands at the wrong scroll offset in continuous mode
@@ -1196,6 +1197,9 @@ export default function EpubReader({
         rend.on("relocated", (loc) => {
           if (cancelled) return;
           atStartRef.current = loc.atStart ?? false;
+          // Reaching the last page marks the book finished (once). The parent
+          // auto-sets its status to "read"; idempotent if already read.
+          if (loc.atEnd && !finishedRef.current) { finishedRef.current = true; onFinish?.(); }
           // Paginated: release lock here (one event per page turn).
           // Scroll: lock already released by `rendered` above.
           if (manager !== "continuous") {
