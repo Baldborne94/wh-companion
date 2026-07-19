@@ -446,7 +446,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                   const bstCfg = STATUS_CFG[bst];
                   const borderColor = bst !== 'none' ? bstCfg.color : fc2;
                   const pct = readingProgress[book.id] || 0;
-                  const pctPct = Math.round(pct * 100);
+                  // A read book is complete — never show the blue "still reading" bar/%.
+                  const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
                   return (
                     <div key={book.id} onClick={() => setDetail(book)}
                       style={{ background: `linear-gradient(135deg,${fc2}18,${C.card})`, border: `1px solid ${bst !== 'none' ? bstCfg.color + "44" : fc2 + "44"}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start", position: "relative", overflow: "hidden", transition: "transform 0.18s ease, box-shadow 0.18s ease" }}
@@ -489,7 +490,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                   const bst = statuses[book.id]?.status || 'none';
                   const bstCfg = STATUS_CFG[bst];
                   const pct = readingProgress[book.id] || 0;
-                  const pctPct = Math.round(pct * 100);
+                  // A read book is complete — never show the blue "still reading" bar/%.
+                  const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
                   return (
                     <div key={book.id} onClick={() => setDetail(book)}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}44`, cursor: "pointer", position: "relative" }}>
@@ -538,7 +540,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
                             const bst = statuses[book.id]?.status || 'none';
                             const bstCfg = STATUS_CFG[bst];
                             const pct = readingProgress[book.id] || 0;
-                            const pctPct = Math.round(pct * 100);
+                            const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
                             return (
                               <div key={book.id} onClick={() => setDetail(book)}
                                 title={`${book.title}${book.num > 0 ? ' #' + book.num : ''}${pctPct > 0 ? ' — ' + pctPct + '%' : ''}`}
