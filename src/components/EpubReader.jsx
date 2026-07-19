@@ -435,7 +435,8 @@ function SettingsPanel({ settings, onChange, onClose }) {
     <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.18)" }}>
       <div onPointerDown={e => e.stopPropagation()}
         style={{ position:"absolute", bottom:0, left:0, right:0,
-                 background:T.surface, borderTop:`2px solid ${C.gold}55`,
+                 background:`${T.surface}e6`, backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
+                 borderTop:`2px solid ${C.gold}55`,
                  borderRadius:"18px 18px 0 0", padding:"10px 20px 32px",
                  maxHeight:"60vh", overflowY:"auto", animation:"rdrUp .25s ease" }}>
         <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />
