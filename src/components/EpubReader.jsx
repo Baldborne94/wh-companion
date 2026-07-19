@@ -422,7 +422,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 
   const Row = ({ label, children }) => (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                  padding:"14px 0", borderBottom:`1px solid ${T.border}` }}>
+                  padding:"9px 0", borderBottom:`1px solid ${T.border}` }}>
       <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
                      letterSpacing:1, flexShrink:0, marginRight:12 }}>{label}</span>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", justifyContent:"flex-end" }}>
@@ -432,14 +432,14 @@ function SettingsPanel({ settings, onChange, onClose }) {
   );
 
   return (
-    <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.5)" }}>
+    <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.18)" }}>
       <div onPointerDown={e => e.stopPropagation()}
         style={{ position:"absolute", bottom:0, left:0, right:0,
                  background:T.surface, borderTop:`2px solid ${C.gold}55`,
-                 borderRadius:"18px 18px 0 0", padding:"12px 20px 52px",
-                 maxHeight:"90vh", overflowY:"auto", animation:"rdrUp .25s ease" }}>
-        <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"8px auto 14px" }} />
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+                 borderRadius:"18px 18px 0 0", padding:"10px 20px 32px",
+                 maxHeight:"60vh", overflowY:"auto", animation:"rdrUp .25s ease" }}>
+        <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
             {t("reader.readingSettings")}
           </span>
@@ -450,10 +450,10 @@ function SettingsPanel({ settings, onChange, onClose }) {
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                       letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("reader.typeface")}</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:20 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
           {FONTS.map((f, i) => (
             <button key={i} onClick={() => onChange("fontIndex", i)}
-              style={{ padding:"10px 8px", borderRadius:6, background:"transparent",
+              style={{ padding:"7px 8px", borderRadius:6, background:"transparent",
                        border:`1px solid ${settings.fontIndex===i?C.gold:T.border}`,
                        color:settings.fontIndex===i?C.gold:T.muted,
                        fontFamily:f.value, fontSize:13, cursor:"pointer", transition:"all .15s" }}>
@@ -505,7 +505,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
           <Chip label={t("reader.off")} active={settings.showLore === false} onClick={() => onChange("showLore", false)} />
         </Row>
 
-        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"16px 0 4px" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0 4px" }}>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
                          letterSpacing:1, flexShrink:0 }}>
             {t("reader.brightness").replace("{n}", settings.brightness ?? 100)}
