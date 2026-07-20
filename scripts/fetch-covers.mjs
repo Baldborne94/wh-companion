@@ -91,10 +91,28 @@ const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const stripParen = (s) => s.replace(/\s*\([^)]*\)\s*$/, "");
 // Guard: the resolved page must actually be this book, not a faction/character
 // page a bare title redirects to (Mechanicum -> Adeptus Mechanicus).
-function titleMatches(bookTitle, pageTitle) {
+//
+// Bare containment alone is too loose for narrative books: "Battletome: X" /
+// "Codex: X" / "Legends of the Age of Sigmar: X" titles embed a faction or
+// place name, so a short faction/subject page ("Sylvaneth", "Mars", "Orks")
+// passes as a substring even though it isn't the book's own article — e.g.
+// "Lords of Mars" and "Priests of Mars" and "Gods of Mars" all matched the
+// generic "Mars" page and ended up with the IDENTICAL cover image (found and
+// fixed by removing the duplicate covers; this closes the hole so a future
+// re-fetch doesn't reproduce it). `strict` requires the shorter title to cover
+// a real majority of the longer one, not just appear inside it — pass
+// `strict: true` for narrative types (Novel/Novella/Anthology/Omnibus/Audio
+// Drama). Codex/Battletome entries are exempt: for those, the faction's own
+// artwork is an accepted, deliberate stand-in cover (there is rarely a
+// dedicated wiki page for the rulebook itself), so containment stays loose.
+const STRICT_MIN_RATIO = 0.6;
+function titleMatches(bookTitle, pageTitle, strict = false) {
   const b = norm(stripParen(bookTitle));
   const p = norm(stripParen(pageTitle));
-  return b.length > 0 && (p.includes(b) || b.includes(p));
+  if (b.length === 0 || !(p.includes(b) || b.includes(p))) return false;
+  if (!strict) return true;
+  const ratio = Math.min(b.length, p.length) / Math.max(b.length, p.length);
+  return ratio >= STRICT_MIN_RATIO;
 }
 
 function fandomTitleCandidates(title) {
@@ -137,10 +155,11 @@ async function pageImage(host, title) {
 // page are rejected.
 async function fromFandom(book) {
   const host = `${book.wiki}.fandom.com`;
+  const strict = book.type !== "Codex";
   for (const cand of fandomTitleCandidates(book.title)) {
     let r;
     try { r = await pageImage(host, cand); } catch { continue; }
-    if (r && titleMatches(book.title, r.title)) return { url: r.src, via: `fandom:${r.title}` };
+    if (r && titleMatches(book.title, r.title, strict)) return { url: r.src, via: `fandom:${r.title}` };
   }
   return null;
 }
@@ -150,13 +169,14 @@ async function fromFandom(book) {
 // overlap guard, so it can never drift to a character/faction page.
 async function fromFandomSearch(book) {
   const host = `${book.wiki}.fandom.com`;
+  const strict = book.type !== "Codex";
   const s = await fetchJson(
     `https://${host}/api.php?action=query&list=search&srsearch=${encodeURIComponent(
       book.title
     )}&srlimit=3&format=json&origin=*`
   );
   for (const hit of s?.query?.search || []) {
-    if (!titleMatches(book.title, hit.title)) continue;
+    if (!titleMatches(book.title, hit.title, strict)) continue;
     let r;
     try { r = await pageImage(host, hit.title); } catch { continue; }
     if (r) return { url: r.src, via: `search:${r.title}` };
