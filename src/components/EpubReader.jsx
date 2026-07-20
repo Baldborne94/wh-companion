@@ -797,6 +797,19 @@ export default function EpubReader({
   // Track start-of-book so prev() doesn't fire when there is no prev chapter.
   const atStartRef   = useRef(false);
   const finishedRef  = useRef(false);  // guards the one-shot onFinish when the end is reached
+  const maxPctRef    = useRef(0);      // highest progress reached this session (for finish-on-exit)
+  const onFinishRef  = useRef(onFinish);
+  onFinishRef.current = onFinish;
+
+  // Finishing a book auto-marks it read. Besides the exact last page (loc.atEnd,
+  // below), we also treat "read to the very end" as finished on exit — many EPUBs
+  // pad the last few % with endmatter/adverts, so reaching the story's end can
+  // fall a hair short of atEnd. On unmount (reader close) fire onFinish if the
+  // reader got to ≥97% and didn't already fire.
+  const FINISH_PCT = 0.97;
+  useEffect(() => () => {
+    if (!finishedRef.current && maxPctRef.current >= FINISH_PCT) onFinishRef.current?.();
+  }, []);
 
   // Resolve a chapter href to the CFI at the start of its spine section.
   // epub.js href navigation lands at the wrong scroll offset in continuous mode
@@ -1246,6 +1259,7 @@ export default function EpubReader({
           }
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
+            if (pct > maxPctRef.current) maxPctRef.current = pct;
             setProgress(Math.round(pct * 100));
             clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
@@ -1316,6 +1330,7 @@ export default function EpubReader({
           const cfi = cfiRef.current;
           const pct = cfi ? (book.locations.percentageFromCfi(cfi) ?? 0) : 0;
           if (pct != null) {
+            if (pct > maxPctRef.current) maxPctRef.current = pct;
             setProgress(Math.round(pct * 100));
             onProgress?.(pct);
             saveProgressToSupabase(userId, bookId, pct, cfi || undefined);

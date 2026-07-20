@@ -195,14 +195,24 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   const [total,     setTotal]    = useState(0);
   const [page,      setPage]     = useState(initPage);
   const finishedRef              = useRef(false);  // one-shot: mark "read" on reaching the last page
+  const maxPageRef               = useRef(initPage);
+  const onFinishRef              = useRef(onFinish);
+  onFinishRef.current = onFinish;
 
   // Reaching the last page auto-marks the book finished (parent sets status "read").
   useEffect(() => {
+    if (page > maxPageRef.current) maxPageRef.current = page;
     if (total > 0 && page >= total && !finishedRef.current) {
       finishedRef.current = true;
       onFinish?.();
     }
   }, [page, total, onFinish]);
+
+  // Finish-on-exit: if the reader got to ≥97% of the pages this session, treat the
+  // book as read on close (covers the last page being a colophon/advert).
+  useEffect(() => () => {
+    if (!finishedRef.current && total > 0 && maxPageRef.current / total >= 0.97) onFinishRef.current?.();
+  }, [total]);
   const [zoom,      setZoom]     = useState(1.0);
   const [viewMode,  setViewMode] = useState("single");
   // Fit-to-width by default on touch devices (readable text on phones); whole-page
