@@ -343,6 +343,7 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 ## Known Behaviors & Gotchas
 
 - **PWA cache**: After manifest changes, users must reinstall the PWA (remove from homescreen + re-add) to pick up new orientation settings.
+- **PWA JS updates**: `registerType:'autoUpdate'` reloads the page once a new service worker activates, but the *browser* only checks for a new SW on a fresh top-level navigation (or at most once/24h) — an installed PWA that's just backgrounded/foregrounded, never actually reloaded, can run a stale bundle for a long time even though a fix has been live for a while. `main.jsx` registers manually (`injectRegister: null` in `vite.config.js` + `virtual:pwa-register`) so it can force `registration.update()` on load and every time the tab/app regains focus (`visibilitychange`/`focus`), catching up promptly instead of silently sitting on old JS.
 - **Tablet rotation**: Root cause was PWA manifest `portrait-primary` cached from old install + `user-scalable=no`. Both fixed. Body zoom (not html zoom) is essential for Android rotation.
 - **MusicPlayer always mounted**: Never conditionally render MusicPlayer or music stops. It sits at z-index 0 under the content area, becomes z-index 2 only when Music section is active.
 - **Squash merge conflicts**: Every new PR on the same branch after a squash merge will show conflicts. Fix: `git rebase origin/main` (drops already-upstream commits).
