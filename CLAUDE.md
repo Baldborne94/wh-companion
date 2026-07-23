@@ -215,6 +215,10 @@ Because the "reading" section, Home, Crusade/Path-to-Glory, and Library stat cou
 
 A plain click/tap on the **text column** (the side margins are page-turn strips, so only a dead-centre click reaches the iframe) toggles the header + footer via `rend.on("click", toggleUI)`. Visibility is driven by `uiVisible = !settings.paginate || showUI` — scroll mode always shows it; paginated mode lets `showUI` drive it on **both touch and desktop**. `showUI` initialises to `!matchMedia("(pointer:coarse)")` so touch starts immersive (hidden, revealed by tap/swipe) and **desktop starts visible but can be toggled with a click** (no 4s auto-hide on desktop — only touch arms the timer). The header carries `data-reader-chrome="header"` purely as an E2E hook (its `opacity` flips 1↔0; `toBeVisible` can't see opacity).
 
+### EpubReader Two-Page Spread Detection
+
+`spread: "auto"` (epub.js) plus `minSpreadWidth: MIN_SPREAD_WIDTH` (820, a module constant shared with the reader) is what actually decides whether epub.js renders one page or two side by side — **not orientation**. The decorative "open book" spine + fanned page-edges (`isWide`) used to be driven by a bare `window.innerWidth > window.innerHeight` landscape guess, which disagreed with epub.js whenever a landscape phone's width fell under 820: the artwork showed a two-page book while epub.js silently rendered a single column, so text ran straight through the decorative spine crease instead of splitting. `isWide` is now derived from the same measurement basis as the rest of the reader's resize handling — the existing container `ResizeObserver` (already used to call `rend.resize()`) also sets `isWide = el.clientWidth >= MIN_SPREAD_WIDTH` on every observed resize, so the decoration can never drift from what epub.js is actually doing, including on rotation. The spine element carries `data-reader-spine="1"` as an E2E hook.
+
 ### Tablet Zoom (index.html)
 
 Applied via inline `<script>` in `index.html`, targeting `body` (not `html`) so `position:fixed` elements stay unaffected:
@@ -391,7 +395,7 @@ CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + bu
 
 **Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
 
-**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
 
 **Gotchas**
 - Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.
