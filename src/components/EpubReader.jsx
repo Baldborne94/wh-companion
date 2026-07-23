@@ -584,6 +584,9 @@ export default function EpubReader({
   const [dictWord,      setDictWord]      = useState(null);
   const [lorePick,      setLorePick]      = useState(null);
   const [isFullscreen,  setIsFullscreen]  = useState(false);
+  // Set by the resize-observer effect below; lets the fullscreenchange handler
+  // force the same "re-measure + resize + redisplay" routine directly.
+  const syncLayoutRef = useRef(() => {});
   const [showSearch,    setShowSearch]    = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -637,10 +640,23 @@ export default function EpubReader({
   }, []);
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    // Entering/exiting fullscreen can change the container's real width (e.g. a
+    // phone reclaiming the space its browser chrome used to occupy), but on some
+    // mobile browsers the transition is animated over several hundred ms and
+    // doesn't reliably produce a ResizeObserver notification we can time against.
+    // Explicitly re-sync a few times as it settles, rather than trusting a single
+    // measurement — this is what keeps the decorative two-page spine and epub.js's
+    // actual column layout from disagreeing right after toggling fullscreen.
+    let timers = [];
+    const onChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      timers.forEach(clearTimeout);
+      timers = [150, 350, 600, 900].map(ms => setTimeout(() => syncLayoutRef.current(), ms));
+    };
     document.addEventListener("fullscreenchange", onChange);
     document.addEventListener("webkitfullscreenchange", onChange);
     return () => {
+      timers.forEach(clearTimeout);
       document.removeEventListener("fullscreenchange", onChange);
       document.removeEventListener("webkitfullscreenchange", onChange);
     };
@@ -1399,22 +1415,36 @@ export default function EpubReader({
   // isWide (the two-page decorative spine/edges) is updated on every observed
   // resize too, straight from the measured width — not debounced, since it's a
   // cheap boolean flip and must never lag behind epub.js's own spread decision.
+  //
+  // syncLayoutRef exposes this same "re-measure + resize + redisplay" routine so
+  // the fullscreenchange handler below can force it directly — some mobile
+  // browsers animate the fullscreen transition and don't reliably fire a
+  // ResizeObserver notification on our exact timing, which let the decorative
+  // spine/two-page CSS columns disagree with each other after entering fullscreen
+  // (the spine flips on immediately, but epub.js's own column layout — driven by
+  // its cached _stageSize — never got the nudge to recompute against the new size).
   useEffect(() => {
     if (!containerRef.current) return;
     let timer;
+    const sync = () => {
+      const el = containerRef.current;
+      const rend = rendRef.current;
+      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
+      if (!el || !rend || loading) return;
+      if (el.clientWidth < 2 || el.clientHeight < 2) return;
+      try {
+        rend.resize();
+        const cfi = cfiRef.current;
+        if (cfi) setTimeout(() => { try { rendRef.current?.display(cfi); } catch {} }, 100);
+      } catch {}
+    };
+    syncLayoutRef.current = sync;
     const ro = new ResizeObserver(() => {
       const el = containerRef.current;
       if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       clearTimeout(timer);
       timer = setTimeout(() => {
-        const rend = rendRef.current;
-        if (!el || !rend || loading) return;
-        if (el.clientWidth < 2 || el.clientHeight < 2) return;
-        try {
-          rend.resize();
-          const cfi = cfiRef.current;
-          if (cfi) setTimeout(() => { try { rendRef.current?.display(cfi); } catch {} }, 100);
-        } catch {}
+        sync();
       }, 200);
     });
     ro.observe(containerRef.current);

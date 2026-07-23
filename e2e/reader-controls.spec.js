@@ -43,6 +43,38 @@ test.describe('Reader controls', () => {
     await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(0);
   });
 
+  test('fullscreen toggles and the layout re-syncs when it changes the viewport', async ({ page }) => {
+    // Real column width inside the chapter iframe — a more direct signal than the
+    // decorative spine that epub.js itself actually reflowed into two columns
+    // (CSS column-width on <body>, set by epub.js's layout.calculate()).
+    const columnWidth = () => page.evaluate(() => {
+      const f = document.querySelector('iframe');
+      return f?.contentDocument?.body ? getComputedStyle(f.contentDocument.body).columnWidth : null;
+    });
+
+    await page.setViewportSize({ width: 700, height: 400 });
+    await openReader(page);
+    const narrowWidth = parseFloat(await columnWidth());
+    expect(narrowWidth).toBeGreaterThan(600); // one full-width column, no spread yet
+
+    const fsBtn = page.getByRole('button', { name: /Fullscreen/i });
+    await expect(fsBtn).toBeVisible();
+
+    // Widen (simulating a device reclaiming width in fullscreen) right as fullscreen
+    // toggles — the fullscreenchange handler's retries must pick up the new size
+    // even if a single resize-observer tick was missed around the transition.
+    await page.setViewportSize({ width: 1000, height: 500 });
+    await fsBtn.click();
+    await expect(page.getByRole('button', { name: /Exit fullscreen/i })).toBeVisible();
+
+    await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(1);
+    await expect.poll(async () => parseFloat(await columnWidth())).toBeLessThan(narrowWidth * 0.7);
+
+    // Exiting fullscreen doesn't break anything either.
+    await page.getByRole('button', { name: /Exit fullscreen/i }).click();
+    await expect(fsBtn).toBeVisible();
+  });
+
   test('clicking the page toggles the header/footer chrome on desktop', async ({ page }) => {
     await openReader(page);
 
