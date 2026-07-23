@@ -7,7 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      // Registered manually in main.jsx (via `virtual:pwa-register`) instead of
+      // auto-injecting, so we can actively poll for updates — see main.jsx.
+      injectRegister: null,
       workbox: {
         // Precache all static assets including JS chunks for full offline support.
         // JS files are content-hashed so cached entries never go stale — new deploys
