@@ -129,6 +129,14 @@ async function deleteHlFromDB(userId, bookId, cfi) {
 // ─────────────────────────────────────────────────────────────────────────────
 const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100, showLore:true };
 
+// Width (px) at which epub.js's spread:"auto" actually renders two columns side
+// by side instead of one. Shared with the resize observer below so the
+// decorative "open book" spine/page-edges only show when epub.js truly split
+// into two pages — a landscape-orientation guess isn't enough: many phones'
+// landscape width falls under this, so epub.js silently renders a single
+// column while a landscape-only check would still draw the two-page artwork.
+const MIN_SPREAD_WIDTH = 820;
+
 // Side-margin presets (index → CSS for the text column's left/right padding).
 // Both the page container and the tap-to-turn strips use the same value so the
 // strips always sit exactly in the blank margin. Minimums are kept generous so
@@ -612,7 +620,10 @@ export default function EpubReader({
   const [curCfi,      setCurCfi]      = useState(null);
   const [navFade,     setNavFade]     = useState(false);
   const [navDir,      setNavDir]      = useState(1);
-  const [isWide,      setIsWide]      = useState(() => typeof window !== "undefined" && window.innerWidth > window.innerHeight);
+  // Whether epub.js is actually rendering two pages side by side — driven by the
+  // resize observer below (matches epub.js's own minSpreadWidth check), not a
+  // landscape guess. Starts false; the loading overlay covers the first paint.
+  const [isWide,      setIsWide]      = useState(false);
 
   const toggleFullscreen = useCallback(() => {
     const el = document.documentElement;
@@ -776,14 +787,6 @@ export default function EpubReader({
     };
   }, []);
 
-  // Track landscape/portrait so the open-book centre spine only shows when two
-  // pages are actually side by side (landscape).
-  useEffect(() => {
-    const on = () => setIsWide(window.innerWidth > window.innerHeight);
-    window.addEventListener("resize", on);
-    window.addEventListener("orientationchange", on);
-    return () => { window.removeEventListener("resize", on); window.removeEventListener("orientationchange", on); };
-  }, []);
   // Prevent rapid-fire nav calls before epub.js finishes loading the chapter.
   // In paginated mode the lock releases on `relocated` (page turn done).
   // In scroll/continuous mode `relocated` fires on every scroll-position change
@@ -1060,7 +1063,7 @@ export default function EpubReader({
           height:         "100%",
           spread,
           flow,
-          minSpreadWidth: 820,
+          minSpreadWidth: MIN_SPREAD_WIDTH,
           manager,
         });
         rendRef.current = rend;
@@ -1392,13 +1395,18 @@ export default function EpubReader({
   // has real dimensions. Calling epub.js resize() too eagerly (e.g. during the brief
   // body-zoom toggle when the reader opens, or before the first render) can throw
   // deep inside its async layout and break page turning — so we gate it carefully.
+  //
+  // isWide (the two-page decorative spine/edges) is updated on every observed
+  // resize too, straight from the measured width — not debounced, since it's a
+  // cheap boolean flip and must never lag behind epub.js's own spread decision.
   useEffect(() => {
     if (!containerRef.current) return;
     let timer;
     const ro = new ResizeObserver(() => {
+      const el = containerRef.current;
+      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       clearTimeout(timer);
       timer = setTimeout(() => {
-        const el = containerRef.current;
         const rend = rendRef.current;
         if (!el || !rend || loading) return;
         if (el.clientWidth < 2 || el.clientHeight < 2) return;
@@ -1580,7 +1588,7 @@ export default function EpubReader({
           a faint light sheen at the centre flanked by shadow, like a spine
           catching the page light. */}
       {settings.paginate && settings.twoPage && isWide && (
-        <div style={{
+        <div data-reader-spine="1" style={{
           position:"absolute", top:0, bottom:0, left:"50%", width:isLight ? 84 : 84, marginLeft:isLight ? -42 : -42,
           zIndex:4, pointerEvents:"none",
           background: isLight

@@ -22,6 +22,27 @@ async function openReader(page) {
 }
 
 test.describe('Reader controls', () => {
+  test('the two-page spine only shows once epub.js actually has room for two pages', async ({ page }) => {
+    // A "landscape phone" viewport — wider than tall, but well under epub.js's own
+    // minSpreadWidth (820, shared with the reader via MIN_SPREAD_WIDTH). epub.js
+    // renders a single column here; the decorative spine must agree; the old
+    // isWide (a bare `innerWidth > innerHeight` landscape guess) didn't check this
+    // and showed the two-page artwork over a single rendered column.
+    await page.setViewportSize({ width: 700, height: 400 });
+    await openReader(page);
+    await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(0);
+
+    // Widen past the threshold (still landscape) — epub.js now has room for two
+    // columns, and the spine should appear to match.
+    await page.setViewportSize({ width: 1000, height: 500 });
+    await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(1);
+
+    // Narrow back below the threshold — the spine must disappear again, proving
+    // it tracks live width changes (rotation), not just the initial measurement.
+    await page.setViewportSize({ width: 700, height: 400 });
+    await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(0);
+  });
+
   test('clicking the page toggles the header/footer chrome on desktop', async ({ page }) => {
     await openReader(page);
 
