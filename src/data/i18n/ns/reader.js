@@ -76,6 +76,7 @@ export const reader = {
       theme: "Theme",
       brightness: "Brightness — {n}%",
       loreLinks: "Lore links",
+      nightMode: "Night mode",
       on: "On",
       off: "Off",
 
@@ -88,9 +89,11 @@ export const reader = {
       fitPage: "Fit whole page",
       fullscreen: "Fullscreen",
       exitFullscreen: "Exit fullscreen",
-      brightness: "Night brightness",
+      // Distinct from the EPUB panel's `brightness` above: these used to be
+      // duplicate keys in the same object, so the later one silently won and the
+      // EPUB slider rendered "Night brightness" with its {n} placeholder unfilled.
+      nightBrightness: "Night brightness",
       jumpToPage: "Jump to page",
-      theme: "Theme",
 
       // Dictionary
       definition: "Definition",
@@ -181,6 +184,7 @@ export const reader = {
       theme: "Tema",
       brightness: "Luminosità — {n}%",
       loreLinks: "Link lore",
+      nightMode: "Modalità notturna",
       on: "Attivi",
       off: "Disattivi",
 
@@ -193,9 +197,8 @@ export const reader = {
       fitPage: "Pagina intera",
       fullscreen: "Schermo intero",
       exitFullscreen: "Esci da schermo intero",
-      brightness: "Luminosità notturna",
+      nightBrightness: "Luminosità notturna",
       jumpToPage: "Vai alla pagina",
-      theme: "Tema",
 
       // Dictionary
       definition: "Definizione",

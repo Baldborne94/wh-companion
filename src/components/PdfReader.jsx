@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { C, THEMES } from "../data/constants";
 import { useLang } from "../lib/i18n.jsx";
+import { WARM_TINT, loadWarmFilter } from "../lib/nightMode";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -234,6 +235,9 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     const v = parseInt(localStorage.getItem("wh_pdf_dim") || "0", 10);
     return v >= 0 && v <= 2 ? v : 0;
   });
+  // Night mode (warm filter) is a shared reader setting — toggled in the EPUB
+  // reader's settings panel, honoured here so it applies to PDFs too.
+  const warmFilter = loadWarmFilter();
   // Page being scrubbed on the navigation slider (null when not dragging).
   const [scrubPage, setScrubPage] = useState(null);
   // Bumped whenever the reading area resizes (e.g. portrait↔landscape) so the page
@@ -741,7 +745,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
 
         {/* Night brightness (cycles off / dim / dimmer) */}
         <Btn label={dim === 0 ? "☼" : "🌙"} onClick={e => { e.stopPropagation(); cycleDim(); }}
-             active={dim > 0} title={t("reader.brightness")} />
+             active={dim > 0} title={t("reader.nightBrightness")} />
 
         <div style={{ width: 1, height: 24, background: C.border, flexShrink: 0 }} />
 
@@ -887,6 +891,16 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
           <div style={{
             position: "absolute", inset: 0, zIndex: 15, pointerEvents: "none",
             background: "#000", opacity: dim === 1 ? 0.26 : 0.46, transition: "opacity 0.25s",
+          }} />
+        )}
+
+        {/* Night mode warm filter — see lib/nightMode.js. `multiply` attenuates
+            the page's blue channel rather than tinting over it. Same zIndex band
+            as the dim veil so the bars (20) stay legible above it. */}
+        {warmFilter && (
+          <div data-reader-warm="1" style={{
+            position: "absolute", inset: 0, zIndex: 15, pointerEvents: "none",
+            background: WARM_TINT, mixBlendMode: "multiply",
           }} />
         )}
 
