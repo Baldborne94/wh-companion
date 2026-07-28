@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
+import { WARM_TINT } from "../lib/nightMode";
 import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
 import { reconcileSynced, withPending, withoutPending } from "../lib/bookmarkHelpers";
@@ -127,7 +128,7 @@ async function deleteHlFromDB(userId, bookId, cfi) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100, showLore:true };
+const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100, showLore:true, warmFilter:false };
 
 // Width (px) at which epub.js's spread:"auto" actually renders two columns side
 // by side instead of one. Shared with the resize observer below so the
@@ -512,6 +513,11 @@ function SettingsPanel({ settings, onChange, onClose }) {
         <Row label={t("reader.loreLinks")}>
           <Chip label={t("reader.on")}  active={settings.showLore !== false} onClick={() => onChange("showLore", true)} />
           <Chip label={t("reader.off")} active={settings.showLore === false} onClick={() => onChange("showLore", false)} />
+        </Row>
+
+        <Row label={t("reader.nightMode")}>
+          <Chip label={t("reader.on")}  active={settings.warmFilter === true}  onClick={() => onChange("warmFilter", true)} />
+          <Chip label={t("reader.off")} active={settings.warmFilter !== true} onClick={() => onChange("warmFilter", false)} />
         </Row>
 
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0 4px" }}>
@@ -1715,6 +1721,19 @@ export default function EpubReader({
                       background:"#000",
                       opacity:((100 - settings.brightness) / 100) * 0.72,
                       transition:"opacity .15s ease" }} />
+      )}
+
+      {/* Night mode — warm amber filter. Painted in `multiply` so it attenuates
+          the page's blue channel (like f.lux / Night Shift) instead of just
+          tinting over it; dimming alone can't change colour temperature, and
+          blue light is what actually suppresses melatonin. Sits in the same
+          zIndex band as the brightness veil (above page + header, below the
+          settings sheet at 1100) so the preview updates live behind the panel
+          while the panel itself stays readable. */}
+      {settings.warmFilter && (
+        <div data-reader-warm="1"
+             style={{ position:"absolute", inset:0, zIndex:29, pointerEvents:"none",
+                      background:WARM_TINT, mixBlendMode:"multiply" }} />
       )}
 
 

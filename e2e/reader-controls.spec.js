@@ -118,6 +118,41 @@ test.describe('Reader controls', () => {
     await expect(page.getByText('Font size — 20px')).toHaveCount(0);
   });
 
+  test('night mode toggle applies and persists the warm filter', async ({ page }) => {
+    await openReader(page);
+
+    const warm = page.locator('[data-reader-warm="1"]');
+    const nightRow = () =>
+      page.locator('div').filter({ has: page.getByText('Night mode', { exact: true }) }).last();
+
+    // Off by default — no warm overlay painted.
+    await expect(warm).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.getByText('Night mode', { exact: true })).toBeVisible();
+
+    // Turn it on from the Night mode row (scoped so it can't hit the Lore links
+    // row, which has identically-named On/Off chips).
+    await nightRow().getByRole('button', { name: 'On', exact: true }).click();
+    await expect(warm).toHaveCount(1);
+    // It must be a real blue-attenuating filter, not just an orange tint on top.
+    await expect(warm).toHaveCSS('mix-blend-mode', 'multiply');
+
+    await page.getByRole('button', { name: 'Close settings' }).click();
+    await expect(warm).toHaveCount(1);
+
+    // Persisted across a reopen of the reader (stored with the reader settings).
+    await page.reload();
+    await page.getByTitle(/Horus Rising/).first().click();
+    await expectTextInAnyFrame(page, CH1);
+    await expect(page.locator('[data-reader-warm="1"]')).toHaveCount(1);
+
+    // And it can be turned back off.
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await nightRow().getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(page.locator('[data-reader-warm="1"]')).toHaveCount(0);
+  });
+
   test('selection toolbar anchors next to the selected word', async ({ page }) => {
     await openReader(page);
 
