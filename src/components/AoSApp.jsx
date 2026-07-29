@@ -1,18 +1,15 @@
-import { useState, useRef, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLang, partLabel } from "../lib/i18n.jsx";
 import { sb } from "../lib/sb";
-import { signInWithGoogle } from "../lib/supabase";
 import { STATUS_CFG } from "../data/constants";
 import { AOS_ESSENTIAL, findAoSGuideBook } from "../data/aosGuide";
 import CoverImage from "./CoverImage";
+import BookDetail from "./BookDetail";
 import { getBookRating } from "../lib/bookStatus";
 import { AOS, AOS_BOOKS } from "../data/aosBooks";
 import { UPCOMING_RELEASES, RELEASES_UPDATED } from "../data/releases";
 
 export { AOS, AOS_BOOKS };
-
-const EpubReader = lazy(() => import("./EpubReader"));
-const PdfReader  = lazy(() => import("./PdfReader"));
 
 // Debounce a fast-changing value (e.g. search text) so filtering doesn't run on
 // every keystroke. Mirrors the helper in LibrarySection.jsx.
@@ -69,19 +66,6 @@ const AOS_SERIES = ["All", ...new Set(AOS_BOOKS.map(b => b.series).filter(Boolea
 const AOS_TYPES  = ["All", ...new Set(AOS_BOOKS.map(b => b.type))];
 
 // ─── READING STATUS HELPERS ───────────────────────────────────────────────────
-function getAoSBookStatus(uid, bid) {
-  try { return JSON.parse(localStorage.getItem(`wh40k_status_${uid||'anon'}_${bid}`)) || {status:'none'}; }
-  catch { return {status:'none'}; }
-}
-function setAoSBookStatusLS(uid, bid, s) {
-  const e = getAoSBookStatus(uid, bid), now = new Date().toISOString();
-  const d = {...e, status:s, updatedAt:now};
-  if (s==='reading' && !e.startedAt) d.startedAt = now;
-  if (s==='read') { d.completedAt = now; if (!d.startedAt) d.startedAt = now; }
-  localStorage.setItem(`wh40k_status_${uid||'anon'}_${bid}`, JSON.stringify(d));
-  return d;
-}
-
 // ─── NEXT-BOOK SUGGESTION ────────────────────────────────────────────────────
 function getAoSAllNextSuggestions(statuses) {
   const seriesNames = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
@@ -107,259 +91,6 @@ function getAoSAllNextSuggestions(statuses) {
 }
 
 // ─── AoS BOOK DETAIL ─────────────────────────────────────────────────────────
-function AoSBookDetail({ book, user, onBack, onOpenReader, status, onStatusChange }) {
-  const { t, locale } = useLang();
-  const inp = useRef(null);
-  const sc = spineColor(book);
-  const [ebookMeta,     setEbookMeta]     = useState(null);
-  const [uploading,     setUploading]     = useState(false);
-  const [uploadMsg,     setUploadMsg]     = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [curStatus,     setCurStatus]     = useState(status?.status || 'none');
-  const [progress,      setProgress]      = useState(0);
-  const [chapterIndex,  setChapterIndex]  = useState(0);
-  const [pageIndex,     setPageIndex]     = useState(0);
-  const [bookmarkInfo,  setBookmarkInfo]  = useState(null);
-  const [bookmarksList, setBookmarksList] = useState([]);
-
-  useEffect(() => { setCurStatus(status?.status || 'none'); }, [status]);
-
-  const changeStatus = (s) => {
-    setCurStatus(s);
-    if (user?.id) setAoSBookStatusLS(user.id, book.id, s);
-    onStatusChange?.(book.id, s);
-  };
-
-  useEffect(() => {
-    if (!user?.id) return;
-    (async () => {
-      const [files, progData] = await Promise.all([
-        sb.get("ebook_files", `book_id=eq.${book.id}&limit=1`),
-        sb.get("reading_progress", `book_id=eq.${book.id}&limit=1`),
-      ]);
-      if (files?.length && !files._error) {
-        setEbookMeta(files[0]);
-      } else {
-        const cached = localStorage.getItem(`wh40k_ebook_${user.id}_${book.id}`);
-        if (cached) { try { setEbookMeta(JSON.parse(cached)); } catch {} }
-      }
-      if (progData?.length && !progData._error) {
-        setProgress(progData[0].progress_pct || 0);
-        setChapterIndex(progData[0].chapter_index || 0);
-        setPageIndex(progData[0].page_index || 0);
-        if (progData[0].progress_pct > 0)
-          setBookmarkInfo({ chapter_index:progData[0].chapter_index||0, page_index:progData[0].page_index||0, progress_pct:progData[0].progress_pct||0 });
-      } else {
-        const cp = localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
-        if (cp) { try {
-          const p = JSON.parse(cp);
-          setProgress(p.progress_pct || 0);
-          setChapterIndex(p.chapter_index || 0);
-          setPageIndex(p.page_index || 0);
-          if (p.bookmarked || p.progress_pct > 0 || p.chapter_index > 0 || p.page_index > 0)
-            setBookmarkInfo({ chapter_index:p.chapter_index||0, page_index:p.page_index||0, bookmarkedAt:p.bookmarkedAt||p.last_read||null, progress_pct:p.progress_pct||0 });
-        } catch {} }
-      }
-      try {
-        const bms = JSON.parse(localStorage.getItem(`wh40k_bm_${user.id}_${book.id}`) || '[]');
-        setBookmarksList(bms);
-      } catch {}
-    })();
-  }, [book.id, user?.id]);
-
-  const handleFileSelect = async e => {
-    const file = e.target.files[0]; if (!file) return;
-    if (!user?.id) { setUploadMsg(t("aos.detail.msgSignInUpload")); return; }
-    setUploading(true); setUploadMsg(t("aos.detail.msgUploading"));
-    const path = `${user.id}/${book.id}/${file.name}`;
-    const ok = await sb.storage.upload(path, file);
-    if (ok) {
-      const meta = { user_id:user.id, book_id:book.id, file_name:file.name, file_path:path, file_type:file.name.toLowerCase().endsWith(".pdf")?"pdf":"epub" };
-      const dbResult = await sb.upsert("ebook_files", meta, "user_id,book_id");
-      localStorage.setItem(`wh40k_ebook_${user.id}_${book.id}`, JSON.stringify(meta));
-      setEbookMeta(meta);
-      if (dbResult?._error) {
-        setUploadMsg(t("aos.detail.msgUploadDbError").replace("{code}", dbResult._error).replace("{body}", dbResult._body?.slice(0,80) || ""));
-      } else {
-        setUploadMsg(t("aos.detail.msgUploaded"));
-      }
-    } else { setUploadMsg(t("aos.detail.msgUploadFailed")); }
-    setUploading(false);
-    setTimeout(() => setUploadMsg(""), 3000);
-  };
-
-  const handleOpenReader = async () => {
-    if (!ebookMeta) return;
-    setUploadMsg(t("aos.detail.msgOpening"));
-    const url = await sb.storage.signedUrl(ebookMeta.file_path);
-    if (!url) { setUploadMsg(t("aos.detail.msgOpenFailed")); return; }
-    setUploadMsg("");
-    onOpenReader({ book, url, fileType:ebookMeta.file_type, progress, chapterIndex, pageIndex });
-  };
-
-  const handleDeleteEbook = async () => {
-    if (!deleteConfirm) { setDeleteConfirm(true); setTimeout(() => setDeleteConfirm(false), 4000); return; }
-    setDeleteConfirm(false);
-    setUploadMsg(t("aos.detail.msgRemoving"));
-    if (ebookMeta?.file_path) await sb.storage.remove(ebookMeta.file_path);
-    if (user?.id) await sb.del("ebook_files", `user_id=eq.${user.id}&book_id=eq.${book.id}`);
-    if (user?.id) localStorage.removeItem(`wh40k_ebook_${user.id}_${book.id}`);
-    setEbookMeta(null);
-    setUploadMsg(t("aos.detail.msgRemoved"));
-    setTimeout(() => setUploadMsg(""), 2500);
-  };
-
-  return (
-    <div style={{ minHeight:"100%", background:AOS.bg }}>
-      {/* Sticky header */}
-      <div style={{ position:"sticky", top:0, zIndex:10, background:AOS.surface, borderBottom:`1px solid ${AOS.border}`, height:52, display:"flex", alignItems:"center", padding:"0 16px", gap:12 }}>
-        <button onClick={onBack} style={{ background:"transparent", border:`1px solid ${AOS.dim}`, borderRadius:8, color:AOS.gold, padding:"7px 16px", cursor:"pointer", fontFamily:"'Cinzel',serif", fontSize:13, letterSpacing:1 }}>{t("aos.detail.back")}</button>
-        <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:AOS.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{book.series || book.type}{book.num > 0 ? ` #${book.num}` : ""}</div>
-      </div>
-
-      {/* Cover section */}
-      <div style={{ background:`linear-gradient(160deg,${sc}55,${AOS.card})`, borderBottom:`1px solid ${sc}66`, padding:"28px 20px 24px", display:"flex", gap:16, alignItems:"flex-start" }}>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>{book.series || t("aos.detail.standalone")}{book.num > 0 ? ` · ${t("aos.detail.bookNum").replace("{n}", book.num)}` : ""}</div>
-          <h1 style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:"clamp(16px,5vw,24px)", color:AOS.text, lineHeight:1.2, marginBottom:6 }}>{book.title}</h1>
-          <div style={{ color:AOS.muted, fontSize:14, fontStyle:"italic" }}>{t("aos.detail.by").replace("{author}", book.author)}</div>
-        </div>
-        <CoverImage book={book} width={80} height={120} radius={5} accentColor={sc} style={{ flexShrink:0, boxShadow:"0 4px 16px rgba(0,0,0,0.5)" }}/>
-      </div>
-
-      <div style={{ padding:"20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
-        {/* Metadata */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-          {[{ l:t("aos.detail.type"), v:book.type }, { l:t("aos.detail.series"), v:book.series || t("aos.detail.standalone") }].map(m => (
-            <div key={m.l} style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:8, padding:"10px" }}>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:8, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:3 }}>{m.l}</div>
-              <div style={{ color:AOS.text, fontSize:12, lineHeight:1.2 }}>{m.v}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Description + BL link */}
-        <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:10, padding:"12px 14px" }}>
-          {book.desc && (
-            <>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{t("aos.detail.about")}</div>
-              <div style={{ fontSize:12, color:AOS.muted, lineHeight:1.75, marginBottom:10 }}>{book.desc}</div>
-            </>
-          )}
-          <a href={`https://www.google.com/search?q=${encodeURIComponent('"'+book.title+'" site:blacklibrary.com')}`} target="_blank" rel="noopener noreferrer"
-            style={{ fontSize:11, color:AOS.blue, textDecoration:"underline", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>
-            {t("aos.detail.findOnBL")}
-          </a>
-        </div>
-
-        {/* Ebook card */}
-        <div style={{ background:AOS.card, border:`2px solid ${ebookMeta ? AOS.gold : AOS.border}`, borderRadius:12, overflow:"hidden" }}>
-          <div style={{ background:ebookMeta ? `${AOS.gold}18` : AOS.surface, padding:"14px 16px", borderBottom:`1px solid ${ebookMeta ? AOS.gold+"44" : AOS.border}`, display:"flex", alignItems:"center", gap:10 }}>
-            <span style={{ fontSize:20 }}>{ebookMeta ? "📖" : "📂"}</span>
-            <div>
-              <div style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:ebookMeta ? AOS.gold : AOS.muted, fontWeight:700, letterSpacing:1 }}>{ebookMeta ? t("aos.detail.ebookReady") : t("aos.detail.noEbook")}</div>
-              {ebookMeta && <div style={{ fontSize:11, color:AOS.goldDim, marginTop:1 }}>{ebookMeta.file_name}</div>}
-            </div>
-          </div>
-          <div style={{ padding:"16px" }}>
-            {!user ? (
-              <div style={{ textAlign:"center", padding:"24px 8px", display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>
-                <div style={{ fontSize:36 }}>🔐</div>
-                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6, maxWidth:260 }}>{t("aos.detail.signInPrompt")}</div>
-                <button onClick={signInWithGoogle} style={{ background:`${AOS.gold}22`, border:`1px solid ${AOS.gold}`, borderRadius:8, padding:"10px 24px", color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, letterSpacing:2, cursor:"pointer", textTransform:"uppercase" }}>{t("aos.detail.signInGoogle")}</button>
-              </div>
-            ) : ebookMeta ? (
-              <>
-                {/* Progress bar */}
-                {progress > 0 && (
-                  <div style={{ marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase" }}>{t("aos.detail.progress")}</span>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold }}>{Math.round(progress * 100)}%</span>
-                    </div>
-                    <div style={{ height:4, background:AOS.dim, borderRadius:2 }}>
-                      <div style={{ height:"100%", width:`${progress*100}%`, background:`linear-gradient(to right,${AOS.gold},${AOS.blue})`, borderRadius:2 }}/>
-                    </div>
-                  </div>
-                )}
-                {/* Last read position */}
-                {bookmarkInfo && (
-                  <div style={{ marginBottom:12, background:AOS.surface, border:`1px solid ${AOS.border}`, borderRadius:8, padding:"10px 12px", display:"flex", alignItems:"center", gap:10 }}>
-                    <span style={{ fontSize:16, flexShrink:0 }}>📍</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.muted, letterSpacing:2, textTransform:"uppercase", marginBottom:2 }}>{t("aos.detail.lastReadPosition")}</div>
-                      <div style={{ fontSize:12, color:AOS.text }}>{Math.round((bookmarkInfo.progress_pct||0)*100)}%{bookmarkInfo.chapter_index > 0 ? ` · ${t("aos.detail.chapterShort").replace("{n}", bookmarkInfo.chapter_index+1)}` : ""}</div>
-                      {bookmarkInfo.bookmarkedAt && <div style={{ fontSize:10, color:AOS.muted, marginTop:1 }}>{new Date(bookmarkInfo.bookmarkedAt).toLocaleDateString(locale,{day:'numeric',month:'short',year:'numeric'})}</div>}
-                    </div>
-                  </div>
-                )}
-                {/* Manual bookmarks */}
-                {bookmarksList.length > 0 && (
-                  <div style={{ marginBottom:12, background:AOS.surface, border:`1px solid ${AOS.gold}33`, borderRadius:8, overflow:"hidden" }}>
-                    <div style={{ padding:"8px 12px 6px", borderBottom:`1px solid ${AOS.border}`, display:"flex", alignItems:"center", gap:6 }}>
-                      <span>🔖</span>
-                      <span style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.gold, letterSpacing:2, textTransform:"uppercase" }}>{t("aos.detail.bookmarks").replace("{n}", bookmarksList.length)}</span>
-                    </div>
-                    {bookmarksList.slice(0,5).map((bm,i) => (
-                      <div key={bm.id} style={{ padding:"8px 12px", borderBottom:i<Math.min(bookmarksList.length,5)-1?`1px solid ${AOS.border}55`:"none", display:"flex", alignItems:"center", gap:8 }}>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:11, color:AOS.text, fontFamily:"'Cinzel',serif" }}>{bm.label}</div>
-                          <div style={{ fontSize:10, color:AOS.muted }}>{bm.pct != null ? bm.pct : Math.round((bm.progress_pct||0)*100)}% · {new Date(bm.createdAt).toLocaleDateString(locale,{day:'numeric',month:'short'})}</div>
-                        </div>
-                      </div>
-                    ))}
-                    {bookmarksList.length > 5 && <div style={{ padding:"6px 12px", fontSize:10, color:AOS.muted, fontStyle:"italic" }}>{t("aos.detail.moreBookmarks").replace("{n}", bookmarksList.length-5)}</div>}
-                  </div>
-                )}
-                {uploadMsg && <div style={{ color:uploadMsg.startsWith("❌")?AOS.red:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, textAlign:"center", marginBottom:8 }}>{uploadMsg}</div>}
-                <button onClick={handleOpenReader} style={{ width:"100%", padding:"16px", borderRadius:10, background:`linear-gradient(135deg,${AOS.gold},#7a6015)`, border:"none", color:AOS.bg, fontFamily:"'Cinzel',serif", fontSize:15, letterSpacing:3, textTransform:"uppercase", fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-                  {bookmarkInfo || progress > 0 ? t("aos.detail.continueReading") : t("aos.detail.startReading")}
-                </button>
-                <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                  <button onClick={() => inp.current.click()} style={{ flex:1, padding:"10px", borderRadius:8, background:"transparent", border:`1px solid ${AOS.dim}`, color:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer" }}>{t("aos.detail.replaceFile")}</button>
-                  <button onClick={handleDeleteEbook} style={{ flex:1, padding:"10px", borderRadius:8, background:deleteConfirm?`${AOS.red}22`:"transparent", border:`1px solid ${deleteConfirm?AOS.red:AOS.dim}`, color:deleteConfirm?AOS.red:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:11, letterSpacing:1, cursor:"pointer", transition:"all 0.2s" }}>
-                    {deleteConfirm ? t("aos.detail.confirmDelete") : t("aos.detail.removeEbook")}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-                <div style={{ color:AOS.muted, fontSize:13, lineHeight:1.6 }}>{t("aos.detail.loadPrompt")}</div>
-                <div style={{ background:"#ffffff06", borderRadius:8, padding:"12px 14px" }}>
-                  <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:2, textTransform:"uppercase", marginBottom:6 }}>{t("aos.detail.readerFeatures")}</div>
-                  <div style={{ color:AOS.dim, fontSize:12, lineHeight:1.8 }}>{t("aos.detail.featureList").split("\n").map((line,i,arr) => <span key={i}>{line}{i<arr.length-1 && <br/>}</span>)}</div>
-                </div>
-                {(uploading || uploadMsg) && <div style={{ color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:12, textAlign:"center" }}>{uploadMsg || t("aos.detail.msgUploadingShort")}</div>}
-                <button onClick={() => inp.current.click()} disabled={uploading} style={{ width:"100%", padding:"16px", borderRadius:10, background:"transparent", border:`2px dashed ${AOS.goldDim}`, color:AOS.gold, fontFamily:"'Cinzel',serif", fontSize:14, letterSpacing:2, textTransform:"uppercase", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:uploading?0.5:1 }}>
-                  {t("aos.detail.loadEpubPdf")}
-                </button>
-              </div>
-            )}
-            <input ref={inp} type="file" accept=".epub,.pdf" style={{ display:"none" }} onChange={handleFileSelect}/>
-          </div>
-        </div>
-
-        {/* Reading Status */}
-        <div style={{ background:AOS.card, border:`1px solid ${AOS.border}`, borderRadius:12, padding:"14px 16px" }}>
-          <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:AOS.goldDim, letterSpacing:3, textTransform:"uppercase", marginBottom:10 }}>{t("aos.detail.readingStatus")}</div>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
-            {['want','reading','read'].map(s => {
-              const cfg = STATUS_CFG[s]; const active = curStatus === s;
-              return (
-                <button key={s} onClick={() => changeStatus(s)} style={{ padding:"12px 4px", borderRadius:8, border:`1px solid ${active?cfg.color:AOS.dim}`, background:active?cfg.bg:"transparent", color:active?cfg.color:AOS.muted, fontFamily:"'Cinzel',serif", fontSize:9, letterSpacing:1, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
-                  <span style={{ fontSize:20 }}>{cfg.icon}</span>
-                  {cfg.label}
-                </button>
-              );
-            })}
-          </div>
-          {curStatus === 'read' && <div style={{ marginTop:8, fontSize:11, color:STATUS_CFG.read.color, textAlign:"center", fontFamily:"'Cinzel',serif", letterSpacing:1 }}>{t("aos.detail.completedNote")}</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── AoS HOME PAGE ────────────────────────────────────────────────────────────
 export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpenDetail, onShowHelp, onStartGuide }) {
   const { t } = useLang();
@@ -576,7 +307,7 @@ export function AoSHomePage({ user, setSection, statuses = {}, onOpenBook, onOpe
 }
 
 // ─── AoS LIBRARY SECTION ─────────────────────────────────────────────────────
-export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
+export function AoSLibrarySection({ user, statuses = {}, onStatusChange, onOpenReader, openDetailBook, onDetailConsumed }) {
   const { t, locale } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card"); // card | list | shelf
@@ -587,7 +318,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
   const [sort,        setSort]        = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const [detail,      setDetail]      = useState(null);
-  const [reader,      setReader]      = useState(null);
+  const [shelfSeed,   setShelfSeed]   = useState(0);
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
 
@@ -640,12 +371,11 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
       }
       setShelfLoading(false);
     });
-  }, [tab, user?.id]);
+  }, [tab, user?.id, shelfSeed]);
 
-  const handleOpenReader = ({book, url, fileType, progress, chapterIndex, pageIndex}) => {
-    setDetail(null);
-    setReader({book, url, fileType, progress, chapterIndex, pageIndex:pageIndex||0});
-  };
+  // Books open through App (single reader mount point: onFinish auto-mark-read,
+  // music controls, offline bytes via resolveBookUrl in the shared BookDetail).
+  const handleOpenReader = (payload) => onOpenReader?.({ ...payload, pageIndex: payload.pageIndex || 0 });
 
   const readCount    = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'read').length;
   const readingCount = AOS_BOOKS.filter(b => statuses[b.id]?.status === 'reading').length;
@@ -674,19 +404,7 @@ export function AoSLibrarySection({ user, statuses = {}, onStatusChange, openDet
 
   const isFiltered = series !== "All" || type !== "All" || status !== "All" || sort !== "default";
 
-  if (reader) {
-    const {book, url, fileType, progress, chapterIndex} = reader;
-    return (
-      <Suspense fallback={<div style={{ position:"fixed", inset:0, background:AOS.bg, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ fontSize:48, animation:"spin 2s linear infinite" }}>⚙</div></div>}>
-        {fileType === "pdf"
-          ? <PdfReader  url={url} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)}/>
-          : <EpubReader url={url} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress||0} initChapterIndex={chapterIndex||0} initPageIndex={reader.pageIndex||0} onProgress={() => {}} onClose={() => setReader(null)}/>
-        }
-      </Suspense>
-    );
-  }
-
-  if (detail) return <AoSBookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange}/>;
+  if (detail) return <BookDetail book={detail} user={user} universe="aos" accent={spineColor(detail)} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange} onEbookUploaded={() => setShelfSeed(x => x + 1)}/>;
 
   const TABS = [
     { id:"catalogue", label:t("aos.library.tabCatalogue") },

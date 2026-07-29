@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 import { C, FC, STATUS_CFG } from "../data/constants";
 import { BOOKS, ALL_SERIES, ALL_FACTIONS, ALL_TYPES, ALL_ERAS } from "../data/books";
@@ -8,9 +8,6 @@ import BookDetail from "./BookDetail";
 import { getBookRating } from "../lib/bookStatus";
 import { cacheListIds } from "../lib/ebookCache";
 import { useLang } from "../lib/i18n.jsx";
-
-const EpubReader = lazy(() => import("./EpubReader"));
-const PdfReader  = lazy(() => import("./PdfReader"));
 
 const PAGE_SIZE = 40;
 const LOAD_MORE = 30;
@@ -24,7 +21,7 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-export default function LibrarySection({ user, statuses = {}, onStatusChange, openDetailBook, onDetailConsumed }) {
+export default function LibrarySection({ user, statuses = {}, onStatusChange, onOpenReader, openDetailBook, onDetailConsumed }) {
   const { t, locale } = useLang();
   const [tab,         setTab]         = useState("catalogue");
   const [viewMode,    setViewMode]    = useState("card");
@@ -37,7 +34,6 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
   const [sort,        setSort]        = useState("default");
   const [showFilters, setShowFilters] = useState(false);
   const [detail,      setDetail]      = useState(null);
-  const [reader,      setReader]      = useState(null);
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
   const [readingProgress, setReadingProgress] = useState({});
@@ -116,11 +112,12 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
   };
 
   // Which ebooks are downloaded to IndexedDB (readable offline). Refresh after
-  // uploads/opens (shelfSeed) and when returning from the reader (reader === null).
+  // uploads/opens (shelfSeed); returning from the reader remounts this section
+  // (App unmounts it while the reader is open), so mount covers that case.
   useEffect(() => {
     if (!user?.id) { setCachedIds(new Set()); return; }
     cacheListIds(user.id).then(setCachedIds);
-  }, [user?.id, shelfSeed, reader]);
+  }, [user?.id, shelfSeed]);
 
   // Load shelf books whenever tab switches to shelf (or after an upload).
   // Offline: skip the network entirely and build from local sources so the
@@ -145,8 +142,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
       .catch(async () => { setShelfBooks(await buildLocalShelf()); setShelfLoading(false); });
   }, [tab, user?.id, shelfSeed]);
 
-  const handleOpenReader = ({ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex }) =>
-    setReader({ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex: pageIndex || 0 });
+  const handleOpenReader = (payload) => onOpenReader?.({ ...payload, pageIndex: payload.pageIndex || 0 });
 
   const filtered = useMemo(() => BOOKS.filter(b => {
     if (series  !== "All" && b.series  !== series)  return false;
@@ -178,17 +174,6 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, op
     return shelfBooks.filter(b => b.title.toLowerCase().includes(q) || b.series.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
   }, [shelfBooks, dSearch]);
 
-  if (reader) {
-    const { book, arrayBuffer, fileType, progress, chapterIndex } = reader;
-    return (
-      <Suspense fallback={<div style={{ position: "fixed", inset: 0, background: "#0f0e09", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ fontSize: 48, animation: "spin 2s linear infinite" }}>⚙</div></div>}>
-        {fileType === "pdf"
-          ? <PdfReader arrayBuffer={arrayBuffer} title={book.title} bookId={book.id} userId={user?.id} onClose={() => setReader(null)} />
-          : <EpubReader arrayBuffer={arrayBuffer} title={book.title} bookId={book.id} userId={user?.id} initProgress={progress} initChapterIndex={chapterIndex || 0} initPageIndex={reader.pageIndex || 0} onProgress={() => {}} onClose={() => setReader(null)} />
-        }
-      </Suspense>
-    );
-  }
   if (detail) return <BookDetail book={detail} user={user} onBack={() => setDetail(null)} onOpenReader={handleOpenReader} status={statuses[detail.id]} onStatusChange={onStatusChange} onEbookUploaded={refreshShelf} />;
 
   const isFiltered = series !== "All" || faction !== "All" || type !== "All" || era !== "All" || status !== "All" || sort !== "default";

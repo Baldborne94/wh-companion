@@ -56,6 +56,39 @@ test.describe('Library', () => {
     await expect(page.getByText('50%')).toHaveCount(0);
   });
 
+  test('finishing a book opened from the detail page auto-marks it read', async ({ page }) => {
+    // Regression guard for the unified reader mount: the library used to render
+    // its OWN reader without onFinish, so auto-mark-read only worked from Home.
+    // Now the detail page routes through App's reader, which wires onFinish.
+    await mockAuth(page, { seedLocalStorage: { wh_universe: '40k' } });
+    await mockReaderBook(page, { bookId: 1, epubBuffer: EPUB });
+    await openHorusRisingDetail(page);
+    await page.getByRole('button', { name: /Start Reading/ }).click();
+    await expectTextInAnyFrame(page, CH1);
+
+    const statusKey = `wh40k_status_${UID}_1`;
+    let value = null;
+    for (let i = 0; i < 30 && !value?.includes('"status":"read"'); i++) {
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(150);
+      value = await page.evaluate((k) => localStorage.getItem(k), statusKey);
+    }
+    expect(value).toContain('"status":"read"');
+  });
+
+  test('closing the reader returns to the book detail page it was opened from', async ({ page }) => {
+    await mockAuth(page, { seedLocalStorage: { wh_universe: '40k' } });
+    await mockReaderBook(page, { bookId: 1, epubBuffer: EPUB });
+    await openHorusRisingDetail(page);
+    await page.getByRole('button', { name: /Start Reading/ }).click();
+    await expectTextInAnyFrame(page, CH1);
+
+    // Reader back button (‹, aria-label "Close").
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Horus Rising' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '← Library' })).toBeVisible();
+  });
+
   test('opens the reader from a book detail page', async ({ page }) => {
     await mockAuth(page, { seedLocalStorage: { wh_universe: '40k' } });
     await mockReaderBook(page, { bookId: 1, epubBuffer: EPUB });

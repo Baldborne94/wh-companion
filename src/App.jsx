@@ -145,6 +145,10 @@ export default function App(){
   const [appReader,setAppReader]=useState(null);
   const [pendingDetailBook,setPendingDetailBook]=useState(null);
   const openBookDetail=useCallback((book)=>{ setPendingDetailBook(book); setSection("library"); },[]);
+  // Library detail pages open books through App too (single reader mount point:
+  // onFinish auto-mark-read, music controls, offline bytes). fromDetail routes
+  // the close back to the same detail page instead of the bare catalogue.
+  const openReaderFromLibrary=useCallback((payload)=>{ setAppReader({...payload, fromDetail:true}); },[]);
   const openBook=useCallback(async(book)=>{
     const uid=user?.id; if(!uid) return;
     const result = await resolveBookUrl({ uid, book, supabase, sb });
@@ -164,6 +168,10 @@ export default function App(){
     setAppReader({book, arrayBuffer:result.arrayBuffer, fileType:result.meta.file_type||'epub', progress, chapterIndex, pageIndex});
     return true;
   },[user?.id]);
+
+  const closeReader=useCallback(()=>{
+    setAppReader(r=>{ if(r?.fromDetail&&r.book) openBookDetail(r.book); return null; });
+  },[openBookDetail]);
 
   // Reaching the last page of a book auto-marks it "read" (shelf, stats and
   // achievements all key off status). Idempotent — skips if already read.
@@ -286,8 +294,8 @@ export default function App(){
               <ErrorBoundary title="Could not open this book">
                 <Suspense fallback={<div style={{position:"fixed",inset:0,background:"#0f0e09",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:48,animation:"spin 2s linear infinite"}}>⚙</div></div>}>
                   {appReader.fileType==="pdf"
-                    ?<PdfReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={()=>setAppReader(null)} onFinish={()=>markBookFinished(appReader.book)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
-                    :<EpubReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onFinish={()=>markBookFinished(appReader.book)} onClose={()=>setAppReader(null)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
+                    ?<PdfReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} onClose={closeReader} onFinish={()=>markBookFinished(appReader.book)} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
+                    :<EpubReader arrayBuffer={appReader.arrayBuffer} title={appReader.book.title} bookId={appReader.book.id} userId={user?.id} initProgress={appReader.progress} initChapterIndex={appReader.chapterIndex} initPageIndex={appReader.pageIndex} onProgress={()=>{}} onFinish={()=>markBookFinished(appReader.book)} onClose={closeReader} nowPlaying={nowPlaying} musicPaused={musicPaused} onMusicClick={()=>{setAppReader(null);setSection("music");}} onStopMusic={()=>{musicRef.current?.stop();setNowPlaying(null);setMusicPaused(false);}} onTogglePauseMusic={toggleMusicPause}/>
                   }
                 </Suspense>
               </ErrorBoundary>
@@ -300,8 +308,8 @@ export default function App(){
                 <Suspense fallback={<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"50vh"}}><div style={{fontSize:34,color:C.goldDim,animation:"spin 1.4s linear infinite"}}>⚙</div></div>}>
                   {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
                   {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
-                  {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
-                  {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
+                  {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} onOpenReader={openReaderFromLibrary} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
+                  {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus} onOpenReader={openReaderFromLibrary} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
                   {section==="lore"    &&<LoreSection universe={universe}/>}
                   {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}
                   {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}

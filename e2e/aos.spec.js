@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { mockAuth } from './helpers/auth.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { mockAuth, mockReaderBook } from './helpers/auth.js';
+import { expectTextInAnyFrame } from './helpers/reader.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const EPUB = readFileSync(resolve(__dirname, 'fixtures/test-book.epub'));
+const CH1 = 'In the grim darkness of the far future there is only war.';
 
 // Age of Sigmar is the app's entire second universe (AoSHomePage / AoSLibrarySection
 // / AoSCrusadeSection, lazy-loaded). These tests prove that branch mounts: selecting
@@ -40,5 +48,28 @@ test.describe('Age of Sigmar universe', () => {
 
     // AoSCrusadeSection rendered → its Overview tab is present.
     await expect(page.getByRole('button', { name: 'Overview', exact: true })).toBeVisible({ timeout: 15000 });
+  });
+
+  test('AoS library uses the shared BookDetail and opens through the App reader', async ({ page }) => {
+    // The AoS universe used to duplicate BookDetail AND mount its own reader
+    // (signed-URL open, no offline cache, no auto-mark-read). It now renders the
+    // shared BookDetail — asserted via Personal Notes, a section the old AoS
+    // detail never had — and opens books through App's single reader mount.
+    await mockAuth(page, { seedLocalStorage: { wh_universe: 'aos' } });
+    await mockReaderBook(page, { bookId: 'aos1', epubBuffer: EPUB });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Library', exact: true }).click();
+    await page.getByPlaceholder(/Search titles/).fill('The Gates of Azyr');
+    await page.getByText('The Gates of Azyr', { exact: true }).first().click();
+
+    await expect(page.getByRole('heading', { name: 'The Gates of Azyr' })).toBeVisible();
+    await expect(page.getByText('Personal Notes')).toBeVisible();
+
+    // Open the book — resolved via resolveBookUrl (offline-cached bytes), rendered
+    // by App's reader; closing returns to this same detail page.
+    await page.getByRole('button', { name: /Start Reading/ }).click();
+    await expectTextInAnyFrame(page, CH1);
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'The Gates of Azyr' })).toBeVisible();
   });
 });
