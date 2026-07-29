@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspen
 import { supabase, signOut } from "./lib/supabase";
 import { sb } from "./lib/sb";
 import { resolveBookUrl } from "./lib/openBook";
+import { setErrorUser, captureError } from "./lib/errorTracking";
 import { useLang } from "./lib/i18n.jsx";
 import { useMusicPlayer } from "./lib/useMusicPlayer";
 import { useBookStatuses } from "./lib/useBookStatuses";
@@ -53,6 +54,9 @@ export default function App(){
   const { lang, toggle:toggleLang, t }=useLang();
   const [user,setUser]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
+  // Tag error-tracking events with the pseudonymous user id (uuid only, no email)
+  // so "how many users hit this?" is answerable. No-op without a Sentry DSN.
+  useEffect(()=>{ setErrorUser(user?.id ?? null); },[user?.id]);
   useEffect(()=>{
     const timer = setTimeout(()=>setAuthLoading(false), 8000);
     supabase.auth.getSession()
@@ -146,6 +150,10 @@ export default function App(){
     const result = await resolveBookUrl({ uid, book, supabase, sb });
     if(result.error){
       console.error("[openBook]", result.error, "book:", book.id);
+      // offline_no_cache is an expected offline state, not a defect.
+      if (result.error !== 'offline_no_cache') {
+        captureError(new Error(`openBook failed: ${result.error}`), { where: 'open-book', bookId: book.id });
+      }
       return result.error;
     }
     let progress=0,chapterIndex=0,pageIndex=0;
