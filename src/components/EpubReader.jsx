@@ -400,11 +400,34 @@ function DictionaryPanel({ word, onClose, theme }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings bottom-sheet
+// Settings sheet — a bottom sheet on a phone, a floating card on a wide screen
 // ─────────────────────────────────────────────────────────────────────────────
+// Full-bleed is the right shape only while the screen is narrow. Stretched across
+// a desktop it puts each row's label and its chips at opposite ends of the screen,
+// and stacking every row in one column makes the sheet tall enough to bury the
+// text whose appearance you are adjusting. Past this width the sheet becomes a
+// centred card with the rows in two columns instead.
+const SETTINGS_WIDE_MIN = 900;
+
+function useWideSettings() {
+  const query = `(min-width:${SETTINGS_WIDE_MIN}px)`;
+  const [wide, setWide] = useState(
+    () => typeof window !== "undefined" && window.matchMedia(query).matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const onChange = e => setWide(e.matches);
+    setWide(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [query]);
+  return wide;
+}
+
 function SettingsPanel({ settings, onChange, onClose }) {
   const { t } = useLang();
   const T = THEMES[settings.themeId] ?? THEMES.dark;
+  const wide = useWideSettings();
 
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick} aria-pressed={active}
@@ -428,15 +451,25 @@ function SettingsPanel({ settings, onChange, onClose }) {
     </div>
   );
 
+  // Centred with auto margins rather than translateX(-50%): the sheet's entry
+  // animation (rdrUp) animates `transform`, and would drop the centring for the
+  // length of the animation.
+  const shape = wide
+    ? { left:0, right:0, margin:"0 auto", bottom:18,
+        width:"min(880px, calc(100% - 36px))", borderRadius:16,
+        border:`1px solid ${C.gold}55`, padding:"14px 22px 20px",
+        maxHeight:"min(70vh, 540px)" }
+    : { left:0, right:0, borderRadius:"18px 18px 0 0",
+        borderTop:`2px solid ${C.gold}55`, padding:"10px 20px 32px",
+        maxHeight:"60vh" };
+
   return (
     <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.18)" }}>
       <div onPointerDown={e => e.stopPropagation()}
-        style={{ position:"absolute", bottom:0, left:0, right:0,
+        style={{ position:"absolute", bottom:0,
                  background:`${T.surface}e6`, backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
-                 borderTop:`2px solid ${C.gold}55`,
-                 borderRadius:"18px 18px 0 0", padding:"10px 20px 32px",
-                 maxHeight:"60vh", overflowY:"auto", animation:"rdrUp .25s ease" }}>
-        <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />
+                 overflowY:"auto", animation:"rdrUp .25s ease", ...shape }}>
+        {!wide && <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
             {t("reader.readingSettings")}
@@ -448,7 +481,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                       letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("reader.typeface")}</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns:wide?"repeat(4,1fr)":"1fr 1fr", gap:6, marginBottom:wide?10:14 }}>
           {FONTS.map((f, i) => (
             <button key={i} onClick={() => onChange("fontIndex", i)}
               style={{ padding:"7px 8px", borderRadius:6, background:"transparent",
@@ -460,6 +493,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
           ))}
         </div>
 
+        <div style={wide ? { display:"grid", gridTemplateColumns:"1fr 1fr", columnGap:30 } : undefined}>
         <Row label={t("reader.fontSize").replace("{n}", settings.fontSize)}>
           {[14,16,18,20,22,24].map(s => (
             <Chip key={s} label={String(s)} active={settings.fontSize===s} onClick={() => onChange("fontSize",s)} />
@@ -507,6 +541,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
           <Chip label={t("reader.on")}  active={settings.warmFilter === true}  onClick={() => onChange("warmFilter", true)} />
           <Chip label={t("reader.off")} active={settings.warmFilter !== true} onClick={() => onChange("warmFilter", false)} />
         </Row>
+        </div>
 
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0 4px" }}>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
