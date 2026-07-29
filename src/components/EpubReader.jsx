@@ -178,6 +178,7 @@ function useReaderStyles() {
     el.textContent = `
       @keyframes rdrSpin { to { transform:rotate(360deg) } }
       @keyframes rdrUp   { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+      @keyframes rdrSide { from { transform:translateX(28px);opacity:0 } to { transform:translateX(0);opacity:1 } }
       @keyframes rdrIn   { from { opacity:0 } to { opacity:1 } }
     `;
     document.head.appendChild(el);
@@ -400,11 +401,48 @@ function DictionaryPanel({ word, onClose, theme }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings bottom-sheet
+// Settings sheet — placed on whichever axis the screen has room to spare
 // ─────────────────────────────────────────────────────────────────────────────
+// Orientation, not width, decides the shape: it says which axis has space going
+// spare. Landscape has width to give, so the sheet becomes a right-hand drawer —
+// it costs one column of the spread and keeps the full height, so nothing has to
+// scroll. Portrait has height to give, so it stays a bottom sheet.
+//
+// A width test alone got the landscape phone badly wrong: ~390px tall, a 60vh
+// bottom sheet is barely 230px of panel. The same test also stretched a desktop
+// sheet edge to edge, leaving each row's label and its chips a screen apart.
+//
+// The drawer is anchored right, never left, because the ⚙ that opens it sits in
+// the top-right corner: the panel appears next to the control that summoned it,
+// and a side that moved on its own would just make it unpredictable.
+const SETTINGS_SIDE_MIN = 700;   // below this a drawer would leave no page visible
+const SETTINGS_ROOMY_MIN = 700;  // portrait past this caps the sheet width
+
+function useSettingsPlacement() {
+  const sideQ  = `(orientation:landscape) and (min-width:${SETTINGS_SIDE_MIN}px)`;
+  const roomyQ = `(min-width:${SETTINGS_ROOMY_MIN}px)`;
+  const read = () => {
+    if (typeof window === "undefined") return "bottom";
+    if (window.matchMedia(sideQ).matches)  return "side";
+    if (window.matchMedia(roomyQ).matches) return "bottomWide";
+    return "bottom";
+  };
+  const [placement, setPlacement] = useState(read);
+  useEffect(() => {
+    const mqs = [window.matchMedia(sideQ), window.matchMedia(roomyQ)];
+    const onChange = () => setPlacement(read());
+    onChange();
+    mqs.forEach(mq => mq.addEventListener("change", onChange));
+    return () => mqs.forEach(mq => mq.removeEventListener("change", onChange));
+  }, [sideQ, roomyQ]);
+  return placement;
+}
+
 function SettingsPanel({ settings, onChange, onClose }) {
   const { t } = useLang();
   const T = THEMES[settings.themeId] ?? THEMES.dark;
+  const placement = useSettingsPlacement();
+  const side = placement === "side";
 
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick} aria-pressed={active}
@@ -428,15 +466,32 @@ function SettingsPanel({ settings, onChange, onClose }) {
     </div>
   );
 
+  // Both centred shapes use auto margins rather than translateX(-50%): the entry
+  // animations move `transform`, which would drop the centring while they run.
+  const SHAPES = {
+    // 430px is what the widest row (font size: label + six chips) needs to stay on
+    // one line; the percentage only kicks in on a narrow landscape screen, where
+    // giving the drawer more than half would leave no page to preview against.
+    side: { top:0, right:0, bottom:0, width:"min(430px, 55%)",
+            borderLeft:`2px solid ${C.gold}55`, padding:"14px 22px 24px",
+            animation:"rdrSide .25s ease" },
+    bottomWide: { left:0, right:0, margin:"0 auto", bottom:18,
+                  width:"min(640px, calc(100% - 36px))", borderRadius:16,
+                  border:`1px solid ${C.gold}55`, padding:"14px 22px 20px",
+                  maxHeight:"min(70vh, 560px)", animation:"rdrUp .25s ease" },
+    bottom: { left:0, right:0, bottom:0, borderRadius:"18px 18px 0 0",
+              borderTop:`2px solid ${C.gold}55`, padding:"10px 20px 32px",
+              maxHeight:"60vh", animation:"rdrUp .25s ease" },
+  };
+  const shape = SHAPES[placement] ?? SHAPES.bottom;
+
   return (
     <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.18)" }}>
       <div onPointerDown={e => e.stopPropagation()}
-        style={{ position:"absolute", bottom:0, left:0, right:0,
+        style={{ position:"absolute",
                  background:`${T.surface}e6`, backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
-                 borderTop:`2px solid ${C.gold}55`,
-                 borderRadius:"18px 18px 0 0", padding:"10px 20px 32px",
-                 maxHeight:"60vh", overflowY:"auto", animation:"rdrUp .25s ease" }}>
-        <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />
+                 overflowY:"auto", ...shape }}>
+        {placement === "bottom" && <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
             {t("reader.readingSettings")}
@@ -448,7 +503,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                       letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("reader.typeface")}</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
           {FONTS.map((f, i) => (
             <button key={i} onClick={() => onChange("fontIndex", i)}
               style={{ padding:"7px 8px", borderRadius:6, background:"transparent",
@@ -1079,6 +1134,20 @@ export default function EpubReader({
         });
         rendRef.current = rend;
 
+        // The decorative spine/page-edges must show exactly when epub.js actually
+        // laid out two columns — so take the answer from epub.js instead of
+        // recomputing it. Its `layout` event carries the layout props, including
+        // the divisor it settled on (2 = spread, 1 = single column).
+        //
+        // Re-deriving it from `container.clientWidth >= MIN_SPREAD_WIDTH` looked
+        // equivalent and wasn't: clientWidth includes the reader's own horizontal
+        // padding (the hardcover frame + side clamp), while epub.js measures the
+        // stage inside it — about 50px narrower. Between ~820 and ~870px of
+        // viewport the container cleared the threshold and the spine appeared
+        // while epub.js, under it, rendered ONE column, so the text ran straight
+        // through the decorative crease (visible on a portrait tablet at 834px).
+        rend.on("layout", props => setIsWide(props?.divisor > 1));
+
         // Execute any navigation queued before the renderer was ready
         if (pendingNavRef.current) {
           const queuedCfi = pendingNavRef.current;
@@ -1412,9 +1481,10 @@ export default function EpubReader({
   // body-zoom toggle when the reader opens, or before the first render) can throw
   // deep inside its async layout and break page turning — so we gate it carefully.
   //
-  // isWide (the two-page decorative spine/edges) is updated on every observed
-  // resize too, straight from the measured width — not debounced, since it's a
-  // cheap boolean flip and must never lag behind epub.js's own spread decision.
+  // isWide (the two-page decorative spine/edges) is NOT set from the measurement
+  // here — it follows epub.js's `layout` event, which `rend.resize()` below makes
+  // it re-emit. That keeps the decoration and the real column count from ever
+  // disagreeing; see the listener where the rendition is created.
   //
   // syncLayoutRef exposes this same "re-measure + resize + redisplay" routine so
   // the fullscreenchange handler below can force it directly — some mobile
@@ -1429,7 +1499,6 @@ export default function EpubReader({
     const sync = () => {
       const el = containerRef.current;
       const rend = rendRef.current;
-      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       if (!el || !rend || loading) return;
       if (el.clientWidth < 2 || el.clientHeight < 2) return;
       try {
@@ -1440,8 +1509,6 @@ export default function EpubReader({
     };
     syncLayoutRef.current = sync;
     const ro = new ResizeObserver(() => {
-      const el = containerRef.current;
-      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       clearTimeout(timer);
       timer = setTimeout(() => {
         sync();
