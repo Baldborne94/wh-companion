@@ -28,8 +28,6 @@ const HomePage          = lazy(() => import("./components/HomePage"));
 const LibrarySection    = lazy(() => import("./components/LibrarySection"));
 const ReadingSection    = lazy(() => import("./components/ReadingSection"));
 const LoreSection       = lazy(() => import("./components/LoreSection"));
-const AoSHomePage       = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSHomePage })));
-const AoSLibrarySection = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSLibrarySection })));
 const AoSCrusadeSection = lazy(() => import("./components/AoSApp").then(m => ({ default: m.AoSCrusadeSection })));
 
 const NAV=[{id:"home",icon:"🏛️",label:"Home"},{id:"library",icon:"📚",label:"Library"},{id:"lore",icon:"⚔️",label:"Lore"},{id:"reading",icon:"📖",label:"Crusade"},{id:"painting",icon:"🎨",label:"Painting"},{id:"music",icon:"🎵",label:"Music"}];
@@ -306,10 +304,8 @@ export default function App(){
               <div key={section} className="section-fade">
               <ErrorBoundary>
                 <Suspense fallback={<div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"50vh"}}><div style={{fontSize:34,color:C.goldDim,animation:"spin 1.4s linear infinite"}}>⚙</div></div>}>
-                  {section==="home"    &&universe==='40k'&&<HomePage user={user} setSection={setSection} statuses={statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
-                  {section==="home"    &&universe==='aos'&&<AoSHomePage user={user} setSection={setSection} statuses={aosStatuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
-                  {section==="library" &&universe==='40k'&&<LibrarySection user={user} statuses={statuses} onStatusChange={updateStatus} onOpenReader={openReaderFromLibrary} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
-                  {section==="library" &&universe==='aos'&&<AoSLibrarySection user={user} statuses={aosStatuses} onStatusChange={updateAoSStatus} onOpenReader={openReaderFromLibrary} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
+                  {section==="home"    &&<HomePage key={universe} universe={universe} user={user} setSection={setSection} statuses={universe==='aos'?aosStatuses:statuses} onOpenBook={openBook} onOpenDetail={openBookDetail} onShowHelp={()=>setShowOnboarding(true)} onStartGuide={startGuide}/>}
+                  {section==="library" &&<LibrarySection key={universe} universe={universe} user={user} statuses={universe==='aos'?aosStatuses:statuses} onStatusChange={universe==='aos'?updateAoSStatus:updateStatus} onOpenReader={openReaderFromLibrary} openDetailBook={pendingDetailBook} onDetailConsumed={()=>setPendingDetailBook(null)}/>}
                   {section==="lore"    &&<LoreSection universe={universe}/>}
                   {section==="reading" &&universe==='40k'&&<ReadingSection user={user} statuses={statuses} onOpenBook={openBook} setSection={setSection} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}
                   {section==="reading" &&universe==='aos'&&<AoSCrusadeSection user={user} statuses={aosStatuses} initialTab={readingInitialTab} onTabConsumed={()=>setReadingInitialTab(null)}/>}
