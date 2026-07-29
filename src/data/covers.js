@@ -127,6 +127,7 @@ export const COVERS = {
   "164": "/covers/164.webp",
   "168": "/covers/168.webp",
   "170": "/covers/170.webp",
+  "174": "/covers/174.jpg",
   "178": "/covers/178.webp",
   "179": "/covers/179.webp",
   "187": "/covers/187.webp",

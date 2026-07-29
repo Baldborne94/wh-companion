@@ -119,7 +119,7 @@ export const AOS_BOOKS = [
   { id:"aos42",  title:"Soul Wars",                                 author:"Josh Reynolds",          series:"", num:0, type:"Novel",   isbn:"9781784969899", desc:"Nagash unleashes the Necroquake — a tide of death magic that reshapes the Mortal Realms — while the Stormcast Eternals fight to hold back the dead. The definitive 2nd Edition launch novel." },
   { id:"aos43",  title:"Neferata: Mortarch of Blood",               author:"David Annandale",        series:"Neferata",   num:1, type:"Novel"   , desc:"Neferata, queen of vampires and Mortarch of Blood, schemes to secure her city of Nulahmia in the Age of Sigmar — bloodthirsty politics and supernatural intrigue from Warhammer's most dangerous woman."},
   { id:"aos44",  title:"Neferata: The Dominion of Bones",           author:"David Annandale",        series:"Neferata",   num:2, type:"Novel" , desc:"Neferata faces Nagash's demands for absolute submission while fending off enemies within and without — the price of undead autonomy in a god's empire."},
-  { id:"aos45",  title:"Gloomspite",                                author:"Andy Clark",             series:"", num:0, type:"Novel" , desc:"A bad moon rises and drives the Gloomspite Gitz into a murderous frenzy against a frontier city — Andy Clark's intense siege novel seen entirely from the fungoid hordes' point of view."},
+  { id:"aos45",  title:"Gloomspite",                                author:"Andy Clark",             series:"", num:0, type:"Novel" , isbn:"9781789990218", desc:"A bad moon rises and drives the Gloomspite Gitz into a murderous frenzy against a frontier city — Andy Clark's intense siege novel seen entirely from the fungoid hordes' point of view."},
   { id:"aos46",  title:"Realm-Lords",                               author:"Dale Lucas",             series:"", num:0, type:"Novel" , desc:"The Lumineth Realm-lords clash with invading forces in the Realm of Light — Dale Lucas's debut AoS novel captures the cold grace and painful arrogance of Teclis's chosen people."},
   { id:"aos47",  title:"Lady of Sorrows",                           author:"C L Werner",             series:"", num:0, type:"Novel" , desc:"A Soulblight vampiress and a mortal huntress pursue each other through the ruins of a cursed city — C L Werner's atmospheric gothic thriller set in the undead corners of the Mortal Realms."},
   { id:"aos48",  title:"Stormvault",                                author:"Andy Clark",             series:"", num:0, type:"Novel" , desc:"An ancient sealed vault beneath a dead city holds a secret Sigmar buried for good reason — a dungeon-crawl thriller pairing Stormcast Eternals with Kharadron Overlords."},
@@ -171,7 +171,7 @@ export const AOS_BOOKS = [
   // ── OMNIBUSES ─────────────────────────────────────────────────────────────
   { id:"aos86",  title:"Legends of the Age of Sigmar: Fyreslayers", author:"Various",                series:"", num:0, type:"Omnibus"   },
   { id:"aos87",  title:"Legends of the Age of Sigmar: Skaven Pestilens", author:"Various",           series:"", num:0, type:"Omnibus"   },
-  { id:"aos88",  title:"Legends of the Age of Sigmar: Sylvaneth",   author:"Various",                series:"", num:0, type:"Omnibus"   },
+  { id:"aos88",  title:"Legends of the Age of Sigmar: Sylvaneth",   author:"Various",                series:"", num:0, type:"Omnibus",   isbn:"9781784961107" },
 
   // ── OLD WORLD / WARHAMMER FANTASY ─────────────────────────────────────────
   // The Legend of Sigmar trilogy — Graham McNeill
