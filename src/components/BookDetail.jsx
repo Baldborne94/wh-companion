@@ -6,6 +6,7 @@ import CoverImage from "./CoverImage";
 import { getBookRating, setBookRatingLS, getBookNotes, setBookNotesLS, setBookStatusLS } from "../lib/bookStatus";
 import { resolveBookUrl } from "../lib/openBook";
 import { cacheHas, cacheRemove } from "../lib/ebookCache";
+import { captureError } from "../lib/errorTracking";
 import { useLang } from "../lib/i18n.jsx";
 
 export default function BookDetail({ book, user, onBack, onOpenReader, status, onStatusChange, onEbookUploaded }) {
@@ -91,7 +92,12 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
       if (upsertErr) {
         await supabase.from("ebook_files").delete().eq("user_id", user.id).eq("book_id", book.id);
         const { error:insErr } = await supabase.from("ebook_files").insert(meta);
-        if (insErr) { setUploadMsg(`${t("library.detail.msg.savedLocallyDbError")}${insErr.message?.slice(0,80)}`); }
+        if (insErr) {
+          // This exact path surfaced the drifted ebook_files unique constraint —
+          // report it so schema drift shows up in telemetry, not screenshots.
+          captureError(new Error(`ebook upload DB error: ${insErr.message}`), { where: 'ebook-upload', bookId: book.id });
+          setUploadMsg(`${t("library.detail.msg.savedLocallyDbError")}${insErr.message?.slice(0,80)}`);
+        }
         else { setUploadMsg(t("library.detail.msg.uploadedSynced")); onEbookUploaded?.(); }
       } else { setUploadMsg(t("library.detail.msg.uploadedSynced")); onEbookUploaded?.(); }
     } else { setUploadMsg(t("library.detail.msg.uploadFailed")); }

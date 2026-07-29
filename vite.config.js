@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // Release tag for error tracking (lib/errorTracking.js) — the Vercel commit
+  // SHA when building there, so Sentry events map to an exact deploy.
+  define: {
+    __APP_RELEASE__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || 'dev'),
+  },
   plugins: [
     react(),
     VitePWA({

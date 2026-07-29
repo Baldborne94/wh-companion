@@ -69,6 +69,7 @@ VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_GOOGLE_CLIENT_ID=...      # YouTube OAuth (optional)
 VITE_SPOTIFY_CLIENT_ID=...     # Spotify OAuth (optional)
+VITE_SENTRY_DSN=...            # Sentry error tracking (optional — see "Error Tracking")
 ```
 
 Set in `.env` locally and in Vercel project settings for deployment.
@@ -117,6 +118,10 @@ Signed URLs (2h TTL) via `sb.storage.signedUrl(path)`.
 2. Enforces **3 generations/day per user** via `ai_usage` (returns HTTP 429 → client shows "Hai esaurito le 3 generazioni AI di oggi").
 3. Fetches + base64-encodes photo URLs server-side (small request bodies). SSRF guard: only `https` URLs on the project's Supabase storage host (`/storage/…`) with an `image/*` content-type are fetched.
 4. Calls Claude with the server-side `ANTHROPIC_API_KEY` (`claude-sonnet-4-6` with photos, `claude-haiku-4-5-20251001` text-only).
+
+### Error Tracking (Sentry, errors-only)
+
+`lib/errorTracking.js` + `initErrorTracking()` in `main.jsx`. Gated on `VITE_SENTRY_DSN`: because Vite inlines env vars at build time, a build **without** the DSN dead-code-eliminates the entire SDK (no chunk emitted, ~0.25KB scaffolding) — so dev/E2E builds stay hermetic with zero config. With the DSN set (Vercel), `@sentry/browser` is dynamically imported on idle; errors thrown before it lands are queued by temporary window handlers and flushed after init. Errors only — no tracing, no replay, no PII beyond the pseudonymous Supabase user id (`setErrorUser`, wired in App.jsx). Release = `VERCEL_GIT_COMMIT_SHA` via the `__APP_RELEASE__` define in `vite.config.js`. `captureError(err, ctx)` is safe to call anywhere (queues pre-init, no-ops without DSN) — wired into ErrorBoundary (skipping chunk errors, which are stale-cache symptoms that self-heal), the ebook-upload DB error path, and `openBook` failures (skipping `offline_no_cache`, an expected state). Setup: sentry.io → new Browser JS project → copy DSN → Vercel env var → redeploy.
 
 ## App Architecture
 

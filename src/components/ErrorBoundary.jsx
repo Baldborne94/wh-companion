@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import { TRANSLATIONS } from '../data/i18n/translations';
+import { captureError } from '../lib/errorTracking';
 
 function isChunkError(error) {
   const msg = error?.message ?? '';
@@ -33,6 +34,10 @@ export default class ErrorBoundary extends Component {
   }
   componentDidCatch(error, info) {
     console.error('[ErrorBoundary]', error, info);
+    // Chunk errors are a stale-cache symptom (self-healed below), not app bugs.
+    if (!isChunkError(error)) {
+      captureError(error, { where: 'error-boundary', componentStack: info?.componentStack?.slice(0, 2000) });
+    }
     // Stale service worker stranded a chunk hash. Self-heal once: clear caches +
     // unregister the SW, then reload for a clean build. Only when online — an
     // offline cache-miss must keep the error UI instead of nuking the offline cache.

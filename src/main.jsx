@@ -5,6 +5,11 @@ import './index.css';
 import App from './App.jsx';
 import { LanguageProvider } from './lib/i18n.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { initErrorTracking } from './lib/errorTracking.js';
+
+// Errors-only Sentry, lazy-loaded on idle; a complete no-op unless
+// VITE_SENTRY_DSN is configured. See lib/errorTracking.js.
+initErrorTracking();
 
 // registerType:'autoUpdate' (vite.config.js) reloads the page as soon as a new
 // service worker activates — but the BROWSER only checks for a new one on a
