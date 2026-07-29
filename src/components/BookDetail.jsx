@@ -7,6 +7,7 @@ import CoverImage from "./CoverImage";
 import { getBookRating, setBookRatingLS, getBookNotes, setBookNotesLS, setBookStatusLS } from "../lib/bookStatus";
 import { resolveBookUrl } from "../lib/openBook";
 import { cacheHas, cacheRemove } from "../lib/ebookCache";
+import { loadBookProgress } from "../lib/readingState";
 import { captureError } from "../lib/errorTracking";
 import { useLang } from "../lib/i18n.jsx";
 
@@ -47,9 +48,9 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      const [filesRes, progData] = await Promise.all([
+      const [filesRes, prog] = await Promise.all([
         supabase.from("ebook_files").select("*").eq("user_id", user.id).eq("book_id", book.id).limit(1),
-        sb.get("reading_progress", `book_id=eq.${book.id}&limit=1`),
+        loadBookProgress({ uid: user.id, bookId: book.id, sb }),
       ]);
       const files = filesRes.data || [];
       if (files.length) {
@@ -58,22 +59,12 @@ export default function BookDetail({ book, user, onBack, onOpenReader, status, o
         const cached = localStorage.getItem(`wh40k_ebook_${user.id}_${book.id}`);
         if (cached) { try { setEbookMeta(JSON.parse(cached)); } catch {} }
       }
-      if (progData?.length) {
-        setProgress(progData[0].progress_pct || 0);
-        setChapterIndex(progData[0].chapter_index || 0);
-        setPageIndex(progData[0].page_index || 0);
-        if (progData[0].progress_pct > 0)
-          setBookmarkInfo({ chapter_index:progData[0].chapter_index||0, page_index:progData[0].page_index||0, progress_pct:progData[0].progress_pct||0 });
-      } else {
-        const cp = localStorage.getItem(`wh40k_prog_${user.id}_${book.id}`);
-        if (cp) { try {
-          const p = JSON.parse(cp);
-          setProgress(p.progress_pct || 0);
-          setChapterIndex(p.chapter_index || 0);
-          setPageIndex(p.page_index || 0);
-          if (p.bookmarked || p.progress_pct > 0 || p.chapter_index > 0 || p.page_index > 0)
-            setBookmarkInfo({ chapter_index:p.chapter_index||0, page_index:p.page_index||0, bookmarkedAt:p.bookmarkedAt||p.last_read||null, progress_pct:p.progress_pct||0 });
-        } catch {} }
+      if (prog) {
+        setProgress(prog.pct);
+        setChapterIndex(prog.chapterIndex);
+        setPageIndex(prog.pageIndex);
+        if (prog.pct > 0 || prog.chapterIndex > 0 || prog.pageIndex > 0)
+          setBookmarkInfo({ chapter_index:prog.chapterIndex, page_index:prog.pageIndex, bookmarkedAt:prog.updatedAt, progress_pct:prog.pct });
       }
       try {
         const bms = JSON.parse(localStorage.getItem(`wh40k_bm_${user.id}_${book.id}`) || '[]');

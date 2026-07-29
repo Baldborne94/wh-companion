@@ -4,6 +4,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { WARM_TINT } from "../lib/nightMode";
+import { writeProgressLS } from "../lib/readingState";
 import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
 import { reconcileSynced, withPending, withoutPending } from "../lib/bookmarkHelpers";
@@ -823,6 +824,7 @@ export default function EpubReader({
   const atStartRef   = useRef(false);
   const finishedRef  = useRef(false);  // guards the one-shot onFinish when the end is reached
   const maxPctRef    = useRef(0);      // highest progress reached this session (for finish-on-exit)
+  const lastPctRef   = useRef(0);      // last observed position (flushed to the shared progress store on close)
   const onFinishRef  = useRef(onFinish);
   onFinishRef.current = onFinish;
 
@@ -1285,12 +1287,14 @@ export default function EpubReader({
           if (locationsReady && cfi) {
             const pct = book.locations.percentageFromCfi(cfi) ?? 0;
             if (pct > maxPctRef.current) maxPctRef.current = pct;
+            lastPctRef.current = pct;
             setProgress(Math.round(pct * 100));
             clearTimeout(saveTimer.current);
             saveTimer.current = setTimeout(() => {
               if (cancelled) return;
               onProgress?.(pct);
               localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, cfi);
+              writeProgressLS(userId, bookId, { pct });
               saveProgressToSupabase(userId, bookId, pct, cfi);
             }, 1500);
           } else if (cfi) {
@@ -1356,8 +1360,10 @@ export default function EpubReader({
           const pct = cfi ? (book.locations.percentageFromCfi(cfi) ?? 0) : 0;
           if (pct != null) {
             if (pct > maxPctRef.current) maxPctRef.current = pct;
+            lastPctRef.current = pct;
             setProgress(Math.round(pct * 100));
             onProgress?.(pct);
+            if (pct > 0) writeProgressLS(userId, bookId, { pct });
             saveProgressToSupabase(userId, bookId, pct, cfi || undefined);
           }
           if (!savedCfi && (initProgress ?? 0) > 0) {
@@ -1383,6 +1389,7 @@ export default function EpubReader({
       const flushCfi = cfiRef.current;
       if (flushCfi && userId && bookId) {
         try { localStorage.setItem(`wh40k_cfi_${userId}_${bookId}`, flushCfi); } catch {}
+        if (lastPctRef.current > 0) writeProgressLS(userId, bookId, { pct: lastPctRef.current });
       }
       if (bookRef.current) { try { bookRef.current.destroy(); } catch {} bookRef.current = null; }
       rendRef.current = null;

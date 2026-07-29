@@ -48,6 +48,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
         ├── sb.js          ← fetch-based REST helpers (sb.get, sb.upsert, sb.del, sb.storage)
         ├── openBook.js    ← resolveBookUrl: download bytes (auth headers) + IndexedDB cache fallback
         ├── ebookCache.js  ← IndexedDB ebook cache (cacheGet/cachePut/cacheListIds) for offline reading
+        ├── readingState.js ← derived read/reading state (status ⨯ progress, single source of truth)
         ├── bookStatus.js / bookmarkHelpers.js / readerNav.js / readingHelpers.js / achievements.js
 ```
 
@@ -220,7 +221,20 @@ Selecting text in a chapter surfaces the `selBar` action pill (📖 Definition f
 
 Reaching the last page auto-marks the book **read** (so it appears on the shelf, and reading stats + achievements update). The readers signal completion via an `onFinish` prop — `EpubReader` fires it once when epub.js `relocated` reports `loc.atEnd`; `PdfReader` fires it when `page >= total`. Because many EPUBs pad the last few % with endmatter/adverts, each reader **also** fires `onFinish` on unmount (reader close) if the max progress reached this session was **≥97%** (`maxPctRef` for EPUB, `maxPageRef/total` for PDF) — so finishing the story counts even if you don't page through the trailing matter, and reopening a nearly-finished book then closing it resolves it. `App.markBookFinished(book)` calls `updateStatus`/`updateAoSStatus(book.id, 'read')` (picking the map by the active `universe`), guarded so an already-read book isn't re-written. `setBookStatusLS` stamps `completedAt`; the change persists to localStorage + Supabase `reading_status`.
 
-Because the "reading" section, Home, Crusade/Path-to-Glory, and Library stat counts all key off `status === 'reading'`, flipping a book to `read` removes it from every "currently reading" list automatically. The Library catalogue's per-book **progress bar/`%` badge** is driven by `reading_progress` independently of status, so it's made status-aware (`pctPct = bst === 'read' ? 100 : …` in all three views — card, list, shelf): a read book always renders complete, never "still reading".
+Because the "reading" section, Home, Crusade/Path-to-Glory, and Library stat counts all key off `status === 'reading'`, flipping a book to `read` removes it from every "currently reading" list automatically.
+
+### Reading state — one derived source of truth (`lib/readingState.js`)
+
+Two stores answer "where am I with this book": `reading_status` (+ `wh40k_status_<uid>_<bid>`) is what the user **said**, `reading_progress` (+ `wh40k_prog_<uid>_<bid>`) is what the reader **observed**. They drifted, and each screen patched the mismatch its own way. `deriveBookState(manual, progress)` now reconciles them once, and `useBookStatuses` exposes only the **derived** maps — `statuses` / `aosStatuses` entries carry `{ status, pct, manual, source, …startedAt/completedAt }`. The raw manual map stays internal, so no screen can disagree with another.
+
+Precedence:
+1. Manual `read` wins always, and a read book is **always `pct: 1`** (a stale mid-book percentage never resurfaces — this replaces the per-view `bst === 'read' ? 100 : …` patches).
+2. A status set **after** the last observed progress is a deliberate override (re-shelving a finished book as "to read") and wins.
+3. Otherwise progress moves a book **forward only**: `≥ DONE_PCT` (0.97) → read, `> 0` → reading. So a book finished offline, or on another device where only progress synced, still resolves to read.
+
+⚠️ Progress is canonically a **0–1 fraction**. `PdfReader` used to write `0–100` into the same `progress_pct` column `EpubReader` wrote `0–1` into — the Library badge rendered "5000%". `normalizePct` rescales anything `> 1`, so legacy rows read correctly, and both readers now write fractions via `writeProgressLS`. Both readers also write progress **locally** (EPUB previously persisted only its CFI), so percentages survive offline.
+
+`App.markBookFinished` checks the entry's **`manual`** field, not `status` — a book derived read from progress alone still needs its explicit row written. `closeReader` calls `refreshProgress()` so the shelf/Home/Crusade re-derive off the position the reader just flushed. Achievements watch the derived maps (a book can now reach "read" without anyone pressing anything); the first pass after load reconciles silently so catching up on history doesn't fire a burst of popups.
 
 ### Night Mode (warm filter)
 
@@ -368,7 +382,7 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 - **Spotify pause**: Uses `postMessage({ command: "pause" }, "https://open.spotify.com")`. Works for the embedded player if Spotify supports it in the embed context. YouTube pause is reliable with `enablejsapi=1`.
 - **Signed URLs**: Ebook files are in a private Supabase bucket. Always use signed URLs (2h TTL) — never expose the file path directly.
 - **`ebook_files` unique constraint drift**: the app upserts against `(user_id, book_id)` (per-user files) and `001_initial_schema.sql` declares exactly that composite constraint — but some live databases drifted to an extra/incorrect single-column `unique(book_id)`, which makes only ONE user in the whole database able to ever have a file for a given book (verified against a real Postgres instance: reproduces the exact `duplicate key value violates unique constraint "ebook_files_book_id_key"` error on a second user's upload). Fix: `supabase/migrations/011_fix_ebook_files_unique_constraint.sql` (idempotent — safe to run whether or not a given database actually has the bug).
-- **Reading progress localStorage**: Primary fast storage. Supabase is a backup for new devices.
+- **Reading progress localStorage**: Primary fast storage. Supabase is a backup for new devices. Read/write it through `lib/readingState.js` (`readProgressLS`/`writeProgressLS`) — writes merge onto the existing record, so a reader that only knows the page can't wipe the chapter index.
 - **EPUB resume position**: Saved as a CFI string at `wh40k_cfi_${userId}_${bookId}`. The `relocated` event debounces the write by 1500 ms; the effect cleanup flushes synchronously so closing quickly doesn't lose the position. On reopen, `rend.display(savedCfi)` is called immediately and retried after `book.ready` (both paginated and continuous managers). DB fallback (`reading_progress.epub_cfi`) kicks in when the localStorage key is absent (e.g. new device).
 
 ## UI Conventions
@@ -416,7 +430,7 @@ CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + bu
 
 **Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
 
-**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory + shared BookDetail/reader path) · `library` (catalogue → detail → open reader, auto-mark-read from the detail path, close returns to detail) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory + shared BookDetail/reader path) · `library` (catalogue → detail → open reader, auto-mark-read from the detail path, close returns to detail) · `reading-state` (derived read/reading state: finished-but-unmarked, stale progress, manual override, PDF 0–100 rescale) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
 
 **Gotchas**
 - Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.

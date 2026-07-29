@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { supabase } from "./supabase";
 import { sb } from "./sb";
 import { BOOKS } from "../data/books";
 import { AOS_BOOKS } from "../data/aosBooks";
 import { loadAllStatuses, loadAoSStatuses, setBookStatusLS } from "./bookStatus";
+import { loadAllProgressLS, mergeProgress, deriveStatusMap } from "./readingState";
 import {
   achievementFromId,
   computeReadingAchievements,
@@ -13,9 +14,15 @@ import {
   saveUnlockedIds,
 } from "./achievements";
 
+const AOS_IDS = new Set(AOS_BOOKS.map(b => String(b.id)));
+const WH40K_IDS = new Set(BOOKS.map(b => String(b.id)));
+
 export function useBookStatuses({ userId }) {
-  const [statuses, setStatuses] = useState({});
-  const [aosStatuses, setAosStatuses] = useState({});
+  // What the user explicitly set. Never rendered directly — the UI consumes the
+  // derived maps below, so a screen can't disagree with another about a book.
+  const [manualStatuses, setManualStatuses] = useState({});
+  const [manualAosStatuses, setManualAosStatuses] = useState({});
+  const [progress, setProgress] = useState(() => loadAllProgressLS(userId));
 
   // Bidirectional sync helper: merges local + DB (newest wins), pushes local-only entries up
   const syncStatuses = useCallback(async (uid, localMap, isAoS) => {
@@ -55,24 +62,43 @@ export function useBookStatuses({ userId }) {
   useEffect(() => {
     const uid = userId;
     const local = loadAoSStatuses(uid);
-    setAosStatuses(local);
+    setManualAosStatuses(local);
     if (!uid) return;
-    syncStatuses(uid, local, true).then(merged => setAosStatuses(merged));
+    syncStatuses(uid, local, true).then(merged => setManualAosStatuses(merged));
   }, [userId, syncStatuses]);
 
   useEffect(() => {
     const uid = userId;
     const local = loadAllStatuses(uid);
-    setStatuses(local);
+    setManualStatuses(local);
     if (!uid) return;
-    syncStatuses(uid, local, false).then(merged => setStatuses(merged));
+    syncStatuses(uid, local, false).then(merged => setManualStatuses(merged));
   }, [userId, syncStatuses]);
+
+  // Observed progress: localStorage first so it survives offline, then whatever
+  // other devices synced. `refreshProgress` is called when a reader closes.
+  const refreshProgress = useCallback(() => {
+    const uid = userId;
+    const local = loadAllProgressLS(uid);
+    setProgress(local);
+    if (!uid) return;
+    sb.get("reading_progress", `user_id=eq.${uid}&select=book_id,progress_pct,last_read`)
+      .then(rows => { if (rows && !rows._error) setProgress(mergeProgress(local, rows)); })
+      .catch(() => {});
+  }, [userId]);
+
+  useEffect(() => { refreshProgress(); }, [refreshProgress]);
+
+  const statuses    = useMemo(() => deriveStatusMap(manualStatuses,    progress, WH40K_IDS), [manualStatuses,    progress]);
+  const aosStatuses = useMemo(() => deriveStatusMap(manualAosStatuses, progress, AOS_IDS),   [manualAosStatuses, progress]);
 
   // Refs for cross-universe achievement checks (avoids stale closures)
   const statusesRef    = useRef({});
   const aosStatusesRef = useRef({});
+  const progressRef    = useRef({});
   useEffect(() => { statusesRef.current    = statuses;    }, [statuses]);
   useEffect(() => { aosStatusesRef.current = aosStatuses; }, [aosStatuses]);
+  useEffect(() => { progressRef.current    = progress;    }, [progress]);
   const didInitialAosCheck = useRef(false);
 
   // Achievement state
@@ -81,7 +107,13 @@ export function useBookStatuses({ userId }) {
   const [pendingAchievements, setPendingAchievements] = useState([]);
 
   useEffect(() => {
-    if (!userId) { setUnlockedIds([]); setUnlockedIdsLoaded(false); didInitialAosCheck.current = false; return; }
+    if (!userId) {
+      setUnlockedIds([]); setUnlockedIdsLoaded(false);
+      didInitialAosCheck.current = false;
+      didFirstReadingPass.current = false;
+      didFirstAosPass.current = false;
+      return;
+    }
     loadUnlockedIds(supabase, userId).then(ids => { setUnlockedIds(ids); setUnlockedIdsLoaded(true); });
   }, [userId]);
 
@@ -129,12 +161,43 @@ export function useBookStatuses({ userId }) {
     });
   }, [userId]);
 
+  // A book can now reach "read" without anyone pressing anything (progress
+  // crossed the finish line on another device, or the auto-mark write was lost
+  // offline). Watch the derived maps so those still unlock their achievements.
+  // The first pass after load reconciles silently — it is catching up on
+  // history, not celebrating it; only later transitions pop a card.
+  const didFirstReadingPass = useRef(false);
+  useEffect(() => {
+    if (!userId || !unlockedIdsLoaded) return;
+    if (!didFirstReadingPass.current) {
+      didFirstReadingPass.current = true;
+      const nowUnlocked = computeReadingAchievements(statuses, BOOKS);
+      setUnlockedIds(prev => {
+        const newIds = diffAchievements(prev, nowUnlocked);
+        if (!newIds.length) return prev;
+        const merged = [...prev, ...newIds];
+        saveUnlockedIds(supabase, userId, merged);
+        return merged;
+      });
+      return;
+    }
+    checkReadingAchievements(statuses);
+  }, [userId, unlockedIdsLoaded, statuses, checkReadingAchievements]);
+
+  const didFirstAosPass = useRef(false);
+  useEffect(() => {
+    if (!userId || !unlockedIdsLoaded) return;
+    // The corrective pass above already reconciled this map silently.
+    if (!didFirstAosPass.current) { didFirstAosPass.current = true; return; }
+    checkAoSReadingAchievements(aosStatuses);
+  }, [userId, unlockedIdsLoaded, aosStatuses, checkAoSReadingAchievements]);
+
   const updateStatus = useCallback((bookId, newStatus) => {
     const uid = userId;
     const updated = setBookStatusLS(uid, bookId, newStatus);
-    setStatuses(prev => {
+    setManualStatuses(prev => {
       const next = { ...prev, [bookId]: updated };
-      if (newStatus === 'read') checkReadingAchievements(next);
+      if (newStatus === 'read') checkReadingAchievements(deriveStatusMap(next, progressRef.current, WH40K_IDS));
       return next;
     });
     if (uid) {
@@ -150,9 +213,9 @@ export function useBookStatuses({ userId }) {
   const updateAoSStatus = useCallback((bookId, newStatus) => {
     const uid = userId;
     const updated = setBookStatusLS(uid, bookId, newStatus);
-    setAosStatuses(prev => {
+    setManualAosStatuses(prev => {
       const next = { ...prev, [bookId]: updated };
-      if (newStatus === 'read') checkAoSReadingAchievements(next);
+      if (newStatus === 'read') checkAoSReadingAchievements(deriveStatusMap(next, progressRef.current, AOS_IDS));
       return next;
     });
     if (uid) {
@@ -168,6 +231,8 @@ export function useBookStatuses({ userId }) {
   return {
     statuses,
     aosStatuses,
+    progress,
+    refreshProgress,
     updateStatus,
     updateAoSStatus,
     unlockedIds,
