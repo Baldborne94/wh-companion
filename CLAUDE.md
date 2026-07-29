@@ -43,6 +43,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
     │   ├── lore.js        ← WH40K keyword→wiki DB + KW_REGEX
     │   ├── hhGuide.js     ← Horus Heresy reading order (HH_MIN / HH_FULL / HH_OPTIONAL)
     │   ├── aosGuide.js    ← AoS reading order (AOS_ESSENTIAL chronological spine) + findAoSGuideBook
+    │   ├── covers.js      ← GENERATED book.id → /covers/*.jpg map (scripts/fetch-covers.mjs)
     │   └── releases.js
     └── lib/
         ├── supabase.js    ← createClient, signInWithGoogle, signOut
@@ -262,9 +263,33 @@ One-time transition note: clients still controlled by the old `autoUpdate` worke
 
 A plain click/tap on the **text column** (the side margins are page-turn strips, so only a dead-centre click reaches the iframe) toggles the header + footer via `rend.on("click", toggleUI)`. Visibility is driven by `uiVisible = !settings.paginate || showUI` — scroll mode always shows it; paginated mode lets `showUI` drive it on **both touch and desktop**. `showUI` initialises to `!matchMedia("(pointer:coarse)")` so touch starts immersive (hidden, revealed by tap/swipe) and **desktop starts visible but can be toggled with a click** (no 4s auto-hide on desktop — only touch arms the timer). The header carries `data-reader-chrome="header"` purely as an E2E hook (its `opacity` flips 1↔0; `toBeVisible` can't see opacity).
 
+### EpubReader Settings Sheet Placement (`SettingsPanel`)
+
+The settings sheet is placed by **orientation**, not width, because orientation is what says which axis has room going spare. `useSettingsPlacement()` resolves one of three shapes from `matchMedia`:
+
+| Viewport | Placement | Why |
+|---|---|---|
+| Landscape ≥ `SETTINGS_SIDE_MIN` (700) | right-hand drawer, full height, `min(430px, 55%)` | width to spare; one column of the spread stays readable for live preview, and full height means nothing scrolls |
+| Portrait ≥ `SETTINGS_ROOMY_MIN` (700) | bottom sheet, centred, `min(640px, 100% - 36px)` | height to spare, but rows must not stretch edge to edge |
+| Under 700px | full-bleed bottom sheet (+ drag handle) | the original shape, correct on a portrait phone |
+
+Why not a width threshold alone: it got the **landscape phone** badly wrong (~390px tall, so a 60vh bottom sheet is barely 230px of panel), and full-bleed on a desktop put each row's label and its chips at opposite ends of the viewport, with ~570px of stacked height burying the text you opened the panel to adjust.
+
+The drawer is anchored **right, never left**, and never adaptively: the ⚙ that opens it sits in the top-right corner, so it appears beside the control that summoned it. Its 430px is what the widest row (font size — label plus six chips) needs to stay on one line; below that the chips wrap and the label centres awkwardly against two rows.
+
+⚠️ Both centred shapes centre with `margin: 0 auto`, **not** `translateX(-50%)`: the entry animations (`rdrUp`, `rdrSide`) animate `transform`, so a translate-based centring is dropped for as long as the animation runs — the card visibly hangs off the right edge mid-open. The drawer uses its own `rdrSide` keyframe (in from the right); reusing `rdrUp` makes a side panel slide up from below.
+
 ### EpubReader Two-Page Spread Detection
 
-`spread: "auto"` (epub.js) plus `minSpreadWidth: MIN_SPREAD_WIDTH` (820, a module constant shared with the reader) is what actually decides whether epub.js renders one page or two side by side — **not orientation**. The decorative "open book" spine + fanned page-edges (`isWide`) used to be driven by a bare `window.innerWidth > window.innerHeight` landscape guess, which disagreed with epub.js whenever a landscape phone's width fell under 820: the artwork showed a two-page book while epub.js silently rendered a single column, so text ran straight through the decorative spine crease instead of splitting. `isWide` is now derived from the same measurement basis as the rest of the reader's resize handling — the existing container `ResizeObserver` (already used to call `rend.resize()`) also sets `isWide = el.clientWidth >= MIN_SPREAD_WIDTH` on every observed resize, so the decoration can never drift from what epub.js is actually doing, including on rotation. The spine element carries `data-reader-spine="1"` as an E2E hook.
+`spread: "auto"` (epub.js) plus `minSpreadWidth: MIN_SPREAD_WIDTH` (820, a module constant shared with the reader) is what actually decides whether epub.js renders one page or two side by side — **not orientation**. The decorative "open book" spine + fanned page-edges (`isWide`) must show exactly when epub.js really produced two columns, and the only reliable way to know that is to **ask epub.js**: it emits a `layout` event carrying the layout props, including the `divisor` it settled on (2 = spread, 1 = single column), so `EpubReader` does `rend.on("layout", props => setIsWide(props?.divisor > 1))`. `rend.resize()` makes it re-emit, so rotation and fullscreen are covered for free. The spine element carries `data-reader-spine="1"` as an E2E hook.
+
+⚠️ **Never re-derive the spread decision from a measurement** — this has now broken twice, each time because a second source of truth drifted from epub.js:
+1. First from a bare `window.innerWidth > window.innerHeight` landscape guess, which called a landscape phone under 820 "wide".
+2. Then from `container.clientWidth >= MIN_SPREAD_WIDTH`, which looks equivalent to epub.js's own check and isn't: `clientWidth` counts the reader's own horizontal padding (the hardcover frame + side clamp), while epub.js measures the stage *inside* it — about 50px narrower. Between roughly 820 and 870px of viewport the container cleared the threshold while epub.js stayed under it. Measured at 834×1112: spine drawn, `columnWidth` 784px against a body width of 784px — one column, with the text running straight through the decorative crease.
+
+Both failures share one symptom (text through the spine) and one cause (two answers to one question). The `layout` event removes the second answer. Its failure mode is also the safe one: if the event never fired, `isWide` stays `false` — decoration lost, never a crease drawn through text.
+
+The E2E test for this asserts **agreement**, not a breakpoint: the old spec checked either side of 820 and so stepped straight over the band where the two disagreed. `reader-controls.spec.js` now compares `data-reader-spine` against the real column count (`bodyWidth / columnWidth` inside the chapter iframe) at 834×1112, 1440×900 and 860×1180.
 
 **Two-page is a tablet/desktop default, not a universal one.** A phone is too narrow to spread, so epub.js quietly rendered ONE column while the setting still read "Two page" (and sideways, the columns that did fit were a few words wide). `lib/readerSettings.js` derives the first-run default from the device: a coarse pointer with a screen **short side** under `PHONE_MAX_SHORT_SIDE` (520, the same threshold `index.html` uses for tablet zoom) starts on single page. The short side is what matters — nearly every modern phone's *landscape* width clears 820, so a width test would call them all tablets. Saved preferences are merged **on top** of the derived default, so this can never overwrite a choice the reader already made, and the Single/Two-page chips stay available either way.
 
@@ -325,6 +350,36 @@ export const AOS = {
 };
 ```
 
+## Book Covers (self-hosted)
+
+Covers are **self-hosted** under `public/covers/<book.id>.<ext>` and mapped by `src/data/covers.js` (`COVERS`, generated — do not hand-edit). When an id is present there, `CoverImage` uses it directly; that path is correct, offline-cacheable, and never hits a runtime lookup.
+
+The runtime fallback it replaced was the original wrong-cover bug: Open Library / Google Books lookups **by title** routinely matched a different book (False Gods showed "The Enemy Within"; The Magos showed a climate-change textbook).
+
+`scripts/fetch-covers.mjs` resolves covers from sources keyed on stable identifiers, in order — first hit wins:
+
+1. Google Books by **ISBN** — exact
+2. Open Library by **ISBN**
+3. The book's own Fandom wiki page (exact title match, guarded)
+4. Constrained Fandom search (same guard)
+
+```bash
+node scripts/fetch-covers.mjs                     # all, skipping already-downloaded
+node scripts/fetch-covers.mjs --force             # re-fetch everything
+node scripts/fetch-covers.mjs --only 21,42,aos45  # just these ids
+```
+
+`covers-report.json` is written each run (ok / missed / errors) and is **not committed**.
+
+**Gotchas, all learned the hard way:**
+
+- ⚠️ **A book with no `isbn` field silently skips both exact strategies.** `fromGoogleIsbn`/`fromOpenLibraryIsbn` `return null` immediately, so the book falls straight through to the wiki strategies — the ones that can mismatch. When a cover comes out wrong, check the catalogue entry has an ISBN *first*.
+- ⚠️ **Fandom's `pageimages` API often returns the wrong image for the right page.** It picks one image off the article, which on a book page is frequently a neighbouring cover from the same series (Shadows of Treachery → the *Fear to Tread* cover; Magnus the Red → the *Leman Russ* cover) and on a faction page can be a video thumbnail. **Verify by checksum**: identical file sizes across two ids means the wiki served one image for both. Recover the right file with `action=query&prop=images` (the page's full image list) and pick by filename.
+- Wiki titles differ from the catalogue in small ways that defeat the title match — e.g. the wiki has "Garro: Knight of **Grey**", the catalogue "Knight of **the** Grey".
+- `titleMatches(..., strict)` requires a real majority overlap for narrative types, because "Codex: X" / "Battletome: X" / "Legends of the Age of Sigmar: X" embed faction or place names: a bare `Mars` page once matched *Priests*, *Lords* **and** *Gods of Mars*, giving all three the identical cover. Codex/Battletome are deliberately exempt — faction artwork is an accepted stand-in there (237, aosbt19 use one).
+- **Open Library's cover CDN 302s to `archive.org`**, which sandboxed sessions typically cannot reach. Its cover-by-**id** route (`/b/id/<cover_i>-L.jpg`) sometimes serves bytes directly where the ISBN route redirects — worth trying before giving up (that is how 174 was resolved).
+- Always confirm a downloaded file is a real image (magic bytes + size) and **look at it** before committing. Error pages and "image not available" placeholders download with a 200.
+
 ## Git Workflow
 
 - **Working branch**: `claude/wizardly-fermat-q790e`
@@ -343,7 +398,7 @@ git push -u origin claude/wizardly-fermat-q790e
 # merge via mcp__github__update_pull_request (draft:false) + mcp__github__merge_pull_request
 ```
 
-## Changes Made in This Project (PRs #83–#99)
+## Changes Made in This Project (PRs #83–#435)
 
 | PR | What |
 |----|------|
@@ -372,6 +427,8 @@ git push -u origin claude/wizardly-fermat-q790e
 | #380 | QA: 35 unit tests for `api/paint-advisor.js` (method guard, env vars, auth, rate limit, SSRF guard, MIME guard, 4-image cap, Anthropic errors, happy paths, usage increment) |
 | #381 | fix(reader): uniform margins — `body{padding:0!important}` resets per-chapter EPUB CSS; symmetric top/bottom container padding (`clamp(30px,6vh,56px)` both sides) |
 | #382 | fix(reader): resume at last-read position — flush CFI to localStorage on close (was lost if reader closed within 1500 ms debounce); retry `displayCfi` after `book.ready` in paginated mode; E2E test for close-then-reopen resume flow; `aria-label` on back button |
+| #433–#434 | fix(covers): the 15 books showing another book's cover, re-resolved and each image verified visually; ISBNs recorded for the 6 that had none (the reason the exact strategies were being skipped). See "Book Covers (self-hosted)" |
+| #435 | fix(reader): settings sheet placed by orientation (landscape → right drawer, portrait → bottom sheet); two-page spine now taken from epub.js's `layout` divisor instead of a container measurement, so it can't draw a crease through single-column text |
 
 ### Offline Reading (key files)
 
@@ -452,7 +509,7 @@ CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + bu
 
 **Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
 
-**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory + shared BookDetail/reader path) · `library` (catalogue → detail → open reader, auto-mark-read from the detail path, close returns to detail) · `reading-state` (derived read/reading state: finished-but-unmarked, stale progress, manual override, PDF 0–100 rescale) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections) · `mobile` (**mobile-chromium project only**: single-page default on a phone, switching to two-page persists, reader starts immersive, no section scrolls sideways).
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width, spine agrees with the real column count at every width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory + shared BookDetail/reader path) · `library` (catalogue → detail → open reader, auto-mark-read from the detail path, close returns to detail) · `reading-state` (derived read/reading state: finished-but-unmarked, stale progress, manual override, PDF 0–100 rescale) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections) · `mobile` (**mobile-chromium project only**: single-page default on a phone, switching to two-page persists, reader starts immersive, no section scrolls sideways).
 
 **Gotchas**
 - Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.
