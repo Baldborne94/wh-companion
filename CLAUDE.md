@@ -158,7 +158,11 @@ const EpubReader = lazy(() => import("./components/EpubReader"));
 const PdfReader  = lazy(() => import("./components/PdfReader"));
 ```
 
-Reader is opened via `appReader` state: `{ url, book, fileType, progress, chapterIndex, pageIndex }`.
+Reader is opened via `appReader` state: `{ book, arrayBuffer, fileType, progress, chapterIndex, pageIndex, fromDetail }`.
+
+**App is the ONLY reader mount point.** The library sections (both universes) used to render their own `<EpubReader>`/`<PdfReader>` — those local mounts silently missed `onFinish` (auto-mark-read), the music header controls, and (AoS) the offline `resolveBookUrl` bytes path. Detail pages now hand their payload up via the sections' `onOpenReader` prop → `App.openReaderFromLibrary` sets `appReader` with `fromDetail: true`, and `closeReader` routes a `fromDetail` close back to that book's detail page (via the existing `pendingDetailBook` deep-link). Never mount a reader anywhere else.
+
+**`BookDetail` is shared by both universes.** AoS passes `universe="aos"` (switches the palette to `AOS`) and `accent={spineColor(book)}`; the metadata grid renders only the fields the book has (40K: type/era/faction · AoS: type/series). `AoSApp.jsx` no longer has its own detail component, reader mounts, or status-LS helpers (they were byte-for-byte copies of `bookStatus.js`). Unifying gave AoS: offline reading cache, ratings + personal notes, upload error tracking, and auto-mark-read.
 
 ## Key Components
 
@@ -410,7 +414,7 @@ CI (`.github/workflows/ci.yml`) runs two parallel jobs on every PR: **`test + bu
 
 **Fixtures** are generated, committed, and regenerable: `scripts/make-test-epub.mjs` → `e2e/fixtures/test-book.epub` (2 chapters, known phrases); `scripts/make-test-pdf.mjs` → `e2e/fixtures/test-book.pdf` (2 pages, computed xref offsets).
 
-**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory) · `library` (catalogue → detail → open reader) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
+**Specs**: `login` (pre-auth landing + EN/IT) · `app-shell` (auth → universe select → nav) · `reader` (open EPUB, render chapter) · `reader-interactions` (bookmark + TOC) · `reader-controls` (settings font-size/theme, in-book search → jump, selection toolbar anchoring, desktop chrome toggle, night-mode warm filter, two-page spine tracks actual epub.js spread width) · `reader-pdf` (open PDF, page counter) · `aos` (AoS universe + Path to Glory + shared BookDetail/reader path) · `library` (catalogue → detail → open reader, auto-mark-read from the detail path, close returns to detail) · `stats` (Deeds & Honour modal: tabs + close) · `backup` (export download + import validation/confirm) · `painting` (gallery/army/collection tabs + AI Color Advisor) · `music` (paste YouTube link → play + header mini player follows across sections).
 
 **Gotchas**
 - Assert reader content (chapter text / `1 / 2` page counter), **not** the book title — the shelf/catalogue cover renders a text fallback with the same title, so a title locator collides under load.
