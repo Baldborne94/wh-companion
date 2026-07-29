@@ -6,6 +6,7 @@ import { setErrorUser, captureError } from "./lib/errorTracking";
 import { useLang } from "./lib/i18n.jsx";
 import { useMusicPlayer } from "./lib/useMusicPlayer";
 import { useBookStatuses } from "./lib/useBookStatuses";
+import { loadBookProgress } from "./lib/readingState";
 import { C } from "./data/constants";
 import { BOOKS } from "./data/books";
 import MusicPlayer from "./components/MusicPlayer";
@@ -69,7 +70,7 @@ export default function App(){
   },[]);
 
   const { musicRef, nowPlaying, setNowPlaying, musicPaused, setMusicPaused, toggleMusicPause } = useMusicPlayer();
-  const { statuses, aosStatuses, updateStatus, updateAoSStatus, unlockedIds, setUnlockedIds, pendingAchievements, setPendingAchievements } = useBookStatuses({ userId: user?.id });
+  const { statuses, aosStatuses, refreshProgress, updateStatus, updateAoSStatus, unlockedIds, setUnlockedIds, pendingAchievements, setPendingAchievements } = useBookStatuses({ userId: user?.id });
 
   const [showStats,  setShowStats]  = useState(false);
   const [showBackup, setShowBackup] = useState(false);
@@ -158,25 +159,29 @@ export default function App(){
       }
       return result.error;
     }
-    let progress=0,chapterIndex=0,pageIndex=0;
-    try{
-      const p=JSON.parse(localStorage.getItem(`wh40k_prog_${uid}_${book.id}`)||'null');
-      if(p){ progress=p.progress_pct||0; chapterIndex=p.chapter_index||0; pageIndex=p.page_index||0; }
-    }catch{}
-    setAppReader({book, arrayBuffer:result.arrayBuffer, fileType:result.meta.file_type||'epub', progress, chapterIndex, pageIndex});
+    const p = await loadBookProgress({ uid, bookId: book.id, sb });
+    setAppReader({
+      book, arrayBuffer:result.arrayBuffer, fileType:result.meta.file_type||'epub',
+      progress:p?.pct||0, chapterIndex:p?.chapterIndex||0, pageIndex:p?.pageIndex||0,
+    });
     return true;
   },[user?.id]);
 
   const closeReader=useCallback(()=>{
     setAppReader(r=>{ if(r?.fromDetail&&r.book) openBookDetail(r.book); return null; });
-  },[openBookDetail]);
+    // The reader just flushed its position — re-derive statuses off it so the
+    // shelf/Home/Crusade all agree about what is still "reading".
+    refreshProgress();
+  },[openBookDetail,refreshProgress]);
 
   // Reaching the last page of a book auto-marks it "read" (shelf, stats and
   // achievements all key off status). Idempotent — skips if already read.
   const markBookFinished=useCallback((book)=>{
     if(!book) return;
     const isAos=universe==='aos';
-    const cur=(isAos?aosStatuses:statuses)[book.id]?.status;
+    // Compare against the *manual* status: a book derived read from progress
+    // alone still needs the explicit row written so it survives a cache wipe.
+    const cur=(isAos?aosStatuses:statuses)[book.id]?.manual;
     if(cur==='read') return;
     (isAos?updateAoSStatus:updateStatus)(book.id,'read');
   },[universe,statuses,aosStatuses,updateStatus,updateAoSStatus]);

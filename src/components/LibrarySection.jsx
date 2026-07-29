@@ -57,7 +57,6 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, on
   const [detail,      setDetail]      = useState(null);
   const [shelfBooks,  setShelfBooks]  = useState([]);
   const [shelfLoading,setShelfLoading]= useState(false);
-  const [readingProgress, setReadingProgress] = useState({});
   const [cachedIds, setCachedIds] = useState(() => new Set());
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef(null);
@@ -85,18 +84,6 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, on
     obs.observe(el);
     return () => obs.disconnect();
   });
-
-  useEffect(() => {
-    if (!user?.id || !navigator.onLine) return;
-    supabase.from("reading_progress").select("book_id,progress_pct").eq("user_id", user.id)
-      .then(({ data }) => {
-        if (!data?.length) return;
-        const map = {};
-        data.forEach(r => { if (r.book_id && r.progress_pct != null) map[String(r.book_id)] = r.progress_pct; });
-        setReadingProgress(map);
-      })
-      .catch(() => {});
-  }, [user?.id]);
 
   // Pre-load shelf from localStorage cache on mount
   useEffect(() => {
@@ -463,9 +450,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, on
                   const bst = statuses[book.id]?.status || 'none';
                   const bstCfg = STATUS_CFG[bst];
                   const borderColor = bst !== 'none' ? bstCfg.color : fc2;
-                  const pct = readingProgress[String(book.id)] || 0;
                   // A read book is complete — never show the blue "still reading" bar/%.
-                  const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
+                  const pctPct = Math.round((statuses[book.id]?.pct || 0) * 100);
                   return (
                     <div key={book.id} onClick={() => setDetail(book)}
                       style={{ background: `linear-gradient(135deg,${fc2}18,${P.card})`, border: `1px solid ${bst !== 'none' ? bstCfg.color + "44" : fc2 + "44"}`, borderLeft: `3px solid ${borderColor}`, borderRadius: 8, padding: "10px", cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start", position: "relative", overflow: "hidden", transition: "transform 0.18s ease, box-shadow 0.18s ease" }}
@@ -507,9 +493,8 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, on
                   const fc2 = accentOf(book);
                   const bst = statuses[book.id]?.status || 'none';
                   const bstCfg = STATUS_CFG[bst];
-                  const pct = readingProgress[String(book.id)] || 0;
                   // A read book is complete — never show the blue "still reading" bar/%.
-                  const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
+                  const pctPct = Math.round((statuses[book.id]?.pct || 0) * 100);
                   return (
                     <div key={book.id} onClick={() => setDetail(book)}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${P.border}44`, cursor: "pointer", position: "relative" }}>
@@ -557,8 +542,7 @@ export default function LibrarySection({ user, statuses = {}, onStatusChange, on
                             const sc = accentOf(book);
                             const bst = statuses[book.id]?.status || 'none';
                             const bstCfg = STATUS_CFG[bst];
-                            const pct = readingProgress[String(book.id)] || 0;
-                            const pctPct = bst === 'read' ? 100 : Math.round(pct * 100);
+                            const pctPct = Math.round((statuses[book.id]?.pct || 0) * 100);
                             return (
                               <div key={book.id} onClick={() => setDetail(book)}
                                 title={`${book.title}${book.num > 0 ? ' #' + book.num : ''}${pctPct > 0 ? ' — ' + pctPct + '%' : ''}`}

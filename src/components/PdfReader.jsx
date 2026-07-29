@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { C, THEMES } from "../data/constants";
 import { useLang } from "../lib/i18n.jsx";
 import { WARM_TINT, loadWarmFilter } from "../lib/nightMode";
+import { readProgressLS, writeProgressLS } from "../lib/readingState";
 
 const SB_URL = import.meta.env.VITE_SUPABASE_URL;
 const SB_KEY  = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -27,8 +28,9 @@ function getPdfJs() {
 async function saveProgress(userId, bookId, page, total) {
   if (!userId || !bookId) return;
   try {
-    const pct = total > 1 ? Math.round(((page - 1) / (total - 1)) * 100) : 100;
-    localStorage.setItem(`wh40k_prog_${userId}_${bookId}`, JSON.stringify({ page_index: page, progress_pct: pct }));
+    // Canonical 0–1 fraction — the same scale EpubReader writes to this column.
+    const pct = total > 1 ? (page - 1) / (total - 1) : 1;
+    writeProgressLS(userId, bookId, { pct, pageIndex: page });
     const { data: { session } } = await supabase.auth.getSession();
     const tok = session?.access_token ?? SB_KEY;
     await fetch(`${SB_URL}/rest/v1/reading_progress?on_conflict=user_id,book_id`, {
@@ -186,10 +188,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
     };
   }, []);
 
-  const initPage = (() => {
-    try { return Math.max(1, JSON.parse(localStorage.getItem(`wh40k_prog_${userId}_${bookId}`) || "{}").page_index || 1); }
-    catch { return 1; }
-  })();
+  const initPage = Math.max(1, readProgressLS(userId, bookId)?.pageIndex || 1);
 
   // ── state ─────────────────────────────────────────────────────────────────
   const [doc,       setDoc]      = useState(null);
@@ -294,8 +293,7 @@ export default function PdfReader({ arrayBuffer, url, title, bookId, userId, onC
   // On new device (no localStorage), restore position from DB
   useEffect(() => {
     if (!userId || !bookId) return;
-    const key = `wh40k_prog_${userId}_${bookId}`;
-    if (localStorage.getItem(key)) return;
+    if (readProgressLS(userId, bookId)) return;
     loadPdfProgressFromDB(userId, bookId).then(pg => {
       if (!pg || pg <= 1) return;
       if (total > 0) goTo(pg);
