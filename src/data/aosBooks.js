@@ -14,6 +14,27 @@ export const AOS = {
   red:     "#cc4444",
 };
 
+
+// Series spine colours — the AoS accent system (40K uses faction colours; AoS
+// books colour by series). Shared by Home/Library/BookDetail via spineColor().
+export const SC = {
+  "The Realmgate Wars":             "#5a8fc5",
+  "Hallowed Knights":               "#4080a0",
+  "Eight Lamentations":             "#7a5aaa",
+  "Gotrek and Felix":               "#a07838",
+  "Hamilcar":                       "#C9A227",
+  "Callis and Toll":                "#607080",
+  "Blacktalon":                     "#3a8a6a",
+  "Drekki Flynt":                   "#5a708a",
+  "Neferata":                       "#8a3070",
+  "Warcry":                         "#8B2020",
+  "Warhammer Underworlds":          "#4a4a8a",
+  "BL Novella Series":              "#6a5040",
+  "Warhammer Horror":               "#2a1040",
+  "Battletome":                     "#2a3850",
+};
+export const spineColor = (b) => SC[b.series] || "#4a6a8a";
+
 export const AOS_BOOKS = [
   // ── THE REALMGATE WARS ─────────────────────────────────────────────────────
   { id:"aos1",   title:"The Gates of Azyr",                        author:"Chris Wraight",                                        series:"The Realmgate Wars", num:1,  type:"Novella",    desc:"The opening salvo of the Age of Sigmar — a Stormcast Eternals strike force tears through a realmgate into a world conquered by Chaos, and the war for the Mortal Realms begins." },

@@ -1,5 +1,6 @@
 import { HH_FULL, HH_MIN, findHHBook } from '../data/hhGuide';
 import { BOOKS } from '../data/books';
+import { AOS_BOOKS } from "../data/aosBooks";
 
 export function getHHNextFromGuide(guide, statuses, readShorts = new Set()) {
   const isUnread = id => { const s = statuses[id]?.status || 'none'; return s === 'none' || s === 'want'; };
@@ -112,4 +113,31 @@ export function getAllNextSuggestions(statuses, hhMode = 'full', readShorts = ne
 // Kept for ReadingSection (single suggestion)
 export function getNextSuggestion(statuses, hhMode = 'full', readShorts = new Set()) {
   return getAllNextSuggestions(statuses, hhMode, readShorts)[0] || null;
+}
+
+// AoS "next up" suggestions — the 40K equivalent (getAllNextSuggestions, above)
+// threads Horus Heresy modes and short stories; AoS sagas are plain series, so
+// this stays simple: for every saga the user has touched, surface the next
+// unread numbered entry, active reads first.
+export function getAoSAllNextSuggestions(statuses) {
+  const seriesNames = [...new Set(AOS_BOOKS.filter(b => b.series && b.num > 0).map(b => b.series))];
+  const candidates = seriesNames.map(s => {
+    const books = AOS_BOOKS.filter(b => b.series === s && b.num > 0).sort((a,b) => a.num - b.num);
+    const isReading = books.some(b => statuses[b.id]?.status === 'reading');
+    const readCount = books.filter(b => statuses[b.id]?.status === 'read').length;
+    if (!isReading && readCount === 0) return null;
+    const next = books.find(b => { const st = statuses[b.id]?.status; return !st || st === 'none' || st === 'want'; });
+    if (!next) return null;
+    return { name:s, books, isReading, readCount, next };
+  }).filter(Boolean);
+
+  if (!candidates.length) return [];
+
+  candidates.sort((a,b) => {
+    if (a.isReading && !b.isReading) return -1;
+    if (b.isReading && !a.isReading) return 1;
+    return b.readCount - a.readCount;
+  });
+
+  return candidates.map(c => ({ book:c.next, seriesName:c.name, readCount:c.readCount, total:c.books.length }));
 }
