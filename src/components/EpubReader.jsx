@@ -1134,6 +1134,20 @@ export default function EpubReader({
         });
         rendRef.current = rend;
 
+        // The decorative spine/page-edges must show exactly when epub.js actually
+        // laid out two columns — so take the answer from epub.js instead of
+        // recomputing it. Its `layout` event carries the layout props, including
+        // the divisor it settled on (2 = spread, 1 = single column).
+        //
+        // Re-deriving it from `container.clientWidth >= MIN_SPREAD_WIDTH` looked
+        // equivalent and wasn't: clientWidth includes the reader's own horizontal
+        // padding (the hardcover frame + side clamp), while epub.js measures the
+        // stage inside it — about 50px narrower. Between ~820 and ~870px of
+        // viewport the container cleared the threshold and the spine appeared
+        // while epub.js, under it, rendered ONE column, so the text ran straight
+        // through the decorative crease (visible on a portrait tablet at 834px).
+        rend.on("layout", props => setIsWide(props?.divisor > 1));
+
         // Execute any navigation queued before the renderer was ready
         if (pendingNavRef.current) {
           const queuedCfi = pendingNavRef.current;
@@ -1467,9 +1481,10 @@ export default function EpubReader({
   // body-zoom toggle when the reader opens, or before the first render) can throw
   // deep inside its async layout and break page turning — so we gate it carefully.
   //
-  // isWide (the two-page decorative spine/edges) is updated on every observed
-  // resize too, straight from the measured width — not debounced, since it's a
-  // cheap boolean flip and must never lag behind epub.js's own spread decision.
+  // isWide (the two-page decorative spine/edges) is NOT set from the measurement
+  // here — it follows epub.js's `layout` event, which `rend.resize()` below makes
+  // it re-emit. That keeps the decoration and the real column count from ever
+  // disagreeing; see the listener where the rendition is created.
   //
   // syncLayoutRef exposes this same "re-measure + resize + redisplay" routine so
   // the fullscreenchange handler below can force it directly — some mobile
@@ -1484,7 +1499,6 @@ export default function EpubReader({
     const sync = () => {
       const el = containerRef.current;
       const rend = rendRef.current;
-      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       if (!el || !rend || loading) return;
       if (el.clientWidth < 2 || el.clientHeight < 2) return;
       try {
@@ -1495,8 +1509,6 @@ export default function EpubReader({
     };
     syncLayoutRef.current = sync;
     const ro = new ResizeObserver(() => {
-      const el = containerRef.current;
-      if (el) setIsWide(el.clientWidth >= MIN_SPREAD_WIDTH);
       clearTimeout(timer);
       timer = setTimeout(() => {
         sync();

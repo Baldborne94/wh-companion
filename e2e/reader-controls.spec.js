@@ -43,6 +43,36 @@ test.describe('Reader controls', () => {
     await expect(page.locator('[data-reader-spine="1"]')).toHaveCount(0);
   });
 
+  test('the spine matches the real column count at every width', async ({ page }) => {
+    // The width band this pins down was genuinely broken: measuring the container
+    // (`clientWidth >= MIN_SPREAD_WIDTH`) counts the reader's own horizontal
+    // padding, while epub.js measures the stage inside it — ~50px narrower. From
+    // ~820 to ~870px the container cleared the threshold and drew the spine while
+    // epub.js rendered ONE column, so text ran through the decorative crease.
+    // isWide now comes from epub.js's own `layout` event divisor, so the two can't
+    // drift; this asserts agreement rather than any particular breakpoint.
+    const state = () => page.evaluate(() => {
+      const f = document.querySelector('iframe');
+      const body = f?.contentDocument?.body;
+      const colW = body ? parseFloat(getComputedStyle(body).columnWidth) : 0;
+      const bodyW = body?.getBoundingClientRect().width ?? 0;
+      return {
+        spine: !!document.querySelector('[data-reader-spine="1"]'),
+        twoColumns: !!(colW && bodyW) && Math.round(bodyW / colW) >= 2,
+      };
+    });
+
+    await page.setViewportSize({ width: 834, height: 1112 }); // portrait tablet
+    await openReader(page);
+    await expect.poll(state).toEqual({ spine: false, twoColumns: false });
+
+    await page.setViewportSize({ width: 1440, height: 900 }); // desktop landscape
+    await expect.poll(state).toEqual({ spine: true, twoColumns: true });
+
+    await page.setViewportSize({ width: 860, height: 1180 }); // still under the stage threshold
+    await expect.poll(state).toEqual({ spine: false, twoColumns: false });
+  });
+
   test('fullscreen toggles and the layout re-syncs when it changes the viewport', async ({ page }) => {
     // Real column width inside the chapter iframe — a more direct signal than the
     // decorative spine that epub.js itself actually reflowed into two columns
