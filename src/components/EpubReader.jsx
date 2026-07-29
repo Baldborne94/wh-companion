@@ -178,6 +178,7 @@ function useReaderStyles() {
     el.textContent = `
       @keyframes rdrSpin { to { transform:rotate(360deg) } }
       @keyframes rdrUp   { from { transform:translateY(24px);opacity:0 } to { transform:translateY(0);opacity:1 } }
+      @keyframes rdrSide { from { transform:translateX(28px);opacity:0 } to { transform:translateX(0);opacity:1 } }
       @keyframes rdrIn   { from { opacity:0 } to { opacity:1 } }
     `;
     document.head.appendChild(el);
@@ -400,34 +401,48 @@ function DictionaryPanel({ word, onClose, theme }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings sheet — a bottom sheet on a phone, a floating card on a wide screen
+// Settings sheet — placed on whichever axis the screen has room to spare
 // ─────────────────────────────────────────────────────────────────────────────
-// Full-bleed is the right shape only while the screen is narrow. Stretched across
-// a desktop it puts each row's label and its chips at opposite ends of the screen,
-// and stacking every row in one column makes the sheet tall enough to bury the
-// text whose appearance you are adjusting. Past this width the sheet becomes a
-// centred card with the rows in two columns instead.
-const SETTINGS_WIDE_MIN = 900;
+// Orientation, not width, decides the shape: it says which axis has space going
+// spare. Landscape has width to give, so the sheet becomes a right-hand drawer —
+// it costs one column of the spread and keeps the full height, so nothing has to
+// scroll. Portrait has height to give, so it stays a bottom sheet.
+//
+// A width test alone got the landscape phone badly wrong: ~390px tall, a 60vh
+// bottom sheet is barely 230px of panel. The same test also stretched a desktop
+// sheet edge to edge, leaving each row's label and its chips a screen apart.
+//
+// The drawer is anchored right, never left, because the ⚙ that opens it sits in
+// the top-right corner: the panel appears next to the control that summoned it,
+// and a side that moved on its own would just make it unpredictable.
+const SETTINGS_SIDE_MIN = 700;   // below this a drawer would leave no page visible
+const SETTINGS_ROOMY_MIN = 700;  // portrait past this caps the sheet width
 
-function useWideSettings() {
-  const query = `(min-width:${SETTINGS_WIDE_MIN}px)`;
-  const [wide, setWide] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches
-  );
+function useSettingsPlacement() {
+  const sideQ  = `(orientation:landscape) and (min-width:${SETTINGS_SIDE_MIN}px)`;
+  const roomyQ = `(min-width:${SETTINGS_ROOMY_MIN}px)`;
+  const read = () => {
+    if (typeof window === "undefined") return "bottom";
+    if (window.matchMedia(sideQ).matches)  return "side";
+    if (window.matchMedia(roomyQ).matches) return "bottomWide";
+    return "bottom";
+  };
+  const [placement, setPlacement] = useState(read);
   useEffect(() => {
-    const mq = window.matchMedia(query);
-    const onChange = e => setWide(e.matches);
-    setWide(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [query]);
-  return wide;
+    const mqs = [window.matchMedia(sideQ), window.matchMedia(roomyQ)];
+    const onChange = () => setPlacement(read());
+    onChange();
+    mqs.forEach(mq => mq.addEventListener("change", onChange));
+    return () => mqs.forEach(mq => mq.removeEventListener("change", onChange));
+  }, [sideQ, roomyQ]);
+  return placement;
 }
 
 function SettingsPanel({ settings, onChange, onClose }) {
   const { t } = useLang();
   const T = THEMES[settings.themeId] ?? THEMES.dark;
-  const wide = useWideSettings();
+  const placement = useSettingsPlacement();
+  const side = placement === "side";
 
   const Chip = ({ label, active, onClick }) => (
     <button onClick={onClick} aria-pressed={active}
@@ -451,25 +466,32 @@ function SettingsPanel({ settings, onChange, onClose }) {
     </div>
   );
 
-  // Centred with auto margins rather than translateX(-50%): the sheet's entry
-  // animation (rdrUp) animates `transform`, and would drop the centring for the
-  // length of the animation.
-  const shape = wide
-    ? { left:0, right:0, margin:"0 auto", bottom:18,
-        width:"min(880px, calc(100% - 36px))", borderRadius:16,
-        border:`1px solid ${C.gold}55`, padding:"14px 22px 20px",
-        maxHeight:"min(70vh, 540px)" }
-    : { left:0, right:0, borderRadius:"18px 18px 0 0",
-        borderTop:`2px solid ${C.gold}55`, padding:"10px 20px 32px",
-        maxHeight:"60vh" };
+  // Both centred shapes use auto margins rather than translateX(-50%): the entry
+  // animations move `transform`, which would drop the centring while they run.
+  const SHAPES = {
+    // 430px is what the widest row (font size: label + six chips) needs to stay on
+    // one line; the percentage only kicks in on a narrow landscape screen, where
+    // giving the drawer more than half would leave no page to preview against.
+    side: { top:0, right:0, bottom:0, width:"min(430px, 55%)",
+            borderLeft:`2px solid ${C.gold}55`, padding:"14px 22px 24px",
+            animation:"rdrSide .25s ease" },
+    bottomWide: { left:0, right:0, margin:"0 auto", bottom:18,
+                  width:"min(640px, calc(100% - 36px))", borderRadius:16,
+                  border:`1px solid ${C.gold}55`, padding:"14px 22px 20px",
+                  maxHeight:"min(70vh, 560px)", animation:"rdrUp .25s ease" },
+    bottom: { left:0, right:0, bottom:0, borderRadius:"18px 18px 0 0",
+              borderTop:`2px solid ${C.gold}55`, padding:"10px 20px 32px",
+              maxHeight:"60vh", animation:"rdrUp .25s ease" },
+  };
+  const shape = SHAPES[placement] ?? SHAPES.bottom;
 
   return (
     <div onPointerDown={onClose} style={{ position:"fixed", inset:0, zIndex:1100, background:"rgba(0,0,0,0.18)" }}>
       <div onPointerDown={e => e.stopPropagation()}
-        style={{ position:"absolute", bottom:0,
+        style={{ position:"absolute",
                  background:`${T.surface}e6`, backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)",
-                 overflowY:"auto", animation:"rdrUp .25s ease", ...shape }}>
-        {!wide && <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />}
+                 overflowY:"auto", ...shape }}>
+        {placement === "bottom" && <div style={{ width:36, height:4, background:T.border, borderRadius:2, margin:"6px auto 10px" }} />}
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
           <span style={{ fontFamily:"'Cinzel Decorative',serif", fontSize:14, color:T.text, letterSpacing:1 }}>
             {t("reader.readingSettings")}
@@ -481,7 +503,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
 
         <div style={{ fontFamily:"'Cinzel',serif", fontSize:9, color:C.goldDim,
                       letterSpacing:3, textTransform:"uppercase", marginBottom:8 }}>{t("reader.typeface")}</div>
-        <div style={{ display:"grid", gridTemplateColumns:wide?"repeat(4,1fr)":"1fr 1fr", gap:6, marginBottom:wide?10:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:12 }}>
           {FONTS.map((f, i) => (
             <button key={i} onClick={() => onChange("fontIndex", i)}
               style={{ padding:"7px 8px", borderRadius:6, background:"transparent",
@@ -493,7 +515,6 @@ function SettingsPanel({ settings, onChange, onClose }) {
           ))}
         </div>
 
-        <div style={wide ? { display:"grid", gridTemplateColumns:"1fr 1fr", columnGap:30 } : undefined}>
         <Row label={t("reader.fontSize").replace("{n}", settings.fontSize)}>
           {[14,16,18,20,22,24].map(s => (
             <Chip key={s} label={String(s)} active={settings.fontSize===s} onClick={() => onChange("fontSize",s)} />
@@ -541,7 +562,6 @@ function SettingsPanel({ settings, onChange, onClose }) {
           <Chip label={t("reader.on")}  active={settings.warmFilter === true}  onClick={() => onChange("warmFilter", true)} />
           <Chip label={t("reader.off")} active={settings.warmFilter !== true} onClick={() => onChange("warmFilter", false)} />
         </Row>
-        </div>
 
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0 4px" }}>
           <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:T.text,
