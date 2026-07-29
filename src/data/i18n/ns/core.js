@@ -27,6 +27,12 @@ export const core =  {
       releaseReminder: "BL release list not updated in 6 months — ask Claude to update it!",
       releaseOk: "OK",
     },
+    update: {
+      ready: "A new version is ready",
+      apply: "Update",
+      later: "Later",
+      dismiss: "Dismiss update notice",
+    },
     onboarding: {
       skip: "Skip",
       back: "Back",
@@ -136,6 +142,12 @@ export const core =  {
       offline: "Offline — solo dati locali",
       releaseReminder: "Lista uscite BL non aggiornata da 6 mesi — chiedi a Claude di aggiornarla!",
       releaseOk: "OK",
+    },
+    update: {
+      ready: "È pronta una nuova versione",
+      apply: "Aggiorna",
+      later: "Più tardi",
+      dismiss: "Chiudi l'avviso di aggiornamento",
     },
     onboarding: {
       skip: "Salta",

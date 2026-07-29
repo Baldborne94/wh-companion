@@ -17,6 +17,8 @@ import { AOS, AOS_BOOKS } from "./data/aosBooks";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { shouldShowReleaseReminder, dismissReleaseReminder } from "./data/releases";
 import { saveUnlockedIds } from "./lib/achievements";
+import { onUpdateReady, applyUpdate } from "./lib/swUpdate";
+import UpdateToast from "./components/UpdateToast";
 
 const EpubReader        = lazy(() => import("./components/EpubReader"));
 const PdfReader         = lazy(() => import("./components/PdfReader"));
@@ -189,6 +191,24 @@ export default function App(){
   // ── Release reminder ─────────────────────────────────────────────────────
   const [showReleaseReminder, setShowReleaseReminder] = useState(() => shouldShowReleaseReminder());
 
+  // ── App updates ───────────────────────────────────────────────────────────
+  // A waiting service worker is inert until we accept it, so an update can sit
+  // there as long as it needs to. Never interrupt a chapter: while the reader is
+  // open the offer isn't even shown. If the user ignores it, the update is
+  // applied the next time the app goes to the background — a reload nobody is
+  // looking at costs nothing, which is the whole point of not forcing one now.
+  const [updateReady, setUpdateReady] = useState(false);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  useEffect(() => onUpdateReady(setUpdateReady), []);
+  const readerOpenRef = useRef(false);
+  useEffect(() => { readerOpenRef.current = !!appReader; }, [appReader]);
+  useEffect(() => {
+    if (!updateReady) return;
+    const onHide = () => { if (document.visibilityState === 'hidden' && !readerOpenRef.current) applyUpdate(); };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, [updateReady]);
+
   // ── Offline detection ─────────────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   useEffect(() => {
@@ -325,6 +345,11 @@ export default function App(){
             </div>
           )}
         </div>
+        {/* ── APP UPDATE OFFER ── */}
+        {updateReady&&!updateDismissed&&!appReader&&(
+          <UpdateToast palette={universe==='aos'?{...C,...AOS}:C}
+            onApply={()=>applyUpdate()} onDismiss={()=>setUpdateDismissed(true)}/>
+        )}
         {/* ── ACHIEVEMENT POPUP ── */}
         {pendingAchievements.length>0&&(
           <Suspense fallback={null}>

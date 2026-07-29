@@ -34,6 +34,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
     │   ├── StatsModal.jsx / AchievementPopup.jsx / OnboardingModal.jsx
     │   ├── BackupModal.jsx    ← export/import of local user data (JSON) — 💾 header button
     │   ├── LoginPage.jsx      ← Google OAuth landing page
+    │   ├── UpdateToast.jsx    ← "new version ready" offer (never shown while reading)
     │   ├── CoverImage.jsx / ErrorBoundary.jsx / UniverseSelector.jsx
     ├── data/
     │   ├── books.js       ← 230+ WH40K book catalogue
@@ -49,6 +50,7 @@ wh-companion/             ← git root + Vite project (run npm commands here)
         ├── openBook.js    ← resolveBookUrl: download bytes (auth headers) + IndexedDB cache fallback
         ├── ebookCache.js  ← IndexedDB ebook cache (cacheGet/cachePut/cacheListIds) for offline reading
         ├── readingState.js ← derived read/reading state (status ⨯ progress, single source of truth)
+        ├── swUpdate.js    ← service-worker updates (waiting worker + deferred reload)
         ├── bookStatus.js / bookmarkHelpers.js / readerNav.js / readingHelpers.js / achievements.js
 ```
 
@@ -236,6 +238,19 @@ Precedence:
 
 `App.markBookFinished` checks the entry's **`manual`** field, not `status` — a book derived read from progress alone still needs its explicit row written. `closeReader` calls `refreshProgress()` so the shelf/Home/Crusade re-derive off the position the reader just flushed. Achievements watch the derived maps (a book can now reach "read" without anyone pressing anything); the first pass after load reconciles silently so catching up on history doesn't fire a burst of popups.
 
+### App updates (`lib/swUpdate.js` + `UpdateToast`)
+
+The app used to run `registerType: 'autoUpdate'`, which reloads the page the moment a new worker activates — **including mid-chapter**. The position was saved, but the page vanishing under you is a jarring way to ship a fix.
+
+The worker is now built in **`'prompt'` mode**, so a new build installs and *waits*, touching nothing, until `applyUpdate()` posts `SKIP_WAITING`. That is what makes deferring safe: under `autoUpdate` the new worker claims the page and purges the old precache immediately, so a page left running the old bundle can 404 on a lazy chunk it still needs. ⚠️ `workbox.skipWaiting`/`clientsClaim` must stay **false** in `vite.config.js` — setting either puts the update back in charge of when the page reloads, regardless of `registerType`.
+
+`App.jsx` decides when to take it:
+- Reader open → the offer isn't even rendered.
+- Otherwise → `UpdateToast` ("A new version is ready" · Update · ✕), an offer, not a countdown.
+- Ignored → applied automatically when the app next goes to the **background** (`visibilitychange` → hidden, reader closed): a reload nobody is looking at costs nothing, which is the whole point of not forcing one now.
+
+One-time transition note: clients still controlled by the old `autoUpdate` worker never send `SKIP_WAITING`, so the first prompt-mode worker stays in `waiting` until every tab/PWA window of the app is closed — i.e. that one deploy needs a full app restart to land, as per the normal SW lifecycle.
+
 ### Night Mode (warm filter)
 
 `lib/nightMode.js` holds the shared warm-filter tint + a reader for the flag. The toggle lives in the EpubReader settings panel (`warmFilter`, persisted inside the existing `wh40k_reader_v2` blob so there's a single source of truth); `PdfReader` calls `loadWarmFilter()` so the setting applies to PDFs too. The overlay is painted with **`mix-blend-mode: multiply`**, which genuinely attenuates the page's blue channel (red ×1.00, green ×0.78, blue ×0.57) the way f.lux / Night Shift do — the pre-existing brightness veil only *dims*, and dimming can't change colour temperature, which is what actually matters for melatonin. Both overlays carry `data-reader-warm="1"` as an E2E hook and sit below the settings sheet (z 1100) so the preview updates live while the panel stays readable.
@@ -374,7 +389,7 @@ Three distinct tabs (mirrors the 40K Crusade structure):
 ## Known Behaviors & Gotchas
 
 - **PWA cache**: After manifest changes, users must reinstall the PWA (remove from homescreen + re-add) to pick up new orientation settings.
-- **PWA JS updates**: `registerType:'autoUpdate'` reloads the page once a new service worker activates, but the *browser* only checks for a new SW on a fresh top-level navigation (or at most once/24h) — an installed PWA that's just backgrounded/foregrounded, never actually reloaded, can run a stale bundle for a long time even though a fix has been live for a while. `main.jsx` registers manually (`injectRegister: null` in `vite.config.js` + `virtual:pwa-register`) so it can force `registration.update()` on load and every time the tab/app regains focus (`visibilitychange`/`focus`), catching up promptly instead of silently sitting on old JS.
+- **PWA JS updates**: see "App updates" below. The *browser* only checks for a new SW on a fresh top-level navigation (or at most once/24h) — an installed PWA that's just backgrounded/foregrounded, never actually reloaded, can run a stale bundle for a long time even though a fix has been live for a while. `lib/swUpdate.js` registers manually (`injectRegister: null` in `vite.config.js` + `virtual:pwa-register`) so it can force `registration.update()` on load and every time the tab/app regains focus (`visibilitychange`/`focus`), catching up promptly instead of silently sitting on old JS.
 - **Tablet rotation**: Root cause was PWA manifest `portrait-primary` cached from old install + `user-scalable=no`. Both fixed. Body zoom (not html zoom) is essential for Android rotation.
 - **MusicPlayer always mounted**: Never conditionally render MusicPlayer or music stops. It sits at z-index 0 under the content area, becomes z-index 2 only when Music section is active.
 - **Squash merge conflicts**: Every new PR on the same branch after a squash merge will show conflicts. Fix: `git rebase origin/main` (drops already-upstream commits).
