@@ -200,7 +200,6 @@ function buildReaderCss(settings, T, fnt) {
     html, body { background: ${T.bg} !important; color: ${T.text} !important; }
     html body * { color: ${T.text} !important; background-color: transparent !important; }
     body {
-      font-family: ${fnt.value} !important;
       font-size: ${settings.fontSize}px !important;
       line-height: ${settings.lineHeight} !important;
       margin: 0 !important;
@@ -218,6 +217,16 @@ function buildReaderCss(settings, T, fnt) {
     /* Force the chosen line spacing onto text elements — many EPUBs set their own
        line-height on <p>, which overrides an inherited value set only on body. */
     p, li, dd, dt, blockquote { line-height: ${settings.lineHeight} !important; }
+    /* The typeface needs the same treatment, and for the same reason: nearly every
+       real EPUB sets font-family on its own elements, and a declaration matching
+       the element always beats one inherited from body — !important on the ancestor
+       does not help, since !important only settles contests on the same element.
+       Set on the elements themselves (mirroring the colour rule above) so the
+       chosen typeface actually reaches the text. Code keeps its own font:
+       forcing a prose face onto a pre block would destroy its alignment. */
+    body, html body *:not(code):not(pre):not(kbd):not(samp):not(tt) {
+      font-family: ${fnt.value} !important;
+    }
     p:first-child, h1+p, h2+p, h3+p, h4+p, hr+p { text-indent: 0 !important; }
     h1, h2, h3, h4 {
       font-variant: small-caps !important;
