@@ -263,6 +263,16 @@ One-time transition note: clients still controlled by the old `autoUpdate` worke
 
 A plain click/tap on the **text column** (the side margins are page-turn strips, so only a dead-centre click reaches the iframe) toggles the header + footer via `rend.on("click", toggleUI)`. Visibility is driven by `uiVisible = !settings.paginate || showUI` — scroll mode always shows it; paginated mode lets `showUI` drive it on **both touch and desktop**. `showUI` initialises to `!matchMedia("(pointer:coarse)")` so touch starts immersive (hidden, revealed by tap/swipe) and **desktop starts visible but can be toggled with a click** (no 4s auto-hide on desktop — only touch arms the timer). The header carries `data-reader-chrome="header"` purely as an E2E hook (its `opacity` flips 1↔0; `toBeVisible` can't see opacity).
 
+### EpubReader chapter CSS — inheritance loses to the book's own rules
+
+`buildReaderCss()` is injected into each chapter iframe via `Contents.addStylesheetCss(css, 'wh40k-reader')`. ⚠️ **A reader setting applied only to `body` does nothing on a real book.** Nearly every EPUB styles its own `<p>`, and a declaration that matches the element always beats one inherited from an ancestor — `!important` does not save it, because `!important` only settles contests *on the same element*. The fixture EPUB has no CSS of its own, so a body-only rule looks like it works in tests and in E2E while doing nothing on the actual library.
+
+This has bitten twice: first `line-height`, now `font-family` (the typeface chips appeared to do nothing). Both are now set on the elements themselves — `line-height` on an enumerated list, `font-family` via `body, html body *:not(code):not(pre):not(kbd):not(samp):not(tt)`, mirroring the existing broad colour rule. Code elements are excluded on purpose: forcing a prose face onto a `pre` block destroys its alignment.
+
+**When adding a typography setting, set it on the text elements, not on `body`**, and assert the computed style of a real `<p>` — `reader-controls.spec.js` does this for the typeface, including with a book-supplied `p { font-family }` rule injected to prove the cascade holds.
+
+Webfonts are *not* the usual suspect here: `buildReaderCss` prepends a Google Fonts `@import` for the chosen family, and the iframe document does load it (verified with `doc.fonts.check()` inside the frame).
+
 ### EpubReader Settings Sheet Placement (`SettingsPanel`)
 
 The settings sheet is placed by **orientation**, not width, because orientation is what says which axis has room going spare. `useSettingsPlacement()` resolves one of three shapes from `matchMedia`:

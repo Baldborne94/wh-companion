@@ -266,4 +266,35 @@ test.describe('Reader controls', () => {
     await expect(input).toHaveCount(0);
     await expectTextInAnyFrame(page, CH2);
   });
+
+  test('the chosen typeface reaches the paragraphs, even when the book styles its own', async ({ page }) => {
+    // Computed font-family of a real paragraph — the only thing that says whether
+    // the setting actually landed on the text, rather than on <body> alone.
+    const paragraphFont = () => page.evaluate(() => {
+      const p = document.querySelector('iframe')?.contentDocument?.querySelector('p');
+      return p ? getComputedStyle(p).fontFamily : null;
+    });
+
+    await openReader(page);
+    await page.getByRole('button', { name: 'Settings' }).click();
+
+    await page.getByRole('button', { name: 'Lora', exact: true }).click();
+    await expect.poll(paragraphFont).toContain('Lora');
+
+    // Nearly every real EPUB sets font-family on its own elements. A declaration
+    // matching the element beats one inherited from body — !important on the
+    // ancestor does not save it — so a body-only rule left the setting doing
+    // nothing on real books while still "working" on a fixture with no CSS.
+    await page.evaluate(() => {
+      const doc = document.querySelector('iframe').contentDocument;
+      const s = doc.createElement('style');
+      s.textContent = 'p { font-family: "Courier New", monospace; }';
+      doc.head.appendChild(s);
+    });
+    await expect.poll(paragraphFont).toContain('Lora');
+
+    // And switching away still works with that rule in place.
+    await page.getByRole('button', { name: 'Open Sans', exact: true }).click();
+    await expect.poll(paragraphFont).toContain('Open Sans');
+  });
 });
