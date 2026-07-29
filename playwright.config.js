@@ -49,6 +49,23 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         launchOptions: { executablePath },
       },
+      // Phone-shaped assertions belong to the mobile project below; everything
+      // else runs on the desktop viewport.
+      testIgnore: '**/mobile.spec.js',
+    },
+    {
+      // The app is used mostly on a phone, where the layout rules differ enough
+      // to break on their own: touch starts the reader chrome hidden, two-page
+      // is off by default, and anything wider than the viewport shows up as a
+      // horizontally scrolling page. A desktop-only suite can't see any of it.
+      // Scoped to mobile.spec.js so CI stays fast — the rest of the behaviour is
+      // viewport-independent and already covered once.
+      name: 'mobile-chromium',
+      use: {
+        ...devices['Pixel 7'],
+        launchOptions: { executablePath },
+      },
+      testMatch: '**/mobile.spec.js',
     },
   ],
   webServer: {
