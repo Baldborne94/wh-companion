@@ -11,17 +11,25 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate': the new worker stays in `waiting` and does
+      // not claim the page or purge the old precache until we tell it to. That
+      // is what makes deferring the reload safe (see lib/swUpdate.js) — under
+      // autoUpdate the new worker takes over immediately, so a page left
+      // running the old bundle can 404 on a lazy chunk it still needs.
+      registerType: 'prompt',
       // Registered manually in main.jsx (via `virtual:pwa-register`) instead of
-      // auto-injecting, so we can actively poll for updates — see main.jsx.
+      // auto-injecting, so we can actively poll for updates — see lib/swUpdate.js.
       injectRegister: null,
       workbox: {
         // Precache all static assets including JS chunks for full offline support.
         // JS files are content-hashed so cached entries never go stale — new deploys
         // create new URLs, which are fetched fresh on the next online visit.
         globPatterns: ['**/*.{css,html,ico,png,svg,woff2,js}'],
-        skipWaiting: true,
-        clientsClaim: true,
+        // No skipWaiting/clientsClaim: a new worker must WAIT until the app
+        // accepts it (lib/swUpdate.js). Setting either here would put the update
+        // back in charge of when the page reloads, regardless of registerType.
+        skipWaiting: false,
+        clientsClaim: false,
         runtimeCaching: [
           {
             // Self-hosted book covers (/covers/*) — CacheFirst so they persist
