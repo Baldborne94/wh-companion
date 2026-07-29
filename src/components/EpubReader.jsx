@@ -4,6 +4,7 @@ import ePub from "epubjs";
 import { supabase } from "../lib/supabase";
 import { C, THEMES, FONTS } from "../data/constants";
 import { WARM_TINT } from "../lib/nightMode";
+import { MIN_SPREAD_WIDTH, loadReaderSettings, saveReaderSettings } from "../lib/readerSettings";
 import { writeProgressLS } from "../lib/readingState";
 import { LORE_DB, wikiUrl, lexUrl, KW_REGEX } from "../data/lore";
 import { isCfiTarget, displayTarget, targetScrollTop, runScrollNav } from "../lib/readerNav";
@@ -129,15 +130,6 @@ async function deleteHlFromDB(userId, bookId, cfi) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings
 // ─────────────────────────────────────────────────────────────────────────────
-const DEF = { fontIndex:0, fontSize:18, lineHeight:1.8, paginate:true, twoPage:true, themeId:"sepia", margin:1, brightness:100, showLore:true, warmFilter:false };
-
-// Width (px) at which epub.js's spread:"auto" actually renders two columns side
-// by side instead of one. Shared with the resize observer below so the
-// decorative "open book" spine/page-edges only show when epub.js truly split
-// into two pages — a landscape-orientation guess isn't enough: many phones'
-// landscape width falls under this, so epub.js silently renders a single
-// column while a landscape-only check would still draw the two-page artwork.
-const MIN_SPREAD_WIDTH = 820;
 
 // Side-margin presets (index → CSS for the text column's left/right padding).
 // Both the page container and the tap-to-turn strips use the same value so the
@@ -159,11 +151,6 @@ const HL_COLORS = [
   { id:"red",   hex:"#b85c5c" },
 ];
 const hlHex = (id) => (HL_COLORS.find(c => c.id === id) || HL_COLORS[0]).hex;
-
-function loadSettings() {
-  try { return { ...DEF, ...JSON.parse(localStorage.getItem("wh40k_reader_v2") || "{}") }; }
-  catch { return DEF; }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Viewport hook
@@ -420,7 +407,7 @@ function SettingsPanel({ settings, onChange, onClose }) {
   const T = THEMES[settings.themeId] ?? THEMES.dark;
 
   const Chip = ({ label, active, onClick }) => (
-    <button onClick={onClick}
+    <button onClick={onClick} aria-pressed={active}
       style={{ background:active?`${C.gold}22`:"transparent",
                border:`1px solid ${active?C.gold:T.border}`, borderRadius:6,
                padding:"6px 13px", color:active?C.gold:T.muted,
@@ -551,11 +538,11 @@ export default function EpubReader({
   useReaderStyles();
 
   // ── Settings ──────────────────────────────────────────────────────────────
-  const [settings, setSettings] = useState(loadSettings);
+  const [settings, setSettings] = useState(loadReaderSettings);
   const updateSetting = useCallback((key, val) => {
     setSettings(s => {
       const n = { ...s, [key]:val };
-      localStorage.setItem("wh40k_reader_v2", JSON.stringify(n));
+      saveReaderSettings(n);
       return n;
     });
   }, []);
